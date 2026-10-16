@@ -31,6 +31,9 @@ def main(args):
             print(f'{"✓" if rc == 0 else "✗"} {head}  ({dt:.0f} s)', flush=True)
             if rc:
                 ko.append(name); print('\n'.join('    ' + l for l in out.splitlines()[-25:]))
+                if os.environ.get('GITHUB_ACTIONS'):  # annotation visible sur GitHub (onglet Actions, résumé du run)
+                    msg = ' | '.join(l.strip() for l in out.splitlines() if l.strip().startswith('✗'))[:900] or out.splitlines()[-1][:900]
+                    print(f'::error title={name}::{msg}')
     print(f'\n{len(names) - len(ko)}/{len(names)} suites OK' + (f' — en échec : {", ".join(ko)}' if ko else ''))
     return not ko
 
