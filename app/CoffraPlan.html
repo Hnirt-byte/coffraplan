@@ -117,7 +117,7 @@ body.pm .inf{font-size:9.5px;line-height:1.25}body.pm .inf .nt{font-size:.95em}b
 </head>
 <body>
 <div class="hdr">
-<div class="hdr-t">📐 Plans <span>Réservation</span> <small id="appVer" style="font-size:11px;opacity:.7;font-weight:600">v2.0</small></div>
+<div class="hdr-t">📐 Plans <span>Réservation</span> <small id="appVer" style="font-size:11px;opacity:.7;font-weight:600">v2.1</small></div>
 <div style="flex:1"></div>
 <button class="btn bs bo no-print" id="bUndo" onclick="undo()" title="Annuler (Ctrl+Z)">↶</button>
 <button class="btn bs bo no-print" id="bRedo" onclick="redo()" title="Rétablir (Ctrl+Y)">↷</button>
@@ -268,6 +268,12 @@ function ldP(){try{const r=JSON.parse(localStorage.getItem('resa3'));return Arra
 function svP(){try{localStorage.setItem('resa3',JSON.stringify(P))}catch(e){}}
 // Migration des plans v3 → v4
 function migr(d){
+  const o=migr11(d);if(!o||typeof o!=='object'||(o.v||0)>=12)return o;
+  const m=Object.assign({},o,{v:12});
+  if(m.forme==='special'&&m.pot&&m.pH>0&&m.fondInf){const fi=m.cp&&m.cp.fi;m.pH+=fi&&fi.e>0?fi.e:(m.ep||18)}
+  return m;
+}
+function migr11(d){
   // v19 : forme « Puisard avec fond » supprimée (doublon) → carré avec fond si L = l, sinon réservation avec fond
   if(d&&typeof d==='object'&&d.forme==='puisard'){const sq=!(d.l>0)||Math.abs(d.l-(d.L||0))<0.01;d=Object.assign({},d,{forme:sq?'carre_fond':'rect_fond'});if(sq)d.l=d.L}
   if(!d||typeof d!=='object'||d.v>=11)return d;
@@ -394,7 +400,8 @@ function specGeo(d){
   const zwt=h;                                              // parois pleine hauteur (fonds entre parois)
   const zi=sup?zFS-eS:h;                                    // haut du volume intérieur
   const cb=zb+(d.niv||0),hInt=d.hInt>0?d.hInt:Math.max(0,zi-cb); // forme concentrique (vide = auto : jusqu'au fond sup. / en tête)
-  return{zb,sup,zFS,supTop,zwt,zi,hIn:zi-zb,hw:h,cb,ct:cb+hInt,hInt};
+  // v2.1 : poteaux (tubes carton) du dessous de la base jusqu'au dessus du fond sup. (ou en tête) — ils traversent les fonds
+  return{zb,sup,zFS,supTop,zwt,zi,hIn:zi-zb,hw:h,cb,ct:cb+hInt,hInt,zPt:sup?zFS:h};
 }
 // ====== GOUSSETS D'ANGLE ======
 // Triangle rectangle isocèle en CP, côtés a le long des deux parois, posé à plat dans l'angle intérieur.
@@ -669,11 +676,12 @@ ${sel('oNatBox','Intérieur de la boîte',[['vide','Vide (réservation)'],['beto
 ${num('oHint','Hauteur (mm, vide = auto)','',' placeholder="auto : sous le fond sup."')}
 ${num('oNiv','Départ depuis le dessus de la base (mm)',0,' min="0"')}</div>`+
       chk('oPot','Poteaux circulaires',false)+`<div id="zPot" style="display:none">
-<div class="g3">${num('oPN','Nombre',3,' min="1"')}${num('oPD','Ø poteau',200)}${num('oPH','h poteau (vide = auto)','',' placeholder="auto"')}</div>
+<div class="g3"><div id="zPN">${num('oPN','Nombre',3,' min="1"')}</div>${num('oPD','Ø poteau',200)}${num('oPH','h depuis le dessous (vide = auto)','',' placeholder="auto"')}</div>
+${num('oPJ','Perçage des fonds : Ø poteau + (mm)',10,' min="0"')}
 <div class="g2">${num('oPR','Axe centre → axe poteau (mm)',300)}${num('oPA','Angle départ (°)',0,' step="1"')}</div>
 ${sel('oPDisp','Disposition',[['equi','Équidistant (360°/n)'],['custom','Angles personnalisés']],' onchange="syncVis()"')}
 <div class="fd" id="zPAngles" style="display:none"><label>Angles séparés par virgule (°)</label><input class="fi" id="oPAngles" placeholder="0, 120, 240"></div>
-<div class="nt" style="font-size:10px;color:var(--muted)">0° = axe horizontal vers la droite, sens horaire (vue de dessus).</div></div>`+
+<div class="nt" style="font-size:10px;color:var(--muted)">0° = axe horizontal vers la droite, sens horaire (vue de dessus). Les poteaux traversent la base et le fond sup. (perçages) : du dessous de la boîte jusqu'au dessus du fond sup. (ou en tête) en automatique.</div></div>`+
       chk('oFondSup','Fond supérieur',false)+`<div id="zFSN" style="display:none">${num('oFSN','Niveau du dessus du fond sup. (mm depuis le bas)','',' min="0" placeholder="vide = en tête (h)"')}
 <div class="hint" style="margin:-4px 0 8px">Fond toujours entre les parois (parois fixées contre son chant).</div></div>`+chk('oFondInf','Base (fond inférieur)',true)+`<div id="zGsW">${chk('oGs','Goussets d\'angle (renfort intérieur)',false)}<div id="zGs" style="display:none">
 <div class="g2">${sel('oGsM','Taille',[['auto','Automatique'],['man','Manuelle']],' onchange="syncVis()"')}<div id="zGsA">${num('oGsA','Côté a (mm)',150,' min="0"')}</div></div>
@@ -717,14 +725,14 @@ function updSpecDims(ev){
 }
 function syncVis(){
   const t=(z,on)=>{const e=el(z);if(e)e.style.display=on?'':'none'};
-  t('zFe',C('oFeuil'));['L','R'].forEach(k=>t('zPtD'+k,S('ptE'+k)==='po'));t('zPtC',S('ptEL')==='vc'||S('ptER')==='vc');t('zPtL',!(S('ptEL')==='vc'&&S('ptER')==='vc'));t('zPtEpl',C('ptDal'));if(C('dlPt')&&el('zDlBm')&&!el('zDlBm').children.length)dlBmSet([{o:0,b:300,h:400,po:[]}]);t('zDlP',C('dlPt'));t('zBmLhs',C('bmLhs'));t('zDlRv',C('dlRv'));t('zDlPd',C('dlPt')&&S('dlF')==='rect');t('zDlC',S('dlF')==='circ');t('zDlR',S('dlF')!=='circ');t('zDlW',S('dlF')==='rect');t('zDlO',S('dlF')==='rect');t('zGAng',S('gEt')==='angle');t('zGArc',S('gEt')==='arc');t('zGJE',C('gJE'));t('zGJI',C('gJI'));t('zGAb',S('gEt')!=='tour');t('zRx',C('oRenX'));t('zRxW',!(S('iForme')==='special'&&S('oNatBox')==='beton'));t('zGs',C('oGs'));t('zGsA',S('oGsM')==='man');t('zGousA',S('oGousM')==='man');
+  t('zFe',C('oFeuil'));t('zPN',S('oPDisp')!=='custom');['L','R'].forEach(k=>t('zPtD'+k,S('ptE'+k)==='po'));t('zPtC',S('ptEL')==='vc'||S('ptER')==='vc');t('zPtL',!(S('ptEL')==='vc'&&S('ptER')==='vc'));t('zPtEpl',C('ptDal'));if(C('dlPt')&&el('zDlBm')&&!el('zDlBm').children.length)dlBmSet([{o:0,b:300,h:400,po:[]}]);t('zDlP',C('dlPt'));t('zBmLhs',C('bmLhs'));t('zDlRv',C('dlRv'));t('zDlPd',C('dlPt')&&S('dlF')==='rect');t('zDlC',S('dlF')==='circ');t('zDlR',S('dlF')!=='circ');t('zDlW',S('dlF')==='rect');t('zDlO',S('dlF')==='rect');t('zGAng',S('gEt')==='angle');t('zGArc',S('gEt')==='arc');t('zGJE',C('gJE'));t('zGJI',C('gJI'));t('zGAb',S('gEt')!=='tour');t('zRx',C('oRenX'));t('zRxW',!(S('iForme')==='special'&&S('oNatBox')==='beton'));t('zGs',C('oGs'));t('zGsA',S('oGsM')==='man');t('zGousA',S('oGousM')==='man');
   t('zGsW',!(S('iForme')==='special'&&(S('dBase')==='circ'||S('oNatBox')==='beton')));t('zConc',C('oConc'));t('zMan',S('oConstr')!=='caisson');t('zFSN',C('oFondSup'));t('zCai',S('oConstr')==='caisson');t('zPot',C('oPot'));t('zPAngles',S('oPDisp')==='custom');
 }
 
 function coll(){
   const f=S('iForme');
   const cp=readCP();
-  const d={v:11,ch:(S('iCh','')||'').trim().toUpperCase(),ouv:S('iOuv','').trim(),ref:S('iRef','').trim().toUpperCase(),ind:S('iInd','').trim().toUpperCase(),
+  const d={v:12,ch:(S('iCh','')||'').trim().toUpperCase(),ouv:S('iOuv','').trim(),ref:S('iRef','').trim().toUpperCase(),ind:S('iInd','').trim().toUpperCase(),
     nb:Math.max(1,parseInt(S('iNb','1'))||1),mont:S('iMont'),forme:f,cp,
     ep:f==='circ'?0:(cp.j?cp.j.e:18),date:new Date().toISOString().slice(0,10)};
   if(f==='circ'){d.D=V('dD');d.h=V('dh');d.mat=S('oMat','')}
@@ -740,7 +748,7 @@ function coll(){
     d.base=S('dBase','rect');d.h=V('dh');
     if(d.base==='circ'){d.D=V('dD');d.L=d.l=d.D;d.mD=S('mD','ext')}else{d.L=V('dL');d.l=d.base==='carre'?d.L:V('dl')}
     d.conc=C('oConc');if(d.conc){d.Dint=V('oDint');d.mDc=S('oMDc','ext');d.hInt=V('oHint');d.niv=V('oNiv')}
-    d.pot=C('oPot');if(d.pot){d.pN=V('oPN');d.pD=V('oPD');d.pH=V('oPH');d.pR=V('oPR');d.pA=V('oPA');d.pDisp=S('oPDisp','equi');d.pAngles=S('oPAngles','')}
+    d.pot=C('oPot');if(d.pot){d.pN=V('oPN');d.pD=V('oPD');d.pH=V('oPH');d.pR=V('oPR');d.pA=V('oPA');d.pDisp=S('oPDisp','equi');d.pAngles=S('oPAngles','');d.pJ=el('oPJ')?V('oPJ'):10;if(d.pDisp==='custom')d.pN=potAngles(d).length}
     d.fondSup=C('oFondSup');d.fondInf=C('oFondInf');d.fsNiv=V('oFSN');d.nat=S('oNatBox','vide');
   } else {
     d.L=V('dL');d.l=(f==='carre'||f==='carre_fond')?d.L:V('dl');d.h=V('dh');
@@ -775,7 +783,7 @@ function setForm0(d){d=migr(d);
   sc('oFeuil',d.feuil);sv('oFL',d.fL);sv('oFH',d.fH);sv('oFNiv',d.fNiv);sc('oRen',d.ren);sc('oFondMassif',d.fondMassif);
   if(d.forme==='special'){
     sc('oConc',d.conc);sv('oDint',d.Dint);sv('oMDc',d.mDc||(d.concNat==='noyau'?'int':'ext'));sv('oHint',d.hInt>0?d.hInt:'');sv('oNiv',d.niv);
-    sc('oPot',d.pot);sv('oPN',d.pN);sv('oPD',d.pD);sv('oPH',d.pH>0?d.pH:'');sv('oPR',d.pR);sv('oPA',d.pA);sv('oPDisp',d.pDisp);sv('oPAngles',d.pAngles);
+    sc('oPot',d.pot);sv('oPN',d.pN);sv('oPD',d.pD);sv('oPH',d.pH>0?d.pH:'');sv('oPR',d.pR);sv('oPA',d.pA);sv('oPDisp',d.pDisp);sv('oPAngles',d.pAngles);sv('oPJ',d.pJ>=0?d.pJ:10);
     sc('oFondSup',d.fondSup);sc('oFondInf',d.fondInf);sv('oFSN',d.fsNiv>0?d.fsNiv:'');sv('oNatBox',d.nat||'vide');
   }
   syncVis();liveCalc();
@@ -803,16 +811,13 @@ function checks(d,g){
     if(d.constr==='caisson'){
       if(d.l<=2*ep)e('Épaisseur voile ≤ 2 × épaisseur panneau');
       if(d.ferme&&d.h<=eF+eS)e('h ≤ ép. dessus + dessous : caisson fermé impossible');
-      if(d.renV&&g&&g.ok&&caisCer(d,g)&&!caisCer(d,g).n)w('Cerces : hauteur intérieure ≤ '+CAIS_EMAX+' mm, dessus + dessous suffisent (aucune cerce intermédiaire)');
     } else if(g&&g.ok&&d.h>0){
       const M=manGeo(d,g);
       if(M.hp<=0)e('h ≤ épaisseur linteau + appui');
       else if(M.gap<=0)e('Trop de cerces : plus de vide entre les plaques');
       if(d.bMr>0&&d.bMr>d.l)e('Section des montants > épaisseur du voile');
       if(M.Lin<=0)e('Largeur entre joues nulle');
-      if(!g.rad&&M.bevI>3)w('Joues parallèles : extrémités à couper en biais ≈ '+nf(M.bevE,1)+'° / '+nf(M.bevI,1)+'° (joues radiales = coupes d\'équerre)');
       if(!M.gousAuto&&M.gous>0&&M.gous>Math.min(M.Lin/3,M.gap/2))w('Goussets plus grands que le vide disponible');
-      if(M.gousAuto&&M.gous===0)w('Goussets auto : vide trop faible (< 150 mm), aucun gousset');
       if(M.nM===0&&M.Lin>1200)w('Linteau de '+nf(M.Lin)+' mm sans montant : vérifier sa tenue sous le béton');
       if(M.nC===0&&M.hp>1000)w('Joues de '+nf(M.hp)+' mm sans cerce intermédiaire : risque de flambement / fermeture');
     }
@@ -830,8 +835,6 @@ function checks(d,g){
     if(d.dlE>Pp)e('Entraxe poutrelles > longueur du panneau ('+Pp+' mm)');
     const G=dalGeo(d);
     if(G.ok){
-      if(G.Lp<Pp){const dv=[];for(let k=2;k<=12;k++){const v=Pp/k;if(Number.isInteger(v)&&v>=300&&v<=900)dv.push(v)}
-        w(`Planches recoupées à ${nf(G.Lp)} mm (chute ${nf(Pp-G.Lp)} mm / panneau) : entraxe diviseur de ${Pp} conseillé${dv.length?' ('+dv.join(', ')+' mm)':''}`)}
       if(Math.round(G.Lp/G.e)<DAL_MINSUP-1)e(`Entraxe trop grand : une planche de ${nf(G.Lp)} mm ne peut pas porter sur ${DAL_MINSUP} poutrelles`);
       const un=G.pcs.filter(p=>p.sup<DAL_MINSUP);if(un.length)w(`${un.length} planche(s) sur moins de ${DAL_MINSUP} poutrelles (${un.slice(0,12).map(p=>p.id).join(', ')}${un.length>12?'…':''}) : ajouter une poutrelle ou une lisse de rive sous ces planches`);
       const sl=G.pcs.filter(p=>Math.min(p.w,p.h)<G.Smin-0.5);if(sl.length)w(`${sl.length} pièce(s) plus étroite(s) que ${nf(G.Smin)} mm inévitable(s) (${sl.slice(0,12).map(p=>p.id+' '+nf(p.w,0)+'×'+nf(p.h,0)).join(', ')}) : changer l'entraxe, le sens de pose ou la position des poutres`);
@@ -843,7 +846,6 @@ function checks(d,g){
           for(let i=0;i<bm.pots.length-1;i++)if(bm.pots[i+1].s-bm.pots[i].s<(bm.pots[i].D+bm.pots[i+1].D)/2)e(`Poutre ${bm.n} : poteaux qui se chevauchent`)});
         srt.forEach((bm,i)=>{const nx=srt[i+1];if(nx&&nx.o-nx.b/2<bm.o+bm.b/2+2*G.eJ)e(`Poutres ${bm.n} et ${nx.n} se chevauchent`)});
         const jP=(d.cp&&d.cp.j)||CPDEF;bmChecks(BG,BG.P,cr,w,cpFmt(jP)[0],cpFmt(jP)[1]);}
-      if(d.dlPt&&!dalBeams(d).length)w('Option poutres cochée sans poutre : ajouter une poutre');
     }
   } else if(f==='poutre'){
     pos(d.ptL,'Portée L');pos(d.ptB,'Largeur b');pos(d.ptH,'Hauteur h');
@@ -857,10 +859,7 @@ function checks(d,g){
     pos(d.ppB,'b');pos(d.ppH,'h');pos(d.ppE,'Épaisseur du voile');
     if(!(d.ppA>=0&&d.ppA<75))e('Biais α : entre 0 et 75°');if(!(d.ppBe>=0&&d.ppBe<75))e('Pente β : entre 0 et 75°');
     const g=paraGeo(d);if(g.b<=2*ep||g.h<=2*ep)e('Section ≤ 2 × épaisseur panneau');
-    if((d.ppA||0)>45||(d.ppBe||0)>45)w('Angle > 45° : coupes biaises délicates, préparer un gabarit d\'about');
-    if(g.ok&&g.joint)w(`Panneau plus long que le CP : ${g.joint.n} tronçons par panneau, joints sur ${g.joint.s.length} cadre(s) de joint 50 × 50 (voir plan) — un format plus grand les évite s'il existe`);
-    else if(g.ok&&g.Lr+Math.max(...g.panels.map(p=>Math.abs(p.dl)))>Math.max(...cpFmt((d.cp&&d.cp.j)||CPDEF)))w('Panneau plus long que le CP : prévoir un raccord');
-    if(d.ppA>0&&d.ppBe>0)w('Biais + pente : les arêtes de l\'ouverture sur le parement sont inclinées (voir vue A)');
+    if(g.ok&&!g.joint&&g.Lr+Math.max(...g.panels.map(p=>Math.abs(p.dl)))>Math.max(...cpFmt((d.cp&&d.cp.j)||CPDEF)))w('Panneau plus long que le CP : prévoir un raccord');
   } else if(f==='goulotte'){
     pos(d.gD,'Ø extérieur');pos(d.gB,'Largeur du fond');
     if(d.gJE)pos(d.gHE,'Hauteur joue ext.');if(d.gJI)pos(d.gHI,'Hauteur joue int.');
@@ -870,7 +869,6 @@ function checks(d,g){
     if(G.R0>0&&G.rI<=0)e('Largeur du fond ≥ rayon : goulotte impossible');
     if(G.err==='fond')e('Fond plus large que le panneau CP ('+cpFmt((d.cp&&d.cp.fi)||CPDEF).join(' × ')+') : choisir un format plus grand (1525 / 1500) ou découper le fond en bandes');
     if(G.ok){
-      if(!d.gJE&&!d.gJI)w('Aucune joue : fond seul');
       [['ext.',G.JE],['int.',G.JI]].forEach(([k,J])=>{if(J&&J.err)e('Joue '+k+' plus haute que le panneau CP ('+G.J.join(' × ')+')')});
       if((d.gJE||d.gJI)&&(!d.cp||!d.cp.j||d.cp.j.t!=='cintr'))w('Joues cintrées R '+nf(G.R1/1000,2)+'–'+nf(G.R0/1000,2)+' m en '+cpName(d.cp&&d.cp.j)+' : vérifier le rayon mini de cintrage (fiche fournisseur) ou passer en CP cintrable');
     }
@@ -878,7 +876,6 @@ function checks(d,g){
     const circ=d.base==='circ';pos(d.L,circ?'Ø':'L');pos(d.l,'l');pos(d.h,'h');
     if(d.L<=2*ep+1||d.l<=2*ep+1)e('Boîte ≤ 2 × épaisseur panneau : pas de vide intérieur');
     const Z=specGeo(d),hp=Z.hIn;if(hp<=0)e(Z.sup&&!Z.supTop?'Fond sup. trop bas : sous la base':'h ≤ épaisseur des fonds');
-    if(Z.sup&&d.fsNiv>d.h)w('Niveau du fond sup. > h : ramené en tête');
     const halfIn=circ?d.D/2-ep:Math.min(d.L,d.l)/2-ep;
     if(d.conc){
       if(!(d.Dint>0))e('Concentrique : Ø int. doit être > 0');
@@ -888,14 +885,14 @@ function checks(d,g){
     }
     if(d.pot){
       const A=potAngles(d),r=(d.pD||0)/2;
-      if(d.pDisp==='custom'&&A.length!==Math.round(d.pN||0))w(`Poteaux : ${A.length} angle(s) saisi(s) pour ${d.pN} poteau(x) — les angles font foi`);
       if(!(d.pD>0))e('Ø poteau doit être > 0');
-      if((d.pH||0)>hp&&!Z.sup)w('Hauteur poteau > hauteur intérieure ('+nf(hp)+' mm)');
+      if(!A.length)e('Poteaux : saisir au moins un angle'+(d.pDisp==='custom'?' (angles personnalisés)':''));
       A.forEach((a,i)=>{
         const x=d.pR*Math.cos(a*Math.PI/180),y=d.pR*Math.sin(a*Math.PI/180);
         const out=circ?d.pR+r>d.D/2-ep:(Math.abs(x)+r>d.L/2-ep||Math.abs(y)+r>d.l/2-ep);
         if(out)w(`Poteau ${i+1} (${nf(a)}°) sort de la boîte`);
-        if(d.conc&&d.Dint>0&&d.pR-r<concW1(d)+ep)w(`Poteau ${i+1} en conflit avec la forme concentrique`);
+        // v2.1 : conflit seulement si le poteau coupe la PAROI de la forme concentrique (dedans ou dehors : sans objet) et sur sa hauteur
+        if(d.conc&&d.Dint>0&&d.pR-r<concW1(d)+ep-0.5&&d.pR+r>concW1(d)+0.5&&(d.pH||Z.zPt)>Z.cb&&Z.ct>0)w(`Poteau ${i+1} coupe la paroi de la forme concentrique (axe à ${nf(d.pR)} mm, paroi de ${nf(concW1(d))} à ${nf(concW1(d)+ep)} mm du centre)`);
         for(let j=i+1;j<A.length;j++){
           const x2=d.pR*Math.cos(A[j]*Math.PI/180),y2=d.pR*Math.sin(A[j]*Math.PI/180);
           if(Math.hypot(x-x2,y-y2)<2*r)w(`Poteaux ${i+1} et ${j+1} se chevauchent`);
@@ -909,7 +906,9 @@ function checks(d,g){
     if(!RX.full&&RX.hp<RX.nV*RX.hs)w('Renforts : hauteur utile '+nf(RX.hp)+' mm insuffisante pour '+RX.nV+' niveau(x) de '+nf(RX.hs)+' mm');
     const bad=RX.bars.filter(x=>x.Ncr<RX_SF*x.N);
     if(bad.length){const c=RX.crit;
-      w(`Renforts ${RX.S.n} : risque de flambement (portée ${nf(c.span)} mm, effort ≈ ${nf(c.N,2)} kN, charge critique ≈ ${nf(c.Ncr,2)} kN < ${RX_SF} × effort) → `+(d.renXs==='b175'?'resserrer les renforts / faire vérifier':d.renXs==='ch'?'passer en bois 63 × 175':'passer en chevron 63 × 75 ou bois 63 × 175'));}
+      // v2.1 : conseil limité aux sections du catalogue qui suppriment réellement le risque (sinon : appuis intermédiaires)
+      const okS=Object.keys(RXS).filter(k=>k!==(d.renXs||'cp')).filter(k=>{const r2=rxGeo(Object.assign({},d,{renXs:k}));return r2&&!r2.bars.some(x=>x.Ncr<RX_SF*x.N)}).map(k=>RXS[k].n);
+      w(`Renforts ${RX.S.n} : risque de flambement (portée ${nf(c.span)} mm, effort ≈ ${nf(c.N,2)} kN, charge critique ≈ ${nf(c.Ncr,2)} kN < ${RX_SF} × effort) → `+(okS.length?'passer en '+okS.join(' ou '):'aucune section du catalogue ne suffit : ajouter des butons intermédiaires ou faire vérifier'));}
     if(f==='special'){
       const segHit=(br,cx,cy,r)=>{const dx=br.x2-br.x1,dy=br.y2-br.y1,t=Math.max(0,Math.min(1,((cx-br.x1)*dx+(cy-br.y1)*dy)/(dx*dx+dy*dy)));return Math.hypot(br.x1+t*dx-cx,br.y1+t*dy-cy)<r+RX.b/2};
       if(d.conc&&d.Dint>0&&RX.shape!=='ann'&&RX.shape!=='annR'&&RX.bars.some(br=>segHit(br,0,0,concW1(d)+ep)))w('Renforts traversant la forme concentrique : les couper / les reporter sur sa paroi');
@@ -918,20 +917,15 @@ function checks(d,g){
   }
   // Goussets d'angle
   const G=gsGeo(d);
-  if(d.gs&&!gsEligible(d)&&f==='special')w('Goussets : sans objet (base circulaire ou intérieur béton)');
   if(G){
     const m=Math.min(G.Li,G.li);
-    if(G.a<=0)w(G.noH?'Goussets : hauteur utile insuffisante, aucun gousset':'Goussets : intérieur < 150 mm, aucun gousset possible');
-    else if(G.a>=m/2)e('Goussets trop grands : ils se rejoignent dans la boîte (a ≥ '+nf(m/2)+' mm)');
-    else if(G.man&&G.a>m/3)w('Goussets > 1/3 de la largeur intérieure ('+nf(m/3)+' mm) : gênent l\'accès et le décoffrage');
+    if(G.a>=m/2&&G.a>0)e('Goussets trop grands : ils se rejoignent dans la boîte (a ≥ '+nf(m/2)+' mm)');
     if(G.a>0&&f==='special'){
       const dLine=(G.Li/2+G.li/2-G.a)/Math.SQRT2,Z=specGeo(d),hit=(z1,z2)=>G.lv.some(z=>z+ep>z1&&z<z2); // z depuis le dessus de la base
       if(d.conc&&d.Dint>0&&dLine<concW1(d)+ep&&hit(Z.cb-Z.zb,Z.ct-Z.zb))w('Goussets en conflit avec la forme concentrique : réduire a');
       if(d.pot)potAngles(d).forEach((ang,i)=>{const x=d.pR*Math.cos(ang*Math.PI/180),y=d.pR*Math.sin(ang*Math.PI/180),r=(d.pD||0)/2;
-        const u=G.Li/2-Math.abs(x),v=G.li/2-Math.abs(y);if((u+v-G.a)/Math.SQRT2<r&&hit(0,d.pH||G.hp))w(`Gousset en conflit avec le poteau ${i+1}`)});
+        const u=G.Li/2-Math.abs(x),v=G.li/2-Math.abs(y);if((u+v-G.a)/Math.SQRT2<r&&hit(-Z.zb,(d.pH||Z.zPt)-Z.zb))w(`Gousset en conflit avec le poteau ${i+1}`)});
     }
-  } else if(gsEligible(d)&&!d.gs){
-    const m=Math.min(d.L,d.l)-2*ep;if(m>=1000)w('Boîte de '+nf(m)+' mm intérieur sans gousset d\'angle : à envisager');
   }
   if(typeof checksExt==='function')checksExt(d,e,w,cr);
   return W;
@@ -957,7 +951,7 @@ function debit0(d,g){
     K='fs';add(1,'Linteau entre joues (gabarit 1:1)',0,0,aC,cf,{t:'plate',g,inner:true});K='fi';
     if(M.app)add(1,'Appui entre joues (gabarit 1:1)',0,0,aC,cf,{t:'plate',g,inner:true});
     if(M.nC&&!M.cBois)add(M.nC,'Cerces interm. (gabarit)',0,0,M.nC*aC,cf,{t:'plate',g,inner:true});K='j';
-    add(2,'Joues pleine hauteur'+(M.bevE>0.5?' (biais)':''),M.jw,M.hJ,null,g.rad?null:nf(M.jw,1)+' × '+nf(M.hJ,1));
+    add(2,'Joues pleine hauteur'+(M.bevE>0.5?' (biais)':''),M.jw,M.hJ,null,g.rad?null:nf(M.jw,1)+' × '+nf(M.hJ,1)+(M.bevE>0.5||M.bevI>0.5?` · extrémités coupées en biais ${nf(M.bevE,1)}° (côté ext.) / ${nf(M.bevI,1)}° (côté int.)`:''));
     const nG=M.gous>0?(M.app?4:2):0;if(nG)add(nG,'Goussets (triangles)',M.gous,M.gous,nG*M.gous*M.gous/2e6,nf(M.gous)+' × '+nf(M.gous)+' (hyp. '+nf(M.gous*Math.SQRT2,0)+')',{t:'tri'});
   } else if(f==='voile'&&g&&g.ok){
     add(1,'Face ext. cintrée (dév.)',g.aExt,d.h,null,null,{t:'dev'});add(1,'Face int. cintrée (dév.)',g.aInt,d.h,null,null,{t:'dev'});
@@ -995,8 +989,11 @@ function debit0(d,g){
     if(circ)add(1,'Paroi cintrée (dév.)',Math.PI*(d.D-ep),Z.hw,null,null,{t:'dev'});
     else{add(2,'Côtés filants',d.L,Z.hw);add(2,'Côtés entre',d.l-2*ep,Z.hw)}
     const Di=d.D-2*ep,Li=d.L-2*ep,li=d.l-2*ep;
-    K='fi';if(d.fondInf)add(1,'Base (entre parois)',Li,li,circ?disc(Di):null,circ?'disque Ø'+nf(Di):null,circ?{t:'disc',D:Di}:null);
-    K='fs';if(Z.sup)add(1,'Fond sup. (entre parois'+(Z.supTop?', en tête)':', dessus à +'+nf(Z.zFS)+')'),Li,li,circ?disc(Di):null,circ?'disque Ø'+nf(Di):null,circ?{t:'disc',D:Di}:null);
+    // v2.1 : perçages des fonds traversés par les poteaux (Ø poteau + jeu), centres depuis le centre de la pièce, vue de dessus
+    const PA=d.pot&&d.pD>0?potAngles(d):[],Dp=(d.pD||0)+(d.pJ>=0?d.pJ:10),drl=PA.map((a,i)=>({x:d.pR*Math.cos(a*Math.PI/180),y:-d.pR*Math.sin(a*Math.PI/180),D:Dp,i})),pT=d.pH||Z.zPt;
+    const dNote=()=>`percé ${drl.length} × Ø${nf(Dp)} au droit des poteaux (centres : feuille CP À DÉCOUPER${circ?' / gabarit 1:1':''})`,dSet=()=>{const r=R[R.length-1];r.drill=drl;r.note=dNote()};
+    K='fi';if(d.fondInf){add(1,'Base (entre parois)',Li,li,circ?disc(Di):null,circ?'disque Ø'+nf(Di):null,circ?{t:'disc',D:Di}:null);if(drl.length)dSet()}
+    K='fs';if(Z.sup){add(1,'Fond sup. (entre parois'+(Z.supTop?', en tête)':', dessus à +'+nf(Z.zFS)+')'),Li,li,circ?disc(Di):null,circ?'disque Ø'+nf(Di):null,circ?{t:'disc',D:Di}:null);if(drl.length&&pT>Z.zi+0.5)dSet()}
     K='j';if(d.conc&&d.Dint>0)add(1,'Concentrique cintrée (dév.)',Math.PI*(2*concW1(d)+ep),Z.hInt,null,null,{t:'dev'});
   } else if((f==='circ_fond'||f==='circ_sf')&&d.Dext>0){
     add(1,'Paroi ext. cintrée (dév.)',Math.PI*(d.Dext-ep),d.h,null,null,{t:'dev'});
@@ -1014,16 +1011,6 @@ function debit0(d,g){
   return R;
 }
 // Poussée d'Archimède sur boîte à fond noyée dans le béton frais
-function flott(d,g){
-  let V=0;const f=d.forme;
-  if(FOND.includes(f))V=d.L*d.l*d.h/1e9;
-  else if(f==='circ_fond')V=Math.PI/4*(d.Dext**2-(d.Dint||0)**2)*d.h/1e9;
-  else if(f==='special'&&d.fondInf&&d.nat!=='beton'){const Z=specGeo(d);
-    V=(d.base==='circ'?Math.PI/4*d.D*d.D:d.L*d.l)*(Z.sup?Z.zFS:d.h)/1e9}
-  else if(f==='voile'&&g&&g.ok&&(d.constr!=='caisson'||d.ferme))V=plateArea(g,false)*d.h/1e3;
-  if(!(V>0))return null;
-  const F=GAMMA*V;return{V,F,kg:F*1000/9.81};
-}
 // Ordonnées de traçage des cerces (voile)
 function gabarit(g){
   const E2=g.cExt/2,I2=g.cInt/2,steps=[10,20,25,50,100,200,250,500,1000];
@@ -1333,13 +1320,13 @@ function genSpecial(d,ep){
       if(Z.cb>Z.zb+0.5)v.D(X(-Wd/2),Y(Z.cb),X(-Wd/2),Y(Z.zb),'+'+nf(Z.cb-Z.zb),30,'left');
     }
     if(d.pot&&angles.length){
-      const rp=d.pD/2,pH=Math.min(d.pH||Z.hIn,Z.hIn);
+      const rp=d.pD/2,pH=d.pH||Z.zPt;
       const grp={};angles.forEach((a,i)=>{const rad=a*Math.PI/180,px=isA?d.pR*Math.cos(rad):d.pR*Math.sin(rad);
-        if(Math.abs(px)<Wi){const pt=Z.zb+pH,k=Math.round(px);
-          v.L(X(px-rp),Y(pt),X(px-rp),Y(Z.zb),'#999',0.5,'3,2');v.L(X(px+rp),Y(pt),X(px+rp),Y(Z.zb),'#999',0.5,'3,2');
+        if(Math.abs(px)<Wi){const pt=pH,k=Math.round(px);
+          v.L(X(px-rp),Y(pt),X(px-rp),Y(0),'#999',0.5,'3,2');v.L(X(px+rp),Y(pt),X(px+rp),Y(0),'#999',0.5,'3,2');v.L(X(px-rp),Y(0),X(px+rp),Y(0),'#999',0.4,'3,2');
           v.L(X(px-rp),Y(pt),X(px+rp),Y(pt),'#999',0.4,'3,2');(grp[k]=grp[k]||{px,pt,n:[]}).n.push('P'+(i+1))}});
       // poteaux superposés dans la coupe : un seul repère « P1/P3 », à mi-hauteur (hors des libellés de fonds)
-      Object.values(grp).forEach(q=>v.T(X(q.px),Y((Z.zb+q.pt)/2)+2,q.n.join('/'),5.5,'#888'));
+      Object.values(grp).forEach(q=>v.T(X(q.px),Y((Z.zb+Math.min(q.pt,Z.zi))/2)+2,q.n.join('/'),5.5,'#888'));
     }
     v.D(X(-Wd/2),Y(0),X(Wd/2),Y(0),(circB?'Ø: ':isA?'L: ':'l: ')+nf(Wd)+' mm',16);
     v.D(X(Wd/2),Y(h),X(Wd/2),Y(0),'h: '+nf(h)+' mm',16);
@@ -2044,11 +2031,8 @@ function bmPoche(bm,S,P){
 function bmChecks(BG,P,e,w,jL,jH){
   if(P.pp>0&&P.pp>=P.ev)e(`Poche de ${nf(P.pp)} mm ≥ épaisseur du voile (${nf(P.ev)} mm) : poche traversante`);
   BG.beams.forEach(bm=>{const tag=`Poutre ${bm.n}`;
-    bm.segs.forEach(sg=>{const L=Math.max(sg.Lj1,sg.Lj2);if(L>jL)w(`${tag} : joue de ${nf(L,0)} mm > panneau (${jL}) → ${Math.ceil(L/jL)} longueurs, joints au droit d'un raidisseur`);
-      if(sg.Lf<300)w(`${tag} : tronçon de coffrage de ${nf(sg.Lf,0)} mm entre appuis (très court)`)});
     if(bm.hJ>jH)e(`${tag} : hauteur de joue ${nf(bm.hJ,0)} mm > largeur du panneau CP (${jH})`);
     if(bm.lhs&&bm.zLH-2*BM_LH<100)e(`${tag} : lisse haute sous les poutrelles (h ${nf(bm.hpt)}) : joue de ${nf(bm.hJ,0)} mm trop basse pour les raidisseurs entre les lisses — réduire la hauteur de poutrelle ou décocher l'option`);
-    else if(bm.zLH-2*BM_LH<100)w(`${tag} : joue de ${nf(bm.hJ,0)} mm : raidisseurs très courts entre les lisses (${nf(bm.zLH-2*BM_LH,0)} mm)`);
     if(bm.h<=BG.eJ)e(`${tag} : h trop faible`);
   });
 }
@@ -2560,7 +2544,7 @@ function gen(d0){
     row('Fonds',(d.fondInf?'base':'sans base')+' · '+(Z.sup?(Z.supTop?'fond sup. en tête':'fond sup. dessus à +'+nf(Z.zFS)):'sans fond sup.')+' — entre parois');
     row('Haut. intérieure',nf(Z.hIn)+' mm (de +'+nf(Z.zb)+' à +'+nf(Z.zi)+')');
     if(d.conc)row('Concentrique',`Ø${nf(d.Dint)} (${concW1(d)===d.Dint/2?'int.':'ext.'} bois) × h ${nf(Z.hInt)} (de +${nf(Z.cb)} à +${nf(Z.ct)})`);
-    if(d.pot){const A=potAngles(d);row('Poteaux',`${A.length} × Ø${nf(d.pD)} h ${nf(d.pH)}, axe à ${nf(d.pR)} mm`);row('Angles',A.map(a=>nf(a)+'°').join(', ')+' <span class="nt">(0° → droite, horaire)</span>')}
+    if(d.pot){const A=potAngles(d);row('Poteaux',`${A.length} × Ø${nf(d.pD)} h ${nf(d.pH)} depuis le dessous de la boîte (traversent les fonds, perçages Ø${nf((d.pD||0)+(d.pJ>=0?d.pJ:10))}), axe à ${nf(d.pR)} mm`);row('Angles',A.map(a=>nf(a)+'°').join(', ')+' <span class="nt">(0° → droite, horaire)</span>')}
   }
   const RXi=rxGeo(d);
   if(RXi)row('Renforts croix',`${RXi.S.n}${RXi.full?' '+nf(RXi.b)+' × h '+nf(RXi.hs):''} · ${RXi.nR?RXi.nR+' radiaux':RXi.nT+' transv. + '+RXi.nL+' longit.'}${RXi.full?'':' × '+RXi.nV+' niv.'}<br><span class="nt">${RXi.nR?'':(RXi.longDir==='L'?'longitudinaux':'transversaux')+' continus ; autres en tronçons décalés de ± '+nf(RXi.off)+' mm, fixés dans le continu'}${RXi.full?'':' · axes à +'+RXi.zc.map(z=>nf(z)).join(' / +')+' mm'}</span>`);
@@ -2584,7 +2568,7 @@ function gen(d0){
     if(R.bois&&R.bois.length)q+=`<div class="sub">Bois massif</div><table>${R.bois.map(b=>`<tr><td class="tg">${b.tag||''}</td><td>${b.q}×</td><td>${b.n}</td><td class="nm">L ${nf(b.L)}</td></tr>`).join('')}</table>`;
     q+=`<div class="nt">Repère à porter sur chaque pièce : ${esc((d.ref||'P').toUpperCase())}-J1, -F1… (J joues / parois, F fond inf., S fond sup., B bois).</div>`;
 
-    if(f==='special'&&d.pot)q+=`<div class="nt">+ poteaux : ${potAngles(d).length} × Ø${nf(d.pD)} h ${nf(d.pH)} — tubes carton (réservations vides)</div>`;
+    if(f==='special'&&d.pot)q+=`<div class="nt">+ poteaux : ${potAngles(d).length} × Ø${nf(d.pD)} h ${nf(d.pH)} (du dessous de la boîte) — tubes carton (réservations vides)</div>`;
     if(f==='voile'||f==='circ_fond'||f==='circ_sf'||(f==='special'&&(d.base==='circ'||d.conc)))q+=`<div class="nt">Faces cintrées : longueurs développées à la fibre neutre. À réaliser sur cerces découpées au rayon + CP cintrable, ou en plusieurs éléments.</div>`;
   }
   if(f==='dalle'){const G=dalGeo(d);if(G.ok){const r=(lb,c,on)=>c?`<tr><td>${on?'▶':''}</td><td>${lb}</td><td class="nm">${c.tot} pann. · ${c.nD} D · ${c.sliv} petite(s)</td></tr>`:'';
@@ -2739,11 +2723,12 @@ const LIM=[
  ['oDint',d=>d.Dint,10,20000,'Ø concentrique',d=>d.forme==='special'&&d.conc],
  ['oHint',d=>d.hInt,0,10000,'Hauteur concentrique',d=>d.forme==='special'&&d.conc],
  ['oNiv',d=>d.niv,0,10000,'Départ concentrique',d=>d.forme==='special'&&d.conc],
- ['oPN',d=>d.pN,1,48,'Nombre de poteaux',d=>d.forme==='special'&&d.pot],
+ ['oPN',d=>d.pN,1,48,'Nombre de poteaux',d=>d.forme==='special'&&d.pot&&d.pDisp!=='custom'],
  ['oPD',d=>d.pD,10,5000,'Ø poteau',d=>d.forme==='special'&&d.pot],
  ['oPH',d=>d.pH,0,10000,'h poteau',d=>d.forme==='special'&&d.pot],
  ['oPR',d=>d.pR,0,20000,'Axe → poteau',d=>d.forme==='special'&&d.pot],
  ['oPA',d=>d.pA,-360,360,'Angle de départ',d=>d.forme==='special'&&d.pot],
+ ['oPJ',d=>d.pJ,0,200,'Jeu de perçage des fonds',d=>d.forme==='special'&&d.pot&&d.pJ!=null],
  ['oFSN',d=>d.fsNiv,0,10000,'Niveau du fond sup.',d=>d.forme==='special'&&d.fondSup],
  ['oGsA',d=>d.gsA,30,2000,'Côté gousset',d=>d.gs&&d.gsMode==='man',1],
  ['oGsE',d=>d.gsE,100,5000,'Entraxe des niveaux de goussets',d=>d.gs],
@@ -2782,7 +2767,7 @@ const LIM=[
  ['ppA',d=>d.ppA,0,74,'Biais α',d=>d.forme==='para'],
  ['ppBe',d=>d.ppBe,0,74,'Pente β',d=>d.forme==='para'],
 ];
-const fmtLim=(v,id)=>{const u=(el(id)&&el(id).dataset.u)||(id==='iNb'?'':'mm');return nf(v)+(u&&u!=='°'?' '+u:u)};
+const fmtLim=(v,id)=>{const e=el(id),u=e&&e.dataset.u!=null?e.dataset.u:(id==='iNb'?'':'mm');/* v2.1 : unité vide (nombre) respectée */return nf(v)+(u&&u!=='°'?' '+u:u)};
 // Erreurs de bornes sur un plan : [{id, msg}]
 function limErr(d){
   const out=[],hit=(id,msg)=>out.push({id,msg});
@@ -3138,24 +3123,27 @@ function debit(d,g){
 // ---------- A1 : imbrication des pièces dans les panneaux (MaxRects, rotation 90°, trait de scie) ----------
 function nestKerf(d){if(d.forme==='dalle')return d.dlK>=0?d.dlK:4;if(d.forme==='goulotte')return d.gKerf>=0?d.gKerf:4;const c=typeof profCh==='function'?profCh(d.ch):null;return c&&c.kerf>=0?c.kerf:4}
 // Pièces d'un exemplaire (par composant) : [{tag, ftag, w, h, poly, hole, lock, dims}]
+// v2.1 : perçage touchant une zone (morceau de fond) : il est reporté sur chaque morceau qu'il entame (demi-perçage de part et d'autre d'un joint)
+function drHit(q,x1,y1,x2,y2){const dx=Math.max(x1-q.x,0,q.x-x2),dy=Math.max(y1-q.y,0,q.y-y2);return Math.hypot(dx,dy)<q.D/2-0.5}
 function nestPieces(d,R){
   const out={};
   R.forEach(r=>{if(nestSkip(d,r.k))return;const c=cpOf(d,r.k),[W,H]=cpFmt(c),sh=r.sh||{},lst=out[r.k]=out[r.k]||[];
     const push=(o,i)=>lst.push(Object.assign({tag:r.tag,ftag:r.ftag,line:r,copy:i},o));
     let base=null,hole=null,lock=false;
     if(!r.sh&&r.a>0&&r.b>0||sh.t==='dev'&&r.a>0&&r.b>0){lock=sh.t==='dev'&&c.t==='cintr';
-      const jp=r.split||jouePieces(r.a,r.b,r.q,W,H,lock,r.k==='j'?'j':'f'),letters='abcdefghijklmnopqrstuvwxyz';
+      const jp=r.split||jouePieces(r.a,r.b,r.q,W,H,lock,r.k==='j'?'j':'f'),letters='abcdefghijklmnopqrstuvwxyz',DR=r.drill?r.drill.map(h=>({x:r.a/2+h.x,y:r.b/2+h.y,D:h.D,i:h.i})):null;
       // morceaux : même jeu de lettres pour des exemplaires identiques
       const sigs=[];jp.copies.forEach((cp,i)=>{const sg=cp.lens.join('|')+'/'+cp.bands.join('|');let si=sigs.indexOf(sg);if(si<0){sigs.push(sg);si=sigs.length-1}
         const off=sigs.slice(0,si).reduce((s,x)=>s+x.split('/')[0].split('|').length*x.split('/')[1].split('|').length,0);let k=0;
-        cp.bands.forEach(B=>cp.lens.forEach(L=>{const sfx=jp.split?letters[(off+k++)%26]:'';push({tag:r.tag+sfx,ftag:r.ftag+sfx,w:L,h:B,poly:[[0,0],[L,0],[L,B],[0,B]],lock,dims:nf(L,0)+' × '+nf(B,0)},i)}))});
+        let by=0;cp.bands.forEach(B=>{let bx=0;cp.lens.forEach(L=>{const sfx=jp.split?letters[(off+k++)%26]:'',dr=DR?DR.filter(h=>drHit(h,bx,by,bx+L,by+B)).map(h=>({x:h.x-bx,y:h.y-by,D:h.D,i:h.i})):null;
+          push({tag:r.tag+sfx,ftag:r.ftag+sfx,w:L,h:B,poly:[[0,0],[L,0],[L,B],[0,B]],lock,dims:nf(L,0)+' × '+nf(B,0),drill:dr&&dr.length?dr:null},i);bx+=L});by+=B})});
       return}
     if(sh.t==='tri'&&r.a>0)base=[[0,0],[r.a,0],[0,r.a]];
     else if(sh.t==='disc'&&sh.D>0){base=circPoly(sh.D);if(sh.Din>0)hole=circPoly(sh.Din).map(([x,y])=>[x+(sh.D-sh.Din)/2,y+(sh.D-sh.Din)/2])}
     else if(sh.t==='para'&&sh.L>0)base=sh.poly?sh.poly.map(q=>q.slice()):[[0,0],[sh.L,0],[sh.L+sh.dl,sh.W],[sh.dl,sh.W]];
     else if(sh.t==='plate'&&sh.g&&sh.g.ok){base=platePolyRaw(sh.g,sh.inner,sh.faces);if(sh.hole>0)hole=platePolyRaw(sh.g,sh.inner,sh.faces,sh.hole)}
     if(!base)return;
-    const [x0,y0,x1,y1]=bbox(base),w=x1-x0,h=y1-y0;base=base.map(([x,y])=>[x-x0,y-y0]);if(hole)hole=hole.map(([x,y])=>[x-x0,y-y0]);
+    const [x0,y0,x1,y1]=bbox(base),w=x1-x0,h=y1-y0,h_=h;base=base.map(([x,y])=>[x-x0,y-y0]);if(hole)hole=hole.map(([x,y])=>[x-x0,y-y0]);
     let cells=[[0,0,w,h]];
     if(sh.cutsX&&sh.cutsX.length){// v17 : coupes imposées (joints alignés sur les cadres de joint)
       const xs=[0,...sh.cutsX.slice().sort((a,b)=>a-b),w],m=Math.min(W,H),ny=h<=m+1e-6?1:Math.ceil(h/m-1e-9);cells=[];
@@ -3163,8 +3151,10 @@ function nestPieces(d,R){
       if(!r.splitTxt)r.splitTxt=`→ ${cells.length} tronçons (joints sur cadre)`}
     else{cells=gridCells(w,h,W,H);if(cells.length>1&&!r.splitTxt)r.splitTxt=`→ ${cells.length} morceaux (joints sur tasseau)`}
     if(sh.t==='plate')r.cells={cells,x0,y0,w,h}; // v18 : joints reportés sur le gabarit 1:1
+    const DRc=r.drill&&sh.t==='disc'?r.drill.map(h=>({x:w/2+h.x,y:h_/2+h.y,D:h.D,i:h.i})):null;
     const parts=[];cells.forEach(([a1,b1,a2,b2])=>{const p=cells.length>1?clipBox(base,a1,b1,a2,b2):base;if(!p)return;const hp=hole&&cells.length>1?clipBox(hole,a1,b1,a2,b2):hole;
-      const [px0,py0,px1,py1]=bbox(p);parts.push({w:px1-px0,h:py1-py0,poly:p.map(([x,y])=>[x-px0,y-py0]),hole:hp?hp.map(([x,y])=>[x-px0,y-py0]):null})});
+      const [px0,py0,px1,py1]=bbox(p),dr=DRc?DRc.filter(q=>drHit(q,a1,b1,a2,b2)).map(q=>({x:q.x-px0,y:q.y-py0,D:q.D,i:q.i})):null;
+      parts.push({w:px1-px0,h:py1-py0,poly:p.map(([x,y])=>[x-px0,y-py0]),hole:hp?hp.map(([x,y])=>[x-px0,y-py0]):null,drill:dr&&dr.length?dr:null})});
     for(let i=0;i<r.q;i++)parts.forEach((pt,j)=>push(Object.assign({lock:false,dims:sh.t==='para'&&parts.length===1?nf(sh.L,0)+' × '+nf(sh.W,0)+' ⧸ '+nf(sh.dl,0):sh.t==='disc'?'Ø'+nf(sh.D,0)+(sh.Din>0?'/'+nf(sh.Din,0):'')+(parts.length>1?' ('+(j+1)+'/'+parts.length+')':''):nf(pt.w,0)+' × '+nf(pt.h,0)},pt,{tag:r.tag+(parts.length>1?'abcdefghijklmnopqrstuvwxyz'[j%26]:''),ftag:r.ftag+(parts.length>1?'abcdefghijklmnopqrstuvwxyz'[j%26]:'')}),i))});
   return out;
 }
@@ -3188,7 +3178,7 @@ function maxRects(W,H,kerf,items,pre){
     if(!best)return false;split(s,best);
     const pw=best.rot?it.h:it.w,ph=best.rot?it.w:it.h;
     const tr=([x,y])=>best.rot?[best.x+(it.h-y),best.y+x]:[best.x+x,best.y+y];
-    s.items.push(Object.assign({},it,{x:best.x,y:best.y,pw,ph,rot:best.rot,poly:it.poly.map(tr),hole:it.hole?it.hole.map(tr):null}));return true};
+    s.items.push(Object.assign({},it,{x:best.x,y:best.y,pw,ph,rot:best.rot,poly:it.poly.map(tr),hole:it.hole?it.hole.map(tr):null,drill:it.drill?it.drill.map(q=>{const [x,y]=tr([q.x,q.y]);return{x,y,D:q.D,i:q.i}}):null}));return true};
   const run=order=>{sheets.length=0;(pre||[]).forEach(p=>sheets.push(preSheet(p)));const fail=[];
     order.forEach(it=>{if(!sheets.some(s=>place(s,it))){const s=newSheet();if(!place(s,it)){sheets.pop();fail.push(it)}}});
     const used=sheets.filter(s=>!s.pre||s.items.length);return{sheets:used,fail,nNew:used.filter(s=>!s.pre).length}};
@@ -3249,6 +3239,7 @@ function nestPanelSvg(t,N,s,si,x0,y0,cw,ch,pre,nTot){
     const d0=p.poly.map(([x,y],j)=>(j?'L':'M')+X(x).toFixed(1)+','+Y(y).toFixed(1)).join('')+'Z';
     const dh=p.hole?p.hole.map(([x,y],j)=>(j?'L':'M')+X(x).toFixed(1)+','+Y(y).toFixed(1)).join('')+'Z':'';
     t.a(`<path d="${d0}${dh}" fill="${PCOL[p.line&&p.line.k]||WC}" fill-rule="evenodd" stroke="${WS}" stroke-width="0.7"/>`);
+    (p.drill||[]).forEach(q=>{t.a(`<circle class="cpdrill" cx="${X(q.x).toFixed(2)}" cy="${Y(q.y).toFixed(2)}" r="${(q.D/2*sc).toFixed(2)}" fill="#fff" stroke="${WS}" stroke-width="0.6"/>`);t.L(X(q.x)-2,Y(q.y),X(q.x)+2,Y(q.y),WS,0.3);t.L(X(q.x),Y(q.y)-2,X(q.x),Y(q.y)+2,WS,0.3)});
     const rect=p.poly.length===4&&!p.hole&&p.poly.every(([x,y])=>(Math.abs(x-p.x)<0.01||Math.abs(x-p.x-p.pw)<0.01)&&(Math.abs(y-p.y)<0.01||Math.abs(y-p.y-p.ph)<0.01));
     let cx=X(p.x+p.pw/2),cy=Y(p.y+p.ph/2),bw=p.pw*sc,bh=p.ph*sc,lab=p.tag;
     if(!rect){const sp=labelSpot(p.poly,p.hole);cx=X(sp[0]);cy=Y(sp[1]);bw=sp[2]*2*2.4*sc;bh=sp[2]*2*sc}
@@ -3285,7 +3276,7 @@ function cpCutPages(d,R){
       grp.forEach((s,gi)=>nestPanelSvg(t,n,s,i+gi,(gi%cols)*cw,Math.floor(gi/cols)*ch,cw,ch,n.pre[i+gi],n.sheets.length));
       const leg=n.comps.length>1?`<div class="nt">${n.comps.map(k=>`<span style="display:inline-block;width:10px;height:8px;background:${PCOL[k]};border:1px solid #5a3e1b;margin-right:3px"></span>${esc((cpParts(d.forme,d.constr).find(p=>p[0]===k)||[k,k])[1])}`).join(' · ')}</div>`:'';
       const side=`<div class="sub">${esc(cpName(n.cp))}</div><div class="nt">${esc(lb)}${n.gou?' — segments de fond (tête-bêche)':' — pièces de toutes les parties sur les mêmes panneaux'}. Cotes depuis le coin ● : X sous le panneau, Y à droite (coupes). Trait de scie ${nf(n.kerf)} mm. ↻ = pièce tournée de 90°.</div>${leg}`+
-        grp.map((s,gi)=>`<div class="sub" style="margin-top:4px">Panneau ${i+gi+1}${n.pre[i+gi]?' — chute '+esc(n.pre[i+gi].id):''}</div><table>${s.map(p=>`<tr><td style="font-family:'JetBrains Mono',monospace">${esc(p.ftag)}</td><td class="nm">${p.dims}${p.rot?' ↻':''}</td><td class="nm">X ${nf(p.x,0)} · Y ${nf(p.y,0)}</td></tr>`).join('')}</table>`).join('');
+        grp.map((s,gi)=>`<div class="sub" style="margin-top:4px">Panneau ${i+gi+1}${n.pre[i+gi]?' — chute '+esc(n.pre[i+gi].id):''}</div><table>${s.map(p=>`<tr><td style="font-family:'JetBrains Mono',monospace">${esc(p.ftag)}</td><td class="nm">${p.dims}${p.rot?' ↻':''}</td><td class="nm">X ${nf(p.x,0)} · Y ${nf(p.y,0)}</td></tr>${p.drill?`<tr><td></td><td colspan="2" style="white-space:normal;font-size:10px;line-height:1.35;font-family:'JetBrains Mono',monospace">perçages Ø${nf(p.drill[0].D)}, centres depuis ● : ${p.drill.map(q=>`X ${nf(q.x,0)} · Y ${nf(q.y,0)}`).join(' ; ')}</td></tr>`:''}`).join('')}</table>`).join('');
       pages.push(['CP À DÉCOUPER — '+(n.gou?'FOND DE GOULOTTE — ':'')+cpName(n.cp).toUpperCase(),`Calepinage ${cpName(n.cp)} · ${esc(lb)} · panneaux ${i+1} à ${j} / ${n.sheets.length}${per1?' — POUR 1 EXEMPLAIRE, À RÉPÉTER × '+nb:n.copies<nb?' (pour '+n.copies+' exemplaire(s), à répéter)':''}`,t.out(),side]);i=j}});
   return pages;
 }
@@ -3309,7 +3300,7 @@ function cpSummaryHtml(d,R){const N=cpNest(d,R),rows=[];
 function debitRows(d){
   const dd=canon(migr(d)),g=dd.forme==='voile'?voileGeo(dd):null;if(limErr(dd).length||badDims(checks(dd,g)))return[];
   const R=debit(dd,g),nb=dd.nb||1,rows=[];
-  R.forEach(r=>{const c=cpOf(dd,r.k);rows.push({tag:r.ftag,des:r.n+(r.txt?' ('+r.txt.replace(/<[^>]+>/g,'')+')':''),q:r.q,nb,qt:r.q*nb,L:r.a>0?r.a:'',l:r.b>0?r.b:'',mat:cpName(c),m2:r.m2*nb});
+  R.forEach(r=>{const c=cpOf(dd,r.k);rows.push({tag:r.ftag,des:r.n+(r.txt?' ('+r.txt.replace(/<[^>]+>/g,'')+')':'')+(r.note?' — '+String(r.note).replace(/<[^>]+>/g,''):''),q:r.q,nb,qt:r.q*nb,L:r.a>0?r.a:'',l:r.b>0?r.b:'',mat:cpName(c),m2:r.m2*nb});
     if(r.split){const lt='abcdefghijklmnopqrstuvwxyz',seen=[];r.split.copies.forEach(cp=>{const sg=cp.lens.join('|')+'/'+cp.bands.join('|');if(seen.includes(sg))return;const off=seen.reduce((s,x)=>s+x.split('/')[0].split('|').length*x.split('/')[1].split('|').length,0);seen.push(sg);
       const cnt=r.split.copies.filter(x=>x.lens.join('|')+'/'+x.bands.join('|')===sg).length;let k=0;cp.bands.forEach(B=>cp.lens.forEach(L=>{rows.push({tag:r.ftag+lt[(off+k++)%26],des:'   ↳ morceau de '+r.tag,q:cnt,nb,qt:cnt*nb,L,l:B,mat:cpName(c),m2:''})}))})}});
   (R.bois||[]).forEach(b=>rows.push({tag:b.ftag,des:b.n,q:b.q,nb,qt:b.q*nb,L:b.L,l:'',mat:'Bois massif',m2:''}));
@@ -3540,7 +3531,7 @@ ${C.warn.length?`<div class="sub">À revoir</div>${C.warn.map(w=>`<div class="er
     for(let i=0;i<N.sheets.length&&pages.length<40;){let j=i,rows=0;while(j<N.sheets.length&&j-i<4&&(j===i||rows+N.sheets[j].length+1<=34)){rows+=N.sheets[j].length+1;j++}
       const grp=N.sheets.slice(i,j),cols=grp.length<=2?1:2,rws=Math.ceil(grp.length/cols),cw=1000/cols,chh=Math.round((cw-52)*N.H/N.W+90),t=SB(1000,rws*chh);
       grp.forEach((s,gi)=>nestPanelSvg(t,N,s,i+gi,(gi%cols)*cw,Math.floor(gi/cols)*chh,cw,chh,null,N.sheets.length));
-      const side=`<div class="sub">${esc(cpName(o.cp))}</div><div class="nt">Toutes pièces du chantier · X / Y depuis le coin ● · ↻ tournée de 90°.</div>`+grp.map((s,gi)=>`<div class="sub" style="margin-top:4px">Panneau ${i+gi+1}</div><table>${s.map(p=>`<tr><td style="font-family:'JetBrains Mono',monospace">${esc(p.ftag)}</td><td class="nm">${p.dims}${p.rot?' ↻':''}</td><td class="nm">X ${nf(p.x,0)} · Y ${nf(p.y,0)}</td></tr>`).join('')}</table>`).join('');
+      const side=`<div class="sub">${esc(cpName(o.cp))}</div><div class="nt">Toutes pièces du chantier · X / Y depuis le coin ● · ↻ tournée de 90°.</div>`+grp.map((s,gi)=>`<div class="sub" style="margin-top:4px">Panneau ${i+gi+1}</div><table>${s.map(p=>`<tr><td style="font-family:'JetBrains Mono',monospace">${esc(p.ftag)}</td><td class="nm">${p.dims}${p.rot?' ↻':''}</td><td class="nm">X ${nf(p.x,0)} · Y ${nf(p.y,0)}</td></tr>${p.drill?`<tr><td></td><td colspan="2" style="white-space:normal;font-size:10px;line-height:1.35;font-family:'JetBrains Mono',monospace">perçages Ø${nf(p.drill[0].D)}, centres depuis ● : ${p.drill.map(q=>`X ${nf(q.x,0)} · Y ${nf(q.y,0)}`).join(' ; ')}</td></tr>`:''}`).join('')}</table>`).join('');
       pages.push(`<div class="ps">${chHd(ch,'CP À DÉCOUPER — '+esc(cpName(o.cp)).toUpperCase())}<div class="ps-bd"><div class="ps-c ps-w2"><div class="ps-cl">Panneaux ${i+1} à ${j} / ${N.sheets.length}</div>${t.out()}</div><div class="ps-c ps-tall"><div class="inf">${side}</div></div>${chFt}</div></div>`);i=j}});
   return{html:pages.join(''),C};
 }
@@ -3633,7 +3624,7 @@ function ficheAtelier(d,R,ctx){
   const nb=d.nb||1,cp=k=>cpName(cpOf(d,k)),ref=esc((d.ref||'P').toUpperCase()),B=[];
   const TH='<tr><th></th><th>Repère</th><th>Désignation</th><th>Qté</th><th>Dimensions (mm)</th><th>Matériau</th></tr>';
   B.push({h:34,t:'<div class="sub">1 · Pièces à débiter</div>',tbl:'p'});
-  R.filter(r=>!(d.forme==='dalle'&&r.k==='fi')).forEach(r=>B.push({h:r.splitTxt?40:22,row:'p',t:`<tr><td class="bx">☐</td><td class="tgc">${esc(r.ftag)}</td><td>${esc(r.n)}${r.splitTxt?`<div class="nt">${esc(r.splitTxt)}</div>`:''}</td><td class="nm">${r.q} × ${nb} = <b>${r.q*nb}</b></td><td class="nm">${r.txt?esc(r.txt.replace(/<[^>]+>/g,'')):nf(r.a,0)+' × '+nf(r.b,0)}</td><td>${esc(cp(r.k))}</td></tr>`}));
+  R.filter(r=>!(d.forme==='dalle'&&r.k==='fi')).forEach(r=>B.push({h:r.splitTxt?40:22,row:'p',t:`<tr><td class="bx">☐</td><td class="tgc">${esc(r.ftag)}</td><td>${esc(r.n)}${r.note?`<div class="nt">${esc(r.note)}</div>`:''}${r.splitTxt?`<div class="nt">${esc(r.splitTxt)}</div>`:''}</td><td class="nm">${r.q} × ${nb} = <b>${r.q*nb}</b></td><td class="nm">${r.txt?esc(r.txt.replace(/<[^>]+>/g,'')):nf(r.a,0)+' × '+nf(r.b,0)}</td><td>${esc(cp(r.k))}</td></tr>`}));
   if(d.forme==='dalle')B.push({h:38,row:'p',t:`<tr><td class="bx">☐</td><td class="tgc">${ref}-E / D</td><td>Platelage : planches E (entières) et D (découpées) — voir feuilles CP À DÉCOUPER et PLAN DE POSE</td><td class="nm">—</td><td class="nm">—</td><td>${esc(cp('fi'))}</td></tr>`});
   (R.bois||[]).forEach(b=>B.push({h:22,row:'p',t:`<tr><td class="bx">☐</td><td class="tgc">${esc(b.ftag)}</td><td>${esc(b.n)}</td><td class="nm">${b.q} × ${nb} = <b>${b.q*nb}</b></td><td class="nm">L ${nf(b.L,0)}</td><td>bois massif</td></tr>`}));
   B.push({h:20,t:`<div class="nt">Porter le repère au crayon sur chaque pièce, face non filmée.${nb>1?' '+nb+' exemplaires : quantités totales en gras.':''}</div>`});
@@ -3676,7 +3667,7 @@ function montageInfo(d,R){
       steps.push('Cintrer les faces'+(CC&&CC.n?' sur les cerces posées aux niveaux indiqués':'')+', fixer les joues entre les faces.');if(d.ferme)steps.push('Poser dessus / dessous entre les faces.');}
     const g=voileGeo(d);if(g.ok)ctl.push([`Corde ${nf(g.cExt)} · flèche ext. ${nf(g.fExt,1)} / int. ${nf(g.fInt,1)}`,'au cordeau'],[`Épaisseur au droit des joues ${nf(g.l)}`,''],[`Hauteur hors-tout ${nf(d.h)}`,'']);
     ctl.push(['Mannequin calé et fixé en position','']);}
-  else if(f==='special'){steps.push('Assembler les parois contre le chant de la base, puis le fond supérieur éventuel.');if(d.conc)steps.push('Cintrer et fixer la forme concentrique (centrage au cordeau, 2 diamètres).');if(d.pot)steps.push('Positionner les poteaux aux angles indiqués (tracer les axes depuis le centre).');
+  else if(f==='special'){steps.push('Assembler les parois contre le chant de la base, puis le fond supérieur éventuel.');if(d.conc)steps.push('Cintrer et fixer la forme concentrique (centrage au cordeau, 2 diamètres).');if(d.pot)steps.push(`Percer la base${specGeo(d).sup?' et le fond sup.':''} au droit des poteaux (Ø ${nf((d.pD||0)+(d.pJ>=0?d.pJ:10))}, axes tracés depuis le centre aux angles indiqués), puis passer les tubes carton du dessous de la boîte jusqu'en tête.`);
     ctl.push([d.base==='circ'?`Ø ${nf(d.D)}`:`Cotes ${nf(d.L)} × ${nf(d.l)}`,''],d.base==='circ'?['Ovalisation (2 mesures à 90°)','']:[`Diagonales égales`,`théorique ${diag(d.L,d.l)}`],[`Hauteur ${nf(d.h)}`,'']);}
   else if(f==='goulotte'){steps.push(`Tracer les segments de fond ${tg('fi')} au gabarit 1:1 aux positions de la feuille CP À DÉCOUPER — FOND DE GOULOTTE (tête-bêche), découper et numéroter.`);steps.push('Poser les segments bout à bout sur le support, joints serrés.');if(d.gJE||d.gJI)steps.push('Cintrer les joues (bandes) contre le chant du fond, joints décalés.');
     const G=gouGeo(d);if(G.ok)ctl.push([`Rayon nu béton ext. ${nf(G.R0)}`,'depuis le centre'],[`Largeur du fond ${nf(G.b)}`,'en 3 points']);}
@@ -3754,7 +3745,8 @@ function S3(){const solids=[];return{solids,role:'base',nm:'',
     for(let i=0;i<n;i++){const t1=a1+(a2-a1)*i/n,t2=a1+(a2-a1)*(i+1)/n;
       this.prism([[cx+r1*Math.cos(t1),cy+r1*Math.sin(t1)],[cx+r2*Math.cos(t1),cy+r2*Math.sin(t1)],[cx+r2*Math.cos(t2),cy+r2*Math.sin(t2)],[cx+r1*Math.cos(t2),cy+r1*Math.sin(t2)]],z0,h,col,i===ti&&!isCut(i)?tag:null);
       const o=solids[solids.length-1];o.seg=true;o.rg=rg;if(isCut(i))o.cut=true;if(cut){o.cutable=true;o.ca=a1+(a2-a1)*(i+.5)/n}}return this},
-  tube(cx,cy,r,th,z0,h,col,tag){return this.ring(Math.max(r-th,0.5),r,0,2*Math.PI,z0,h,col,tag,24,null,false,cx,cy)},
+  // v2.1 : un tube carton est plein pour les collisions (le béton du poteau le remplit) : cylindre [cx, cy, r, z0, z1]
+  tube(cx,cy,r,th,z0,h,col,tag){const i0=solids.length,o=this.ring(Math.max(r-th,0.5),r,0,2*Math.PI,z0,h,col,tag,24,null,false,cx,cy);for(let k=i0;k<solids.length;k++){if(k===i0)solids[k].cyl=[cx,cy,r,z0,z0+h];else solids[k].cylPart=true}return o},
   disc(r,z0,h,col,tag,op,ly,n){n=n||72;const P=[];for(let i=0;i<n;i++){const t=2*Math.PI*i/n;P.push([r*Math.cos(t),r*Math.sin(t)])}this.prism(P,z0,h,col,tag,op);const o=solids[solids.length-1];o.ly=ly||0;o.ci={cx:0,cy:0,r};return this},
   cyl(cx,cy,r,z0,h,col,tag){const P=[];for(let i=0;i<32;i++){const t=2*Math.PI*i/32;P.push([cx+r*Math.cos(t),cy+r*Math.sin(t)])}this.prism(P,z0,h,col,tag);solids[solids.length-1].ci={cx,cy,r};return this}}}
 // Normale d'une face plane quelconque (méthode de Newell, robuste aux sommets alignés)
@@ -3768,13 +3760,15 @@ function pipD(P,x,y){let ins=false,md=Infinity;for(let i=0,j=P.length-1;i<P.leng
     const dx=b[0]-a[0],dy=b[1]-a[1],L2=dx*dx+dy*dy,t=L2?Math.max(0,Math.min(1,((x-a[0])*dx+(y-a[1])*dy)/L2)):0;md=Math.min(md,Math.hypot(x-a[0]-t*dx,y-a[1]-t*dy))}
   return ins?md:-md}
 function in3(s,p,tol){
+  if(s.cylPart)return false;if(s.cyl){const c=s.cyl,t=tol||0;return p[2]>c[3]+t&&p[2]<c[4]-t&&Math.hypot(p[0]-c[0],p[1]-c[1])<c[2]-t}
+  if(s.holes&&s.holes.some(h=>Math.hypot(p[0]-h[0],p[1]-h[1])<h[2]+(tol||0)))return false; // v2.1 : perçages (fonds traversés par les poteaux)
   if(s.pm){const q=s.pm.inv?s.pm.inv(p):p;if(q[2]<s.pm.z0+tol||q[2]>s.pm.z0+s.pm.h-tol)return false;return pipD(s.pm.poly,q[0],q[1])>tol}
   if(!s._pl)s._pl=s.F.map(f=>{const n=newell(f),l=Math.hypot(...n)||1;return[n.map(x=>x/l),f[0]]});
   return s._pl.every(([n,f0])=>dot(n,sub3(p,f0))<-tol)}
 // découpe d'un polygone par un polygone convexe (Sutherland-Hodgman)
 function clipConvex(P,C){if(polyArea2(C)<0)C=C.slice().reverse();let out=P;for(let i=0;i<C.length&&out.length;i++){const a=C[i],b=C[(i+1)%C.length],side=p=>(b[0]-a[0])*(p[1]-a[1])-(b[1]-a[1])*(p[0]-a[0]),inp=out;out=[];
     for(let j=0;j<inp.length;j++){const p=inp[j],q=inp[(j+1)%inp.length],sp=side(p),sq=side(q);if(sp>=0)out.push(p);if((sp>=0)!==(sq>=0)){const t=sp/(sp-sq);out.push([p[0]+(q[0]-p[0])*t,p[1]+(q[1]-p[1])*t])}}}return out}
-function bb3(s){if(s._bb)return s._bb;const b=[1e18,1e18,1e18,-1e18,-1e18,-1e18];s.F.forEach(f=>f.forEach(p=>{for(let k=0;k<3;k++){if(p[k]<b[k])b[k]=p[k];if(p[k]>b[k+3])b[k+3]=p[k]}}));return s._bb=b}
+function bb3(s){if(s._bb)return s._bb;if(s.cyl){const c=s.cyl;return s._bb=[c[0]-c[2],c[1]-c[2],c[3],c[0]+c[2],c[1]+c[2],c[4]]}const b=[1e18,1e18,1e18,-1e18,-1e18,-1e18];s.F.forEach(f=>f.forEach(p=>{for(let k=0;k<3;k++){if(p[k]<b[k])b[k]=p[k];if(p[k]>b[k+3])b[k+3]=p[k]}}));return s._bb=b}
 // Paires de pièces de coffrage qui se recouvrent de plus de tol (mm) — le béton existant (ctx) est exclu
 function overlap3(sc,tol,N){tol=tol==null?0.5:tol;N=N||7;const S=sc.solids.filter(s=>s.role!=='ctx'),out=[];
   for(let i=0;i<S.length;i++){const A=S[i],a=bb3(A);for(let j=i+1;j<S.length;j++){const B=S[j],b=bb3(B);
@@ -3819,7 +3813,8 @@ function exVec3(sc,cam){cam=cam||V3;
 function explode3(sc,t,cam,X){t=t==null?1:t;const {S,V}=X||exVec3(sc,cam),hide=sc.exMode==='hide';
   const mv=(s,v0)=>{const v=[v0[0]*t,v0[1]*t,v0[2]*t],z=!(v[0]||v[1]||v[2]);let pm=null;
     if(s.pm)pm=s.pm.inv?Object.assign({},s.pm,{inv:p=>s.pm.inv([p[0]-v[0],p[1]-v[1],p[2]-v[2]])}):{poly:s.pm.poly.map(([x,y])=>[x+v[0],y+v[1]]),z0:s.pm.z0+v[2],h:s.pm.h};
-    return Object.assign({},s,{F:z?s.F:s.F.map(f=>f.map(p=>[p[0]+v[0],p[1]+v[1],p[2]+v[2]])),cut:false,cutable:false,_bb:null,_pl:null,pm,src:s,op:s.role==='wall'?null:s.op})};
+    return Object.assign({},s,{F:z?s.F:s.F.map(f=>f.map(p=>[p[0]+v[0],p[1]+v[1],p[2]+v[2]])),cut:false,cutable:false,_bb:null,_pl:null,pm,src:s,op:s.role==='wall'?null:s.op,
+      cyl:s.cyl?[s.cyl[0]+v[0],s.cyl[1]+v[1],s.cyl[2],s.cyl[3]+v[2],s.cyl[4]+v[2]]:undefined,holes:s.holes?s.holes.map(h=>[h[0]+v[0],h[1]+v[1],h[2]]):undefined})};
   if(hide)return{solids:S.map((s,i)=>s.role==='top'?(t<1?Object.assign({},s,{op:Math.max(0.12,1-t),tag:t<0.5?s.tag:null,cut:false,src:s}):null):mv(s,V[i])).filter(Boolean),exMode:'hide'};
   return{solids:S.map((s,i)=>mv(s,V[i]))};
 }
@@ -3981,9 +3976,11 @@ function model3(d,R,opt){
           CC.lv.forEach((z,i)=>{parts.forEach((q,k)=>{if(q.length>=3)s.g('in','cerce').prism(sh(q),z,CC.t,C3.fi,i===0&&k===0?ct:null)});reg('Cerces CP au gabarit',{t:'xcut',poly:pinR,zf:z,N:-1,dy:-Rm})})}}}}
   else if(f==='special'){const Z=specGeo(d),circ=d.base==='circ';
     const bet=d.nat==='beton',m=bet?-1:1,Di=d.D-2*ep; // intérieur béton : renforts à l'extérieur
-    if(circ){if(d.fondInf){s.g('base','fond inf.').disc(d.D/2-ep,0,eF,C3.fi,tg('fi'),null,0,N3);reg('Base (entre parois)',{t:'xcut',poly:circPoly(Di,96).map(([x,y])=>[x-Di/2,y-Di/2]),zf:bet?0:eF,N:m})}
+    // v2.1 : fonds percés au droit des poteaux (perçage = Ø poteau + jeu) : les tubes traversent la base et le fond sup.
+    const PH=d.pot&&d.pD>0?potAngles(d).map(a=>[d.pR*Math.cos(a*Math.PI/180),-d.pR*Math.sin(a*Math.PI/180),((d.pD||0)+(d.pJ>=0?d.pJ:10))/2]):null,pT=d.pH||Z.zPt,drl=o=>{if(PH&&o)o.holes=PH};
+    if(circ){if(d.fondInf){s.g('base','fond inf.').disc(d.D/2-ep,0,eF,C3.fi,tg('fi'),null,0,N3);drl(s.solids[s.solids.length-1]);reg('Base (entre parois)',{t:'xcut',poly:circPoly(Di,96).map(([x,y])=>[x-Di/2,y-Di/2]),zf:bet?0:eF,N:m})}
       s.g('ring','paroi').ring(d.D/2-ep,d.D/2,0,2*Math.PI,0,d.h,C3.j,T('Paroi'),N3,5*Math.PI/4,d.fondInf||d.conc||d.pot);reg('Paroi cintrée',{t:'ring',full:1,cx:0,cy:0,rf:bet?d.D/2:d.D/2-ep,sg:-m,a0:Math.PI/2,dir:1,rn:(d.D-ep)/2,z0:0})}
-    else{if(d.fondInf){s.g('base','fond inf.').box(-d.L/2+ep,-d.l/2+ep,0,d.L-2*ep,d.l-2*ep,eF,C3.fi,tg('fi'));reg('Base (entre parois)',{t:'flat',F0:[-d.L/2+ep,-d.l/2+ep,bet?0:eF],A:[1,0,0],B:[0,1,0],N:[0,0,m]})}
+    else{if(d.fondInf){s.g('base','fond inf.').box(-d.L/2+ep,-d.l/2+ep,0,d.L-2*ep,d.l-2*ep,eF,C3.fi,tg('fi'));drl(s.solids[s.solids.length-1]);reg('Base (entre parois)',{t:'flat',F0:[-d.L/2+ep,-d.l/2+ep,bet?0:eF],A:[1,0,0],B:[0,1,0],N:[0,0,m]})}
       const opF=Z.sup?0.35:null; // boîte fermée : parois avant transparentes (intérieur visible)
       s.g('wall','côté filant').box(-d.L/2,-d.l/2,0,d.L,ep,d.h,C3.j,T('Côtés filants'),opF);reg('Côtés filants',{t:'flat',F0:[-d.L/2,bet?-d.l/2:-d.l/2+ep,0],A:[1,0,0],B:[0,0,1],N:[0,m,0]});
       s.box(-d.L/2,d.l/2-ep,0,d.L,ep,d.h,C3.j);reg('Côtés filants',{t:'flat',F0:[-d.L/2,bet?d.l/2:d.l/2-ep,0],A:[1,0,0],B:[0,0,1],N:[0,-m,0]});
@@ -3991,8 +3988,8 @@ function model3(d,R,opt){
       s.box(d.L/2-ep,-d.l/2+ep,0,ep,d.l-2*ep,d.h,C3.j);reg('Côtés entre',{t:'flat',F0:[bet?d.L/2:d.L/2-ep,-d.l/2+ep,0],A:[0,1,0],B:[0,0,1],N:[-m,0,0]});
       const GS=gsGeo(d);if(GS&&GS.a>0)gsTri(GS,-d.L/2+ep,-d.l/2+ep,d.L/2-ep,d.l/2-ep,0)}
     if(d.conc&&d.Dint>0){const r=concW1(d);s.g('in','concentrique').ring(r,r+ep,0,2*Math.PI,Z.cb,Z.hInt,C3.j,T('Concentrique'),N3,5*Math.PI/4);reg('Concentrique cintrée',{t:'ring',full:1,cx:0,cy:0,rf:r,sg:-1,a0:Math.PI/2,dir:1,rn:r+ep/2,z0:Z.cb})}
-    if(d.pot)potAngles(d).forEach((a,i)=>s.g('in','tube carton').tube(d.pR*Math.cos(a*Math.PI/180),-d.pR*Math.sin(a*Math.PI/180),(d.pD||0)/2,8,Z.zb,d.pH||100,C3.carton,i?null:'tubes carton'));
-    if(Z.sup){const zt=Z.zFS-eS,cutC=d.fondInf||d.conc||d.pot;s.g('top','fond sup.');if(circ){if(cutC)s.ring(0.5,d.D/2-ep,0,2*Math.PI,zt,eS,C3.fs,tg('fs'),N3,Math.PI/4,true);else s.disc(d.D/2-ep,zt,eS,C3.fs,tg('fs'),null,0,N3)}else s.box(-d.L/2+ep,-d.l/2+ep,zt,d.L-2*ep,d.l-2*ep,eS,C3.fs,tg('fs'))}
+    if(d.pot)potAngles(d).forEach((a,i)=>s.g('in','tube carton').tube(d.pR*Math.cos(a*Math.PI/180),-d.pR*Math.sin(a*Math.PI/180),(d.pD||0)/2,8,0,d.pH||Z.zPt||100,C3.carton,i?null:'tubes carton'));
+    if(Z.sup){const zt=Z.zFS-eS,cutC=d.fondInf||d.conc||d.pot;s.g('top','fond sup.');if(circ){if(cutC)s.ring(0.5,d.D/2-ep,0,2*Math.PI,zt,eS,C3.fs,tg('fs'),N3,Math.PI/4,true);else s.disc(d.D/2-ep,zt,eS,C3.fs,tg('fs'),null,0,N3)}else s.box(-d.L/2+ep,-d.l/2+ep,zt,d.L-2*ep,d.l-2*ep,eS,C3.fs,tg('fs'));if(pT>Z.zi+0.5)s.solids.filter(o=>o.nm==='fond sup.').forEach(drl)}
     if(Z.sup){const zt=Z.zFS-eS;reg('Fond sup.',circ?{t:'xcut',poly:circPoly(Di,96).map(([x,y])=>[x-Di/2,y-Di/2]),zf:bet?zt+eS:zt,N:-m}:{t:'flat',F0:[-d.L/2+ep,-d.l/2+ep,bet?zt+eS:zt],A:[1,0,0],B:[0,1,0],N:[0,0,-m]})}}
   else if(f==='goulotte'){const G=gouGeo(d);if(G.ok){const th=G.full?2*Math.PI:G.Th,a1=Math.PI/2-th/2,a2=Math.PI/2+th/2,n=Math.min(96,Math.max(8,Math.ceil(th/(Math.PI/24))));
       s.g('base','fond').ring(G.r1,G.r2,a1,a2,0,G.eF,C3.fi,tg('fi'),n);
@@ -4159,6 +4156,10 @@ function gabNestPieces(d){
     const pth=Q=>'M'+Q.map(([x,y])=>X(x).toFixed(2)+','+Y(y).toFixed(2)).join(' L')+'Z';
     o.push(`<rect class="gframe" x="${X(0)}" y="${Y(h)}" width="${w}" height="${h}" fill="none" stroke="#999" stroke-width="0.3" stroke-dasharray="4,3"/>`);
     o.push(`<path class="ghatch" d="${pth(C)}${H?' '+pth(H):''}" fill="url(#gj)" fill-opacity="0.35" fill-rule="evenodd" stroke="#555" stroke-width="0.35"/>`);
+    // fond circulaire percé : axes centre → poteau (repérage angulaire à la pose, vue de dessus)
+    const cl=arcs.find(a=>a.closed);if(cl&&p.drill){const [c0x,c0y]=loc(cl.c);gLn(o,X(c0x)-10,Y(c0y),X(c0x)+10,Y(c0y),0.3,null,'#c0392b');gLn(o,X(c0x),Y(c0y)-10,X(c0x),Y(c0y)+10,0.3,null,'#c0392b');
+      p.drill.forEach((q,i)=>{const [cx,cy]=loc([q.x,q.y]);gLn(o,X(c0x),Y(c0y),X(cx),Y(cy),0.3,'6,3','#c0392b');gTx(o,X(cx),Y(cy)-3,'P'+((q.i!=null?q.i:i)+1),6,'middle',700,'#c0392b')});gTx(o,X(c0x)+3,Y(c0y)-3,'centre',3,'start',400,'#c0392b')}
+    (p.drill||[]).forEach(q=>{const [cx,cy]=loc([q.x,q.y]);o.push(`<circle class="gdrill" cx="${X(cx).toFixed(2)}" cy="${Y(cy).toFixed(2)}" r="${(q.D/2).toFixed(2)}" fill="#fff" stroke="#000" stroke-width="0.9"/>`);gLn(o,X(cx)-8,Y(cy),X(cx)+8,Y(cy),0.3,null,'#c0392b');gLn(o,X(cx),Y(cy)-8,X(cx),Y(cy)+8,0.3,null,'#c0392b');gTx(o,X(cx),Y(cy)+q.D/2+5,'perçage Ø'+nf(q.D),3.4,'middle',700,'#c0392b')});
     arcs.concat(harcs).forEach(a=>o.push(`<polyline class="garc" points="${arcPts(a).map(loc).map(([x,y])=>X(x).toFixed(2)+','+Y(y).toFixed(2)).join(' ')}${a.closed?' '+(()=>{const q=loc(arcPts(a)[0]);return X(q[0]).toFixed(2)+','+Y(q[1]).toFixed(2)})():''}" fill="none" stroke="#000" stroke-width="0.9"/>`));
     for(let x=0;x<=w+1e-6;x+=100){gLn(o,X(x),Y(0),X(x),Y(0)+4,0.3,null,'#888');gTx(o,X(x),Y(0)+9,nf(x,0),3,'middle',400,'#888')}
     for(let v=0;v<=h+1e-6;v+=100){gLn(o,X(0),Y(v),X(0)-4,Y(v),0.3,null,'#888');gTx(o,X(0)-6,Y(v)+1.2,nf(v,0),3,'end',400,'#888')}
@@ -4310,11 +4311,10 @@ function checksExt(d,e,w,cr){
   if(d.forme==='voile'&&d.constr!=='caisson'){const tr=d.cS&&d.cS!=='cp'?2*(d.cR||0):0,mr=(d.eM>0&&d.mS!=='cp')?(d.bMr||0):0;
     const g0=voileGeo(d),TP=tr&&g0.ok?travPos(d,g0):null;
     if(tr&&(TP?TP.gap<10:tr>=(d.l||0)-10))e(`Traverses de cerce ${secName(d.cS,d)} : 2 × ${nf(d.cR)} mm ne tiennent pas dans l'épaisseur du voile (${nf(d.l)} mm${TP?', place utile '+nf(TP.gap+2*d.cR,0)+' mm aux joues':''})`);
-    else if(tr&&mr&&tr+mr>(d.l||0)-10)w(`Montants ${secName(d.mS,d)} + 2 traverses ${secName(d.cS,d)} > épaisseur du voile : montants coupés au droit des cerces (tronçons)`)}
-  if(d.forme==='special'&&d.pot&&!d.pHauto){const Z=specGeo(d);if(Z.sup&&(d.pH||0)>Z.zi-Z.zb+0.5)e(`Poteaux (h ${nf(d.pH)}) : entrent dans le fond supérieur (hauteur libre ${nf(Z.zi-Z.zb)} mm)`)}
+}
   if(d.forme==='dalle'&&d.dlRv){const Rv=riveGeo(d);if(!Rv){e('Rive de dalle : épaisseur de dalle > 0');return}
     const c=cpOf(d,'j');if(Rv.t==='circ'&&c.t!=='cintr')w(`Rive cintrée R ${nf(Rv.Rr/1000,2)} m en ${cpName(c)} : vérifier le rayon mini de cintrage (fiche fournisseur) ou passer en CP cintrable`);
-    if(Rv.h>cpFmt(c)[1])w('Rive plus haute que la largeur du panneau CP : bandes raboutées en hauteur')}
+}
 }
 
 // ---------- B4 : déplacement à la souris (poutres et poteaux de dalle, poteaux de poutre, poteaux de forme spéciale) ----------
@@ -4415,7 +4415,8 @@ function canonExt(d){
     // cerces bois : 2 traverses par niveau ; cR = épaisseur radiale, cT = hauteur du niveau
     if(cs!=='cp'){const S=SEC[cs]||SEC.ch;d.cR=S[0];d.cT=S[1]}else{d.cR=0;d.cT=0}
     if(d.mS===undefined)d.mS=ms;if(d.cS===undefined)d.cS=cs}
-  if(d.forme==='special'&&d.pot&&!(d.pH>0)){const Z=specGeo(d);d.pH=Math.max(0,Z.zi-Z.zb);d.pHauto=true}
+  if(d.forme==='special'&&d.pot&&!(d.pH>0)){const Z=specGeo(d);d.pH=Math.max(0,Z.zPt);d.pHauto=true}
+  if(d.forme==='special'&&d.pot)d.pJ=d.pJ>=0?d.pJ:10;
 }
 // Traverses droites de cerce (H1-B) : une contre chaque banche, entre les joues, entièrement dans l'épaisseur du voile.
 //   ext. : face ext. au plus près du parement R ext — touche l'arc aux deux extrémités (contre les joues), retrait au milieu
@@ -4486,7 +4487,6 @@ const FIXES=[
   {re:/^Trop de cerces/,lb:()=>'Espacement des cerces augmenté',cands:d=>[800,1000,1200,1500].filter(v=>v>(d.eC||0)).map(v=>({eC:v}))},
   {re:/^Section des montants > épaisseur du voile/,lb:()=>'Montants de section plus faible',cands:()=>[{mS:'ch'},{mS:'t50'}]},
   {re:/^Traverses de cerce .* ne tiennent pas/,lb:()=>'Traverses de section plus faible (ou cerces CP)',cands:()=>[{cS:'t50'},{cS:'cp'}]},
-  {re:/^Hauteur poteau > hauteur intérieure|^Poteaux \(h .*\) : entrent dans le fond supérieur/,lb:()=>'Hauteur des poteaux en automatique (jusqu\'au fond sup. / en tête)',cands:()=>[{pH:0}]},
   {re:/^Concentrique : dépasse/,lb:()=>'Hauteur de la concentrique en automatique',cands:()=>[{hInt:0},{hInt:0,niv:0}]},
   {re:/^Niveau du fond sup\. > h/,lb:()=>'Fond sup. en tête',cands:()=>[{fsNiv:0}]},
   {re:/^Poteau \d+ en conflit avec la forme concentrique/,lb:()=>'Poteaux écartés de la forme concentrique',
@@ -4870,7 +4870,7 @@ function dxfPanels(D,groups,ox,oy){let y=oy,np=0,npc=0;const gap=300,perRow=4;
     G.sheets.forEach((sh,i)=>{const cx=ox+(i%perRow)*(G.W+gap),cy=y-Math.floor(i/perRow)*(G.H+gap+200)-G.H,T=([px,py])=>[cx+px,cy+py];
       D.poly('CP_PANNEAUX',[[cx,cy],[cx+G.W,cy],[cx+G.W,cy+G.H],[cx,cy+G.H]],true);D.text('CP_TEXTES',cx,cy+G.H+30,45,`PANNEAU ${i+1}/${G.sheets.length}${sh.pre?' — '+sh.pre.id:''}`,0);np++;
       (sh.pre&&sh.pre.polys||[]).forEach(q=>{D.poly('CP_PLATELAGE',q.poly.map(T),true);const b=bbox(q.poly);D.text('CP_PLATELAGE',cx+(b[0]+b[2])/2,cy+(b[1]+b[3])/2,40,q.id,1)});
-      (sh.items||[]).forEach(p=>{D.poly('CP_DECOUPE',p.poly.map(T),true);if(p.hole)D.poly('CP_TROUS',p.hole.map(T),true);npc++;
+      (sh.items||[]).forEach(p=>{D.poly('CP_DECOUPE',p.poly.map(T),true);if(p.hole)D.poly('CP_TROUS',p.hole.map(T),true);(p.drill||[]).forEach(q=>{const [x,y]=T([q.x,q.y]);D.circle('CP_PERCAGES',x,y,q.D/2)});npc++;
         const sp=typeof labelSpot==='function'?labelSpot(p.poly,p.hole):[p.x+p.pw/2,p.y+p.ph/2,40],h=Math.max(12,Math.min(45,(sp[2]||40)*0.5));
         D.text('CP_REPERES',cx+sp[0],cy+sp[1]+h*0.2,h,p.ftag||p.tag||'',1);D.text('CP_REPERES',cx+sp[0],cy+sp[1]-h*1.1,h*0.6,(p.dims||'')+(p.rot?' (tournée)':''),1)})});
     y-=Math.ceil(G.sheets.length/perRow)*(G.H+gap+200)+400});
