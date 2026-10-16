@@ -123,7 +123,11 @@ select.fi{cursor:pointer}select.fi option{background:var(--navy);color:var(--tex
 .sig{display:flex;justify-content:space-between;margin-top:18px;font-size:11px;color:#444}
 body.pm .ps{box-shadow:none!important;max-width:none!important;margin:0 auto 12px!important;width:var(--pw)!important;height:var(--ph)!important;display:flex!important;flex-direction:column!important;break-after:page;page-break-after:always;break-inside:avoid}
 body.pm .ps.portrait{width:var(--pwp)!important;height:var(--php)!important;page:portrait}
-body.pm .ps-h,body.pm .ps-nt,body.pm .ps-er,body.pm .ps-foot{flex-shrink:0!important}
+body.pm .ps-h,body.pm .ps-nt,body.pm .ps-er,body.pm .ps-foot,body.pm .ps-hyp{flex-shrink:0!important}
+/* v2.5 — ligne d'hypothèses du cartouche ; plan pleine page (vues seules, 2 colonnes) */
+.ps-hyp{font-size:9.5px;color:#4a5468;text-align:center;padding:2px 12px;background:#f6f7f9;border-bottom:.5px solid #e2e5ea;line-height:1.3}
+.ps-bd.lay-full{grid-template-columns:1fr 1fr}.ps-bd.lay-full .ps-top{grid-column:1/3}.ps-bd.lay-full .ps-foot{grid-column:1/-1}
+.inf table.hyp td:first-child{white-space:normal;font-weight:400}.inf table.hyp td:first-child b{color:#1a2035}.inf table.hyp td:last-child{color:#777;font-size:.88em;width:30%}
 body.pm .ps-bd{flex:1!important;min-height:0!important;display:grid!important;grid-template-rows:1fr 1fr!important}
 body.pm .ps-bd[style*="display:block"]{display:block!important}
 body.pm .ps-top,body.pm .ps-bot,body.pm .ps-side,body.pm .ps-c{min-height:0!important}
@@ -167,12 +171,12 @@ body.pm .inf{font-size:calc(9.5px + 2pt);line-height:1.25}body.pm .inf .nt{font-
   .pv{padding:0!important;background:#fff!important;overflow:visible!important}
   body.pm .ps{margin:0!important}
 }
-@media(max-width:800px){.hdr{padding:6px 10px;gap:5px}.hdr .lbl{display:none}.brand .logo{height:26px;width:36px}.brand{margin-right:2px;gap:4px}.hdr .thm{width:40px;padding:4px 2px}.hdr .btn.bs{padding:5px 8px}.main{grid-template-columns:1fr}.sb{max-height:none}.ps-bd{grid-template-columns:1fr}.ps-top,.ps-side,.ps-foot{grid-column:1/2}}
+@media(max-width:800px){.hdr{padding:6px 10px;gap:5px}.hdr .lbl{display:none}.brand .logo{height:26px;width:36px}.brand{margin-right:2px;gap:4px}.hdr .thm{width:40px;padding:4px 2px}.hdr .btn.bs{padding:5px 8px}.main{grid-template-columns:1fr}.sb{max-height:none}.ps-bd{grid-template-columns:1fr}.ps-top,.ps-side,.ps-foot,.ps-bd.lay-full .ps-top,.ps-bd.lay-full .ps-foot{grid-column:1/2}.ps-bd.lay-full{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
 <div class="hdr">
-<div class="brand"><svg xmlns="http://www.w3.org/2000/svg" class="logo" viewBox="0 10 362 66" preserveAspectRatio="xMinYMid slice" role="img" aria-label="CoffraPlan"><defs><linearGradient id="cplouterBack" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#27384e"/><stop offset="1" stop-color="#101a29"/></linearGradient><linearGradient id="cplouterLeft" x1="0" y1="0" x2="1" y2=".7"><stop stop-color="#1a2739"/><stop offset="1" stop-color="#334559"/></linearGradient><linearGradient id="cplouterFront" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#2f4255"/><stop offset="1" stop-color="#101b2c"/></linearGradient><linearGradient id="cplouterCap" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#b7c1c8"/><stop offset="1" stop-color="#4f6272"/></linearGradient><linearGradient id="cplorangeFace" x1="0" y1="0" x2=".85" y2=".2"><stop stop-color="#ffb03c"/><stop offset=".49" stop-color="#ff8b19"/><stop offset="1" stop-color="#de5608"/></linearGradient><linearGradient id="cplorangeFaceDark" x1="0" y1="0" x2="1" y2=".3"><stop stop-color="#ff7f12"/><stop offset="1" stop-color="#af3807"/></linearGradient><linearGradient id="cplconcreteTop" x1="0" y1="0" x2="1" y2=".8"><stop stop-color="#ffffff"/><stop offset=".48" stop-color="#b4c4cf"/><stop offset="1" stop-color="#738596"/></linearGradient></defs><g transform="translate(0,1) scale(.52)"><polygon points="104.00,20.00 170.10,58.08 170.10,102.08 104.00,64.00" fill="url(#cplouterBack)" stroke="#172537" stroke-width="1.1" stroke-linejoin="round" /><polygon points="104.00,20.00 37.90,58.08 37.90,102.08 104.00,64.00" fill="url(#cplouterLeft)" stroke="#172537" stroke-width="1.1" stroke-linejoin="round" /><polygon points="37.90,58.08 104.00,96.16 104.00,140.16 37.90,102.08" fill="url(#cplouterFront)" stroke="#172537" stroke-width="1.1" stroke-linejoin="round" /><polygon points="170.10,58.08 159.57,64.15 159.57,108.15 170.10,102.08" fill="url(#cplouterCap)" stroke="#172537" stroke-width="1.1" stroke-linejoin="round" /><polygon points="114.53,90.10 104.00,96.16 104.00,140.16 114.53,134.10" fill="url(#cplouterCap)" stroke="#172537" stroke-width="1.1" stroke-linejoin="round" /><polygon points="104.00,32.13 159.57,64.15 159.57,108.15 104.00,76.13" fill="url(#cplorangeFace)" stroke="#172537" stroke-width="1.1" stroke-linejoin="round" /><polygon points="104.00,32.13 58.96,58.08 58.96,102.08 104.00,76.13" fill="url(#cplorangeFaceDark)" stroke="#172537" stroke-width="1.1" stroke-linejoin="round" /><polygon points="58.96,58.08 114.53,90.10 114.53,134.10 58.96,102.08" fill="url(#cplorangeFace)" stroke="#172537" stroke-width="1.1" stroke-linejoin="round" /><polygon points="104.00,20.00 170.10,58.08 159.57,64.15 93.47,26.07" fill="url(#cplconcreteTop)" stroke="#cbd4db" stroke-width="1.1" stroke-linejoin="round" /><polygon points="104.00,20.00 114.53,26.07 48.43,64.15 37.90,58.08" fill="url(#cplconcreteTop)" stroke="#cbd4db" stroke-width="1.1" stroke-linejoin="round" /><polygon points="48.43,52.02 114.53,90.10 104.00,96.16 37.90,58.08" fill="url(#cplconcreteTop)" stroke="#cbd4db" stroke-width="1.1" stroke-linejoin="round" /></g><text x="107" y="66" fill="var(--logo-t)" font-family="Inter Display,Inter,Arial,sans-serif" font-size="53" font-weight="900" letter-spacing="-3.1" textLength="146" lengthAdjust="spacingAndGlyphs">Coffra</text><text x="257" y="66" fill="#ff8517" font-family="Inter Display,Inter,Arial,sans-serif" font-size="53" font-weight="900" letter-spacing="-3.1" textLength="100" lengthAdjust="spacingAndGlyphs">Plan</text></svg><small id="appVer">v2.4</small></div>
+<div class="brand"><svg xmlns="http://www.w3.org/2000/svg" class="logo" viewBox="0 10 362 66" preserveAspectRatio="xMinYMid slice" role="img" aria-label="CoffraPlan"><defs><linearGradient id="cplouterBack" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#27384e"/><stop offset="1" stop-color="#101a29"/></linearGradient><linearGradient id="cplouterLeft" x1="0" y1="0" x2="1" y2=".7"><stop stop-color="#1a2739"/><stop offset="1" stop-color="#334559"/></linearGradient><linearGradient id="cplouterFront" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#2f4255"/><stop offset="1" stop-color="#101b2c"/></linearGradient><linearGradient id="cplouterCap" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#b7c1c8"/><stop offset="1" stop-color="#4f6272"/></linearGradient><linearGradient id="cplorangeFace" x1="0" y1="0" x2=".85" y2=".2"><stop stop-color="#ffb03c"/><stop offset=".49" stop-color="#ff8b19"/><stop offset="1" stop-color="#de5608"/></linearGradient><linearGradient id="cplorangeFaceDark" x1="0" y1="0" x2="1" y2=".3"><stop stop-color="#ff7f12"/><stop offset="1" stop-color="#af3807"/></linearGradient><linearGradient id="cplconcreteTop" x1="0" y1="0" x2="1" y2=".8"><stop stop-color="#ffffff"/><stop offset=".48" stop-color="#b4c4cf"/><stop offset="1" stop-color="#738596"/></linearGradient></defs><g transform="translate(0,1) scale(.52)"><polygon points="104.00,20.00 170.10,58.08 170.10,102.08 104.00,64.00" fill="url(#cplouterBack)" stroke="#172537" stroke-width="1.1" stroke-linejoin="round" /><polygon points="104.00,20.00 37.90,58.08 37.90,102.08 104.00,64.00" fill="url(#cplouterLeft)" stroke="#172537" stroke-width="1.1" stroke-linejoin="round" /><polygon points="37.90,58.08 104.00,96.16 104.00,140.16 37.90,102.08" fill="url(#cplouterFront)" stroke="#172537" stroke-width="1.1" stroke-linejoin="round" /><polygon points="170.10,58.08 159.57,64.15 159.57,108.15 170.10,102.08" fill="url(#cplouterCap)" stroke="#172537" stroke-width="1.1" stroke-linejoin="round" /><polygon points="114.53,90.10 104.00,96.16 104.00,140.16 114.53,134.10" fill="url(#cplouterCap)" stroke="#172537" stroke-width="1.1" stroke-linejoin="round" /><polygon points="104.00,32.13 159.57,64.15 159.57,108.15 104.00,76.13" fill="url(#cplorangeFace)" stroke="#172537" stroke-width="1.1" stroke-linejoin="round" /><polygon points="104.00,32.13 58.96,58.08 58.96,102.08 104.00,76.13" fill="url(#cplorangeFaceDark)" stroke="#172537" stroke-width="1.1" stroke-linejoin="round" /><polygon points="58.96,58.08 114.53,90.10 114.53,134.10 58.96,102.08" fill="url(#cplorangeFace)" stroke="#172537" stroke-width="1.1" stroke-linejoin="round" /><polygon points="104.00,20.00 170.10,58.08 159.57,64.15 93.47,26.07" fill="url(#cplconcreteTop)" stroke="#cbd4db" stroke-width="1.1" stroke-linejoin="round" /><polygon points="104.00,20.00 114.53,26.07 48.43,64.15 37.90,58.08" fill="url(#cplconcreteTop)" stroke="#cbd4db" stroke-width="1.1" stroke-linejoin="round" /><polygon points="48.43,52.02 114.53,90.10 104.00,96.16 37.90,58.08" fill="url(#cplconcreteTop)" stroke="#cbd4db" stroke-width="1.1" stroke-linejoin="round" /></g><text x="107" y="66" fill="var(--logo-t)" font-family="Inter Display,Inter,Arial,sans-serif" font-size="53" font-weight="900" letter-spacing="-3.1" textLength="146" lengthAdjust="spacingAndGlyphs">Coffra</text><text x="257" y="66" fill="#ff8517" font-family="Inter Display,Inter,Arial,sans-serif" font-size="53" font-weight="900" letter-spacing="-3.1" textLength="100" lengthAdjust="spacingAndGlyphs">Plan</text></svg><small id="appVer">v2.5</small></div>
 <div style="flex:1"></div>
 <button class="btn bs bo no-print" id="bUndo" onclick="undo()" title="Annuler la dernière modification du formulaire (Ctrl+Z)" aria-label="Annuler">↶</button>
 <button class="btn bs bo no-print" id="bRedo" onclick="redo()" title="Rétablir (Ctrl+Y ou Ctrl+Maj+Z)" aria-label="Rétablir">↷</button>
@@ -2535,6 +2539,32 @@ function bmInfo(BG,row){const P=BG.P;
 }
 
 // ====== PLAN COMPLET ======
+// v2.5 — hypothèses du plan : [hypothèse, valeur retenue, origine]. Origines : Norme · Calcul · Règle de l'appli (à valider) · Saisie · Marché.
+function hypRows(d,g,R){const f=d.forme,H=[],h=(a,b,c)=>H.push([a,b,c]);
+  h('Poussée du béton frais','hydrostatique γ·h sur toute la hauteur, γ = '+GAMMA+' kN/m³ (béton frais) — borne haute, sans réduction (vitesse de bétonnage, consistance)','Norme (EN 1991-1-1, tab. A.1)');
+  const ks=[...new Set((R||[]).map(r=>r.k))].filter(k=>['j','fi','fs'].includes(k)),cp=d.cp||{};
+  if(ks.length)h('Contreplaqué',[...new Set(ks.map(k=>cpName(cp[k]||cp.j||{t:'filme',e:d.ep,f:'2500x1250'})))].join(' · '),'Saisie');
+  h('Flèche du CP entre renforts','non vérifiée par l\'application','—');
+  if(d.renX&&typeof rxGeo==='function'){const X=rxGeo(d);if(X&&X.crit)h('Renforts en croix',`${X.S.n} : flambement d'Euler bi-articulé, coefficient ${RX_SF} sur l'effort (poussée × surface reprise) · effort maxi ≈ ${nf(X.crit.N,2)} kN · Ncr ≈ ${nf(X.crit.Ncr,2)} kN`,'Calcul')}
+  const G=typeof gsGeo==='function'?gsGeo(d):null;if(G&&G.a>0)h('Goussets d\'angle','a = '+nf(G.a)+' mm'+(G.man?' (saisi)':' : 25 % de la plus petite dimension intérieure, borné 50–250 mm, aucun si < 150 mm'),G.man?'Saisie':'Règle de l\'appli — à valider');
+  if(f==='voile'&&g&&g.ok){if(d.constr!=='caisson'){const M=manGeo(d,g);h('Cerces / montants',`entraxes maxi ${nf(d.eC||0)} / ${nf(d.eM||0)} mm (0 = aucun) → ${M.nC} cerce(s), ${M.nM} montant(s) par niveau`,'Saisie');
+      h('Renfort minimal du mannequin','au moins un renfort perpendiculaire au plus grand côté (montant au milieu si largeur > hauteur, cerce à mi-hauteur sinon)','Règle de l\'appli — à valider');
+      if(M.gous>0&&M.gousAuto)h('Goussets du mannequin','a = '+nf(M.gous)+' mm (même règle automatique que les goussets d\'angle)','Règle de l\'appli — à valider')}
+    h('Faces cintrées','longueurs développées à la fibre neutre ; Ø cuve '+nf(d.Dcuve||0,2)+' m','Calcul')}
+  if(['voile','circ_fond','circ_sf','goulotte'].includes(f)||(f==='special'&&(d.base==='circ'||d.conc)))h('Cintrage du CP','rayon mini à vérifier sur la fiche du fournisseur (CP cintrable si besoin)','Fournisseur');
+  if(f==='special'&&d.pot)h('Poteaux (tubes carton)',`du dessous de la boîte au-dessus du fond sup. ; fonds percés Ø poteau + ${nf(d.pJ||0)} mm`,'Saisie');
+  if(f==='poutre'||(f==='dalle'&&d.dlPt))h('Raidisseurs des joues de poutre','entraxe ≤ 500 mm si h ≤ 500 · ≤ 400 si h ≤ 800 · ≤ 300 au-delà','Règle de l\'appli — à valider');
+  if(f==='dalle')h('Platelage',`planche sur au moins 3 poutrelles · entraxe ${nf(d.dlE||0)} mm · largeur mini de pièce ${nf(d.dlMin||0)} mm`,'Règle de l\'appli / saisie');
+  h('Trait de scie (imbrication)',nf(nestKerf(d))+' mm','Saisie / profil chantier');
+  h('Montage',String(d.mont||'—'),'Saisie');
+  h('Tolérances d\'exécution, qualité de parement','selon CCTP / étude — non vérifiées par l\'application','Marché');
+  if(['poutre','dalle','massif','special','rect_fond','carre_fond','circ_fond'].includes(f))h('Étaiement, stabilité, serrage','hors périmètre : selon PV d\'étaiement / méthodes','—');
+  return H}
+function hypLine(d,R,more){const ks=[...new Set((R||[]).map(r=>r.k))].filter(k=>['j','fi','fs'].includes(k)),cp=d.cp||{};
+  const cps=[...new Set(ks.map(k=>cpName(cp[k]||cp.j||{t:'filme',e:d.ep,f:'2500x1250'})))].join(' · ');
+  return `<div class="ps-hyp"><b>Hypothèses</b> : poussée hydrostatique ${GAMMA} kN/m³ × h${cps?' · '+esc(cps):''} · tolérances et parement selon CCTP${more?' — détail feuille 1b':''}</div>`}
+function hypHtml(rows){return `<table class="hyp">${rows.map(r=>`<tr><td><b>${esc(r[0])}</b><div class="nt">${esc(r[1])}</div></td><td>${esc(r[2])}</td></tr>`).join('')}</table>
+<div class="nt" style="margin-top:4px">« Règle de l'appli — à valider » : pratique de chantier intégrée à l'application, à faire valider par l'étude ou les méthodes. L'application est une aide à la conception, pas une note de calcul.</div>`}
 function gen(d0){
   const d=canon(migr(d0)),ep=d.ep||0,f=d.forme;
   const LE=limErr(d);if(LE.length){const dt0=d.date?d.date.split('-').reverse().join('/'):'';
@@ -2670,22 +2700,35 @@ function gen(d0){
   if(!V.pages)q+=qCtl;
   if(!q)q='<div class="nt">—</div>';
   const errs=W.filter(x=>x[0]==='err').map(x=>esc(x[1])).concat(W.filter(x=>x[0]==='crit').map(x=>esc(x[1])));
+  const LAY=(typeof PRT!=='undefined'&&PRT.lay)||'full',HYPL=hypLine(d,R,LAY==='full'),HYP=hypHtml(hypRows(d,g,R));
   const dt=d.date?d.date.split('-').reverse().join('/'):'';
   const hd=sub=>`<div class="ps-h"><div><div class="ps-ch">CHANTIER : ${esc(d.ch)||'—'}${d.ouv?' · OUVRAGE : '+esc(d.ouv.toUpperCase()):''}</div><div class="ps-rf">${rl}${sub?` <span class="ps-sub">· ${sub}</span>`:''}</div></div>
 <div style="text-align:right;color:#8892a8;font-size:11px"><div>Nombre :</div><div class="ps-nb">${d.nb}</div><div class="ps-ind">${d.ind?'Ind. '+esc(d.ind)+' · ':''}${dt}</div></div></div>
-<div class="ps-nt">⚠ ATTENTION MONTAGE AVEC ${esc(d.mont)}</div>${errs.length?`<div class="ps-er">⛔ À REVOIR : ${errs.join(' · ')}</div>`:''}`;
+<div class="ps-nt">⚠ ATTENTION MONTAGE AVEC ${esc(d.mont)}</div>${HYPL}${errs.length?`<div class="ps-er">⛔ À REVOIR : ${errs.join(' · ')}</div>`:''}`;
   const ft=`<div class="ps-foot">${LEGEND}<span>Conçu par Kévin TRINH · Conducteur de travaux · CoffraPlan</span></div>`;
   // Pages complémentaires (CP à découper, montage, fiche atelier…) : [sous-titre, titre, svg, tableau latéral, classe]
   const XP=badDims(W)?[]:genExtra(d,R,V,{kv,q,qCtl,W,hd,ft});
   const pgH=(sub,ttl,svg,side,cls)=>`<div class="ps${cls?' '+cls:''}">${hd(sub)}<div class="ps-bd"><div class="ps-c ${side?'ps-w2':'ps-full'}"><div class="ps-cl">${ttl}</div>${svg}</div>${side?`<div class="ps-c ps-tall"><div class="inf">${side}</div></div>`:''}${ft}</div></div>`;
   const raw=p=>p[4]==='raw'?p[2]:null;
   if(V.pages){
-    const n=V.pages.length+1+XP.length;let k=0;
-    return V.pages.map(p=>pgH('FEUILLE '+(++k)+'/'+n+' — '+p[0],p[1],p[2],p[3]!=null?p[3]:p[0]==='PLAN DE POSE'?qCal:'')).join('')+
-      `<div class="ps">${hd('FEUILLE '+(++k)+'/'+n+' — INFORMATIONS')}<div class="ps-bd"><div class="ps-c ps-tall"><div class="ps-cl">${V.thumbT}</div>${V.thumb}<div class="inf">${qCtl}</div></div><div class="ps-c ps-tall"><div class="ps-cl">Informations</div><div class="inf"><table>${kv.join('')}</table></div></div><div class="ps-c ps-tall"><div class="ps-cl">Débit · traçage · contrôles</div><div class="inf">${q}</div></div>${ft}</div></div>`+
+    // v2.5 : en pleine page / vues uniquement, les tableaux latéraux des vues passent sur la feuille d'informations (ou disparaissent)
+    const keep=p=>LAY==='compact'||/CP À DÉCOUPER/.test(p[0]),sideOf=p=>p[3]!=null?p[3]:p[0]==='PLAN DE POSE'?qCal:'',moved=V.pages.filter(p=>!keep(p)&&sideOf(p)).map(p=>`<div class="sub">${p[0]}</div>${sideOf(p)}`).join('');
+    const n=V.pages.length+(LAY==='views'?0:1)+XP.length;let k=0;
+    return V.pages.map(p=>pgH('FEUILLE '+(++k)+'/'+n+' — '+p[0],p[1],p[2],keep(p)?sideOf(p):'')).join('')+
+      (LAY==='views'?'':`<div class="ps">${hd('FEUILLE '+(++k)+'/'+n+' — INFORMATIONS')}<div class="ps-bd"><div class="ps-c ps-tall"><div class="ps-cl">${V.thumbT}</div>${V.thumb}<div class="inf">${qCtl}</div></div><div class="ps-c ps-tall"><div class="ps-cl">Informations</div><div class="inf"><table>${kv.join('')}</table>${LAY==='full'?'<div class="sub">Hypothèses</div>'+HYP:''}</div></div><div class="ps-c ps-tall"><div class="ps-cl">Débit · traçage · contrôles</div><div class="inf">${q}${moved}</div></div>${ft}</div></div>`)+
       XP.map(p=>raw(p)!=null?raw(p).replace('@@SUB@@','FEUILLE '+(++k)+'/'+n+' — '+p[0]):pgH('FEUILLE '+(++k)+'/'+n+' — '+p[0],p[1],p[2],p[3],p[4])).join('');
   }
   const n=1+XP.length;let k=1;
+  if(LAY!=='compact'){const s1=n>1?'FEUILLE 1/'+n+' — PLAN':LAY==='full'?'FEUILLE 1 — PLAN':'';
+    return `<div class="ps">${hd(s1)}<div class="ps-bd lay-full">
+<div class="ps-c ps-top"><div class="ps-cl">${lt}</div>${V.top}</div>
+<div class="ps-c ps-bot"><div class="ps-cl">${lb}</div>${V.b}</div>
+<div class="ps-c ps-bot"><div class="ps-cl">${la}</div>${V.a}</div>
+${ft}</div></div>`+(LAY==='full'?`<div class="ps">${hd('FEUILLE 1b — DÉBIT · INFORMATIONS · HYPOTHÈSES')}<div class="ps-bd">
+<div class="ps-c ps-tall"><div class="ps-cl">Débit · traçage · contrôles</div><div class="inf">${q}</div></div>
+<div class="ps-c ps-tall"><div class="ps-cl">Informations</div><div class="inf"><table>${kv.join('')}</table></div></div>
+<div class="ps-c ps-tall"><div class="ps-cl">Hypothèses</div><div class="inf">${HYP}</div></div>
+${ft}</div></div>`:'')+XP.map(p=>raw(p)!=null?raw(p).replace('@@SUB@@','FEUILLE '+(++k)+'/'+n+' — '+p[0]):pgH('FEUILLE '+(++k)+'/'+n+' — '+p[0],p[1],p[2],p[3],p[4])).join('')}
   return `<div class="ps">
 ${hd(XP.length?'FEUILLE 1/'+n+' — PLAN':'')}
 <div class="ps-bd">
@@ -3848,17 +3891,19 @@ function showChantier(){const ch=S('iCh','');const list=chantierPlans(ch);if(!li
 // ====== v15 — LOTS 5 / 6 : LISIBILITÉ (légende, impression A4 / A3, sommaire, fiche atelier, montage 3D) ======
 
 // ---------- Réglages d'impression ----------
-const PRT_DEF={fmt:'',cp:false,mt:false,fa:false,som:false,nb:false}; // v2.4 : feuilles annexes décochées, sommaire « Jamais » par défaut
+const PRT_DEF={fmt:'',cp:false,mt:false,fa:false,som:false,nb:false,lay:'full'}; // v2.5 : mise en page full | compact | views // v2.4 : feuilles annexes décochées, sommaire « Jamais » par défaut
 let PRT=(()=>{try{return Object.assign({},PRT_DEF,JSON.parse(localStorage.getItem('resaPrint'))||{})}catch(e){return Object.assign({},PRT_DEF)}})();
 function svPrt(){try{localStorage.setItem('resaPrint',JSON.stringify(PRT))}catch(e){}}
 function prtFmt(){if(PRT.fmt)return PRT.fmt;const c=profCh(S('iCh',''));return c&&c.fmt==='A4'?'A4':'A3'}
 function prtUI(){const z=el('zPrt');if(!z)return;const f=prtFmt();
   z.innerHTML=`<div class="g2"><div class="fd"><label>Format${helpBtn('prtFmt')}</label><select class="fi" id="prFmtSel" onchange="PRT.fmt=this.value;svPrt();applyPage();prtUI()"><option value="">Profil chantier (${f})</option><option value="A3"${PRT.fmt==='A3'?' selected':''}>A3 paysage</option><option value="A4"${PRT.fmt==='A4'?' selected':''}>A4 paysage</option></select></div>
 <div class="fd"><label>Sommaire</label><select class="fi" onchange="PRT.som=this.value==='1';svPrt()"><option value="1"${PRT.som?' selected':''}>Si &gt; 5 feuilles</option><option value="0"${PRT.som?'':' selected'}>Jamais</option></select></div></div>
+<div class="fd"><label>Mise en page des feuilles${helpBtn('prtLay')}</label><select class="fi" id="prLay" onchange="PRT.lay=this.value;svPrt();prev()"><option value="full"${PRT.lay==='full'?' selected':''}>Plan pleine page (+ feuille débit · informations)</option><option value="compact"${PRT.lay==='compact'?' selected':''}>Compacte (vues + débit sur la même feuille)</option><option value="views"${PRT.lay==='views'?' selected':''}>Vues uniquement</option></select></div>
 <div class="fd"><label class="ck"><input type="checkbox" ${PRT.cp?'checked':''} onchange="PRT.cp=this.checked;svPrt();prev()"> Feuilles CP à découper</label></div>
 <div class="fd"><label class="ck"><input type="checkbox" ${PRT.mt?'checked':''} onchange="PRT.mt=this.checked;svPrt();prev()"> Montage 3D + contrôles</label></div>
 <div class="fd"><label class="ck"><input type="checkbox" ${PRT.fa?'checked':''} onchange="PRT.fa=this.checked;svPrt();prev()"> Fiche atelier (A4 portrait)</label></div>
 <div class="fd"><label class="ck"><input type="checkbox" id="prNb" ${PRT.nb?'checked':''} onchange="PRT.nb=this.checked;svPrt();prev()"> Noir et blanc (motifs, pour photocopie)</label></div>`}
+HELP.prtLay=['<b>Plan pleine page</b> : la feuille 1 ne porte que les vues (plus grandes) ; débit, traçage, contrôles, informations et hypothèses passent sur la feuille 1b, juste après (au dos en recto-verso). <b>Compacte</b> : tout sur la feuille 1. <b>Vues uniquement</b> : vues seules, sans feuille 1b. Une ligne d\'hypothèses reste toujours dans le cartouche.',''];
 HELP.prtFmt=['Toutes les feuilles s\'adaptent au format : les tableaux trop longs sont resserrés à l\'impression (police mini 6,5 px), la fiche atelier reste en A4 portrait.',''];
 const PAGE={A3:{w:420,h:297},A4:{w:297,h:210}},PMARG=4;
 function applyPage(){const f=prtFmt(),p=PAGE[f]||PAGE.A3;let st=el('pgSz');if(!st){st=document.createElement('style');st.id='pgSz';document.head.appendChild(st)}
