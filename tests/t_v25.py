@@ -74,7 +74,8 @@ def t(s):
         row = [x for x in r if x[0] == 'Renforts en croix']
         s.check(row and 'coefficient 3' in row[0][1] and re.sub(r'\s', ' ', f'{rx[1]:.2f}'.replace('.', ',')) in row[0][1].replace(' ', ' ').replace('\xa0', ' '), f'renforts : flambement d\'Euler, coefficient 3, Ncr = calcul de l\'appli ({rx[1]:.2f} kN)', str(row))
         s.check(any(x[0] == 'Goussets d\'angle' and 'à valider' in x[2] for x in r), 'goussets automatiques : marqués « règle de l\'appli — à valider »')
-        s.check(any(x[0] == 'Flèche du CP entre renforts' and 'non vérifiée' in x[1] for x in r) and any('CCTP' in x[1] for x in r), 'limites dites : flèche du CP non vérifiée, tolérances selon CCTP')
+        # v2.6 : la flèche du CP est calculée (contenu vérifié par t_v26) ; la ligne existe toujours, tolérances toujours renvoyées au CCTP
+        s.check(any(x[0] == 'Flèche du CP' and 'portée' in x[1] for x in r) and any('CCTP' in x[1] for x in r), 'limites dites : flèche du CP (calcul v2.6), tolérances selon CCTP')
         r = H('voile', {'dL': 670, 'dl': 150, 'dh': 270, 'dDcuve': 10})
         s.check(any(x[0] == 'Renfort minimal du mannequin' for x in r) and any('1 montant' in x[1] for x in r if x[0] == 'Cerces / montants'), 'voile : renfort minimal du mannequin et 1 montant (R03)', str(r))
         r = H('special', {'dBase': 'circ', 'oPot': True, 'oFondSup': True})

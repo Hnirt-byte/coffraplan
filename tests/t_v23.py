@@ -3,7 +3,7 @@
 Interface réelle (souris, clavier) ; aucune boîte de dialogue du navigateur ne doit apparaître (hors avertissement de fermeture)."""
 import json, os, random, re
 from playwright.sync_api import sync_playwright
-from lib import Suite, APP, OUT, HERE
+from lib import Suite, APP, OUT, HERE, NOFS
 
 RUNS = os.path.join(HERE, 'plans_v22.json')   # 420 plans aléatoires enregistrés par la v2.2 (t_audit, graine fixe)
 OK = '#dlg [data-r="1"]'
@@ -13,6 +13,7 @@ NO = '#dlg [data-r="0"]'
 def page(pw, w=1400, h=900):
     b = pw.chromium.launch()
     ctx = b.new_context(viewport={'width': w, 'height': h}, accept_downloads=True)
+    ctx.add_init_script(NOFS)  # v2.6 : ces bancs testent l'enregistrement par téléchargement
     pg = ctx.new_page()
     errs, dialogs = [], []
     pg.on('pageerror', lambda e: errs.append(str(e) + ' @ ' + (e.stack or '')[:300]))

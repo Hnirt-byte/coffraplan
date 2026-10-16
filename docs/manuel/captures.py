@@ -119,6 +119,17 @@ with sync_playwright() as p:
     shot('24_sombre'); ev("setTheme('light')")
     # mobile
     pg.set_viewport_size({'width': 390, 'height': 760}); pg.wait_for_timeout(300); shot('25_mobile')
+    # v2.6 : cartouche entreprise + note d'hypothèses (entreprise fictive)
+    pg.set_viewport_size({'width': 1440, 'height': 900}); pg.wait_for_timeout(200)
+    ev("""()=>{const c=document.createElement('canvas');c.width=120;c.height=40;const x=c.getContext('2d');x.fillStyle='#1f5fbf';x.fillRect(0,0,120,40);x.fillStyle='#fff';x.font='bold 20px Arial';x.fillText('DÉMO BTP',8,27);
+      ENT={nom:'DÉMO BTP',ligne:'Agence Est — 03 00 00 00 00',des:'K. TRINH',logo:c.toDataURL('image/png')};VIEW='plan';shP(1);prev()}"""); pg.wait_for_timeout(400)
+    ev("document.querySelector('.hdr').style.visibility='hidden'")
+    pg.locator('#pvA .ps').first.locator('.ps-h').screenshot(path=D + '26_cartouche.png')
+    ev("document.querySelector('.hdr').style.visibility=''")
+    ev("showNote()"); pg.wait_for_timeout(300)
+    ev("document.querySelector('.hdr').style.visibility='hidden'")
+    pg.locator('#pvA .ps').nth(2).screenshot(path=D + '27_note.png')
+    ev("document.querySelector('.hdr').style.visibility='';VIEW='plan';ENT={}")
     errs = [e for e in errs if 'net::' not in e]
     assert not errs, errs
     b.close()

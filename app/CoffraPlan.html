@@ -94,6 +94,7 @@ select.fi{cursor:pointer}select.fi option{background:var(--navy);color:var(--tex
 .ps-h{background:#1a2035;padding:10px 20px;display:flex;justify-content:space-between;align-items:flex-start}
 .ps-ch{font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#e8820c}
 .ps-rf{font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:900;color:#fff}
+.ps-ent{display:flex;gap:8px;align-items:center;margin:0 12px;color:#c2cce0;font-size:9px;line-height:1.35;font-family:'Barlow',sans-serif;max-width:46%}.ps-ent img{max-height:34px;max-width:110px;background:#fff;border-radius:3px;padding:2px}.ps-ent b{color:#fff;font-size:10.5px}.ps.portrait .ps-ent{max-width:40%}.ps.portrait .ps-ent>div>div:last-child{display:none}
 .ps-nb{font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:700;color:#ffa533}
 .ps-ind{font-family:'JetBrains Mono',monospace;font-size:9px;color:#8892a8;margin-top:2px}
 .ps-nt{background:#fff3cd;color:#856404;font-size:10px;font-weight:600;text-align:center;padding:3px;letter-spacing:1px;text-transform:uppercase;font-family:'Barlow Condensed',sans-serif}
@@ -176,7 +177,7 @@ body.pm .inf{font-size:calc(9.5px + 2pt);line-height:1.25}body.pm .inf .nt{font-
 </head>
 <body>
 <div class="hdr">
-<div class="brand"><svg xmlns="http://www.w3.org/2000/svg" class="logo" viewBox="0 10 362 66" preserveAspectRatio="xMinYMid slice" role="img" aria-label="CoffraPlan"><defs><linearGradient id="cplouterBack" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#27384e"/><stop offset="1" stop-color="#101a29"/></linearGradient><linearGradient id="cplouterLeft" x1="0" y1="0" x2="1" y2=".7"><stop stop-color="#1a2739"/><stop offset="1" stop-color="#334559"/></linearGradient><linearGradient id="cplouterFront" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#2f4255"/><stop offset="1" stop-color="#101b2c"/></linearGradient><linearGradient id="cplouterCap" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#b7c1c8"/><stop offset="1" stop-color="#4f6272"/></linearGradient><linearGradient id="cplorangeFace" x1="0" y1="0" x2=".85" y2=".2"><stop stop-color="#ffb03c"/><stop offset=".49" stop-color="#ff8b19"/><stop offset="1" stop-color="#de5608"/></linearGradient><linearGradient id="cplorangeFaceDark" x1="0" y1="0" x2="1" y2=".3"><stop stop-color="#ff7f12"/><stop offset="1" stop-color="#af3807"/></linearGradient><linearGradient id="cplconcreteTop" x1="0" y1="0" x2="1" y2=".8"><stop stop-color="#ffffff"/><stop offset=".48" stop-color="#b4c4cf"/><stop offset="1" stop-color="#738596"/></linearGradient></defs><g transform="translate(0,1) scale(.52)"><polygon points="104.00,20.00 170.10,58.08 170.10,102.08 104.00,64.00" fill="url(#cplouterBack)" stroke="#172537" stroke-width="1.1" stroke-linejoin="round" /><polygon points="104.00,20.00 37.90,58.08 37.90,102.08 104.00,64.00" fill="url(#cplouterLeft)" stroke="#172537" stroke-width="1.1" stroke-linejoin="round" /><polygon points="37.90,58.08 104.00,96.16 104.00,140.16 37.90,102.08" fill="url(#cplouterFront)" stroke="#172537" stroke-width="1.1" stroke-linejoin="round" /><polygon points="170.10,58.08 159.57,64.15 159.57,108.15 170.10,102.08" fill="url(#cplouterCap)" stroke="#172537" stroke-width="1.1" stroke-linejoin="round" /><polygon points="114.53,90.10 104.00,96.16 104.00,140.16 114.53,134.10" fill="url(#cplouterCap)" stroke="#172537" stroke-width="1.1" stroke-linejoin="round" /><polygon points="104.00,32.13 159.57,64.15 159.57,108.15 104.00,76.13" fill="url(#cplorangeFace)" stroke="#172537" stroke-width="1.1" stroke-linejoin="round" /><polygon points="104.00,32.13 58.96,58.08 58.96,102.08 104.00,76.13" fill="url(#cplorangeFaceDark)" stroke="#172537" stroke-width="1.1" stroke-linejoin="round" /><polygon points="58.96,58.08 114.53,90.10 114.53,134.10 58.96,102.08" fill="url(#cplorangeFace)" stroke="#172537" stroke-width="1.1" stroke-linejoin="round" /><polygon points="104.00,20.00 170.10,58.08 159.57,64.15 93.47,26.07" fill="url(#cplconcreteTop)" stroke="#cbd4db" stroke-width="1.1" stroke-linejoin="round" /><polygon points="104.00,20.00 114.53,26.07 48.43,64.15 37.90,58.08" fill="url(#cplconcreteTop)" stroke="#cbd4db" stroke-width="1.1" stroke-linejoin="round" /><polygon points="48.43,52.02 114.53,90.10 104.00,96.16 37.90,58.08" fill="url(#cplconcreteTop)" stroke="#cbd4db" stroke-width="1.1" stroke-linejoin="round" /></g><text x="107" y="66" fill="var(--logo-t)" font-family="Inter Display,Inter,Arial,sans-serif" font-size="53" font-weight="900" letter-spacing="-3.1" textLength="146" lengthAdjust="spacingAndGlyphs">Coffra</text><text x="257" y="66" fill="#ff8517" font-family="Inter Display,Inter,Arial,sans-serif" font-size="53" font-weight="900" letter-spacing="-3.1" textLength="100" lengthAdjust="spacingAndGlyphs">Plan</text></svg><small id="appVer">v2.5</small></div>
+<div class="brand"><svg xmlns="http://www.w3.org/2000/svg" class="logo" viewBox="0 10 362 66" preserveAspectRatio="xMinYMid slice" role="img" aria-label="CoffraPlan"><defs><linearGradient id="cplouterBack" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#27384e"/><stop offset="1" stop-color="#101a29"/></linearGradient><linearGradient id="cplouterLeft" x1="0" y1="0" x2="1" y2=".7"><stop stop-color="#1a2739"/><stop offset="1" stop-color="#334559"/></linearGradient><linearGradient id="cplouterFront" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#2f4255"/><stop offset="1" stop-color="#101b2c"/></linearGradient><linearGradient id="cplouterCap" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#b7c1c8"/><stop offset="1" stop-color="#4f6272"/></linearGradient><linearGradient id="cplorangeFace" x1="0" y1="0" x2=".85" y2=".2"><stop stop-color="#ffb03c"/><stop offset=".49" stop-color="#ff8b19"/><stop offset="1" stop-color="#de5608"/></linearGradient><linearGradient id="cplorangeFaceDark" x1="0" y1="0" x2="1" y2=".3"><stop stop-color="#ff7f12"/><stop offset="1" stop-color="#af3807"/></linearGradient><linearGradient id="cplconcreteTop" x1="0" y1="0" x2="1" y2=".8"><stop stop-color="#ffffff"/><stop offset=".48" stop-color="#b4c4cf"/><stop offset="1" stop-color="#738596"/></linearGradient></defs><g transform="translate(0,1) scale(.52)"><polygon points="104.00,20.00 170.10,58.08 170.10,102.08 104.00,64.00" fill="url(#cplouterBack)" stroke="#172537" stroke-width="1.1" stroke-linejoin="round" /><polygon points="104.00,20.00 37.90,58.08 37.90,102.08 104.00,64.00" fill="url(#cplouterLeft)" stroke="#172537" stroke-width="1.1" stroke-linejoin="round" /><polygon points="37.90,58.08 104.00,96.16 104.00,140.16 37.90,102.08" fill="url(#cplouterFront)" stroke="#172537" stroke-width="1.1" stroke-linejoin="round" /><polygon points="170.10,58.08 159.57,64.15 159.57,108.15 170.10,102.08" fill="url(#cplouterCap)" stroke="#172537" stroke-width="1.1" stroke-linejoin="round" /><polygon points="114.53,90.10 104.00,96.16 104.00,140.16 114.53,134.10" fill="url(#cplouterCap)" stroke="#172537" stroke-width="1.1" stroke-linejoin="round" /><polygon points="104.00,32.13 159.57,64.15 159.57,108.15 104.00,76.13" fill="url(#cplorangeFace)" stroke="#172537" stroke-width="1.1" stroke-linejoin="round" /><polygon points="104.00,32.13 58.96,58.08 58.96,102.08 104.00,76.13" fill="url(#cplorangeFaceDark)" stroke="#172537" stroke-width="1.1" stroke-linejoin="round" /><polygon points="58.96,58.08 114.53,90.10 114.53,134.10 58.96,102.08" fill="url(#cplorangeFace)" stroke="#172537" stroke-width="1.1" stroke-linejoin="round" /><polygon points="104.00,20.00 170.10,58.08 159.57,64.15 93.47,26.07" fill="url(#cplconcreteTop)" stroke="#cbd4db" stroke-width="1.1" stroke-linejoin="round" /><polygon points="104.00,20.00 114.53,26.07 48.43,64.15 37.90,58.08" fill="url(#cplconcreteTop)" stroke="#cbd4db" stroke-width="1.1" stroke-linejoin="round" /><polygon points="48.43,52.02 114.53,90.10 104.00,96.16 37.90,58.08" fill="url(#cplconcreteTop)" stroke="#cbd4db" stroke-width="1.1" stroke-linejoin="round" /></g><text x="107" y="66" fill="var(--logo-t)" font-family="Inter Display,Inter,Arial,sans-serif" font-size="53" font-weight="900" letter-spacing="-3.1" textLength="146" lengthAdjust="spacingAndGlyphs">Coffra</text><text x="257" y="66" fill="#ff8517" font-family="Inter Display,Inter,Arial,sans-serif" font-size="53" font-weight="900" letter-spacing="-3.1" textLength="100" lengthAdjust="spacingAndGlyphs">Plan</text></svg><small id="appVer">v2.6</small></div>
 <div style="flex:1"></div>
 <button class="btn bs bo no-print" id="bUndo" onclick="undo()" title="Annuler la dernière modification du formulaire (Ctrl+Z)" aria-label="Annuler">↶</button>
 <button class="btn bs bo no-print" id="bRedo" onclick="redo()" title="Rétablir (Ctrl+Y ou Ctrl+Maj+Z)" aria-label="Rétablir">↷</button>
@@ -204,7 +205,7 @@ body.pm .inf{font-size:calc(9.5px + 2pt);line-height:1.25}body.pm .inf .nt{font-
 <div style="text-align:right;margin-top:6px"><button class="btn bs bo" onclick="welHide()" title="Ne plus afficher">Masquer</button></div></div>
 <div id="sbF">
 <div class="cd"><div class="ct">🏗 Chantier</div>
-<div class="fd"><label>Nom du chantier</label><div style="display:flex;gap:6px"><input class="fi" id="iCh" list="dlCh" autocomplete="off" placeholder="Ex: STEP SCEY"><button type="button" class="btn bs bo" id="bProf" onclick="openProf()" title="Profil du chantier / de l'ouvrage">⚙</button></div></div>
+<div class="fd"><label>Nom du chantier</label><div style="display:flex;gap:6px"><input class="fi" id="iCh" list="dlCh" autocomplete="off" placeholder="Ex: Station d'épuration Nord"><button type="button" class="btn bs bo" id="bProf" onclick="openProf()" title="Profil du chantier / de l'ouvrage">⚙</button></div></div>
 <datalist id="dlCh"></datalist><datalist id="dlOu"></datalist>
 <div class="g2">
 <div class="fd"><label>Ouvrage</label><input class="fi" id="iOuv" list="dlOu" autocomplete="off" placeholder="Ex: Clarificateur"></div>
@@ -240,7 +241,7 @@ body.pm .inf{font-size:calc(9.5px + 2pt);line-height:1.25}body.pm .inf .nt{font-
 <div id="zDim"></div>
 </div>
 <div class="cd" id="zCP"><div class="ct">🪵 Contreplaqué</div><div id="zCProws"></div>
-<div class="hint" style="margin:6px 0 0">Épaisseurs et formats courants du commerce. Défaut : CP filmé 18 mm.</div></div>
+<div class="hint" style="margin:6px 0 0">Épaisseurs et formats courants du commerce. Défaut : CP filmé phénolique bouleau 18 mm (EN 636-3, classe 3).</div></div>
 <div class="cd" id="zOptC" style="display:none"><div class="ct">⚙ Options</div><div id="zOpt"></div></div>
 </div>
 <div id="zChk"></div>
@@ -265,6 +266,7 @@ body.pm .inf{font-size:calc(9.5px + 2pt);line-height:1.25}body.pm .inf .nt{font-
 <div id="sl" style="max-height:260px;overflow-y:auto"></div>
 <button class="btn bs bo" onclick="openSeries()" style="width:100%;margin-top:8px" title="Créer plusieurs plans d'un coup depuis un tableau copié d'Excel">📋 Série de plans depuis un tableau</button>
 <button class="btn bs bo" onclick="showChantier()" style="width:100%;margin-top:8px" title="Débit consolidé, bon de commande, débit des barres de bois">🧾 Récapitulatif chantier · commande</button>
+<button class="btn bs bo" id="bNote" onclick="showNote()" style="width:100%;margin-top:6px" title="Hypothèses, calculs et limites de chaque plan du chantier, à joindre au dossier">📐 Note d'hypothèses</button>
 <button class="btn bs" onclick="clearAll()" style="width:100%;margin-top:8px;background:rgba(231,76,60,.1);color:var(--red);border:1px solid rgba(231,76,60,.3)">🗑 Tout supprimer</button>
 </div>
 </div>
@@ -292,12 +294,56 @@ const TM={carre:'RESERVATION CARREE',carre_fond:'RESERVATION CARREE AVEC FOND',r
 // ====== CATALOGUE CONTREPLAQUÉ (épaisseurs / formats courants du commerce, France) ======
 // Filmé : 12→30 mm, 2500×1250 / 2500×1525 / 3000×1500 (Distribbois) ; 9 mm (Sud Bois)
 // CTBX okoumé : 5→30 mm, 2500×1220 (Rullier, Mauris) ; Cintrable : 5/7/9 mm FL+FT, 15 mm FT seul (Wood & Ply)
+// v2.6 : filmé phénolique EN 636-3 (classe 3) par âme : bouleau (WISA-Form Birch, Riga Form, Metsä Form), combi, peuplier / eucalyptus
+const FMT_FILM=[['2500x1250','2500 × 1250'],['2500x1525','2500 × 1525'],['3000x1500','3000 × 1500']];
 const CPT={
-  filme:{n:'CP filmé',ep:[9,12,15,18,21,24,27,30],fmt:[['2500x1250','2500 × 1250'],['2500x1525','2500 × 1525'],['3000x1500','3000 × 1500']]},
+  filme:{n:'CP filmé bouleau',ep:[9,12,15,18,21,24,27,30],fmt:FMT_FILM},
+  filmec:{n:'CP filmé combi',ep:[9,12,15,18,21,24,27,30],fmt:FMT_FILM},
+  filmep:{n:'CP filmé peuplier / eucalyptus',ep:[12,15,18,21],fmt:FMT_FILM},
   ctbx:{n:'CP CTBX okoumé',ep:[5,8,10,12,15,18,22,25,30],fmt:[['2500x1220','2500 × 1220']]},
   cintr:{n:'CP cintrable',ep:[5,7,9,15],fmt:[['2500x1220FL','2500 × 1220 fil long'],['1220x2500FT','1220 × 2500 fil travers']]}
 };
 const CPDEF={t:'filme',e:18,f:'2500x1250'};
+// v2.6 — rigidité en flexion : module moyen EN 789 [∥ fil de face, ⊥] (N/mm²) par épaisseur
+const CPMEC={
+  filme:{src:'Koskisen, Handbook of Koskisen Plywood, tab. 3-2 (bouleau) ; mêmes valeurs UPM WISA-Form Birch (fiche 08/2015)',
+    E:{9:[11395,6105],12:[10719,6781],15:[10316,7184],18:[10048,7452],21:[9858,7642],24:[9717,7783],27:[9607,7893],30:[9519,7981]}},
+  filmec:{src:'Koskisen, Handbook of Koskisen Plywood, tab. 3-3 (combi)',
+    E:{9:[10983,6105],12:[10012,6781],15:[9386,7184],18:[8950,7452],21:[8628,7642],24:[8381,7783],27:[8185,7893],30:[8026,7981]}},
+  ctbx:{src:'FCBA / IRABOIS, fiche POB 21.02 (01/2015) : okoumé en milieu humide',all:4000}
+};
+// Flèche : (1 + ψ2·kdef) = 1 + 0,2 × 2,5 (EN 1995-1-1 tab. 3.2, contreplaqué EN 636-3 en classe de service 3, comme les tableaux Riga Wood)
+// + déformation d'effort tranchant FL_K·q·L²/t, coefficient calé sur le tableau de charges Riga Form (03/2026) : écart −6 % … +13 %
+const FL_F=1.5,FL_K=0.001;
+function cpMec(c){const M=c&&CPMEC[c.t];if(!M)return null;const E=M.all||(M.E[c.e]&&Math.min(...M.E[c.e]));return E?{E,src:M.src}:null} // sens du fil non garanti par l'imbrication → module le plus faible
+function flRatio(d){const c=typeof profCh==='function'?profCh(d.ch):null;return c&&c.fl>=100&&c.fl<=1000?c.fl:300}
+function linSolve(K,F){const n=F.length,A=K.map((r,i)=>r.concat([F[i]]));
+  for(let i=0;i<n;i++){let p=i;for(let r=i+1;r<n;r++)if(Math.abs(A[r][i])>Math.abs(A[p][i]))p=r;[A[i],A[p]]=[A[p],A[i]];
+    for(let r=i+1;r<n;r++){const f=A[r][i]/A[i][i];for(let k=i;k<=n;k++)A[r][k]-=f*A[i][k]}}
+  const x=Array(n).fill(0);for(let i=n-1;i>=0;i--){let v=A[i][n];for(let k=i+1;k<n;k++)v-=A[i][k]*x[k];x[i]=v/A[i][i]}return x}
+// Plaque (Ritz) : appuis simples en x = 0 et a, appui au pied (y = 0), bord haut libre, poussée q0·(1 − y/b) ; sans raideur de torsion
+// ni effet Poisson (contreplaqué : module de cisaillement faible) → flèche maxi (mm). shortcut: mêmes raideurs dans les deux sens (module mini) ; bord haut appuyé non traité (formes avec fond supérieur)
+function plateW(a,b,q0,D){const N=7,ys=Array.from({length:41},(_,i)=>b*i/40),w=ys.map(()=>0);
+  for(let m=1;m<=17;m+=2){const lam=m*Math.PI/a,K=[],F=[];
+    for(let k=1;k<=N;k++){F.push(2*a/(m*Math.PI)*q0*(b/(k+1)-b/(k+2)));const r=[];
+      for(let l=1;l<=N;l++)r.push(D*a/2*(lam**4*b/(k+l+1)+(k>=2&&l>=2?k*(k-1)*l*(l-1)/b**3/(k+l-3):0)));K.push(r)}
+    const c=linSolve(K,F),sg=m%4===1?1:-1;ys.forEach((y,i)=>{let v=0;for(let k=1;k<=N;k++)v+=c[k-1]*(y/b)**k;w[i]+=sg*v})}
+  return Math.max(...w)}
+// Flèche des joues des boîtes rectangulaires : chaque joue = plaque entre angles (et cloisons CP pleine hauteur), poussée γ·h au pied
+function flecheCP(d){const f=d.forme;if(!(RECT.includes(f)&&f!=='massif'))return null;
+  const c=(d.cp&&d.cp.j)||{t:'filme',e:d.ep,f:'2500x1250'},M=cpMec(c),r=flRatio(d);if(!M)return{nd:1,c,r};
+  const ep=d.ep||0,Li=d.L-2*ep,li=d.l-2*ep,b=d.h,q0=GAMMA*d.h/1e6;if(!(Li>0&&li>0&&b>0))return null;
+  const X=d.renX&&typeof rxGeo==='function'?rxGeo(d):null,full=!!(X&&X.full),D=M.E*ep**3/12;
+  const faces=[['L',Li,1,li/2],['l',li,0,Li/2]].map(([nm,len,onY,pos])=>{let pts=[-len/2,len/2];
+    if(full)X.bars.forEach(br=>[[br.x1,br.y1],[br.x2,br.y2]].forEach(([x,y])=>{if(Math.abs(Math.abs(onY?y:x)-pos)<1)pts.push(onY?x:y)}));
+    pts=[...new Set(pts.map(v=>Math.round(v)))].sort((p,q)=>p-q);let a=0;for(let i=1;i<pts.length;i++)a=Math.max(a,pts[i]-pts[i-1]);
+    const sh=FL_K*M.E*ep*ep/12/(5/384*a*a),u=FL_F*plateW(a,b,q0,D)*(1+sh),lim=a/r;return{face:nm,a,u,lim,ok:u<=lim+1e-9,n:pts.length-1}});
+  const w=faces.reduce((m,x)=>!m||x.u/x.lim>m.u/m.lim?x:m,null);return{faces,w,full,E:M.E,src:M.src,c,r,q0,soft:!!(X&&!X.full)}}
+function flTxt(F){if(!F)return'non vérifiée par l\'application (forme non couverte : boîtes rectangulaires seulement)';
+  if(F.nd)return'non vérifiée : aucune rigidité publiée retenue pour '+cpName(F.c);
+  return F.faces.map(x=>`joue ${x.face} : ≈ ${nf(x.u,1)} mm pour ${nf(x.lim,1)} mm admis (portée ${nf(x.a)} mm / ${F.r})`).join(' · ')+
+    ` — plaque appuyée sur les angles${F.full?' et les cloisons CP':''} et au pied, bord haut libre, poussée γ·h au pied, module ${nf(F.E)} N/mm² (sens le plus faible), × ${nf(FL_F,1)} (fluage, classe de service 3), cisaillement inclus${F.soft?' ; tasseaux / chevrons non comptés comme appuis':''}`}
+
 function cpFmt(c){const m=String(c&&c.f||'2500x1250').match(/(\d+)x(\d+)/);return m?[+m[1],+m[2]]:[2500,1250]}
 function cpName(c){if(!c)return'—';const T=CPT[c.t]||CPT.filme,F=T.fmt.find(x=>x[0]===c.f);return`${T.n} ${nf(c.e)} mm${F?' ('+F[1]+')':''}`}
 // Composants présents selon la forme : j = joues / parois, fi = fond inférieur, fs = fond supérieur
@@ -985,6 +1031,8 @@ function checks(d,g){
       });
     }
   }
+  // v2.6 : flèche des joues (boîtes rectangulaires)
+  const FLc=flecheCP(d);if(FLc&&FLc.w&&!FLc.w.ok){const x=FLc.w;w(`Flèche du CP : joue ${x.face} ≈ ${nf(x.u,1)} mm > portée / ${FLc.r} = ${nf(x.lim,1)} mm (portée ${nf(x.a)} mm) → `+(FLc.full?'CP plus épais ou cloisons plus rapprochées':'ajouter des cloisons CP pleine hauteur (renforts en croix) ou un CP plus épais'))}
   // Renforts en croix
   const RX=rxGeo(d);
   if(RX){
@@ -2544,7 +2592,7 @@ function hypRows(d,g,R){const f=d.forme,H=[],h=(a,b,c)=>H.push([a,b,c]);
   h('Poussée du béton frais','hydrostatique γ·h sur toute la hauteur, γ = '+GAMMA+' kN/m³ (béton frais) — borne haute, sans réduction (vitesse de bétonnage, consistance)','Norme (EN 1991-1-1, tab. A.1)');
   const ks=[...new Set((R||[]).map(r=>r.k))].filter(k=>['j','fi','fs'].includes(k)),cp=d.cp||{};
   if(ks.length)h('Contreplaqué',[...new Set(ks.map(k=>cpName(cp[k]||cp.j||{t:'filme',e:d.ep,f:'2500x1250'})))].join(' · '),'Saisie');
-  h('Flèche du CP entre renforts','non vérifiée par l\'application','—');
+  const FLh=flecheCP(d);h('Flèche du CP',flTxt(FLh),FLh&&!FLh.nd?'Calcul indicatif ('+FLh.src+')':'—');
   if(d.renX&&typeof rxGeo==='function'){const X=rxGeo(d);if(X&&X.crit)h('Renforts en croix',`${X.S.n} : flambement d'Euler bi-articulé, coefficient ${RX_SF} sur l'effort (poussée × surface reprise) · effort maxi ≈ ${nf(X.crit.N,2)} kN · Ncr ≈ ${nf(X.crit.Ncr,2)} kN`,'Calcul')}
   const G=typeof gsGeo==='function'?gsGeo(d):null;if(G&&G.a>0)h('Goussets d\'angle','a = '+nf(G.a)+' mm'+(G.man?' (saisi)':' : 25 % de la plus petite dimension intérieure, borné 50–250 mm, aucun si < 150 mm'),G.man?'Saisie':'Règle de l\'appli — à valider');
   if(f==='voile'&&g&&g.ok){if(d.constr!=='caisson'){const M=manGeo(d,g);h('Cerces / montants',`entraxes maxi ${nf(d.eC||0)} / ${nf(d.eM||0)} mm (0 = aucun) → ${M.nC} cerce(s), ${M.nM} montant(s) par niveau`,'Saisie');
@@ -2702,7 +2750,7 @@ function gen(d0){
   const errs=W.filter(x=>x[0]==='err').map(x=>esc(x[1])).concat(W.filter(x=>x[0]==='crit').map(x=>esc(x[1])));
   const LAY=(typeof PRT!=='undefined'&&PRT.lay)||'full',HYPL=hypLine(d,R,LAY==='full'),HYP=hypHtml(hypRows(d,g,R));
   const dt=d.date?d.date.split('-').reverse().join('/'):'';
-  const hd=sub=>`<div class="ps-h"><div><div class="ps-ch">CHANTIER : ${esc(d.ch)||'—'}${d.ouv?' · OUVRAGE : '+esc(d.ouv.toUpperCase()):''}</div><div class="ps-rf">${rl}${sub?` <span class="ps-sub">· ${sub}</span>`:''}</div></div>
+  const ENTB=entBlock(),hd=sub=>`<div class="ps-h"><div><div class="ps-ch">CHANTIER : ${esc(d.ch)||'—'}${d.ouv?' · OUVRAGE : '+esc(d.ouv.toUpperCase()):''}</div><div class="ps-rf">${rl}${sub?` <span class="ps-sub">· ${sub}</span>`:''}</div></div>${ENTB}
 <div style="text-align:right;color:#8892a8;font-size:11px"><div>Nombre :</div><div class="ps-nb">${d.nb}</div><div class="ps-ind">${d.ind?'Ind. '+esc(d.ind)+' · ':''}${dt}</div></div></div>
 <div class="ps-nt">⚠ ATTENTION MONTAGE AVEC ${esc(d.mont)}</div>${HYPL}${errs.length?`<div class="ps-er">⛔ À REVOIR : ${errs.join(' · ')}</div>`:''}`;
   const ft=`<div class="ps-foot">${LEGEND}<span>Conçu par Kévin TRINH · Conducteur de travaux · CoffraPlan</span></div>`;
@@ -2828,18 +2876,32 @@ function dlP(i){const p=P[i];if(!p)return;P.splice(i,1);if(EI===i)EI=-1;else if(
   toast(`Plan ${p.ref||''} supprimé`,'Annuler',()=>{const j=Math.min(i,P.length);P.splice(j,0,p);if(EI>=j)EI++;svP();rnL();updBtn();toast(`Plan ${p.ref||''} rétabli`)})}
 function clearAll(){if(!P.length)return;uiConfirm(`Supprimer les ${P.length} plan(s) enregistrés ?`,()=>{const old=P;P=[];EI=-1;svP();markDirty();rnL();updBtn();
   toast(`${old.length} plan(s) supprimé(s)`,'Annuler',()=>{P=old.concat(P);svP();rnL();updBtn();toast(`${old.length} plan(s) rétabli(s)`)})},{t:'Tout supprimer',ok:'Tout supprimer',danger:true})}
-function expJ(){let a;try{const b=new Blob([JSON.stringify({app:'plans-reservation',v:10,date:new Date().toISOString(),plans:P,profils:PROF,modeles:LIBU},null,2)],{type:'application/json'});
+// v2.6 : Chrome / Edge → « Enregistrer » réécrit le fichier ouvert ou choisi (API File System Access) ; sinon téléchargement
+// shortcut: le lien vers le fichier est perdu au rechargement de la page (pas de mémorisation en IndexedDB) → nouveau choix au 1er enregistrement
+let FH=null;
+function projJson(){return JSON.stringify({app:'plans-reservation',v:10,date:new Date().toISOString(),plans:P,profils:PROF,modeles:LIBU,ent:ENT},null,2)}
+function savedMsg(where){markSaved();toast('💾 '+where+' ('+P.length+' plan'+(P.length>1?'s':'')+')'+(editDirty()?' — ⚠ '+(P[EI].ref||'plan affiché')+' : modifications du formulaire non mises à jour, non incluses':''),null,null,editDirty()?6000:0)}
+async function expJ(asNew){if(window.showSaveFilePicker){try{
+    if(!FH||asNew)FH=await showSaveFilePicker({suggestedName:FH?FH.name:'coffraplan_'+new Date().toISOString().slice(0,10)+'.json',types:[{description:'Projet CoffraPlan',accept:{'application/json':['.json']}}]});
+    const w=await FH.createWritable();await w.write(projJson());await w.close();savedMsg('Enregistré dans « '+FH.name+' »');return}
+  catch(e){if(e&&e.name==='AbortError')return;FH=null;toast('Enregistrement direct impossible ('+(e&&e.message||e)+') : téléchargement du fichier')}}
+  expDl()}
+function expDl(){let a;try{const b=new Blob([projJson()],{type:'application/json'});
   a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='coffraplan_'+new Date().toISOString().slice(0,10)+'.json';a.click()}catch(e){toast('⛔ Sauvegarde impossible : '+(e&&e.message||e));return}
   /* le navigateur ne signale pas la fin du téléchargement : sauvegarde = fichier généré et remis au navigateur sans erreur */
-  markSaved();toast('💾 Sauvegarde enregistrée ('+P.length+' plan'+(P.length>1?'s':'')+')'+(editDirty()?' — ⚠ '+(P[EI].ref||'plan affiché')+' : modifications du formulaire non mises à jour, non incluses':''),null,null,editDirty()?6000:0);setTimeout(()=>URL.revokeObjectURL(a.href),1000)}
-function impJ(){const i=document.createElement('input');i.type='file';i.accept='.json';i.onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();
-  r.onload=ev=>{let o,arr;try{o=JSON.parse(ev.target.result);arr=Array.isArray(o)?o:o&&Array.isArray(o.plans)?o.plans:null;if(!arr)throw new Error('format')}catch(er){uiAlert(`« ${f.name} » n'est pas une sauvegarde CoffraPlan lisible.`,'Fichier invalide');return}
+  savedMsg('Sauvegarde enregistrée');setTimeout(()=>URL.revokeObjectURL(a.href),1000)}
+async function impJ(){if(window.showOpenFilePicker){let h;try{[h]=await showOpenFilePicker({types:[{description:'Projet CoffraPlan',accept:{'application/json':['.json']}}]})}catch(e){if(e&&e.name==='AbortError')return;h=null}
+    if(h){try{loadText(await (await h.getFile()).text(),h.name,h)}catch(e){uiAlert(`« ${h.name} » n'a pas pu être lu : ${e.message||e}`,'Fichier invalide')}return}}
+  const i=document.createElement('input');i.type='file';i.accept='.json';i.onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();
+  r.onload=ev=>loadText(ev.target.result,f.name,null);r.readAsText(f)};i.click()}
+function loadText(txt,name,handle){const f={name};{let o,arr;try{o=JSON.parse(txt);arr=Array.isArray(o)?o:o&&Array.isArray(o.plans)?o.plans:null;if(!arr)throw new Error('format')}catch(er){uiAlert(`« ${f.name} » n'est pas une sauvegarde CoffraPlan lisible.`,'Fichier invalide');return}
     const apply=()=>{try{
     P=arr.filter(x=>x&&typeof x==='object'&&x.forme).map(migr);EI=-1;
     if(o.profils&&typeof o.profils==='object')Object.keys(o.profils).forEach(k=>{PROF[k]=Object.assign({},PROF[k]||{},o.profils[k],{ouv:Object.assign({},(PROF[k]||{}).ouv,o.profils[k].ouv)})});
     if(Array.isArray(o.modeles))o.modeles.forEach(m=>{if(m&&m.d&&!LIBU.some(x=>x.name===m.name))LIBU.push(m)});svLib();libUI();
-    profFromPlans(P);svProf();svP();rnL();updBtn();profLists();markSaved();toast('✓ '+P.length+' plan(s) chargé(s)')}catch(er){uiAlert(`« ${f.name} » n'a pas pu être chargé : ${er.message||er}`,'Fichier invalide')}};
-    if(P.length)uiConfirm(`Remplacer les ${P.length} plan(s) actuels par les ${arr.filter(x=>x&&typeof x==='object'&&x.forme).length} du fichier « ${f.name} » ?`,apply,{t:'Charger un projet',ok:'Remplacer'});else apply()};r.readAsText(f)};i.click()}
+    if(o.ent&&typeof o.ent==='object'){ENT=entOk(o.ent);svEnt()}
+    FH=handle||null;profFromPlans(P);svProf();svP();rnL();updBtn();profLists();markSaved();toast('✓ '+P.length+' plan(s) chargé(s)'+(handle?' — Ctrl+S réenregistre « '+name+' »':''))}catch(er){uiAlert(`« ${f.name} » n'a pas pu être chargé : ${er.message||er}`,'Fichier invalide')}};
+    if(P.length)uiConfirm(`Remplacer les ${P.length} plan(s) actuels par les ${arr.filter(x=>x&&typeof x==='object'&&x.forme).length} du fichier « ${f.name} » ?`,apply,{t:'Charger un projet',ok:'Remplacer'});else apply()}}
 
 try{const r=localStorage.getItem('resaRoll');if(r)el('iRoll').value=r;const g=localStorage.getItem('resaGabFmt');if(g)el('iGabFmt').value=g}catch(e){}
 // ====== v15 — LOT 1 : SAISIE (cotes avec unités, bornes, profils, bibliothèque, aide, annuler / rétablir) ======
@@ -2974,7 +3036,23 @@ function markFields(d){
 
 // ---------- B1 : profils Chantier → Ouvrages ----------
 // resaProf = {CHANTIER:{cp, mont, kerf, ent, bois:[…], fmt:'A4'|'A3', ouv:{Ouvrage:{Dc (m), ev, pp}}}}
-const PROF_DEF={cp:null,mont:'',kerf:4,ent:500,bois:[4000,5000,6000],fmt:'A3',ouv:{}};
+const PROF_DEF={cp:null,mont:'',kerf:4,ent:500,bois:[4000,5000,6000],fmt:'A3',fl:300,ouv:{}};
+// v2.6 — cartouche entreprise (navigateur + fichier projet)
+let ENT=(()=>{try{const r=JSON.parse(localStorage.getItem('resaEnt'));return r&&typeof r==='object'&&!Array.isArray(r)?r:{}}catch(e){return{}}})();
+function svEnt(){try{localStorage.setItem('resaEnt',JSON.stringify(ENT))}catch(e){lsFail()}try{markDirty()}catch(e){}}
+function entOk(o){const r={};['nom','ligne','des'].forEach(k=>{if(typeof o[k]==='string')r[k]=o[k].slice(0,120)});if(typeof o.logo==='string'&&/^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/.test(o.logo)&&o.logo.length<400000)r.logo=o.logo;return r}
+function entBlock(){const e=ENT||{};return `<div class="ps-ent">${e.logo?`<img src="${e.logo}" alt="">`:''}<div>${e.nom?`<b>${esc(e.nom)}</b>`:''}${e.ligne?`<div>${esc(e.ligne)}</div>`:''}<div>Dessiné : ${esc(e.des||'—')} · Vérifié : ________ · Visa : ________</div><div>Non à l'échelle — fabriquer aux cotes</div></div></div>`}
+function openEnt(){const e=ENT||{};modal(`<div class="ct">🏢 Cartouche entreprise</div>
+<div class="hint">Affiché dans le cartouche de chaque feuille de plan et enregistré dans le fichier projet.</div>
+<div class="fd"><label>Entreprise</label><input class="fi" id="enNom" maxlength="120" value="${esc(e.nom||'')}" placeholder="Ex: Entreprise de travaux"></div>
+<div class="fd"><label>Ligne libre (adresse, téléphone…)</label><input class="fi" id="enLig" maxlength="120" value="${esc(e.ligne||'')}"></div>
+<div class="fd"><label>Dessiné par</label><input class="fi" id="enDes" maxlength="120" value="${esc(e.des||'')}"></div>
+<div class="fd"><label>Logo (PNG ou JPEG, réduit automatiquement)</label><div style="display:flex;gap:8px;align-items:center"><input type="file" id="enLogo" accept="image/png,image/jpeg,image/webp" onchange="entLogo(this)"><img id="enImg" src="${e.logo||''}" alt="" style="max-height:40px;max-width:120px;${e.logo?'':'display:none'}"><button type="button" class="btn bs bo" onclick="el('enImg').src='';el('enImg').style.display='none'">Retirer</button></div></div>
+<div class="g2" style="margin-top:10px"><button class="btn bs bo" onclick="closeModal()">Annuler</button><button class="btn bs" style="background:var(--accent);color:#fff" onclick="saveEnt()">Enregistrer</button></div>`)}
+function entLogo(inp){const f=inp.files&&inp.files[0];if(!f)return;if(!/^image\/(png|jpeg|webp)$/.test(f.type)){toast('⛔ Image PNG, JPEG ou WebP attendue');return}
+  const r=new FileReader();r.onload=()=>{const im=new Image();im.onload=()=>{const k=Math.min(1,360/im.width,120/im.height),cv=document.createElement('canvas');cv.width=Math.max(1,Math.round(im.width*k));cv.height=Math.max(1,Math.round(im.height*k));
+    cv.getContext('2d').drawImage(im,0,0,cv.width,cv.height);const u=cv.toDataURL('image/png');el('enImg').src=u;el('enImg').style.display=''};im.onerror=()=>toast('⛔ Image illisible');im.src=r.result};r.readAsDataURL(f)}
+function saveEnt(){const src=el('enImg').style.display==='none'?'':el('enImg').getAttribute('src')||'';ENT=entOk({nom:S('enNom','').trim(),ligne:S('enLig','').trim(),des:S('enDes','').trim(),logo:src});svEnt();closeModal();prev();toast('✓ Cartouche entreprise enregistré')}
 let PROF=(()=>{try{const r=JSON.parse(localStorage.getItem('resaProf'));return r&&typeof r==='object'&&!Array.isArray(r)?r:{}}catch(e){return{}}})();
 function svProf(){try{localStorage.setItem('resaProf',JSON.stringify(PROF))}catch(e){lsFail()}try{markDirty()}catch(e){}}
 const chKey=s=>String(s||'').trim().toUpperCase(),ouKey=s=>String(s||'').trim();
@@ -3037,7 +3115,8 @@ function openProf(){
 <div class="fd"><label>Trait de scie (mm)</label><input class="fi" id="prKerf" data-u="mm" value="${c.kerf}"></div></div>
 <div class="g2"><div class="fd"><label>Entraxe poutrelles (mm)</label><input class="fi" id="prEnt" data-u="mm" value="${c.ent}"></div>
 <div class="fd"><label>Format d'impression</label><select class="fi" id="prFmt"><option${c.fmt==='A4'?' selected':''}>A4</option><option${c.fmt!=='A4'?' selected':''}>A3</option></select></div></div>
-<div class="fd"><label>Longueurs de bois du commerce (mm, séparées par ;)</label><input class="fi" id="prBois" value="${(c.bois||[]).join(' ; ')}"></div>
+<div class="g2"><div class="fd"><label>Longueurs de bois du commerce (mm, séparées par ;)</label><input class="fi" id="prBois" value="${(c.bois||[]).join(' ; ')}"></div>
+<div class="fd"><label>Flèche admise du CP : portée /</label><input class="fi" id="prFl" value="${c.fl||300}" title="300 = critère des fabricants de CP de coffrage (parement) ; une valeur plus faible (200, 150) tolère plus de flèche"></div></div>
 ${ou?`<div class="sep"></div><div class="ct">🏛 Ouvrage — ${esc(ou)}</div>
 <div class="g3"><div class="fd"><label>Ø int. cuve (m)</label><input class="fi" id="prDc" data-u="m" value="${o.Dc!=null?o.Dc:''}" placeholder="—"></div>
 <div class="fd"><label>Ép. voile (mm)</label><input class="fi" id="prEv" data-u="mm" value="${o.ev!=null?o.ev:''}" placeholder="—"></div>
@@ -3053,7 +3132,7 @@ function saveProf(){
   const n=id=>{const v=fieldVal(el(id));return v==null||isNaN(v)?null:v};
   const bs=String(S('prBois',''));let tk=bs.split(/[;\/\n]+/).map(x=>x.trim()).filter(Boolean);if(tk.length===1&&/^[\d\s.,]+$/.test(tk[0])&&/\d\s+\d/.test(tk[0]))tk=tk[0].split(/\s+/);
   const bois=[...new Set(tk.map(x=>parseCote(x)).filter(v=>v>=500&&v<=15000))].sort((a,b)=>a-b);if(bs.trim()&&!bois.length)toast('Longueurs de bois illisibles : valeurs par défaut conservées');
-  const e=parseFloat(S('prCpE','18'));const c=Object.assign({},PROF[ch]||JSON.parse(JSON.stringify(PROF_DEF)),{cp:{t:S('prCpT','filme'),e:e>=3&&e<=60?e:18,f:S('prCpF','2500x1250')||'2500x1250'},mont:S('prMont',''),kerf:Math.min(20,Math.max(0,n('prKerf')??4)),ent:Math.min(2500,Math.max(200,n('prEnt')??500)),fmt:S('prFmt','A3'),bois:bois.length?bois:[4000,5000,6000]});
+  const e=parseFloat(S('prCpE','18'));const c=Object.assign({},PROF[ch]||JSON.parse(JSON.stringify(PROF_DEF)),{cp:{t:S('prCpT','filme'),e:e>=3&&e<=60?e:18,f:S('prCpF','2500x1250')||'2500x1250'},mont:S('prMont',''),kerf:Math.min(20,Math.max(0,n('prKerf')??4)),ent:Math.min(2500,Math.max(200,n('prEnt')??500)),fmt:S('prFmt','A3'),bois:bois.length?bois:[4000,5000,6000],fl:Math.min(1000,Math.max(100,n('prFl')??300))});
   c.ouv=c.ouv||{};let oldO=null;
   if(ou){const ex=Object.keys(c.ouv).find(x=>x.toLowerCase()===ou.toLowerCase())||ou;oldO=Object.assign({},c.ouv[ex]||{});const o={};const Dc=n('prDc'),ev=n('prEv'),pp=n('prPp');
     if(Dc>0)o.Dc=Dc;if(ev>0)o.ev=ev;if(pp!=null&&pp>=0)o.pp=pp;c.ouv[ex]=o}
@@ -3156,7 +3235,7 @@ document.addEventListener('keydown',e=>{if(dlgOpen()){if(e.key==='Escape'){e.pre
   const a=document.activeElement,k=(e.key||'').toLowerCase(),mod=e.ctrlKey||e.metaKey,
   typing=!!a&&(a.tagName==='TEXTAREA'||a.tagName==='SELECT'||a.isContentEditable||a.tagName==='INPUT'&&!/^(checkbox|radio|button|submit|range|file|color)$/.test(a.type));
   if(mod&&!e.altKey){
-    if(k==='s'){e.preventDefault();expJ();return}            // commandes globales : actives aussi pendant une saisie
+    if(k==='s'){e.preventDefault();expJ(e.shiftKey);return}            // commandes globales : actives aussi pendant une saisie
     if(k==='o'){e.preventDefault();impJ();return}
     if(k==='p'){e.preventDefault();printAll();return}
     if(k!=='z'&&k!=='y')return;
@@ -3325,6 +3404,34 @@ function showCmp(ia,ib){const A=P[ia],B=P[ib];if(!A||!B)return;const C=cmpData(A
   <div class="ps-foot"><span>Visa : ______________________</span><span>Conçu par Kévin TRINH · Conducteur de travaux · CoffraPlan</span></div></div>`;
   el('pvA').scrollTop=0}
 
+// ---------- v2.6 — Note d'hypothèses (une feuille A4 portrait de synthèse + une par plan) ----------
+function noteCalc(d0){const d=canon(migr(d0)),g=d.forme==='voile'?voileGeo(d):null,W=checks(d,g),bad=badDims(W)||limErr(d).length>0,R=bad?[]:debit(d,g),L=[];
+  if(!bad){L.push(['Poussée au pied',`p = ${GAMMA} × ${nf(d.h/1000,2)} m = ${nf(GAMMA*d.h/1000,1)} kN/m²`]);
+    const X=d.renX&&rxEligible(d)?rxGeo(d):null;if(X&&X.crit)L.push(['Renfort le plus sollicité',`${X.S.n}, portée ${nf(X.crit.span)} mm : N ≈ ${nf(X.crit.N,2)} kN · Ncr ≈ ${nf(X.crit.Ncr,2)} kN · Ncr / N = ${nf(X.crit.Ncr/X.crit.N,1)} (visé ≥ ${RX_SF})`]);
+    const F=flecheCP(d);if(F&&!F.nd)F.faces.forEach(x=>L.push([`Flèche joue ${x.face}`,`portée ${nf(x.a)} mm : ≈ ${nf(x.u,1)} mm ${x.ok?'≤':'>'} ${nf(x.lim,1)} mm admis → ${x.ok?'conforme':'NON CONFORME'}`]))}
+  return{d,W,bad,H:bad?[]:hypRows(d,g,R),L}}
+function showNote(){const ch=S('iCh',''),list=P.length?chantierPlans(ch):[coll()],dt=new Date().toLocaleDateString('fr-FR'),CH=esc(String(ch||(list[0]&&list[0].ch)||'—').toUpperCase());VIEW='note';
+  const tb=rows=>`<table class="cmp">${rows.map(r=>`<tr>${r.map((c,i)=>`<td${i?'':' style="width:32%"'}>${c}</td>`).join('')}</tr>`).join('')}</table>`;
+  const head=t=>`<div class="ps-h"><div><div class="ps-ch">CHANTIER : ${CH}</div><div class="ps-rf">${t}</div></div>${entBlock()}<div class="ps-ind">${dt}</div></div>`,foot='<div class="ps-foot"><span>Visa : ______________________</span><span>CoffraPlan — aide à la conception, ne remplace pas une note de calcul</span></div>';
+  const C=list.map(noteCalc),srcs=[...new Set(C.map(x=>{const F=x.bad?null:flecheCP(x.d);return F&&!F.nd?F.src:null}).filter(Boolean))];
+  const p0=`<div class="ps portrait">${head('NOTE D\'HYPOTHÈSES')}<div class="fa">
+<div class="sub">Objet</div><div>Hypothèses, calculs simplifiés et limites des plans de coffrage établis avec CoffraPlan pour ce chantier (${list.length} plan${list.length>1?'s':''}).</div>
+<div class="sub">Plans concernés</div>${tb(C.map(x=>[esc((x.d.ref?x.d.ref+' — ':'')+(x.d.desc||TM[x.d.forme]||'')),esc(fmLb(x.d.forme))+(x.d.ind?' · ind. '+esc(x.d.ind):'')+(x.bad?' · <b>plan incohérent : non calculé</b>':'')]))}
+<div class="sub">Hypothèses générales</div>${tb([
+ ['Poussée du béton frais',`hydrostatique γ·h, γ = ${GAMMA} kN/m³ (EN 1991-1-1, tab. A.1), sans réduction (vitesse de bétonnage, consistance) : borne haute`],
+ ['Renforts en croix','flambement d\'Euler bi-articulé ; effort = poussée × surface reprise ; charge critique visée ≥ '+RX_SF+' × effort'],
+ ['Flèche du CP (boîtes rectangulaires)',`plaque appuyée sur les angles, les cloisons CP pleine hauteur et au pied, bord haut libre ; module moyen EN 789 dans le sens le plus faible ; × ${nf(FL_F,1)} (fluage, contreplaqué en classe de service 3, EN 1995-1-1 tab. 3.2) ; cisaillement inclus (coefficient calé sur les tableaux de charges du fabricant Riga Wood) ; critère portée / ${flRatio(list[0]||{})} (fabricants de CP de coffrage)`],
+ ['Règles « à valider »','goussets automatiques, raidisseurs de poutre, renfort minimal du mannequin… : pratique de chantier intégrée à l\'application, à faire valider par l\'étude ou les méthodes']])}
+<div class="sub">Limites</div><div>Application d'aide à la conception, <b>pas une note de calcul</b>. Ne sont pas vérifiés : étaiement et stabilité d'ensemble, fixations et serrage, tolérances d'exécution et qualité de parement (selon CCTP), flèche des formes autres que les boîtes rectangulaires, bois massif en flexion. À faire contrôler par une personne compétente avant exécution.</div>
+<div class="sub">Sources</div><div>EN 1991-1-1 (poids volumique du béton frais) · EN 1995-1-1 (coefficients de fluage) · EN 789 / EN 636-3 · ${srcs.map(esc).join(' · ')||'—'} · Riga Wood, Concrete formwork (03/2026)</div>
+<div class="sub">Visas</div>${tb([['Établi par',esc((ENT&&ENT.des)||'')],['Vérifié par',''],['Visa / date','']])}</div>${foot}</div>`;
+  const pp=C.map(x=>`<div class="ps portrait">${head(esc((x.d.ref?x.d.ref+' — ':'')+(x.d.desc||TM[x.d.forme]||'PLAN')))}<div class="fa">
+${x.bad?'<div class="sub">Plan incohérent</div><div>Dimensions à corriger : aucun calcul.</div>':`<div class="sub">Calculs</div>${tb(x.L.map(r=>[esc(r[0]),esc(r[1])]))}
+<div class="sub">Hypothèses retenues</div>${tb(x.H.map(r=>[`<b>${esc(r[0])}</b>`,esc(r[1])+`<div class="nt">${esc(r[2])}</div>`]))}
+<div class="sub">Contrôles restants</div>${x.W.length?tb(x.W.map(m=>[m[0]==='err'||m[0]==='crit'?'⛔':'⚠',esc(m[1])])):'<div>Aucun.</div>'}`}</div>${foot}</div>`).join('');
+  el('pvA').innerHTML=`<div class="no-print" style="max-width:820px;margin:0 auto 12px;display:flex;gap:8px;justify-content:flex-end"><button class="btn bs bo" style="background:#fff" onclick="VIEW='plan';prev()">✖ Retour au plan</button><button class="btn bs bpr" onclick="printAll()">🖨 Imprimer la note</button></div>`+p0+pp;
+  el('pvA').scrollTop=0}
+
 // ---------- v2.4 — Mode chantier (tablette) : une feuille à la fois, plein écran, repères à cocher ----------
 const CHM={i:0,k:0,n:0};
 function chmOn(){return el('chm').style.display==='flex'}
@@ -3356,7 +3463,7 @@ window.addEventListener('resize',()=>{if(chmOn())chmFit()});
 // ---------- v2.2 — Aide des raccourcis ----------
 const IS_MAC=/Mac|iPhone|iPad/.test(navigator.platform||navigator.userAgent||'');
 function showKeys(){const c=IS_MAC?'⌘':'Ctrl',k=(...a)=>a.map(x=>`<kbd>${x}</kbd>`).join(' + '),R=[
-  [k(c,'S'),'Sauvegarder le projet (fichier .json)'],[k(c,'O'),'Charger un projet'],[k(c,'P'),'Imprimer les plans (mise en page de l\'application)'],
+  [k(c,'S'),'Sauvegarder le projet (fichier .json) — Chrome / Edge : réécrit le fichier ouvert'],[k(c,'Maj','S'),'Enregistrer sous… (nouveau fichier)'],[k(c,'O'),'Charger un projet'],[k(c,'P'),'Imprimer les plans (mise en page de l\'application)'],
   [k(c,'Z'),'Annuler la dernière modification du formulaire'],[k(c,'Y')+' ou '+k(c,'Maj','Z'),'Rétablir'],
   [k('←'),'Mode chantier : feuille précédente (→ suivante, balayage au doigt)'],[k('Échap'),'Fermer la question, la fenêtre, le mode chantier ou l\'aide ouverte, « Plus tard » sur le rappel, quitter le champ en cours'],[k('?'),'Afficher cette aide (hors saisie)'],
   [k('Entrée'),'Sur une alerte sélectionnée : aller au champ concerné']];
@@ -3902,7 +4009,8 @@ function prtUI(){const z=el('zPrt');if(!z)return;const f=prtFmt();
 <div class="fd"><label class="ck"><input type="checkbox" ${PRT.cp?'checked':''} onchange="PRT.cp=this.checked;svPrt();prev()"> Feuilles CP à découper</label></div>
 <div class="fd"><label class="ck"><input type="checkbox" ${PRT.mt?'checked':''} onchange="PRT.mt=this.checked;svPrt();prev()"> Montage 3D + contrôles</label></div>
 <div class="fd"><label class="ck"><input type="checkbox" ${PRT.fa?'checked':''} onchange="PRT.fa=this.checked;svPrt();prev()"> Fiche atelier (A4 portrait)</label></div>
-<div class="fd"><label class="ck"><input type="checkbox" id="prNb" ${PRT.nb?'checked':''} onchange="PRT.nb=this.checked;svPrt();prev()"> Noir et blanc (motifs, pour photocopie)</label></div>`}
+<div class="fd"><label class="ck"><input type="checkbox" id="prNb" ${PRT.nb?'checked':''} onchange="PRT.nb=this.checked;svPrt();prev()"> Noir et blanc (motifs, pour photocopie)</label></div>
+<button type="button" class="btn bs bo" style="width:100%;margin-top:6px" onclick="openEnt()" title="Entreprise, logo, dessinateur : cartouche des feuilles">🏢 Cartouche entreprise…</button>`}
 HELP.prtLay=['<b>Plan pleine page</b> : la feuille 1 ne porte que les vues (plus grandes) ; débit, traçage, contrôles, informations et hypothèses passent sur la feuille 1b, juste après (au dos en recto-verso). <b>Compacte</b> : tout sur la feuille 1. <b>Vues uniquement</b> : vues seules, sans feuille 1b. Une ligne d\'hypothèses reste toujours dans le cartouche.',''];
 HELP.prtFmt=['Toutes les feuilles s\'adaptent au format : les tableaux trop longs sont resserrés à l\'impression (police mini 6,5 px), la fiche atelier reste en A4 portrait.',''];
 const PAGE={A3:{w:420,h:297},A4:{w:297,h:210}},PMARG=4;
@@ -3958,7 +4066,7 @@ function printPack(list){
 }
 function numberPages(){const ps=[...document.querySelectorAll('#pvA .ps')],n=ps.length;ps.forEach((p,i)=>{const f=p.querySelector('.ps-foot');if(f&&!f.querySelector('.pno'))f.insertAdjacentHTML('beforeend',`<span class="pno">p. ${i+1} / ${n}</span>`)})}
 function printAll(){
-  clearTimeout(_tm);if(VIEW==='chantier'||VIEW==='cmp'){fitPrint();window.print();return}
+  clearTimeout(_tm);if(VIEW==='chantier'||VIEW==='cmp'||VIEW==='note'){fitPrint();numberPages();window.print();return}
   el('pvA').innerHTML=P.length?printPack(P):gen(coll());if(typeof declutter==='function')declutter(el('pvA'));if(typeof bwApply==='function')bwApply(el('pvA'));const bad=fitPrint();numberPages();
   if(bad.length)toast(`Feuille(s) ${bad.join(', ')} : texte resserré au minimum, voir aussi la fiche atelier`);
   setTimeout(()=>window.print(),250)}
@@ -4835,6 +4943,8 @@ const FIXES=[
   {re:/^Joues cintrées .* passer en CP cintrable|^Rive cintrée .* passer en CP cintrable/,lb:()=>'Joues en CP cintrable',
     cands:d=>{const c=(d.cp&&d.cp.j)||CPDEF,e=[15,9,7].sort((a,b)=>Math.abs(a-c.e)-Math.abs(b-c.e));return e.map(v=>({cp:Object.assign({},d.cp,{j:{t:'cintr',e:v,f:v===15?'1220x2500FT':'2500x1220FL'}})}))}},
   {re:/^Panneau plus long que le CP/,lb:()=>'Format de panneau plus grand pour les joues / dessus',cands:d=>fixFmt(d,'j')},
+  {re:/^Flèche du CP/,lb:()=>'Cloisons CP pleine hauteur ou CP plus épais',cands:d=>{const c=(d.cp&&d.cp.j)||{t:'filme',e:d.ep,f:'2500x1250'},T=CPT[c.t]||CPT.filme;
+    return (d.renX&&(d.renXs||'cp')==='cp'?[]:[{renX:true,renXs:'cp'}]).concat(T.ep.filter(e=>e>c.e).map(e=>({cp:Object.assign({},d.cp,{j:Object.assign({},c,{e})})})))}},
   {re:/^Fond plus large que le panneau CP/,lb:()=>'Format de panneau plus large pour le fond',cands:d=>fixFmt(d,'fi')},
   {re:/^Joue (ext|int)\. plus haute que le panneau CP/,lb:()=>'Format de panneau plus large pour les joues',cands:d=>fixFmt(d,'j')},
 ];

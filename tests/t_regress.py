@@ -7,6 +7,9 @@ from lib import Suite, HERE, APP
 # 'puisard' : la forme est supprimée ; le scénario est reconstruit en « carré avec fond » et doit rester IDENTIQUE
 # au puisard v18 (preuve que c'était un doublon) → il n'est volontairement PAS dans cette liste.
 VOLONTAIRES = {
+    # v2.6 : contrôle de flèche des joues (boîtes rectangulaires) ; CP filmé renommé « CP filmé bouleau »
+    'rect_fond_gs': 'nouvelle alerte de flèche (boîte sans renforts, portée 1 464 mm)', 'puisard': 'nouvelle alerte de flèche (h 900 mm, portée 382 mm)',
+    'dalle_rive': 'désignation « CP filmé bouleau » dans l\'alerte de cintrage',
     # v2.1 : messages sans incidence sur la fabrication retirés ; angle de coupe des joues reporté dans la ligne de débit
     'voile_man': 'alerte « joues parallèles : biais » retirée, angle dans la ligne « Joues pleine hauteur »',
     'voile_man_L3000': 'idem', 'voile_man_bois': 'idem',
