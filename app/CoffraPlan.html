@@ -122,7 +122,7 @@ body.pm .inf{font-size:9.5px;line-height:1.25}body.pm .inf .nt{font-size:.95em}b
 <button class="btn bs bo no-print" id="bUndo" onclick="undo()" title="Annuler (Ctrl+Z)">↶</button>
 <button class="btn bs bo no-print" id="bRedo" onclick="redo()" title="Rétablir (Ctrl+Y)">↷</button>
 <button class="btn bs bo no-print" onclick="printAll()">🖨 Imprimer</button>
-<button class="btn bs bo no-print" onclick="expJ()">💾 Exporter</button>
+<button class="btn bs bo no-print" onclick="expJ()" title="Sauvegarde de tous les plans, profils et modèles (.json) pour les recharger plus tard">💾 Sauvegarder</button>
 <button class="btn bs bo no-print" onclick="impJ()">📂 Charger</button>
 </div>
 <div class="main">
@@ -174,8 +174,7 @@ body.pm .inf{font-size:9.5px;line-height:1.25}body.pm .inf .nt{font-size:.95em}b
 <div class="g2" id="zEdit" style="display:none;margin-bottom:8px"><button class="btn bs bo" onclick="addP(true)">➕ Ajouter comme nouveau</button><button class="btn bs bo" onclick="cancelEdit()">✖ Annuler</button></div>
 <div class="g2" style="margin-bottom:8px"><button class="bg btn bs" onclick="prev()">👁 APERÇU</button><button class="btn bs bo" onclick="autoControl(false)" title="Vérifie lisibilité, valeurs, imbrication, surfaces, poches, rechargement">🔍 AUTO-CONTRÔLE</button></div>
 <button class="btn bs bo" id="b3D" onclick="open3D()" style="width:100%;margin-bottom:8px" title="Tourner, zoomer, éclater, masquer par type, cliquer une pièce pour son repère">🧊 VUE 3D INTERACTIVE</button>
-<div class="g2" style="margin-bottom:8px"><button class="btn bs bo" id="bDxf" onclick="expDxf()" title="Vue en plan en mm, panneaux CP à découper, gabarits 1:1 et vues des feuilles — par calques (DXF R12, mm)">📐 DXF (plan)</button><button class="btn bs bo" id="bDos" onclick="openDossier()" title="Page de garde, sommaire paginé, tous les plans du chantier, récapitulatif — imprimer en PDF">📘 Dossier PDF</button></div>
-<div class="g3" style="margin-bottom:12px"><button class="btn bs bo" onclick="expDebit('csv','cur')" title="Débit du plan affiché (CSV, séparateur ;)">📄 CSV</button><button class="btn bs bo" onclick="expDebit('xlsx','cur')" title="Débit du plan affiché (Excel)">📊 XLSX</button><button class="btn bs bo" onclick="expDebit('xlsx','all')" title="Débit de tous les plans enregistrés + récapitulatif chantier (Excel)">📊 Tous</button></div>
+<div class="g2" style="margin-bottom:12px"><button class="btn bs bo" id="bExp" onclick="openExport()" title="DXF (plan, mm), CSV, XLSX ou tout dans un ZIP — plan affiché ou chantier">📤 Exporter</button><button class="btn bs bo" id="bDos" onclick="openDossier()" title="Page de garde, sommaire paginé, tous les plans du chantier, récapitulatif — imprimer en PDF">📘 Dossier PDF</button></div>
 <div class="cd"><div class="ct">🖨 Impression</div><div id="zPrt"></div></div>
 <div class="cd"><div class="ct">📏 Traceur — taille réelle</div>
 <div class="fd"><label>Largeur du rouleau</label><select class="fi" id="iRoll" onchange="try{localStorage.setItem('resaRoll',this.value)}catch(e){}"><option value="594">594 mm (A1)</option><option value="610">610 mm (24")</option><option value="841">841 mm (A0)</option><option value="914" selected>914 mm (36")</option><option value="1067">1067 mm (42")</option></select></div>
@@ -225,7 +224,7 @@ function cpName(c){if(!c)return'—';const T=CPT[c.t]||CPT.filme,F=T.fmt.find(x=
 function cpParts(f,constr){
   if(f==='circ')return[];
   if(f==='carre'||f==='rect'||f==='circ_sf')return[['j','Joues / parois']];
-  if(f==='voile')return constr==='caisson'?[['j','Faces + joues'],['fi','Dessous (si fermé)'],['fs','Dessus (si fermé)']]:[['j','Joues'],['fi','Appui + cerces'],['fs','Linteau']];
+  if(f==='voile')return constr==='caisson'?[['j','Faces + joues'],['fi','Dessous / cerces'],['fs','Dessus (si fermé)']]:[['j','Joues'],['fi','Appui + cerces'],['fs','Linteau']];
   if(f==='special')return[['j','Joues / parois'],['fi','Base (fond inf.)'],['fs','Fond supérieur']];
   if(f==='goulotte')return[['j','Joues ext. / int.'],['fi','Fond']];
   if(f==='dalle')return[['fi','Platelage'],['j','Joues de poutre / poches / rive'],['fs','Fond de poutre']];
@@ -423,10 +422,17 @@ function gsGeo(d){
   const lv=a0>0?gsLevels(hp,ep,d.gsE):[],noH=a0>0&&!lv.length,a=noH?0:a0;
   return{a,auto,man,noH,Li,li,hp,ep,lv,za:lv.map(z=>z+z0),n:4*lv.length,hyp:a*Math.SQRT2};
 }
-// Goussets du voile en caisson (plan) : même règle sur la plus petite dimension intérieure
-function caisGs(d,g){
-  const ep=d.ep||0,a=gsAuto(Math.min(g.l-2*ep,(g.rad?g.cInt:g.L)-2*ep)),hp=d.h-(d.ferme?(d.epF||ep)+(d.epS||ep):0);
-  const lv=d.renV&&a>0?gsLevels(hp,ep,600):[];return{a,lv,n:4*lv.length};
+// v18 — Caisson (faces cintrées) : renfort intérieur = cerces CP découpées au gabarit (contour = dessus / dessous), évidées au centre.
+// Elles tiennent la courbure des faces et l'écartement des joues. Entraxe ≤ 600 mm. Caisson fermé : cerces intermédiaires entre dessous et dessus ;
+// caisson ouvert : une cerce en pied et une en tête en plus. Évidement : bande de CAIS_RIM mm conservée tout autour (si l'intérieur le permet).
+const CAIS_RIM=100,CAIS_EMAX=600;
+function caisCer(d,g){
+  if(!d.renV||!g||!g.ok)return null;const ep=d.ep||0,eF=d.epF||ep,eS=d.epS||ep,f=!!d.ferme,t=eF,hp=d.h-(f?eF+eS:0),z0=f?eF:0;if(!(hp>t))return null;
+  let lv;if(f){const n=Math.max(0,Math.ceil(hp/CAIS_EMAX-1e-9)-1),gp=(hp-n*t)/(n+1);lv=Array.from({length:n},(_,i)=>z0+(i+1)*gp+i*t)}
+  else{const n=Math.max(2,Math.ceil((hp-t)/CAIS_EMAX-1e-9)+1);lv=Array.from({length:n},(_,i)=>i*(hp-t)/(n-1))}
+  const dr=g.l-2*ep,dc=(g.rad?g.cInt:g.L)-2*ep,hole=dr-2*CAIS_RIM>=80&&dc-2*CAIS_RIM>=150?CAIS_RIM:0;
+  const aO=polyArea(platePolyRaw(g,true,true))/1e6,aH=hole?polyArea(platePolyRaw(g,true,true,hole))/1e6:0;
+  return{lv,t,hole,n:lv.length,hp,z0,a:aO-aH,gap:lv.length>1?lv[1]-lv[0]-t:hp};
 }
 // Dessin des 4 goussets en plan dans un rectangle intérieur (px)
 function gsPlan(t,ix,iy,iw,ih,aP){
@@ -479,7 +485,9 @@ function rxGeo(d){
     const c=POT.flatMap(P=>[P[k]-P[2]-0.5,P[k]+P[2]+0.5]).filter(w=>Math.abs(w)<=lim&&!bad(w)).sort((a,z)=>Math.abs(a-v)-Math.abs(z-v));if(c.length){shifted++;return c[0]}return v});
   if(shape==='rect'){
     nT=rxNb(d.L);nL=rxNb(d.l);
-    const xs=dodge(Array.from({length:nT},(_,i)=>-Li/2+(i+1)*Li/(nT+1)),0,Li/2-b),ys=dodge(Array.from({length:nL},(_,j)=>-li/2+(j+1)*li/(nL+1)),1,li/2-b);
+    // v18 : une file décalée pour contourner un poteau ne doit pas entrer dans les goussets d'angle
+    const GS0=d.gs&&gsEligible(d)?gsGeo(d):null,GA=GS0&&GS0.a>0?GS0.a+b/2+1:0;
+    const xs=dodge(Array.from({length:nT},(_,i)=>-Li/2+(i+1)*Li/(nT+1)),0,Li/2-b-GA),ys=dodge(Array.from({length:nL},(_,j)=>-li/2+(j+1)*li/(nL+1)),1,li/2-b-GA);
     longDir=Li>=li?'L':'T';
     if(longDir==='L'){ys.forEach(y=>bars.push({dir:'L',x1:-Li/2,y1:y,x2:Li/2,y2:y,span:Li,trib:li/(nL+1)}));
       xs.forEach(x=>{const n0=bars.length;rxSplit(bars,x,'T',-li/2,li/2,ys,b,off);for(let k=n0;k<bars.length;k++)bars[k].trib=Li/(nT+1)})}
@@ -507,14 +515,21 @@ function rxGeo(d){
     let ph=0;if(P.length){let best=clear(0);for(let k=1;k<72;k++){const q=k*2*Math.PI/nR/72,v=clear(q);if(v>best+1e-6){best=v;ph=q}}}
     for(let i=0;i<nR;i++){const a=ph+i*2*Math.PI/nR,c=Math.cos(a),sn=Math.sin(a),te=tEnd(a);bars.push({dir:'R',x1:ri*c,y1:ri*sn,x2:te*c,y2:te*sn,span:te-ri,trib:2*Math.PI*Rr/nR})}
   }
+  // v18 : renfort qui traverse encore un poteau (aucun décalage possible) → interrompu de part et d'autre du tube (10 mm de jeu)
+  let nCut=0;if(f==='special'&&d.pot&&POT.length){const rr=(d.pD||0)/2+b/2+10,out=[];
+    bars.forEach(br=>{const dx=br.x2-br.x1,dy=br.y2-br.y1,L=Math.hypot(dx,dy);if(!(L>0)){out.push(br);return}const ux=dx/L,uy=dy/L;let iv=[];
+      POT.forEach(([px,py])=>{const s=(px-br.x1)*ux+(py-br.y1)*uy,e=Math.abs(-(px-br.x1)*uy+(py-br.y1)*ux);if(e<rr){const h=Math.sqrt(rr*rr-e*e);iv.push([s-h,s+h])}});
+      if(!iv.length){out.push(br);return}nCut++;iv.sort((a,z)=>a[0]-z[0]);let a=0;
+      iv.concat([[L,L]]).forEach(([s0,s1])=>{const z=Math.min(s0,L);if(z-a>=Math.max(100,2*b))out.push(Object.assign({},br,{seg:true,x1:br.x1+ux*a,y1:br.y1+uy*a,x2:br.x1+ux*z,y2:br.y1+uy*z,span:z-a}));a=Math.max(a,s1)})});
+    bars.length=0;bars.push(...out)}
   const I=Math.min(hs*b**3,b*hs**3)/12,p=GAMMA*d.h/1000; // I en mm⁴ ; p en kN/m²
   bars.forEach(br=>{br.N=p*(br.trib/1000)*(hp/nV/1000);br.Ncr=Math.PI**2*S.E*I/(br.span*br.span)/1000}); // kN
-  return{S,full,b,hs,nV,zc,bars,hp,shape,I,p,nT,nL,nR,longDir,off,shifted,crit:bars.reduce((m,x)=>!m||x.Ncr/x.N<m.Ncr/m.N?x:m,null)};
+  return{S,full,b,hs,nV,zc,bars,hp,shape,I,p,nT,nL,nR,longDir,off,shifted,nCut,crit:bars.reduce((m,x)=>!m||x.Ncr/x.N<m.Ncr/m.N?x:m,null)};
 }
 // v16 : coupe une ligne de légende trop longue aux séparateurs « · » (n car. max par ligne)
 function wrapDot(s,n){n=n||62;if(String(s).length<=n)return[s];const P=String(s).split(' · '),o=[];let c='';P.forEach(x=>{if(c&&(c+' · '+x).length>n){o.push(c);c=x}else c=c?c+' · '+x:x});if(c)o.push(c);return o}
 function planLegend(t,lines){lines.filter(Boolean).flatMap(l=>wrapDot(l[0],70).map(x=>[x,l[1]])).reverse().forEach((l,i)=>t.T(12,332-i*12,l[0],7.5,l[1],'start',700,'Barlow Condensed,sans-serif'))}
-function rxLegend(rx){return 'Renforts '+rx.S.lb+' : '+(rx.shifted?'files décalées au droit des poteaux · ':'')+(rx.nR?rx.nR+' radiaux':rx.nT+' T + '+rx.nL+' L · '+(rx.longDir==='L'?'L':'T')+' continus, autres en tronçons décalés')+(rx.full?' · pleine hauteur':' · '+rx.nV+' niv.')}
+function rxLegend(rx){return 'Renforts '+rx.S.lb+' : '+(rx.shifted?'files décalées au droit des poteaux · ':'')+(rx.nCut?rx.nCut+' interrompu(s) au droit des poteaux · ':'')+(rx.nR?rx.nR+' radiaux':rx.nT+' T + '+rx.nL+' L · '+(rx.longDir==='L'?'L':'T')+' continus, autres en tronçons décalés')+(rx.full?' · pleine hauteur':' · '+rx.nV+' niv.')}
 // Plan : traverses (mm → px via X, Y)
 function rxPlan(t,X,Y,s,rx){
   if(!rx)return;const b=rx.b,F=rx.full?C2.cl:C2.bois;
@@ -587,7 +602,7 @@ ${sel('dJoues','Joues (côtés)',[['par','Parallèles (trémie droite)'],['rad',
 <div class="g2">${sel('oGousM','Goussets d\'angle',[['auto','Automatiques'],['man','Manuels'],['none','Aucun']],' onchange="syncVis()"')}<div></div></div>
 <div id="zGousA">${num('oGous','Côté goussets (mm)',150,' min="0"')}</div>
 <div class="hint" style="margin:0 0 8px">Renforts : valeurs par défaut indicatives, à valider (étude / méthodes). 0 = aucun.</div></div>
-<div id="zCai" style="display:none">${chk('oRenV','Renforts internes (goussets + croix)',true)}${chk('oFerme','Caisson fermé (dessus + dessous)',false)}</div>`+
+<div id="zCai" style="display:none">${chk('oRenV','Renforts internes : cerces CP au gabarit (évidées)',true)}${chk('oFerme','Caisson fermé (dessus + dessous)',false)}</div>`+
       sel('oCourb','Dessin de la courbure',[['auto','Amplifiée si peu visible (auto)'],['reel','Réelle (échelle vraie)']]);
   } else if(f==='circ'){
     dh=`<div class="g2">${num('dD','Diamètre Ø (mm)',250)}${num('dh','Hauteur h (mm)',200)}</div>`;
@@ -701,7 +716,7 @@ function updSpecDims(ev){
 }
 function syncVis(){
   const t=(z,on)=>{const e=el(z);if(e)e.style.display=on?'':'none'};
-  t('zFe',C('oFeuil'));['L','R'].forEach(k=>t('zPtD'+k,S('ptE'+k)==='po'));t('zPtC',S('ptEL')==='vc'||S('ptER')==='vc');t('zPtL',!(S('ptEL')==='vc'&&S('ptER')==='vc'));t('zPtEpl',C('ptDal'));if(C('dlPt')&&el('zDlBm')&&!el('zDlBm').children.length)dlBmSet([{o:0,b:300,h:400,po:[]}]);t('zDlP',C('dlPt'));t('zDlRv',C('dlRv'));t('zDlPd',C('dlPt')&&S('dlF')==='rect');t('zDlC',S('dlF')==='circ');t('zDlR',S('dlF')!=='circ');t('zDlW',S('dlF')==='rect');t('zDlO',S('dlF')==='rect');t('zGAng',S('gEt')==='angle');t('zGArc',S('gEt')==='arc');t('zGJE',C('gJE'));t('zGJI',C('gJI'));t('zGAb',S('gEt')!=='tour');t('zRx',C('oRenX'));t('zRxW',!(S('iForme')==='special'&&S('oNatBox')==='beton'));t('zGs',C('oGs'));t('zGsA',S('oGsM')==='man');t('zGousA',S('oGousM')==='man');
+  t('zFe',C('oFeuil'));['L','R'].forEach(k=>t('zPtD'+k,S('ptE'+k)==='po'));t('zPtC',S('ptEL')==='vc'||S('ptER')==='vc');t('zPtL',!(S('ptEL')==='vc'&&S('ptER')==='vc'));t('zPtEpl',C('ptDal'));if(C('dlPt')&&el('zDlBm')&&!el('zDlBm').children.length)dlBmSet([{o:0,b:300,h:400,po:[]}]);t('zDlP',C('dlPt'));t('zBmLhs',C('bmLhs'));t('zDlRv',C('dlRv'));t('zDlPd',C('dlPt')&&S('dlF')==='rect');t('zDlC',S('dlF')==='circ');t('zDlR',S('dlF')!=='circ');t('zDlW',S('dlF')==='rect');t('zDlO',S('dlF')==='rect');t('zGAng',S('gEt')==='angle');t('zGArc',S('gEt')==='arc');t('zGJE',C('gJE'));t('zGJI',C('gJI'));t('zGAb',S('gEt')!=='tour');t('zRx',C('oRenX'));t('zRxW',!(S('iForme')==='special'&&S('oNatBox')==='beton'));t('zGs',C('oGs'));t('zGsA',S('oGsM')==='man');t('zGousA',S('oGousM')==='man');
   t('zGsW',!(S('iForme')==='special'&&(S('dBase')==='circ'||S('oNatBox')==='beton')));t('zConc',C('oConc'));t('zMan',S('oConstr')!=='caisson');t('zFSN',C('oFondSup'));t('zCai',S('oConstr')==='caisson');t('zPot',C('oPot'));t('zPAngles',S('oPDisp')==='custom');
 }
 
@@ -787,7 +802,7 @@ function checks(d,g){
     if(d.constr==='caisson'){
       if(d.l<=2*ep)e('Épaisseur voile ≤ 2 × épaisseur panneau');
       if(d.ferme&&d.h<=eF+eS)e('h ≤ ép. dessus + dessous : caisson fermé impossible');
-      if(d.renV&&g&&g.ok&&caisGs(d,g).a===0)w('Goussets : intérieur du caisson < 150 mm, seuls les renforts en croix sont dessinés');
+      if(d.renV&&g&&g.ok&&caisCer(d,g)&&!caisCer(d,g).n)w('Cerces : hauteur intérieure ≤ '+CAIS_EMAX+' mm, dessus + dessous suffisent (aucune cerce intermédiaire)');
     } else if(g&&g.ok&&d.h>0){
       const M=manGeo(d,g);
       if(M.hp<=0)e('h ≤ épaisseur linteau + appui');
@@ -947,7 +962,7 @@ function debit0(d,g){
     add(1,'Face ext. cintrée (dév.)',g.aExt,d.h,null,null,{t:'dev'});add(1,'Face int. cintrée (dév.)',g.aInt,d.h,null,null,{t:'dev'});
     add(2,g.rad?'Joues radiales':'Joues',g.joue,d.h);
     if(d.ferme){const aI=plateArea(g,true,true);K='fi';add(1,'Dessous entre faces',0,0,aI,'gabarit 1:1',{t:'plate',g,inner:true,faces:true});K='fs';add(1,'Dessus entre faces',0,0,aI,'gabarit 1:1',{t:'plate',g,inner:true,faces:true});K='j'}
-    const cg=caisGs(d,g);if(cg.n)add(cg.n,'Goussets (triangles)',cg.a,cg.a,cg.n*cg.a*cg.a/2e6,nf(cg.a)+' × '+nf(cg.a)+' (hyp. '+nf(cg.a*Math.SQRT2,0)+')',{t:'tri'});
+    const CC=caisCer(d,g);if(CC&&CC.n){K='fi';add(CC.n,'Cerces CP au gabarit'+(CC.hole?' (évidées)':''),0,0,CC.n*CC.a,'gabarit 1:1'+(CC.hole?' · bande '+nf(CC.hole)+' mm':''),{t:'plate',g,inner:true,faces:true,hole:CC.hole});K='j'}
   } else if(f==='dalle'){
     const G=dalGeo(d);
     if(G.ok){K='fi';
@@ -1064,6 +1079,9 @@ function secRect(o){
   if(o.lid){v.W(X(-W/2+ep),Y(top),(W-2*ep)*s,eLp,'fs');v.T(cx,Y(top)+eLp/2+2.5,o.lbLid||'Dessus',4,'#1a2035','middle',600)}
   if(mas)v.TH(cx,Y(yw+hp/2)+3,'Massif béton',7,'#666');
   if(o.rx)rxSec(v,X,z=>Y(Ht/2-z),s,o.rx,o.isA);
+  if(o.cer){const C=o.cer,wi=W-2*ep,tp=Math.max(C.t*s,1.2);C.lv.forEach(z=>{const y=Y(Ht/2-z-C.t);
+    if(C.hole&&wi>2*C.hole+20){v.W(X(-W/2+ep),y,C.hole*s,tp,'fi');v.W(X(W/2-ep-C.hole),y,C.hole*s,tp,'fi')}else v.W(X(-W/2+ep),y,wi*s,tp,'fi')});
+    v.T(X(-W/2+ep)+3,Y(Ht/2-C.lv[0]-C.t)-2,'cerces CP',5,WS,'start',600,'Barlow,sans-serif')}
   if(o.gs){const a=Math.min(o.gs.a,(W-2*ep)/2),xi=W/2-ep,lb=mkLbl(v,[2,2,318,218]);
     // libellés « Fond » / « Dessus » réservés : niveaux des goussets placés à côté sans chevauchement
     if(o.fond)lb.res(lb.box(cx,Y(yw+hp)+eFp/2+2.5,o.lbFond||'Fond',4-FS+4,'middle'));if(o.lid)lb.res(lb.box(cx,Y(top)+eLp/2+2.5,o.lbLid||'Dessus',4-FS+4,'middle'));
@@ -1080,7 +1098,7 @@ function secRect(o){
   }
   if(o.ren){
     const r=o.ren;
-    [yw+hp-r,yw+hp/2-r/2].forEach(y=>{v.W(X(-W/2-r),Y(y),r*s,r*s,'bois');v.W(X(W/2),Y(y),r*s,r*s,'bois')});
+    (o.mas?massifRenZ({h:hp}):[0,hp/2-r/2]).forEach(z=>{const y=yw+hp-z-r;v.W(X(-W/2-r),Y(y),r*s,r*s,'bois');v.W(X(W/2),Y(y),r*s,r*s,'bois')});
     v.T(X(-W/2-r)-4,Y(yw+hp/2)+3,'RENFORT',7,DC,'end',700,'Barlow Condensed,sans-serif');
     v.T(X(-W/2-r)-4,Y(yw+hp/2)+12,'50×50',6,DC,'end',400,'JetBrains Mono,monospace');
   }
@@ -1093,6 +1111,8 @@ function secRect(o){
 }
 
 // ====== RECT / CARRÉ / PUISARD / MASSIF ======
+// v18 : niveaux des lisses 50 × 50 du massif (dessous de lisse, depuis le pied du massif) : en pied + à mi-hauteur — communs coupes / 3D
+function massifRenZ(d){return[0,Math.max(60,d.h/2-25)]}
 function genRect(d,ep){
   const mas=d.forme==='massif',L=d.L,l=d.l;
   const LX=mas?L+2*ep:L,lX=mas?l+2*ep:l;
@@ -1167,17 +1187,10 @@ function genVoile(d,g,ep){
     TR=[xa,yAt(Re-ep,xa)];BR=[xa,yAt(Ri+ep,xa)];jd=[0,-1];xStrip=xa;
   }
   t.Pa(inter,BI,'#ccc',0.3);
-  if(d.renV){
-    const RC=C2.bois,RG=C2.gs,gl=caisGs(d,g).a,st=50,ym=(Ri+Re)/2; // croix : tasseaux 50 × 50 (débit bois)
-    t.Pa(`M${Pt([-st/2,Ri+ep])} L${Pt([st/2,Ri+ep])} L${Pt([st/2,Re-ep])} L${Pt([-st/2,Re-ep])} Z`,RC,WS,0.3);
-    // tronçons de corde droits (en butée sur le tasseau radial), extrémités contre les joues
-    const xlc=y=>rad?y*Math.tan(al)-ep/Math.cos(al):L2-ep,y1=ym-st/2,y2=ym+st/2;
-    [-1,1].forEach(sg=>t.Pa(`M${Pt([sg*st/2,y1])} L${Pt([sg*xlc(y1),y1])} L${Pt([sg*xlc(y2),y2])} L${Pt([sg*st/2,y2])} Z`,RC,WS,0.3));
-    // Goussets : branche le long du panneau cintré (tangente) + branche le long de la joue
-    const tg=(p,r)=>[-p[1]/r,p[0]/r];
-    const tri=(c,v1,v2)=>[c,[c[0]+v1[0]*gl,c[1]+v1[1]*gl],[c[0]+v2[0]*gl,c[1]+v2[1]*gl]];
-    const tris=[tri(TR,tg(TR,Re-ep),jd),tri(BR,tg(BR,Ri+ep),[-jd[0],-jd[1]])];
-    if(gl>0)tris.concat(tris.map(tr=>tr.map(mx))).forEach(tr=>t.Pa(`M${Pt(tr[0])} L${Pt(tr[1])} L${Pt(tr[2])} Z`,RG,WS,0.4));
+  const CC=caisCer(d,g);
+  if(CC&&CC.n){// cerce vue en dessous (tirets) + évidement, dans le repère du dessin (courbure éventuellement amplifiée)
+    const gD=Object.assign({},g,{Ri,Re,al:rad?Math.asin(L2/Re):0}),PP=q=>'M'+q.map(Pt).join(' L')+' Z';
+    t.Pa(PP(platePolyRaw(gD,true,true)),'#f1e6d0',WS,0.5,'5,2');if(CC.hole)t.Pa(PP(platePolyRaw(gD,true,true,CC.hole)),BI,WS,0.5,'5,2');
   }
   t.Pa(oPan,WC,WS,0.8);t.Pa(iPan,WC,WS,0.8);t.Pa(jR,WC,WS,0.8);t.Pa(jL,WC,WS,0.8);
   // Cordes + flèches (valeurs RÉELLES)
@@ -1187,7 +1200,7 @@ function genVoile(d,g,ep){
   t.DL(x0-10,Y(oR[1]),x0-10,Y(Re));t.DL(x0-10,Y(iR[1]),x0-10,Y(Ri));
   t.TH(x0-14,Y((oR[1]+Re)/2)+3,'f ext',7,DC,'end');t.TH(x0-14,Y((iR[1]+Ri)/2)+3,'f int',7,DC,'end');
   t.T(14,k>1.05?38:27,'Flèches à l\'axe : f ext '+nf(g.fExt,1)+' mm · f int '+nf(g.fInt,1)+' mm',7.5,DC,'start',700,'Barlow Condensed,sans-serif');
-  {const dx=d.renV?Math.max(12,25*s+8):12;t.DL(x0+dx,Y(Ri),x0+dx,Y(Re),'l axe '+nf(l),x0+dx+4,Y((Ri+Re)/2)-6,'start')} // v17 : écarté de la croix du caisson
+  {const dx=12;t.DL(x0+dx,Y(Ri),x0+dx,Y(Re),'l axe '+nf(l),x0+dx+4,Y((Ri+Re)/2)-6,'start')} // v17 : écarté de la croix du caisson
   // Cotes
   const up=(Re-oR[1])*s;
   if(rad){
@@ -1202,7 +1215,7 @@ function genVoile(d,g,ep){
   if(k>1.05)t.T(14,16,'⚠ COURBURE AMPLIFIÉE ×'+nf(k,1)+' POUR LISIBILITÉ — COTES ET FLÈCHES RÉELLES',8,DC,'start',700,'Barlow Condensed,sans-serif');
   t.T(14,k>1.05?27:16,'Joues '+(rad?'radiales (dirigées vers le centre cuve)':'parallèles (trémie droite)'),7,'#666','start',400,'Barlow,sans-serif');
   arrA(t,cx,Y(ybot)+18+10+30,'depuis int. cuve');arrB(t,Math.max(24,X(-L2)-40),cy);
-  const base={ep,epF:d.epF,epS:d.epS,h:d.h,fond:d.ferme,lid:d.ferme,lbFond:'Dessous',lbLid:'Dessus'};
+  const base={ep,epF:d.epF,epS:d.epS,h:d.h,fond:d.ferme,lid:d.ferme,lbFond:'Dessous',lbLid:'Dessus',cer:CC&&CC.n?CC:null};
   return{top:t.out(),
     a:secRect(Object.assign({W:g.cMid,lb:(rad?'L mi-ép.: ':'L: ')+nf(g.cMid)+' mm',note:'Coupe à mi-épaisseur — courbure visible en plan uniquement'},base)),
     b:secRect(Object.assign({W:l,lb:'l axe: '+nf(l)+' mm',note:'Coupe sur l\'axe — faces cintrées en coupe'},base))};
@@ -1474,7 +1487,18 @@ function gabVoile(d,g){
   const q2=cx2(rO,cut[1]),q3=cx2(rI,cut[0]);
   if(!man){o.push(`<path d="M${P(oL)} ${A(Re,oR,1)} L${P([oR[0],yAt(Re-ep,oR[0])])} ${A(Re-ep,[-oR[0],yAt(Re-ep,oR[0])],0)} Z" fill="url(#gj)" stroke="#777" stroke-width="0.2"/>`);
     o.push(`<path d="M${P([-iR[0],yAt(Ri+ep,iR[0])])} ${A(Ri+ep,[iR[0],yAt(Ri+ep,iR[0])],1)} L${P(iR)} ${A(Ri,iL,0)} Z" fill="url(#gj)" stroke="#777" stroke-width="0.2"/>`)}
-  o.push(`<path d="M${P(mx(q2))} ${A(rO,q2,1)} L${P(q3)} ${A(rI,mx(q3),0)} Z" fill="none" stroke="#000" stroke-width="0.8"/>`);
+  // v18 : contour de découpe = même polygone que le débit / l'imbrication (platePolyRaw) ; évidement des cerces et joints des plaques plus longues que le panneau
+  const PL=q=>'M'+q.map(P).join(' L')+' Z',Rd=debit(d,g),pls=Rd.filter(r=>r.sh&&r.sh.t==='plate');nestPieces(d,Rd); // renseigne r.cells (découpe des plaques trop longues)
+  o.push(`<path class="gcut" d="${PL(platePolyRaw(g,true,!man))}" fill="none" stroke="#000" stroke-width="0.8"/>`);
+  const hl=pls.find(r=>r.sh.hole>0);if(hl){o.push(`<path class="ghole" d="${PL(platePolyRaw(g,true,!man,hl.sh.hole))}" fill="none" stroke="#000" stroke-width="0.8"/>`);
+    const hp=platePolyRaw(g,true,!man,hl.sh.hole),hb=bbox(hp);gTx(o,X((hb[0]+hb[2])/2),Y((hb[1]+hb[3])/2)+1.5,'ÉVIDEMENT (cerces '+esc(hl.tag)+' seulement)',4,'middle',700,'#c0392b')}
+  const cl=pls.map(r=>r.cells).find(c=>c&&c.cells.length>1);let nJ=0;
+  if(cl){const poly=platePolyRaw(g,true,!man),xs=[...new Set(cl.cells.map(c=>c[0]).filter(a=>a>0.5))],ys=[...new Set(cl.cells.map(c=>c[1]).filter(b=>b>0.5))];
+    const cutY=xv=>{const I=[];for(let i=0;i<poly.length;i++){const a=poly[i],b=poly[(i+1)%poly.length];if((a[0]-xv)*(b[0]-xv)<=0&&a[0]!==b[0])I.push(a[1]+(xv-a[0])*(b[1]-a[1])/(b[0]-a[0]))}return I.length?[Math.min(...I),Math.max(...I)]:null};
+    xs.forEach(a=>{const xv=cl.x0+a,yy=cutY(xv);if(!yy)return;nJ++;o.push(`<line class="gjoint" data-x="${xv.toFixed(2)}" x1="${X(xv).toFixed(2)}" y1="${Y(yy[1]).toFixed(2)}" x2="${X(xv).toFixed(2)}" y2="${Y(yy[0]).toFixed(2)}" stroke="${BM_JC}" stroke-width="0.6" stroke-dasharray="5,2"/>`);
+      gTx(o,X(xv)+1.5,Y(yy[1])-2,'joint '+nf(a,0)+' depuis le bord gauche',3.4,'start',700,BM_JC)});
+    ys.forEach(b=>{const yv=cl.y0+b;nJ++;gLn(o,X(cl.x0),Y(yv),X(cl.x0+cl.w),Y(yv),0.6,'5,2',BM_JC)});
+    cl.cells.forEach((c,j)=>{const cx=cl.x0+(c[0]+c[2])/2,cy=cl.y0+(c[1]+c[3])/2;gTx(o,X(cx),Y(cy)+2,'abcdefghijklmnopqrstuvwxyz'[j%26],7,'middle',800,BM_JC)});}
   // Axe + cordes
   gLn(o,X(0),Y(Re)+-20,X(0),Y(ybot)+14,0.3,'12,3,2,3','#555');
   gLn(o,X(oL[0]),Y(oL[1]),X(oR[0]),Y(oR[1]),0.25,'3,2','#777');gLn(o,X(iL[0]),Y(iL[1]),X(iR[0]),Y(iR[1]),0.25,'3,2','#777');
@@ -1490,10 +1514,10 @@ function gabVoile(d,g){
     o.push(`<rect x="${(X(c[0])-b/2).toFixed(2)}" y="${(Y(c[1])-br/2).toFixed(2)}" width="${b}" height="${br}" fill="none" stroke="#000" stroke-width="0.3" stroke-dasharray="2,1.5"/>`);
     gTx(o,X(c[0]),Y(c[1])+1.5,'M',4,'middle',700)})}
   // Textes
-  gTx(o,m,16,`GABARIT 1:1 — ${man?(d.cS&&d.cS!=='cp'?'LINTEAU / APPUI':'LINTEAU / APPUI / CERCES'):'DESSUS / DESSOUS'} — ${esc(d.ch)} ${esc(d.ouv||'')} ${esc(d.ref)}${d.ind?' ind. '+esc(d.ind):''}`,8,'start',700);
+  gTx(o,m,16,`GABARIT 1:1 — ${man?(d.cS&&d.cS!=='cp'?'LINTEAU / APPUI':'LINTEAU / APPUI / CERCES'):(d.ferme?'DESSUS / DESSOUS':'')+(d.ferme&&d.renV?' / ':'')+(d.renV?'CERCES':'')} — ${esc(d.ch)} ${esc(d.ouv||'')} ${esc(d.ref)}${d.ind?' ind. '+esc(d.ind):''}`,8,'start',700);
   gTx(o,m,28,`R int (parement int.) ${nf(Ri,1)} · R ext ${nf(Re,1)} · corde ext ${nf(g.cExt,1)} · corde int ${nf(g.cInt,1)} · l axe ${nf(g.l)} · f ext ${nf(g.fExt,1)} · f int ${nf(g.fInt,1)} (mm)`,4.5);
   gTx(o,m,38,'Trait fort : contour de découpe '+(man?'linteau / appui / cerces (entre les joues)':'dessus / dessous (entre faces et joues)')+' · Tirets : nus béton · Hachures : joues'+(man?'':' et faces')+(man&&d.bM>0?' · M : montants':''),4.2);
-  gTx(o,m,47,'Traits fins : ordonnée corde → arc (mm) tous les '+st+' mm depuis l\'axe. Joues '+(rad?'radiales':'parallèles'),4.2);
+  gTx(o,m,47,'Traits fins : ordonnée corde → arc (mm) tous les '+st+' mm depuis l\'axe. Joues '+(rad?'radiales':'parallèles')+(nJ?' · Tirets violets : plaque plus longue que le panneau CP, débitée en morceaux '+cl.cells.map((c,j)=>'abcdefghijklmnopqrstuvwxyz'[j%26]).join(' / ')+' (repères du débit), joint sur tasseau':''),4.2);
   gTx(o,m,56,'Imprimer à 100 % (taille réelle). Vérifier le carré 100 × 100 mm AVANT de tracer.',4.2,'start',700,'#c0392b');
   gTx(o,X(0),Y(Re)-24,'PAREMENT EXTÉRIEUR (R '+nf(Re,1)+')',5.5,'middle',700);
   gTx(o,X(0),Y(ybot)+26,'PAREMENT INTÉRIEUR (R '+nf(Ri,1)+') — centre cuve ↓',5.5,'middle',700);
@@ -1955,6 +1979,32 @@ function polePt(q){let x1=Infinity,y1=Infinity,x2=-Infinity,y2=-Infinity;q.forEa
   for(let i=1;i<24;i++)for(let j=1;j<16;j++){const x=x1+(x2-x1)*i/24,y=y1+(y2-y1)*j/16,dd=dist(x,y);if(dd>bd){bd=dd;best=[x,y]}}
   return best}
 // ---------- Feuille(s) 1 : panneaux à découper, 4 par page, toutes les cotes depuis le coin ● bas-gauche du panneau ----------
+// v18 : repères de traçage des arcs d'un panneau de platelage (station le long du bord depuis ●, cote d'équerre depuis le bord de référence)
+// Calculés une seule fois : mêmes valeurs sur la feuille « CP À DÉCOUPER » et sur le gabarit 1:1.
+function dalMarks(G,shp){
+  const R=G.sh.t==='circ'?G.sh.R:0,onArc=o=>R>0&&Math.abs(Math.hypot(o[0],o[1])-R)<0.6,s=fit(G.P,G.Q,500-118,236-88);if(!R)return[];
+  const marks=[],used={b:[],t:[],l:[],r:[]};
+  shp.items.forEach(it=>{const p=it.pc,arcP=it.poly.filter((q,qi)=>onArc(p.poly[qi]));if(arcP.length<2)return;
+        const Xs=arcP.map(q=>q[0]),Ys=arcP.map(q=>q[1]),alongX=Math.max(...Xs)-Math.min(...Xs)>=Math.max(...Ys)-Math.min(...Ys);
+        const lo=alongX?Math.min(...Xs):Math.min(...Ys),hi=alongX?Math.max(...Xs):Math.max(...Ys),ext=hi-lo;
+        // pas des repères : ≥ 26 px entre deux repères sur le dessin, au moins un repère intermédiaire si l'arc dépasse 100 mm
+        let st=[100,200,250,500].find(c=>c*s>=26)||500;if(ext<2*st)st=Math.max(50,Math.floor(ext/2/50)*50);
+        const ym=p.poly.filter(onArc),mY=ym.reduce((a,o)=>a+o[1],0)/ym.length,mX=ym.reduce((a,o)=>a+o[0],0)/ym.length;
+        const toL=(X,Y)=>it.rot?[p.x2-(X-it.ox),p.y2-(Y-it.oy)]:[p.x1+(X-it.ox),p.y1+(Y-it.oy)],toP=(x,y)=>it.rot?[it.ox+(p.x2-x),it.oy+(p.y2-y)]:[it.ox+(x-p.x1),it.oy+(y-p.y1)];
+        const sta=[lo];for(let v=Math.ceil((lo+1)/st)*st;v<hi-1;v+=st)if(v-lo>=st*0.5&&hi-v>=st*0.5)sta.push(v);sta.push(hi);
+        // bord de référence : bord touché par la pièce, libre (pas déjà utilisé par une autre pièce sur la même plage), le plus proche de l'arc
+        const mA=v=>v.reduce((a,b)=>a+b,0)/v.length,tB=it.oy<1,tT=it.oy+it.h>G.Q-1,tL=it.ox<1,tR=it.ox+it.w>G.P-1;
+        const cands=(alongX?[['b',tB,mA(Ys)],['t',tT,G.Q-mA(Ys)]]:[['l',tL,mA(Xs)],['r',tR,G.P-mA(Xs)]]).filter(c=>c[1]).sort((a,b)=>a[2]-b[2]);
+        if(!cands.length)cands.push(alongX?['b',1,0]:['l',1,0]);
+        const free=c=>!used[c[0]].some(([a,b])=>lo<b+60&&hi>a-60),ed=(cands.find(free)||cands[0])[0];used[ed].push([lo,hi]);
+        const bot=ed==='b',left=ed==='l',[cX,cY]=polyCentroid(it.poly);
+        sta.forEach(v=>{let X,Y;
+          if(alongX){const x=toL(v,0)[0],cand=[1,-1].map(sg=>sg*Math.sqrt(Math.max(R*R-x*x,0))).filter(y=>y>=p.y1-1&&y<=p.y2+1).sort((a,b)=>Math.abs(a-mY)-Math.abs(b-mY));
+            if(!cand.length)return;[X,Y]=toP(x,cand[0]);X=v;marks.push({ax:'x',v:X,ref:bot?'b':'t',X,Y,val:Math.abs(Y-(bot?0:G.Q)),pos:cY>Y,pl:it.poly,it})}
+          else{const y=toL(0,v)[1],cand=[1,-1].map(sg=>sg*Math.sqrt(Math.max(R*R-y*y,0))).filter(x=>x>=p.x1-1&&x<=p.x2+1).sort((a,b)=>Math.abs(a-mX)-Math.abs(b-mX));
+            if(!cand.length)return;[X,Y]=toP(cand[0],y);Y=v;marks.push({ax:'y',v:Y,ref:left?'l':'r',X,Y,val:Math.abs(X-(left?0:G.P)),pos:cX>X,pl:it.poly,it})}})});
+  return marks;
+}
 function dalCutPages(d,G){
   const per=4,pages=[],R=G.sh.t==='circ'?G.sh.R:0,onArc=o=>R>0&&Math.abs(Math.hypot(o[0],o[1])-R)<0.6;
   if(!G.sheets.length){const t=SB(1000,520);t.T(500,240,'Aucune planche à découper : toutes les planches sont entières ('+G.nE+' × '+nf(G.Lp)+' × '+nf(G.Q)+').',12,LC,'middle',700,'Barlow Condensed,sans-serif');
@@ -1979,27 +2029,8 @@ function dalCutPages(d,G){
       // repères des pièces (au point le plus dégagé)
       shp.items.forEach(it=>{const c=polePt(it.poly),px=PX(c[0]),py=PY(c[1]),dim=nf(it.w,0)+' × '+nf(it.h,0);
         lb.put([[px,py+1],[px,py-8],[px,py+10]],it.pc.id,12-FS,DC,800,{force:1});lb.put([[px,py+12],[px,py-14],[px,py+22]],dim,6.5,'#333',700,{force:1})});
-      // traçage des arcs depuis le bord du panneau où la pièce est calée
-      const marks=[],used={b:[],t:[],l:[],r:[]};
-      if(R)shp.items.forEach(it=>{const p=it.pc,arcP=it.poly.filter((q,qi)=>onArc(p.poly[qi]));if(arcP.length<2)return;
-        const Xs=arcP.map(q=>q[0]),Ys=arcP.map(q=>q[1]),alongX=Math.max(...Xs)-Math.min(...Xs)>=Math.max(...Ys)-Math.min(...Ys);
-        const lo=alongX?Math.min(...Xs):Math.min(...Ys),hi=alongX?Math.max(...Xs):Math.max(...Ys),ext=hi-lo;
-        // pas des repères : ≥ 26 px entre deux repères sur le dessin, au moins un repère intermédiaire si l'arc dépasse 100 mm
-        let st=[100,200,250,500].find(c=>c*s>=26)||500;if(ext<2*st)st=Math.max(50,Math.floor(ext/2/50)*50);
-        const ym=p.poly.filter(onArc),mY=ym.reduce((a,o)=>a+o[1],0)/ym.length,mX=ym.reduce((a,o)=>a+o[0],0)/ym.length;
-        const toL=(X,Y)=>it.rot?[p.x2-(X-it.ox),p.y2-(Y-it.oy)]:[p.x1+(X-it.ox),p.y1+(Y-it.oy)],toP=(x,y)=>it.rot?[it.ox+(p.x2-x),it.oy+(p.y2-y)]:[it.ox+(x-p.x1),it.oy+(y-p.y1)];
-        const sta=[lo];for(let v=Math.ceil((lo+1)/st)*st;v<hi-1;v+=st)if(v-lo>=st*0.5&&hi-v>=st*0.5)sta.push(v);sta.push(hi);
-        // bord de référence : bord touché par la pièce, libre (pas déjà utilisé par une autre pièce sur la même plage), le plus proche de l'arc
-        const mA=v=>v.reduce((a,b)=>a+b,0)/v.length,tB=it.oy<1,tT=it.oy+it.h>G.Q-1,tL=it.ox<1,tR=it.ox+it.w>G.P-1;
-        const cands=(alongX?[['b',tB,mA(Ys)],['t',tT,G.Q-mA(Ys)]]:[['l',tL,mA(Xs)],['r',tR,G.P-mA(Xs)]]).filter(c=>c[1]).sort((a,b)=>a[2]-b[2]);
-        if(!cands.length)cands.push(alongX?['b',1,0]:['l',1,0]);
-        const free=c=>!used[c[0]].some(([a,b])=>lo<b+60&&hi>a-60),ed=(cands.find(free)||cands[0])[0];used[ed].push([lo,hi]);
-        const bot=ed==='b',left=ed==='l',[cX,cY]=polyCentroid(it.poly);
-        sta.forEach(v=>{let X,Y;
-          if(alongX){const x=toL(v,0)[0],cand=[1,-1].map(sg=>sg*Math.sqrt(Math.max(R*R-x*x,0))).filter(y=>y>=p.y1-1&&y<=p.y2+1).sort((a,b)=>Math.abs(a-mY)-Math.abs(b-mY));
-            if(!cand.length)return;[X,Y]=toP(x,cand[0]);X=v;marks.push({ax:'x',v:X,ref:bot?'b':'t',X,Y,val:Math.abs(Y-(bot?0:G.Q)),pos:cY>Y,pl:it.poly})}
-          else{const y=toL(0,v)[1],cand=[1,-1].map(sg=>sg*Math.sqrt(Math.max(R*R-y*y,0))).filter(x=>x>=p.x1-1&&x<=p.x2+1).sort((a,b)=>Math.abs(a-mX)-Math.abs(b-mX));
-            if(!cand.length)return;[X,Y]=toP(cand[0],y);Y=v;marks.push({ax:'y',v:Y,ref:left?'l':'r',X,Y,val:Math.abs(X-(left?0:G.P)),pos:cX>X,pl:it.poly})}})});
+      // traçage des arcs : repères communs avec le gabarit 1:1 (v18 : dalMarks)
+      const marks=R?dalMarks(G,shp):[];
       // lignes de mesure + points
       marks.forEach(m=>{const px=PX(m.X),py=PY(m.Y);
         if(m.ax==='x')t.L(px,m.ref==='b'?yb:y0,px,py,DC,0.6);else t.L(m.ref==='l'?x0:xr,py,px,py,DC,0.6);t.C(px,py,1.6,DC,DC,0.3);lb.res([px-2,py-2,px+2,py+2])});
@@ -2033,8 +2064,9 @@ function dalCutPages(d,G){
 }
 // ====== POUTRES (coffrage coulé en place) : moteur commun dalle de couverture + forme « poutre » ======
 // Hypothèse de niveau : dessus de poutre = tête de voile (dessous de dalle) → les poches sont des encoches ouvertes en tête de voile.
-const BM_DEF={ev:200,pp:160};
-function bmPar(d){const p=Object.assign({},BM_DEF,d.bmP||{});return{ev:p.ev>0?p.ev:BM_DEF.ev,pp:p.pp>=0?p.pp:BM_DEF.pp}}
+// v18 : lhs = lisse haute sous les poutrelles (sinon au niveau du dessus des joues) ; hpt = hauteur des poutrelles (mm)
+const BM_DEF={ev:200,pp:160,lhs:false,hpt:200};
+function bmPar(d){const p=Object.assign({},BM_DEF,d.bmP||{});return{ev:p.ev>0?p.ev:BM_DEF.ev,pp:p.pp>=0?p.pp:BM_DEF.pp,lhs:!!p.lhs,hpt:p.hpt>0?p.hpt:BM_DEF.hpt}}
 // Appui voile : at(d, v) = position le long de l'axe (u) de la surface située à la profondeur d dans le voile (d = 0 : nu intérieur),
 // à la distance v de l'axe de la poutre. Voile cintré : surfaces concentriques de rayon R + d. side = −1 (gauche) / +1 (droite).
 // Appui poteau : {t:'poteau', s (axe), D, end:true}
@@ -2046,12 +2078,15 @@ function bmPar(d){const p=Object.assign({},BM_DEF,d.bmP||{});return{ev:p.ev>0?p.
 //    (1 poteau → la travée de gauche ; plusieurs → 1 travée sur 2) ;
 //  · poteau d'extrémité : joues prolongées jusqu'à la face extérieure du poteau + about CP de bout de poutre ;
 //  · tube plus large que le coffrage (Ø > b + 2 × joue) : couronne CP (2 segments) posée sur le tube autour du coffrage (H1).
-const BM_LMAX=7000,BM_RW=75,BM_WS=63,BM_WL=75,BM_COUR=30;
+// v18 : lisses basse + haute 63 × 75 posées à plat contre la joue (63 d'épaisseur, 75 de haut), raidisseurs verticaux 63 × 75 entre les deux lisses
+const BM_LMAX=7000,BM_RW=75,BM_WS=63,BM_WL=75,BM_COUR=30,BM_LH=75;
 function bmBuild(spec,P){
   const {n,o,b,h,sL,sR}=spec,pots=(spec.pots||[]).slice().sort((a,z)=>a.s-z.s),eJ=spec.eJ||18,eF=spec.eF||18,Lmax=spec.Lmax||BM_LMAX;
-  const hJ=spec.hJ,eR=h<=500?500:h<=800?400:300,lisH=h>600;
+  const hJ=spec.hJ,eR=h<=500?500:h<=800?400:300,lisH=true;
+  // dessus de la lisse haute (depuis le pied de la joue) : dessus de joue, ou sous les poutrelles (platelage → poutrelle contre la joue → lisse haute)
+  const zLH=P.lhs?hJ-P.hpt:hJ;
   const vB=k=>Array.from({length:9},(_,i)=>-k/2+k*i/8);
-  const bm={n,o,b,h,hJ,eR,lisH,pots,sL,sR,segs:[],poch:[],cour:[],abouts:[],joints:[],eJ,eF,Lmax};
+  const bm={n,o,b,h,hJ,eR,lisH,zLH,lhs:P.lhs,hpt:P.hpt,pots,sL,sR,segs:[],poch:[],cour:[],abouts:[],joints:[],eJ,eF,Lmax};
   const cf=c=>({lf:v=>c.s+Math.sqrt(Math.max(c.r*c.r-v*v,0)),rf:v=>c.s-Math.sqrt(Math.max(c.r*c.r-v*v,0))});
   const B0=S=>S.t==='voile'?{t:'voile',S,lf:v=>S.at(0,v),rf:v=>S.at(0,v)}:Object.assign({t:'poteau',end:true,c:{s:S.s,r:S.D/2,D:S.D}},cf({s:S.s,r:S.D/2}));
   const bounds=[B0(sL)].concat(pots.map(p=>Object.assign({t:'poteau',c:{s:p.s,r:p.D/2,D:p.D}},cf({s:p.s,r:p.D/2}))),[B0(sR)]);
@@ -2085,10 +2120,15 @@ function bmBuild(spec,P){
     L.forEach((sg,i)=>{
       // raidisseurs : répartis ≤ entraxe, écartés des couronnes ; lisses interrompues au droit des couronnes
       // raidisseurs régulièrement répartis (≤ entraxe, un à chaque bout de joue) ; ceux qui tombent au-dessus d'une couronne sont raccourcis (posés sur la couronne)
-      sg.rx=[sg.j1,sg.j2].map(jj=>{const Lj=jj[1]-jj[0],n0=Math.max(2,Math.ceil((Lj-BM_RW)/eR)+1);return Array.from({length:n0},(_,r)=>jj[0]+(Lj-BM_RW)*r/(n0-1))});
-      sg.rxS=sg.rx.map(L=>L.map(x=>exR.some(([p,q])=>x+BM_RW>p+1e-6&&x<q-1e-6)));
+      // v18 : un raidisseur centré sur chaque joint de joue (joue plus longue que le panneau CP), les autres répartis ≤ entraxe entre ces points fixes
+      sg.rx=[sg.j1,sg.j2].map(jj=>{const Lj=jj[1]-jj[0],J=spec.cpJ?bmJoueJoints(Lj,hJ,spec.cpJ):[],fix=[jj[0]].concat(J.map(s=>jj[0]+s-BM_RW/2),[jj[1]-BM_RW]).sort((a,z)=>a-z),out=[];
+        for(let i=0;i<fix.length-1;i++){const p0=fix[i],q0=fix[i+1],n=Math.max(1,Math.ceil((q0-p0)/eR-1e-9));for(let k=0;k<n;k++)out.push(p0+(q0-p0)*k/n)}out.push(fix[fix.length-1]);return out});
+      sg.jj=[sg.j1,sg.j2].map(jj=>spec.cpJ?bmJoueJoints(jj[1]-jj[0],hJ,spec.cpJ).map(s=>jj[0]+s):[]);
+      sg.rxS=sg.rx.map(L=>L.map(x=>exR.some(([p,q])=>x>=p-1e-6&&x+BM_RW<=q+1e-6))); // v18 : posé sur la couronne seulement s'il est entièrement au-dessus (sinon sur la lisse basse)
       sg.nR=sg.rx.map(x=>x.length);
-      sg.lis=[sg.j1,sg.j2].map(jj=>cut(jj[0],jj[1],exL).filter(([a,z])=>z-a>=250)); // pas de morceau de lisse < 250 mm
+      // lisse basse : interrompue au droit des couronnes (pas de morceau < 250 mm) ; lisse haute : continue sur toute la joue
+      sg.lisB=[sg.j1,sg.j2].map(jj=>cut(jj[0],jj[1],exR).filter(([a,z])=>z-a>=250));
+      sg.lisH=[sg.j1,sg.j2].map(jj=>[[jj[0],jj[1]]]);sg.lis=sg.lisB;
       if(i>0){bm.joints.push({x:sg.xa,t});}
       bm.segs.push(sg)});
     // abouts CP de bout de poutre (poteau d'extrémité)
@@ -2097,6 +2137,9 @@ function bmBuild(spec,P){
   if(P.pp>0)[sL,sR].forEach(S=>{if(S.t==='voile')bm.poch.push(bmPoche(bm,S,P))});
   return bm;
 }
+// découpe d'une joue de poutre plus longue que le panneau (identique au débit) et positions des joints depuis l'extrémité gauche
+function bmJoueSplit(Lj,hJ,W,H){return jouePieces(Lj,hJ,1,W,H,false,'f',null)}
+function bmJoueJoints(Lj,hJ,F){const jp=bmJoueSplit(Lj,hJ,F[0],F[1]);return jp.split?jointsOf(jp.copies[0].lens):[]}
 // Poche (encoche en tête de voile) : largeur b, hauteur h, profondeur p constante mesurée perpendiculairement au voile
 // → nu avant = nu intérieur du voile, fond = surface parallèle au voile (cintrée R + p si voile circulaire), côtés ∥ à l'axe de la poutre
 function bmPoche(bm,S,P){
@@ -2116,6 +2159,8 @@ function bmChecks(BG,P,e,w,jL,jH){
     bm.segs.forEach(sg=>{const L=Math.max(sg.Lj1,sg.Lj2);if(L>jL)w(`${tag} : joue de ${nf(L,0)} mm > panneau (${jL}) → ${Math.ceil(L/jL)} longueurs, joints au droit d'un raidisseur`);
       if(sg.Lf<300)w(`${tag} : tronçon de coffrage de ${nf(sg.Lf,0)} mm entre appuis (très court)`)});
     if(bm.hJ>jH)e(`${tag} : hauteur de joue ${nf(bm.hJ,0)} mm > largeur du panneau CP (${jH})`);
+    if(bm.lhs&&bm.zLH-2*BM_LH<100)e(`${tag} : lisse haute sous les poutrelles (h ${nf(bm.hpt)}) : joue de ${nf(bm.hJ,0)} mm trop basse pour les raidisseurs entre les lisses — réduire la hauteur de poutrelle ou décocher l'option`);
+    else if(bm.zLH-2*BM_LH<100)w(`${tag} : joue de ${nf(bm.hJ,0)} mm : raidisseurs très courts entre les lisses (${nf(bm.zLH-2*BM_LH,0)} mm)`);
     if(bm.h<=BG.eJ)e(`${tag} : h trop faible`);
   });
 }
@@ -2130,10 +2175,11 @@ function bmDebit(BG,P,add,setK,eF){
     setK('j');dalGroup(segs.flatMap(x=>[[x.sg.Lj1,x.bm.hJ],[x.sg.Lj2,x.bm.hJ]]),x=>Math.round(x[0])+'|'+Math.round(x[1])).forEach(gp=>add(gp.q,'Joue de poutre',gp.x[0],gp.x[1]));
     const ab=BG.beams.flatMap(bm=>bm.abouts.map(a=>({a,bm})));
     if(ab.length)dalGroup(ab,x=>x.bm.b+'|'+Math.round(x.bm.hJ)).forEach(gp=>add(gp.q,'About de bout de poutre (sur poteau)',gp.x.bm.b,gp.x.bm.hJ));
-    const nS=segs.reduce((a,x)=>a+x.sg.rxS.flat().filter(Boolean).length,0),nT=segs.reduce((a,x)=>a+x.sg.nR[0]+x.sg.nR[1],0);
-    R.bois.push({q:nT-nS,n:'Raidisseurs chevron 63×75',L:Math.max(...segs.map(x=>x.bm.hJ))});
-    if(nS)R.bois.push({q:nS,n:'Raidisseurs chevron 63×75 courts (posés sur couronne)',L:Math.max(...segs.map(x=>x.bm.hJ-x.bm.eF))});
-    dalGroup(segs.flatMap(x=>Array(x.bm.lisH?2:1).fill(0).flatMap(()=>x.sg.lis.flat().map(([a,z])=>z-a))),L=>Math.round(L)).forEach(gp=>R.bois.push({q:gp.q,n:'Lisses chevron 63×75',L:Math.round(gp.x)}));
+    // raidisseurs entre lisse basse et lisse haute (sur la couronne, sans lisse basse dessous)
+    const rd=segs.flatMap(x=>x.sg.rxS.flat().map(c=>Math.round(x.bm.zLH-BM_LH-(c?x.bm.eF:BM_LH))+'|'+(c?1:0)));
+    dalGroup(rd,k=>k).forEach(gp=>{const [L,c]=gp.x.split('|').map(Number);R.bois.push({q:gp.q,n:'Raidisseurs chevron 63×75 (entre lisses)'+(c?' courts, posés sur couronne':''),L})});
+    dalGroup(segs.flatMap(x=>x.sg.lisB.flat().map(([a,z])=>z-a)),L=>Math.round(L)).forEach(gp=>R.bois.push({q:gp.q,n:'Lisses basses chevron 63×75',L:Math.round(gp.x)}));
+    dalGroup(segs.flatMap(x=>x.sg.lisH.flat().map(([a,z])=>z-a)),L=>Math.round(L)).forEach(gp=>R.bois.push({q:gp.q,n:'Lisses hautes chevron 63×75'+(segs[0].bm.lhs?' (sous les poutrelles)':''),L:Math.round(gp.x)}));
     const nj=BG.beams.reduce((a,bm)=>a+bm.joints.length,0);
     if(nj){const bmx=Math.max(...BG.beams.filter(bm=>bm.joints.length).map(bm=>bm.b+2*BG.eJ+2*63));
       R.bois.push({q:2*nj,n:'Cadres d\'about (joint de coffrage) : traverse sous fond 63×75',L:Math.round(bmx)});
@@ -2148,15 +2194,20 @@ function bmDebit(BG,P,add,setK,eF){
 }
 // ---------- Dessins communs ----------
 function bmSecDraw(t,ox,oy,aw,ah,bm,BX){
-  const b=bm.b,eJ=BX.eJ,eF=BX.eF,ePl=BX.slab?BX.ePl:0,ws=63,wl=75,hJ=bm.hJ,side=b/2+eJ+ws+wl,slab=BX.slab,zs=slab?hJ+ePl+120:hJ+30;
-  const cs=fit(2*side+300,zs+60,aw,ah),sx0=ox+aw/2+10,sy0=oy+16,SX=u=>sx0+u*cs,SY=z=>sy0+(zs+10-z)*cs,ztop=hJ+ePl;
+  const b=bm.b,eJ=BX.eJ,eF=BX.eF,ePl=BX.slab?BX.ePl:0,ws=BM_WS,lh=BM_LH,hJ=bm.hJ,zL=bm.zLH,lp=bm.lhs?260:0,side=b/2+eJ+ws+30+lp,slab=BX.slab,zs=slab?hJ+ePl+120:hJ+30;
+  const cs=fit(2*side+560,zs+60,aw,ah),sx0=ox+aw/2+10,sy0=oy+16,SX=u=>sx0+u*cs,SY=z=>sy0+(zs+10-z)*cs,ztop=hJ+ePl;
   t.T(sx0,oy+10,'COUPE TRANSVERSALE',7,'#555','middle',700,'Barlow,sans-serif');
   if(slab)t.R(SX(-side-150),SY(zs),(2*side+300)*cs,(zs-hJ-ePl)*cs,'url(#hb)','#999',0.4);
   t.R(SX(-b/2),SY(ztop),b*cs,(ztop-eF)*cs,'url(#hb)','none',0);
   if(slab){t.R(SX(-side-150),SY(hJ+ePl),(side+150-b/2)*cs,ePl*cs,WC,WS,0.6);t.R(SX(b/2),SY(hJ+ePl),(side+150-b/2)*cs,ePl*cs,WC,WS,0.6)}
   t.W(SX(-b/2),SY(eF),b*cs,eF*cs,'fs');t.W(SX(-b/2-eJ),SY(hJ),eJ*cs,hJ*cs);t.W(SX(b/2),SY(hJ),eJ*cs,hJ*cs);
-  [-1,1].forEach(sn=>{const xo=sn<0?-b/2-eJ-ws:b/2+eJ;t.R(SX(xo),SY(hJ),ws*cs,hJ*cs,C2.bois,WS,0.5);
-    const xl=sn<0?xo-wl:xo+ws;t.R(SX(xl),SY(75),wl*cs,ws*cs,C2.bois,WS,0.5);if(bm.lisH)t.R(SX(xl),SY(hJ-20),wl*cs,ws*cs,C2.bois,WS,0.5)});
+  // lisses basse et haute coupées (contre la joue) ; raidisseur vu entre les deux ; poutrelle sur la lisse haute (option)
+  [-1,1].forEach(sn=>{const xo=sn<0?-b/2-eJ-ws:b/2+eJ;
+    t.R(SX(xo),SY(zL-lh),ws*cs,(zL-2*lh)*cs,shade(C2.bois,1.35),WS,0.4);
+    t.R(SX(xo),SY(lh),ws*cs,lh*cs,C2.bois,WS,0.6);t.R(SX(xo),SY(zL),ws*cs,lh*cs,C2.bois,WS,0.6);
+    if(bm.lhs){const xp=sn<0?-b/2-eJ-lp:b/2+eJ;t.Pa(`M${SX(xp)},${SY(hJ)} h${lp*cs} v${bm.hpt*cs} h${-lp*cs} Z`,'none','#7a5a20',0.6,'4,2')}});
+  if(bm.lhs){t.T(SX(-b/2-eJ-lp/2),SY(hJ-bm.hpt/2)+2,'poutrelle',5.5,'#7a5a20','middle',600,'Barlow,sans-serif');t.D(SX(b/2+eJ+lp+8),SY(hJ),SX(b/2+eJ+lp+8),SY(zL),nf(bm.hpt),6)}
+  t.T(SX(b/2+eJ+ws)+3,SY(lh/2)+2,'lisse basse',5,WS,'start',600,'Barlow,sans-serif');t.T(SX(b/2+eJ+ws)+3,SY(zL-lh/2)+2,'lisse haute',5,WS,'start',600,'Barlow,sans-serif');
   t.D(SX(-b/2),SY(0),SX(b/2),SY(0),'b '+nf(b),12);
   t.D(SX(-side-10),SY(hJ),SX(-side-10),SY(0),'joue '+nf(hJ,0),8,'left');
   t.D(SX(side+10),SY(ztop),SX(side+10),SY(eF),(slab?'retombée ':'h ')+nf(bm.h),8);
@@ -2181,12 +2232,15 @@ function bmBeamPages(BX){
       const jj=sg.Lj1>=sg.Lj2?sg.j1:sg.j2,ju=jj[0]-sg.xa,Lj=jj[1]-jj[0],ws=63;
       t.R(EX(ju),EYj(hJ),Lj*es,hJ*es,WC,WS,0.7);
       const kS=sg.Lj1>=sg.Lj2?0:1,RX=sg.rx[kS],nR=RX.length,eRr=nR>1?Math.max(...RX.slice(1).map((x,r)=>x-RX[r])):0;
-      RX.forEach((x,r)=>{const sh=sg.rxS[kS][r]?bm.eF:0;t.R(EX(x-sg.xa),EYj(hJ),Math.max(BM_RW*es,1),(hJ-sh)*es,C2.bois,WS,0.4)});
-      sg.lis[kS].forEach(([a,z])=>{t.R(EX(a-sg.xa),EYj(75),(z-a)*es,Math.max(ws*es,1),C2.bois,WS,0.4);if(bm.lisH)t.R(EX(a-sg.xa),EYj(hJ-20),(z-a)*es,Math.max(ws*es,1),C2.bois,WS,0.4)});
+      const zL=bm.zLH,lh=BM_LH;
+      RX.forEach((x,r)=>{const z0=sg.rxS[kS][r]?bm.eF:lh;t.R(EX(x-sg.xa),EYj(zL-lh),Math.max(BM_RW*es,1),(zL-lh-z0)*es,C2.bois,WS,0.4)});
+      sg.lisB[kS].forEach(([a,z])=>t.R(EX(a-sg.xa),EYj(lh),(z-a)*es,Math.max(lh*es,1),C2.bois,WS,0.4));
+      sg.lisH[kS].forEach(([a,z])=>t.R(EX(a-sg.xa),EYj(zL),(z-a)*es,Math.max(lh*es,1),C2.bois,WS,0.4));
+      if(bm.lhs){t.Pa(`M${EX(ju)},${EYj(hJ)} h${Lj*es} v${bm.hpt*es} h${-Lj*es} Z`,'none','#7a5a20',0.5,'4,2');lb.put([[EX(ju+Lj/2),EYj(hJ-bm.hpt/2)+2]],'zone des poutrelles (h '+nf(bm.hpt)+') — lisse haute dessous',5.5,'#7a5a20',600,{plain:1,ff:'Barlow,sans-serif',cw:0.5,force:1})}
       // extensions de fermeture au-dessus d'un poteau (partie de joue sans fond dessous)
       [0,1].forEach(e=>{if(sg.ext[e]>1){const x0=e?jj[1]-sg.xa-sg.ext[1]:ju;t.a(`<rect x="${EX(x0).toFixed(2)}" y="${EYj(hJ).toFixed(2)}" width="${(sg.ext[e]*es).toFixed(2)}" height="${(hJ*es).toFixed(2)}" fill="url(#hb)" fill-opacity="0.35" stroke="none"/>`);
         lb.put([[EX(x0+sg.ext[e]/2),EYj(hJ)+10],[EX(x0+sg.ext[e]/2),EYj(0)-4]],'fermeture '+nf(sg.ext[e],0),6,BM_JC,700,{force:1})}});
-      t.T(EX(ju),jy-6,`JOUE (élévation) · ${nR} raidisseurs, entraxe max ${nf(eRr,0)} mm (≤ ${nf(bm.eR)}) · lisse basse${bm.lisH?' + haute':''}${sg.lis[kS].length>1?' (interrompue au droit des couronnes)':''} · poussée ≈ ${nf(25*bm.h/1000,1)} kPa en pied`,6.5,'#333','start',700,'Barlow,sans-serif');
+      t.T(EX(ju),jy-6,`JOUE (élévation) · ${nR} raidisseurs, entraxe max ${nf(eRr,0)} mm (≤ ${nf(bm.eR)}) · lisses basse + haute 63×75${bm.lhs?' (haute à −'+nf(bm.hpt)+' sous le dessus des joues)':''}${sg.lisB[kS].length>1?' · lisse basse interrompue au droit des couronnes':''} · poussée ≈ ${nf(25*bm.h/1000,1)} kPa en pied`,6.5,'#333','start',700,'Barlow,sans-serif');
       t.D(EX(ju),EYj(0),EX(ju+Lj),EYj(0),'joue '+nf(sg.Lj1,0)+(Math.abs(sg.Lj1-sg.Lj2)>1?' / '+nf(sg.Lj2,0):'')+' × '+nf(hJ,0)+' mm',12);
       t.D(EX(ju+Lj),EYj(hJ),EX(ju+Lj),EYj(0),nf(hJ,0),8);
       t.Pa('M'+FP.map(([u,v])=>`${EX(u).toFixed(2)},${EYf(v).toFixed(2)}`).join(' L')+' Z',C2.fs,shade(C2.fs,0.6),0.8);
@@ -2199,7 +2253,7 @@ function bmBeamPages(BX){
     });
     if(list.length>1)t.L(10,rh+4,990,rh+4,'#ddd',0.6);
     t.T(10,484,`Joues CP ${nf(BX.eJ)} fixées contre le chant du fond (CP ${nf(BX.eF)}) · hauteur de joue = ${BX.slab?'retombée + fond − platelage (le platelage repose sur la joue)':'h + fond'} · dessus de poutre = tête de voile`,7,'#333','start',600,'Barlow,sans-serif');
-    t.T(10,497,`Raidisseurs chevron 63 × 75 extérieurs · entraxe (règle de l'app, à valider) : ≤ 500 mm si h ≤ 500 · ≤ 400 si ≤ 800 · ≤ 300 au-delà · lisse haute si h > 600 · poussée hydrostatique 25 kN/m³ × h`,7,'#333','start',600,'Barlow,sans-serif');
+    t.T(10,497,`Lisses basse + haute chevron 63 × 75 contre la joue, raidisseurs verticaux 63 × 75 entre les lisses · entraxe (règle de l'app, à valider) : ≤ 500 mm si h ≤ 500 · ≤ 400 si ≤ 800 · ≤ 300 au-delà · poussée 25 kN/m³ × h`,7,'#333','start',600,'Barlow,sans-serif');
     t.T(10,510,`Étaiement du fond de poutre et serrage des joues (tiges / serre-joints) non représentés : selon le PV d'étaiement`,7,'#333','start',600,'Barlow,sans-serif');
     pages.push(t.out());
   }
@@ -2288,9 +2342,10 @@ function bmPochePages(BX){
 }
 // ---------- Formulaire commun des poutres ----------
 function bmParUI(){return`<div class="g2">${num('bmEv','Épaisseur du voile (mm)',BM_DEF.ev,' min="50"')}${num('bmPp','Profondeur des poches (mm, 0 = sans)',BM_DEF.pp,' min="0" step="10"')}</div>
+${chk('bmLhs','Lisse haute sous les poutrelles (sinon au dessus des joues)',false)}<div id="zBmLhs">${num('bmHpt','Hauteur des poutrelles (mm)',BM_DEF.hpt,' min="50"')}<div class="hint" style="margin:0 0 8px">Platelage posé sur le dessus des joues → poutrelle sous le platelage, contre la joue → lisse haute sous la poutrelle. S'applique à toutes les poutres du plan.</div></div>
 <div class="calc" id="zBmCalc"></div>`}
-function bmParRead(){if(!el('bmEv'))return null;return{ev:V('bmEv'),pp:Math.max(0,V('bmPp'))}}
-function bmParSet(p){p=bmPar({bmP:p});const sv=(id,v)=>{const e=el(id);if(e&&v!=null)e.value=v};sv('bmEv',p.ev);sv('bmPp',p.pp)}
+function bmParRead(){if(!el('bmEv'))return null;return{ev:V('bmEv'),pp:Math.max(0,V('bmPp')),lhs:C('bmLhs'),hpt:V('bmHpt')}}
+function bmParSet(p){p=bmPar({bmP:p});const sv=(id,v)=>{const e=el(id);if(e&&v!=null)e.value=v};sv('bmEv',p.ev);sv('bmPp',p.pp);sv('bmHpt',p.hpt);if(el('bmLhs'))el('bmLhs').checked=!!p.lhs;syncVis()}
 // Liste de poteaux (position, Ø)
 function poRow(p){return`<div class="g3" data-po${p.a?' data-auto="1"':''} style="grid-template-columns:1.4fr 1fr 28px;margin-bottom:4px"><input class="fi" type="text" inputmode="decimal" data-u="mm" data-k="s" value="${p.s!=null?p.s:0}" title="position le long de la poutre (mm)"><input class="fi" type="text" inputmode="decimal" data-u="mm" data-k="D" value="${p.D||400}" title="Ø poteau (mm)"><button type="button" class="btn bs bo" onclick="const c=this.closest('[data-po]').parentNode;this.parentNode.remove();poAuto(c);onEdit()" aria-label="Supprimer le poteau">×</button></div>`}
 function poHead(lbS){return`<div class="g3" style="grid-template-columns:1.4fr 1fr 28px;font-size:10px;color:#8892a8;margin-bottom:2px"><span>${lbS}</span><span>Ø (mm)</span><span></span></div>`}
@@ -2312,7 +2367,7 @@ function dalBeams(d){return d.dlPt?(d.dlBm||[]).map((B,i)=>Object.assign({n:i+1}
 function dalBeamGeo(d,sh,eF,eJ,ePl){
   const P=bmPar(d),circ=sh.t==='circ',R=sh.R,A2=sh.A/2;
   const beams=dalBeams(d).map(B=>{const o=B.o,W=sg=>({t:'voile',side:sg,R:circ?R:0,at:(dd,v)=>sg*(circ?Math.sqrt(Math.max((R+dd)**2-(o+v)**2,0)):A2+dd)});
-    return bmBuild({n:B.n,o,b:B.b,h:B.h,hJ:B.h+eF-ePl,sL:W(-1),sR:W(1),pots:B.po,eJ,eF},P)});
+    return bmBuild({n:B.n,o,b:B.b,h:B.h,hJ:B.h+eF-ePl,sL:W(-1),sR:W(1),pots:B.po,eJ,eF,cpJ:cpFmt((d.cp&&d.cp.j)||CPDEF)},P)});
   return{P,beams,eF,eJ,ePl};
 }
 // ---------- Forme « poutre » ----------
@@ -2330,7 +2385,7 @@ function ptGeo(d){
     if(typ==='vc')return{t:'voile',side:sd,R,at:(dd,v)=>sd*Math.sqrt(Math.max((R+dd)**2-(o+v)**2,0))};
     return{t:'voile',side:sd,R:0,at:(dd,v)=>sd<0?uL0-dd:uR0+dd}};
   const sL=end(-1,d.ptEL,d.ptDL),sR=end(1,d.ptER,d.ptDR);
-  const bm=bmBuild({n:1,o,b,h,hJ:h+eF-ePl,sL,sR,eJ,eF,pots:(d.ptPo||[]).filter(p=>p.D>0).map(p=>({s:uL0+p.s,D:p.D}))},P);
+  const bm=bmBuild({n:1,o,b,h,hJ:h+eF-ePl,sL,sR,eJ,eF,cpJ:cpFmt((d.cp&&d.cp.j)||CPDEF),pots:(d.ptPo||[]).filter(p=>p.D>0).map(p=>({s:uL0+p.s,D:p.D}))},P);
   return Object.assign(g,{ok:true,bm,BG:{P,beams:[bm],eF,eJ,ePl}});
 }
 // v17 — dessin commun du coffrage d'une poutre en plan (P(u,v) → [x,y] écran, s = échelle mm → px)
@@ -2516,6 +2571,7 @@ function genPoutre(d){
 }
 // Lignes « Informations » communes aux poutres
 function bmInfo(BG,row){const P=BG.P;
+  row('Lisses / raidisseurs',`lisses basse + haute 63 × 75 contre les joues, raidisseurs 63 × 75 entre les lisses · lisse haute ${P.lhs?'sous les poutrelles (h '+nf(P.hpt)+' mm)':'au dessus des joues'}`);
   row('Poutres',BG.beams.map(bm=>`P${bm.n} : b ${nf(bm.b)} × h ${nf(bm.h)}${bm.o?' · axe '+(bm.o>0?'+':'')+nf(bm.o):''}`).join('<br>')+`<br><span class="nt">coulées en place · dessus = tête de voile · ${BG.beams.reduce((a,bm)=>a+bm.segs.length,0)} tronçon(s) de coffrage · joues ${[...new Set(BG.beams.map(bm=>nf(bm.hJ,0)))].join(' / ')} mm</span>`);
   const pots=BG.beams.flatMap(bm=>bm.pots.map(p=>`P${bm.n} @ ${nf(p.s)} Ø${nf(p.D)}`));if(pots.length)row('Poteaux',pots.join(' · '));
   const pc=BG.beams.flatMap(bm=>bm.poch);if(pc.length)row('Poches voile',`${pc.length} × ${[...new Set(pc.map(p=>nf(p.W)+' × '+nf(p.h)))].join(' / ')} mm · profondeur ${nf(P.pp)} mm ⟂ voile${pc.some(p=>p.R)?' (fond cintré)':''}<br><span class="nt">voile ${nf(P.ev)} mm · côtés de ${nf(Math.min(...pc.flatMap(p=>p.Ls)),0)} à ${nf(Math.max(...pc.flatMap(p=>p.Ls)),0)} mm le long de l'axe</span>`);
@@ -2577,7 +2633,7 @@ function gen(d0){
     row('l (axe) × h',`${nf(g.l)} × ${nf(d.h)} mm`);
     row('Flèche ext / int',`<b>${nf(g.fExt,1)} / ${nf(g.fInt,1)} mm</b>`);
     row('Arc parement ext / int',`${nf(g.sExt,1)} / ${nf(g.sInt,1)} mm`);
-    if(d.constr==='caisson'){if(!g.rad)row('l aux angles',nf(g.lCoin,1)+' mm');const cg=caisGs(d,g);row('Goussets',cg.n?`${cg.n} × ${nf(cg.a)} × ${nf(cg.a)} mm (auto), ${cg.lv.length} niveau(x)`:'aucun')}
+    if(d.constr==='caisson'){if(!g.rad)row('l aux angles',nf(g.lCoin,1)+' mm');const CC=caisCer(d,g);row('Cerces',CC&&CC.n?`${CC.n} cerce(s) CP au gabarit${CC.hole?', évidées (bande '+nf(CC.hole)+' mm)':', pleines'} · dessous à +${CC.lv.map(z=>nf(z,0)).join(' / +')} mm`:'aucune')}
     else{const M=manGeo(d,g);
       row('Joues',g.rad?`${nf(M.jw)} × ${nf(M.hJ,1)} mm, coupes d'équerre`:`${nf(M.jw,1)} (côté béton) / ${nf(M.jwI,1)} (côté vide) × ${nf(M.hJ,1)} mm<br>biais ${nf(M.bevE,1)}° (ext.) / ${nf(M.bevI,1)}° (int.)`);
       row('Linteau / appui',(M.app?'linteau + appui':'linteau seul')+' entre les joues (joues fixées contre leur chant)');
@@ -2666,7 +2722,7 @@ function gen(d0){
     q+=`<div class="sub">Traçage des cerces (mm)</div><table><tr><td>x axe</td><td class="nm">ord. ext</td><td class="nm">ord. int</td></tr>${gabarit(g).map(r=>`<tr><td class="nm" style="text-align:left">${nf(r[0],1)}</td><td class="nm">${nf(r[1],1)}</td><td class="nm">${r[2]==null?'—':nf(r[2],1)}</td></tr>`).join('')}</table>
 <div class="nt">Ordonnée = distance corde → arc, perpendiculaire à la corde, à x de l'axe.</div>`;
   }
-  // v16 : information « flottaison » supprimée (demande utilisateur)
+  // v16 : information supprimée (demande utilisateur)
   const qCtl=W.length?`<div class="sub">Contrôles</div>`+W.map(([l,m])=>`<div class="${l==='warn'?'wn':'er'}">${l==='warn'?'⚠':'⛔'} ${esc(m)}</div>`).join(''):'';
   if(!V.pages)q+=qCtl;
   if(!q)q='<div class="nt">—</div>';
@@ -3131,17 +3187,26 @@ function jouePiecesSelfTest(){
   return ok;
 }
 
+// v18 : grille de découpe d'une pièce w × h plus grande que le panneau W × H (commune à l'imbrication et aux tasseaux de joint)
+function gridCells(w,h,W,H){
+  const fits=(a,b)=>a<=W+1e-6&&b<=H+1e-6||a<=H+1e-6&&b<=W+1e-6;if(fits(w,h))return[[0,0,w,h]];
+  const opt=[[W,H],[H,W]].map(([cw,ch])=>({cw,ch,n:Math.ceil(w/cw-1e-9)*Math.ceil(h/ch-1e-9)})).sort((p,q)=>p.n-q.n)[0];
+  const nx=Math.ceil(w/opt.cw-1e-9),ny=Math.ceil(h/opt.ch-1e-9),cells=[];
+  for(let i=0;i<nx;i++)for(let j=0;j<ny;j++)cells.push([i*w/nx,j*h/ny,(i+1)*w/nx,(j+1)*h/ny]);return cells}
 // ---------- Formes des pièces (repère local, bbox [0,w] × [0,h]) ----------
-function platePoly(g,inner,faces){
-  const ep=g.ep,Re=g.Re-(faces?ep:0),Ri=g.Ri+(faces?ep:0),P=[];
-  if(g.rad){const a=g.al-(inner?ep/((g.Ri+g.Re)/2):0),n=40;
-    for(let i=0;i<=n;i++){const t=-a+2*a*i/n;P.push([Re*Math.sin(t),Re*Math.cos(t)])}
-    for(let i=n;i>=0;i--){const t=-a+2*a*i/n;P.push([Ri*Math.sin(t),Ri*Math.cos(t)])}}
-  else{const X2=g.L/2-(inner?ep:0),n=40;
+// v18 : contour dans le repère du centre de la cuve (platePolyRaw) ; w = retrait supplémentaire (évidement des cerces)
+function platePolyRaw(g,inner,faces,w){
+  w=w||0;const ep=g.ep,Re=g.Re-(faces?ep:0)-w,Ri=g.Ri+(faces?ep:0)+w,P=[],n=64;
+  if(g.rad){// côtés droits parallèles aux joues radiales, à la distance off de leur face extérieure (exact)
+    const off=(inner?ep:0)+w,aE=g.al-Math.asin(Math.min(1,off/Re)),aI=g.al-Math.asin(Math.min(1,off/Ri));
+    for(let i=0;i<=n;i++){const t=-aE+2*aE*i/n;P.push([Re*Math.sin(t),Re*Math.cos(t)])}
+    for(let i=n;i>=0;i--){const t=-aI+2*aI*i/n;P.push([Ri*Math.sin(t),Ri*Math.cos(t)])}}
+  else{const X2=g.L/2-(inner?ep:0)-w;
     for(let i=0;i<=n;i++){const x=-X2+2*X2*i/n;P.push([x,Math.sqrt(Math.max(Re*Re-x*x,0))])}
     for(let i=n;i>=0;i--){const x=-X2+2*X2*i/n;P.push([x,Math.sqrt(Math.max(Ri*Ri-x*x,0))])}}
-  return normPoly(P);
+  return P;
 }
+function platePoly(g,inner,faces){return normPoly(platePolyRaw(g,inner,faces))}
 function normPoly(P){const x0=Math.min(...P.map(p=>p[0])),y0=Math.min(...P.map(p=>p[1]));return P.map(([x,y])=>[x-x0,y-y0])}
 function circPoly(D,n){n=n||72;const r=D/2,P=[];for(let i=0;i<n;i++){const t=2*Math.PI*i/n;P.push([r+r*Math.cos(t),r+r*Math.sin(t)])}return P}
 const bbox=P=>{let a=1e18,b=1e18,c=-1e18,e=-1e18;P.forEach(([x,y])=>{if(x<a)a=x;if(y<b)b=y;if(x>c)c=x;if(y>e)e=y});return[a,b,c,e]};
@@ -3166,20 +3231,29 @@ function debit(d,g){
   R.filter(r=>r.k==='j').concat(R.filter(r=>r.k!=='j')).forEach(r=>{
     const c=cpOf(d,r.k),[W,H]=cpFmt(c),sh=r.sh||{};
     if(nestSkip(d,r.k))return;
+    const bmJ=r.n==='Joue de poutre'; // v18 : joints des joues de poutre au droit d'un raidisseur (même découpe que bmBuild)
     if((!r.sh||sh.t==='dev')&&r.a>0&&r.b>0){const refs=r.k!=='j'?JJ.filter(x=>Math.abs(x.a-r.a)<=Math.max(150,0.06*r.a)).flatMap(x=>x.J):null;
-      const jp=jouePieces(r.a,r.b,r.q,W,H,sh.t==='dev'&&c.t==='cintr',r.k==='j'?'j':'f',refs);
+      let jp;if(bmJ){const j1=bmJoueSplit(r.a,r.b,W,H);jp=Object.assign({},j1,{copies:Array.from({length:r.q},()=>j1.copies[0]),nJ:r.q*(j1.nJ||0),nH:r.q*(j1.nH||0)})}
+      else jp=jouePieces(r.a,r.b,r.q,W,H,sh.t==='dev'&&c.t==='cintr',r.k==='j'?'j':'f',refs);
       if(r.k==='j'&&jp.split)JJ.push({a:r.a,J:jp.copies.map(x=>jointsOf(x.lens))});
       if(jp.split){r.split=jp;const c0=jp.copies[0],c1=jp.copies[1],dm=cp=>cp.bands.length>1?`(${cp.lens.map(v=>nf(v,0)).join(' + ')}) × (${cp.bands.map(v=>nf(v,0)).join(' + ')})`:`${cp.lens.map(v=>nf(v,0)).join(' + ')} × ${nf(cp.bands[0],0)}`;
         const wide=c0.bands.length>1?(CPT[c.t]||CPT.filme).fmt.map(x=>x[0].match(/(\d+)x(\d+)/)).filter(Boolean).map(m=>[+m[1],+m[2]]).find(([w2,h2])=>Math.min(w2,h2)>=r.b&&Math.min(w2,h2)>Math.min(W,H)):null;
-        r.splitTxt=`→ ${c0.lens.length*c0.bands.length} morceaux : ${dm(c0)}`+(c1&&c1.lens.join()!==c0.lens.join()?` · exemplaire suivant ${dm(c1)} (joints décalés${jp.dJ<PCMIN?' de '+nf(jp.dJ,0)+' mm seulement':''})`:'')+(r.k!=='j'&&c0.lens.length>1&&jp.dF>=PCMIN?' · joints décalés de ceux des joues':'')+' · joints sur couvre-joint'+(wide?` · format ${Math.max(...wide)} × ${Math.min(...wide)} : sans bande`:'');
-        R.bois=R.bois||[];if(jp.nJ)R.bois.push({q:jp.nJ,n:'Couvre-joints 63×75 ('+r.tag+')',L:Math.round(Math.max(...c0.bands))});
-        if(jp.nH)R.bois.push({q:jp.nH,n:'Lisses de joint 63×75 ('+r.tag+')',L:Math.round(r.a)})}}});
+        r.splitTxt=`→ ${c0.lens.length*c0.bands.length} morceaux : ${dm(c0)}`+(c1&&c1.lens.join()!==c0.lens.join()?` · exemplaire suivant ${dm(c1)} (joints décalés${jp.dJ<PCMIN?' de '+nf(jp.dJ,0)+' mm seulement':''})`:'')+(r.k!=='j'&&c0.lens.length>1&&jp.dF>=PCMIN?' · joints décalés de ceux des joues':'')+(bmJ?' · joints au droit d\'un raidisseur':' · joints sur couvre-joint')+(wide?` · format ${Math.max(...wide)} × ${Math.min(...wide)} : sans bande`:'');
+        // renforts de joint : calculés plus bas par jointGeo (mêmes pièces au débit et en 3D) ; lignes génériques en secours seulement
+        r.cjDef=bmJ?[]:[jp.nJ&&{q:jp.nJ,n:'Couvre-joints 63×75 ('+r.tag+')',L:Math.round(Math.max(...c0.bands))},jp.nH&&{q:jp.nH,n:'Lisses de joint 63×75 ('+r.tag+')',L:Math.round(r.a)}].filter(Boolean)}}
+    // plaques au gabarit / disques plus grands que le panneau : grille de découpe (joints sur tasseau)
+    else if(sh.t==='plate'&&sh.g&&sh.g.ok||sh.t==='disc'&&sh.D>0){const raw=sh.t==='plate'?platePolyRaw(sh.g,sh.inner,sh.faces):circPoly(sh.D).map(([x,y])=>[x-sh.D/2,y-sh.D/2]),[x0,y0,x1,y1]=bbox(raw),cl=gridCells(x1-x0,y1-y0,W,H);
+      if(cl.length>1)r.cells={cells:cl,x0,y0,w:x1-x0,h:y1-y0}}});
   // bois complémentaires (feuillure, lisses de massif, montants de mannequin)
   const ep=d.ep||0,BX=R.bois=R.bois||[];
   if(d.feuil&&d.fL>0&&d.fH>0){BX.push({q:2,n:`Tasseaux de feuillure ${nf(d.fL)}×${nf(d.fH)}`,L:Math.round(d.L+2*d.fL)});BX.push({q:2,n:`Tasseaux de feuillure ${nf(d.fL)}×${nf(d.fH)}`,L:Math.round(d.l)})}
   if(d.forme==='massif'&&d.ren){BX.push({q:4,n:'Lisses 50×50 (2 niveaux)',L:Math.round(d.L+2*ep+100)});BX.push({q:4,n:'Lisses 50×50 (2 niveaux)',L:Math.round(d.l+2*ep)})}
   if(d.forme==='voile'&&g&&g.ok&&d.constr!=='caisson'&&typeof voileBois==='function')voileBois(d,g,R,BX);
-  if(d.forme==='voile'&&g&&g.ok&&d.constr==='caisson'&&typeof caisBois==='function')caisBois(d,g,BX);
+  // v18 : renforts de joint (couvre-joints, lisses de joint, tasseaux de joint) — géométrie commune débit / 3D, interrompus au droit des autres pièces
+  let JG=null;if(R.some(r=>r.split||r.cells))try{const k=JSON.stringify(d);JG=JG_CACHE.get(k);if(!JG){JG=jointGeo(d,g,R);JG_CACHE.set(k,JG);if(JG_CACHE.size>30)JG_CACHE.delete(JG_CACHE.keys().next().value)}}catch(e){JG=null}
+  R.jg=JG?JG.bars:[];const cov=new Set(JG?JG.done:[]);
+  R.forEach(r=>{if(r.cjDef&&!cov.has(r.tag))r.cjDef.forEach(b=>BX.push(b))});if(JG){JG.lines.forEach(b=>BX.push(Object.assign({},b)));
+    R.forEach(r=>{if(JG.notes.includes(r.tag)&&r.splitTxt)r.splitTxt=r.splitTxt.replace('(joints sur tasseau)','(joint en appui sur une pièce en place : montant)')})}
   if(!BX.length)delete R.bois;
   (R.bois||[]).forEach((b,i)=>{b.tag='B'+(i+1);b.ftag=ref+'-'+b.tag});
   if(d.forme==='goulotte'&&R.sheets)delete R.sheets.j;
@@ -3204,20 +3278,16 @@ function nestPieces(d,R){
     if(sh.t==='tri'&&r.a>0)base=[[0,0],[r.a,0],[0,r.a]];
     else if(sh.t==='disc'&&sh.D>0){base=circPoly(sh.D);if(sh.Din>0)hole=circPoly(sh.Din).map(([x,y])=>[x+(sh.D-sh.Din)/2,y+(sh.D-sh.Din)/2])}
     else if(sh.t==='para'&&sh.L>0)base=sh.poly?sh.poly.map(q=>q.slice()):[[0,0],[sh.L,0],[sh.L+sh.dl,sh.W],[sh.dl,sh.W]];
-    else if(sh.t==='plate'&&sh.g&&sh.g.ok)base=platePoly(sh.g,sh.inner,sh.faces);
+    else if(sh.t==='plate'&&sh.g&&sh.g.ok){base=platePolyRaw(sh.g,sh.inner,sh.faces);if(sh.hole>0)hole=platePolyRaw(sh.g,sh.inner,sh.faces,sh.hole)}
     if(!base)return;
     const [x0,y0,x1,y1]=bbox(base),w=x1-x0,h=y1-y0;base=base.map(([x,y])=>[x-x0,y-y0]);if(hole)hole=hole.map(([x,y])=>[x-x0,y-y0]);
-    const fits=(a,b)=>a<=W+1e-6&&b<=H+1e-6||a<=H+1e-6&&b<=W+1e-6;
     let cells=[[0,0,w,h]];
     if(sh.cutsX&&sh.cutsX.length){// v17 : coupes imposées (joints alignés sur les cadres de joint)
       const xs=[0,...sh.cutsX.slice().sort((a,b)=>a-b),w],m=Math.min(W,H),ny=h<=m+1e-6?1:Math.ceil(h/m-1e-9);cells=[];
       for(let i=0;i+1<xs.length;i++)for(let j=0;j<ny;j++)cells.push([xs[i],j*h/ny,xs[i+1],(j+1)*h/ny]);
       if(!r.splitTxt)r.splitTxt=`→ ${cells.length} tronçons (joints sur cadre)`}
-    else if(!fits(w,h)){ // grille de découpe
-      const opt=[[W,H],[H,W]].map(([cw,ch])=>({cw,ch,n:Math.ceil(w/cw-1e-9)*Math.ceil(h/ch-1e-9)})).sort((p,q)=>p.n-q.n)[0];
-      const nx=Math.ceil(w/opt.cw-1e-9),ny=Math.ceil(h/opt.ch-1e-9);cells=[];
-      for(let i=0;i<nx;i++)for(let j=0;j<ny;j++)cells.push([i*w/nx,j*h/ny,(i+1)*w/nx,(j+1)*h/ny]);
-      if(!r.splitTxt){r.splitTxt=`→ ${cells.length} morceaux (joints sur tasseau)`;}}
+    else{cells=gridCells(w,h,W,H);if(cells.length>1&&!r.splitTxt)r.splitTxt=`→ ${cells.length} morceaux (joints sur tasseau)`}
+    if(sh.t==='plate')r.cells={cells,x0,y0,w,h}; // v18 : joints reportés sur le gabarit 1:1
     const parts=[];cells.forEach(([a1,b1,a2,b2])=>{const p=cells.length>1?clipBox(base,a1,b1,a2,b2):base;if(!p)return;const hp=hole&&cells.length>1?clipBox(hole,a1,b1,a2,b2):hole;
       const [px0,py0,px1,py1]=bbox(p);parts.push({w:px1-px0,h:py1-py0,poly:p.map(([x,y])=>[x-px0,y-py0]),hole:hp?hp.map(([x,y])=>[x-px0,y-py0]):null})});
     for(let i=0;i<r.q;i++)parts.forEach((pt,j)=>push(Object.assign({lock:false,dims:sh.t==='para'&&parts.length===1?nf(sh.L,0)+' × '+nf(sh.W,0)+' ⧸ '+nf(sh.dl,0):sh.t==='disc'?'Ø'+nf(sh.D,0)+(sh.Din>0?'/'+nf(sh.Din,0):'')+(parts.length>1?' ('+(j+1)+'/'+parts.length+')':''):nf(pt.w,0)+' × '+nf(pt.h,0)},pt,{tag:r.tag+(parts.length>1?'abcdefghijklmnopqrstuvwxyz'[j%26]:''),ftag:r.ftag+(parts.length>1?'abcdefghijklmnopqrstuvwxyz'[j%26]:'')}),i))});
@@ -3390,36 +3460,25 @@ function debitCSVSelfTest(){
 // XLSX minimal (zip « store » + CRC32)
 const CRC_T=(()=>{const t=new Uint32Array(256);for(let n=0;n<256;n++){let c=n;for(let k=0;k<8;k++)c=c&1?0xEDB88320^(c>>>1):c>>>1;t[n]=c>>>0}return t})();
 function crc32(u){let c=0xFFFFFFFF;for(let i=0;i<u.length;i++)c=CRC_T[(c^u[i])&0xFF]^(c>>>8);return(c^0xFFFFFFFF)>>>0}
-function zipStore(files){
+function zipStore(files,mime){
   const enc=new TextEncoder(),parts=[],cen=[];let off=0;
   const u16=v=>[v&255,(v>>8)&255],u32=v=>[v&255,(v>>8)&255,(v>>16)&255,(v>>>24)&255];
-  files.forEach(([name,txt])=>{const nm=enc.encode(name),data=enc.encode(txt),crc=crc32(data);
+  files.forEach(([name,txt])=>{const nm=enc.encode(name),data=txt instanceof Uint8Array?txt:enc.encode(txt),crc=crc32(data);
     const lh=new Uint8Array([0x50,0x4b,3,4,...u16(20),...u16(0x0800),...u16(0),...u16(0),...u16(0x21),...u32(crc),...u32(data.length),...u32(data.length),...u16(nm.length),...u16(0)]);
     parts.push(lh,nm,data);
     cen.push(new Uint8Array([0x50,0x4b,1,2,...u16(20),...u16(20),...u16(0x0800),...u16(0),...u16(0),...u16(0x21),...u32(crc),...u32(data.length),...u32(data.length),...u16(nm.length),...u16(0),...u16(0),...u16(0),...u16(0),...u32(0),...u32(off)]),nm);
     off+=lh.length+nm.length+data.length});
   const cs=cen.reduce((s,a)=>s+a.length,0);
   const end=new Uint8Array([0x50,0x4b,5,6,...u16(0),...u16(0),...u16(files.length),...u16(files.length),...u32(cs),...u32(off),...u16(0)]);
-  return new Blob([...parts,...cen,end],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
-}
-function xlsxBlob(sheets){ // sheets : [[nom, lignes[[…]]]]
-  const x=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])),col=i=>{let s='';i++;while(i){const m=(i-1)%26;s=String.fromCharCode(65+m)+s;i=Math.floor((i-1)/26)}return s};
-  const sh=sheets.map(([nm,rows])=>`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData>${rows.map((r,i)=>`<row r="${i+1}">${r.map((v,j)=>v===''||v==null?'':typeof v==='number'&&isFinite(v)?`<c r="${col(j)}${i+1}"${i===0?' s="1"':''}><v>${Math.round(v*1000)/1000}</v></c>`:`<c r="${col(j)}${i+1}" t="inlineStr"${i===0?' s="1"':''}><is><t>${x(v)}</t></is></c>`).join('')}</row>`).join('')}</sheetData></worksheet>`);
-  const files=[['[Content_Types].xml',`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>${sh.map((_,i)=>`<Override PartName="/xl/worksheets/sheet${i+1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`).join('')}</Types>`],
-    ['_rels/.rels',`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`],
-    ['xl/workbook.xml',`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets>${sheets.map(([nm],i)=>`<sheet name="${x(nm.slice(0,31))}" sheetId="${i+1}" r:id="rId${i+1}"/>`).join('')}</sheets></workbook>`],
-    ['xl/_rels/workbook.xml.rels',`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${sh.map((_,i)=>`<Relationship Id="rId${i+1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet${i+1}.xml"/>`).join('')}<Relationship Id="rId${sh.length+1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>`],
-    ['xl/styles.xml',`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font></fonts><fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills><borders count="1"><border/></borders><cellStyleXfs count="1"><xf/></cellStyleXfs><cellXfs count="2"><xf/><xf fontId="1" applyFont="1"/></cellXfs></styleSheet>`]];
-  sh.forEach((s,i)=>files.push([`xl/worksheets/sheet${i+1}.xml`,s]));
-  return zipStore(files);
+  return new Blob([...parts,...cen,end],{type:mime||'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
 }
 function dlBlob(b,name){const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),1500)}
 function fileStem(list){const d=list[0]||{};return('debit_'+[d.ch,list.length===1?d.ref:''].filter(Boolean).join('_')+'_'+new Date().toISOString().slice(0,10)).replace(/[^\w\-]+/g,'_')}
+function expList(scope){return scope==='all'?(P.length?chantierPlans(S('iCh','')):[coll()]):[EI>=0?P[EI]:coll()]}
 function expDebit(kind,scope){
-  const list=scope==='all'?(P.length?P:[coll()]):[EI>=0?P[EI]:coll()];
+  const list=expList(scope);
   if(kind==='csv')dlBlob(new Blob([debitCSV(list)],{type:'text/csv;charset=utf-8'}),fileStem(list)+'.csv');
-  else{const rows=[CSV_HEAD];list.forEach(d=>debitRows(d).forEach(r=>rows.push([d.ch,d.ouv,d.ref,r.tag,r.des,r.q,r.nb,r.qt,r.L,r.l,r.mat,r.m2])));
-    const sheets=[['Débit',rows]];if(typeof chantierSheets==='function')sheets.push(...chantierSheets(list));dlBlob(xlsxBlob(sheets),fileStem(list)+'.xlsx')}
+  else dlBlob(new Blob([debitXlsx(list)],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}),fileStem(list)+'.xlsx');
 }
 // Repères : chaque ligne du débit a un repère unique, et chaque pièce imbriquée apparaît sur les pages de découpe
 function pieceTagsSelfTest(){
@@ -3431,6 +3490,71 @@ function pieceTagsSelfTest(){
     Object.values(N).forEach(n=>n.sheets.forEach(s=>s.forEach(p=>{ok=ok&&pg.includes('>'+p.ftag+'<')})));
     const h=gen(Object.assign(coll(),{ref:'R05'}));R.forEach(r=>{ok=ok&&h.includes(r.tag)})});
   return ok;
+}
+
+// ====== v18 — RENFORTS DE JOINT (couvre-joints, lisses de joint, tasseaux de joint) ======
+// Une pièce CP plus grande que le panneau est débitée en morceaux ; chaque joint reçoit un renfort bois 63 × 75 côté renforts (côté vide d'une
+// réservation, extérieur d'un coffrage de béton). Les renforts sont posés sur la face enregistrée par model3, puis interrompus là où ils
+// rencontreraient une autre pièce (cerces, lisses, croix, goussets…). Le débit compte exactement les morceaux dessinés en 3D.
+const JG_W=75,JG_T=63,JG_MIN=80,JG_STEP=10,JG_CACHE=new Map();
+// face intérieure d'une joue de voile (côté vide, vers l'axe de la baie) — repère du modèle 3D (y recentré sur Rm)
+function voileJoueFace(g,sg,ep,Rm,cais,h){const r1=cais?g.Ri+ep:g.Ri;
+  if(g.rad){const al=g.al,n=[-sg*Math.cos(al),Math.sin(al)],rh=[sg*Math.sin(al),Math.cos(al)],t=Math.sqrt(Math.max(r1*r1-ep*ep,0));
+    return{t:'flat',F0:[n[0]*ep+rh[0]*t,n[1]*ep+rh[1]*t-Rm,0],A:[rh[0],rh[1],0],B:[0,0,1],N:[n[0],n[1],0]}}
+  const x=sg*(g.L/2-ep);return{t:'flat',F0:[x,Math.sqrt(Math.max(r1*r1-x*x,0))-Rm,0],A:[0,1,0],B:[0,0,1],N:[-sg,0,0]}}
+function jointGeo(d,g,R){
+  const out={bars:[],lines:[],done:[],notes:[]},sc=model3(d,R,{base:true}),JW=sc.jw||[];if(!JW.length)return out;
+  const SO=sc.solids.slice(),BB=SO.map(bb3),hw=JG_W/2,ht=JG_T/2,add3=(a,b,k)=>[a[0]+b[0]*k,a[1]+b[1]*k,a[2]+b[2]*k];
+  const blocked=(par,P)=>{for(let i=0;i<SO.length;i++){const s=SO[i];if(s===par||(s.rg&&par.rg&&s.rg===par.rg))continue;const b=BB[i];
+    if(P[0]<b[0]-1||P[0]>b[3]+1||P[1]<b[1]-1||P[1]>b[4]+1||P[2]<b[2]-1||P[2]>b[5]+1)continue;if(in3(s,P,0.5))return true}return false};
+  // parties libres d'un renfort droit : départ C0 (axe), direction D, longueur L, section ±U·hw, ±V·ht
+  const free=(par,C0,D,L,U,V)=>{const n=Math.max(1,Math.ceil(L/JG_STEP)),ok=[];
+    for(let i=0;i<=n;i++){const u=L*i/n,c=add3(C0,D,u);ok.push(![[0,0],[1,1],[1,-1],[-1,1],[-1,-1]].some(([a,b])=>blocked(par,add3(add3(c,U,a*(hw-1)),V,b*(ht-1)))))}
+    const seg=[];let s0=null;for(let i=0;i<=n;i++){if(ok[i]&&s0==null)s0=i;if((!ok[i]||i===n)&&s0!=null){const e=ok[i]?i:i-1;let a=L*s0/n,b=L*e/n;if(s0>0)a+=JG_STEP/2+1;if(ok[i]?false:true)b-=JG_STEP/2+1;if(e===n&&ok[i])b=L;if(b-a>=JG_MIN)seg.push([a,b]);s0=null}}
+    return seg};
+  const box=(C0,D,U,V,[a,b])=>({t:'box',c:add3(C0,D,(a+b)/2),e1:U,e2:V,e3:D,a:hw,b:ht,k:(b-a)/2});
+  const push=(kind,r,jw,L,geo,ang)=>{out.bars.push({kind,r,jw,L,geo,ang,tag:r.tag});const t=S3();
+    if(geo.t==='box')t.bx3(geo.c,geo.e1,geo.e2,geo.e3,geo.a,geo.b,geo.k,C3.bois);else t.ring(geo.r1,geo.r2,geo.a1,geo.a2,geo.z0,geo.h,C3.bois,null,geo.n,null,false,geo.cx,geo.cy);
+    t.solids.forEach(o=>{SO.push(o);BB.push(bb3(o))})};
+  const cum=a=>{let c=0;return a.slice(0,-1).map(v=>c+=v)},reg=new Map();
+  JW.forEach((w,jw)=>{const r=w.r,G=w.geom,par=w.parent;reg.set(r,(reg.get(r)||0)+1);
+    if(G.t==='flat'||G.t==='ring'){const cp=G.lens?{lens:G.lens,bands:[G.hb||r.b]}:r.split&&r.split.copies[w.copy];if(!cp)return;
+      const J=cum(cp.lens).concat(G.closed?[0]:[]),TB=cum(cp.bands),bnd=[0].concat(TB,[cp.bands.reduce((a,b)=>a+b,0)]),Hb=bnd[bnd.length-1],Lt=cp.lens.reduce((a,b)=>a+b,0);
+      if(G.t==='flat'){
+        J.forEach(sx=>{for(let k=0;k<bnd.length-1;k++){const t0=bnd[k]+(k>0?hw:0),t1=bnd[k+1]-(k<bnd.length-2?hw:0),C0=add3(add3(add3(G.F0,G.A,sx),G.N,ht),G.B,t0);
+          free(par,C0,G.B,t1-t0,G.A,G.N).forEach(sg=>push('cj',r,jw,sg[1]-sg[0],box(C0,G.B,G.A,G.N,sg)))}});
+        TB.forEach(t=>{const C0=add3(add3(G.F0,G.B,t),G.N,ht);free(par,C0,G.A,Lt,G.B,G.N).forEach(sg=>push('lj',r,jw,sg[1]-sg[0],box(C0,G.A,G.B,G.N,sg)))})}
+      else{const rgP=par.rg,sagP=G.sg<0&&rgP&&rgP.n?G.rf*(1-Math.cos(Math.abs(rgP.a2-rgP.a1)/rgP.n/2))+0.2:0,sag=G.sg<0?hw*hw/(2*G.rf)+sagP:0,Z=[0,0,1];
+        if(G.full&&J.length){let best=-1,a0=G.a0;for(let k=0;k<24;k++){const a=G.a0+k*Math.PI/12;let tot=0;
+            J.forEach(sx=>{const ph=a+G.dir*sx/G.rn,ur=[Math.cos(ph),Math.sin(ph),0],ut=[-Math.sin(ph),Math.cos(ph),0],N=[G.sg*ur[0],G.sg*ur[1],0],C0=add3([G.cx+ur[0]*G.rf,G.cy+ur[1]*G.rf,G.z0],N,ht+sag);
+              free(par,C0,Z,Hb,ut,N).forEach(sg=>tot+=sg[1]-sg[0])});
+            if(tot>best+1){best=tot;a0=a}if(best>=J.length*Hb-1)break}G.a0=a0}
+        J.forEach(sx=>{const ph=G.a0+G.dir*sx/G.rn,ur=[Math.cos(ph),Math.sin(ph),0],ut=[-Math.sin(ph),Math.cos(ph),0],N=[G.sg*ur[0],G.sg*ur[1],0],F=[G.cx+ur[0]*G.rf,G.cy+ur[1]*G.rf,G.z0];
+          for(let k=0;k<bnd.length-1;k++){const t0=bnd[k]+(k>0?hw:0),t1=bnd[k+1]-(k<bnd.length-2?hw:0),C0=add3(add3(F,N,ht+sag),Z,t0);
+            free(par,C0,Z,t1-t0,ut,N).forEach(sg=>push('cj',r,jw,sg[1]-sg[0],box(C0,Z,ut,N,sg),ph))}});
+        // lisse de joint cintrée (joint horizontal d'une paroi cintrée) : arc à mi-épaisseur, parties libres le long de l'arc
+        TB.forEach(t=>{const rm=G.rf+G.sg*ht,L=Lt*rm/G.rn,n=Math.max(2,Math.ceil(L/JG_STEP)),ok=[];
+          for(let i=0;i<=n;i++){const ph=G.a0+G.dir*(Lt*i/n)/G.rn,ur=[Math.cos(ph),Math.sin(ph),0],c=[G.cx+ur[0]*rm,G.cy+ur[1]*rm,G.z0+t];
+            ok.push(![[0,0],[1,1],[1,-1],[-1,1],[-1,-1]].some(([a,b])=>blocked(par,add3(add3(c,Z,a*(hw-1)),ur,b*(ht-1)))))}
+          let s0=null;for(let i=0;i<=n;i++){if(ok[i]&&s0==null)s0=i;if((!ok[i]||i===n)&&s0!=null){const e=ok[i]?i:i-1;const pa=G.a0+G.dir*(Lt*s0/n)/G.rn,pb=G.a0+G.dir*(Lt*e/n)/G.rn,a1=Math.min(pa,pb),a2=Math.max(pa,pb),Ls=(a2-a1)*rm;
+            if(Ls>=JG_MIN){const rr=G.sg<0?G.rf-sagP:G.rf,ns=Math.max(4,Math.ceil((a2-a1)/(2*Math.acos(1-0.2/rr)))),sc2=rr*(1-Math.cos((a2-a1)/ns/2))+0.1,r1=G.sg<0?rr-JG_T:rr+sc2;
+              push('lj',r,jw,Ls,{t:'arc',cx:G.cx,cy:G.cy,r1,r2:r1+JG_T,a1,a2,n:ns,z0:G.z0+t-hw,h:JG_W},(a1+a2)/2)}s0=null}}})}}
+    else if(G.t==='xcut'){const C=r.cells;if(!C||C.cells.length<2)return;
+      const cross=(poly,x)=>{const I=[];for(let i=0;i<poly.length;i++){const a=poly[i],b=poly[(i+1)%poly.length];if((a[0]-x)*(b[0]-x)<0||a[0]===x&&b[0]!==x)I.push(a[1]+(x-a[0])*(b[1]-a[1])/(b[0]-a[0]))}I.sort((a,b)=>a-b);const o=[];for(let i=0;i+1<I.length;i+=2)o.push([I[i],I[i+1]]);return o};
+      const inter=(A,B)=>A.flatMap(([a,b])=>B.map(([c,e])=>[Math.max(a,c),Math.min(b,e)])).filter(([a,b])=>b>a);
+      const minus=(A,H)=>{let o=A;H.forEach(([c,e])=>{o=o.flatMap(([a,b])=>{const r2=[];if(c>a)r2.push([a,Math.min(b,c)]);if(e<b)r2.push([Math.max(a,e),b]);return r2.filter(([u,v])=>v>u)})});return o};
+      const ivl=x=>{let I=inter(cross(G.poly,x-hw),cross(G.poly,x+hw));if(G.hole)I=minus(I,cross(G.hole,x-hw).concat(cross(G.hole,x+hw)));return I};
+      const swp=P=>P.map(([x,y])=>[y,x]),zc=G.zf+G.N*ht,V=[0,0,G.N];
+      [...new Set(C.cells.map(c=>c[0]).filter(a=>a>0.5))].forEach(a=>{const x=C.x0+a;let tot=0,got=0;ivl(x).forEach(([ya,yb])=>{tot+=yb-ya;const C0=[x,ya,zc],D=[0,1,0];free(par,C0,D,yb-ya,[1,0,0],V).forEach(sg=>{got+=sg[1]-sg[0];push('tj',r,jw,sg[1]-sg[0],box(C0,D,[1,0,0],V,sg))})});
+        if(tot>0&&got<0.5*tot)out.notes.push(r)}); // joint au droit d'une pièce en place (montant…) : c'est elle qui le reprend
+      [...new Set(C.cells.map(c=>c[1]).filter(b=>b>0.5))].forEach(b=>{const y=C.y0+b+(G.dy||0),P2=swp(G.poly),H2=G.hole?swp(G.hole):null;
+        let I=inter(cross(P2,y-hw),cross(P2,y+hw));if(H2)I=minus(I,cross(H2,y-hw).concat(cross(H2,y+hw)));
+        I.forEach(([xa,xb])=>{const C0=[xa,y,zc],D=[1,0,0];free(par,C0,D,xb-xa,[0,1,0],V).forEach(sg=>push('tj',r,jw,sg[1]-sg[0],box(C0,D,[0,1,0],V,sg)))})})}});
+  reg.forEach((n,r)=>{if(n>=r.q||JW.some(w=>w.r===r&&w.geom.lens))out.done.push(r.tag)});out.notes=[...new Set(out.notes.map(r=>r.tag))];
+  out.bars.forEach(b=>delete b.r);
+  const nm=b=>b.kind==='cj'?`Couvre-joints 63×75 (${b.tag})`:b.kind==='lj'?`Lisses de joint 63×75${b.geo.t==='arc'?' cintrées':''} (${b.tag})`:`Tasseaux de joint 63×75 (${b.tag})`;
+  const grp=new Map();out.bars.forEach(b=>{b.name=nm(b);const k=b.name+'|'+Math.round(b.L);const o=grp.get(k);if(o)o.q++;else grp.set(k,{q:1,n:b.name,L:Math.round(b.L)})});
+  out.lines=[...grp.values()];return out;
 }
 
 // ---------- Pages complémentaires d'un plan ----------
@@ -3674,7 +3798,8 @@ function montageInfo(d,R){
     ctl.push([`Ø ext. ${nf(d.Dext)} (2 mesures à 90°)`,'écart ≤ ovalisation admise'],[d.Dint>0?`Ø int. ${nf(d.Dint)}`:'—',''],[`Hauteur ${nf(d.h)}`,''],['Boîte calée et fixée en position','']);}
   else if(f==='voile'){if(d.constr!=='caisson'){steps.push(`Tracer et découper linteau ${tg('fs')}${d.appui!==false?', appui':''} et cerces ${tg('fi')} au gabarit 1:1 (rayons R int / R ext).`);
       steps.push(`Fixer les joues ${T('Joues')} contre le chant du linteau et de l\'appui : ${fix}.`);steps.push('Poser cerces intermédiaires et montants, puis les goussets d\'angle.');}
-    else{steps.push('Cintrer les faces sur cerces provisoires, fixer les joues entre les faces.');if(d.ferme)steps.push('Poser dessus / dessous entre les faces.');}
+    else{const CC=caisCer(d,voileGeo(d));if(CC&&CC.n)steps.push(`Tracer et découper les ${CC.n} cerces CP au gabarit 1:1${CC.hole?' (évidées, bande de '+nf(CC.hole)+' mm)':''}.`);
+      steps.push('Cintrer les faces'+(CC&&CC.n?' sur les cerces posées aux niveaux indiqués':'')+', fixer les joues entre les faces.');if(d.ferme)steps.push('Poser dessus / dessous entre les faces.');}
     const g=voileGeo(d);if(g.ok)ctl.push([`Corde ${nf(g.cExt)} · flèche ext. ${nf(g.fExt,1)} / int. ${nf(g.fInt,1)}`,'au cordeau'],[`Épaisseur au droit des joues ${nf(g.l)}`,''],[`Hauteur hors-tout ${nf(d.h)}`,'']);
     ctl.push(['Mannequin calé et fixé en position','']);}
   else if(f==='special'){steps.push('Assembler les parois contre le chant de la base, puis le fond supérieur éventuel.');if(d.conc)steps.push('Cintrer et fixer la forme concentrique (centrage au cordeau, 2 diamètres).');if(d.pot)steps.push('Positionner les poteaux aux angles indiqués (tracer les axes depuis le centre).');
@@ -3699,7 +3824,7 @@ function bmSteps(bm,steps,ctl,tg){const P=bm?'poutre '+bm.n+' : ':'';
   if(tubes)steps.push(`${P}poser et caler les tubes carton (réservations vides) à leurs axes, arrêtés sous le fond de poutre (dessus du tube = dessous du fond).`);
   steps.push(`${P}poser les fonds ${tg('fs')} sur étais, à niveau (dessus de poutre = tête de voile)${bm&&bm.segs.some(sg=>sg.ends.includes('poteau'))?' ; fonds découpés au Ø des tubes (le béton du poteau monte dans la poutre)':''}.`);
   if(bm&&bm.cour.length)steps.push(`${P}poser les couronnes CP ${tg('fs')} sur les tubes plus larges que le coffrage (fermeture du dessus du tube, de part et d'autre de la poutre).`);
-  steps.push(`${P}fixer les joues ${tg('j')} contre le chant du fond, raidisseurs et lisses${bm&&bm.segs.some(sg=>sg.close.includes('joues'))?' ; au-dessus des poteaux, les coffrages repérés « fermeture » prolongent leurs joues jusqu\'au coffrage voisin':''}.`);
+  steps.push(`${P}fixer les joues ${tg('j')} contre le chant du fond ; contre chaque joue : lisse basse + lisse haute 63 × 75${bm&&bm.lhs?' (haute à '+nf(bm.hpt)+' mm sous le dessus des joues, les poutrelles viendront dessus)':' (haute au dessus des joues)'}, raidisseurs verticaux 63 × 75 entre les lisses${bm&&bm.segs.some(sg=>sg.close.includes('joues'))?' ; au-dessus des poteaux, les coffrages repérés « fermeture » prolongent leurs joues jusqu\'au coffrage voisin':''}.`);
   if(bm&&bm.abouts.length)steps.push(`${P}fermer le bout de poutre sur poteau par l'about CP (posé sur le tube, entre les joues).`);
   if(bm&&bm.joints.length)steps.push(`${P}${bm.joints.length} joint(s) de coffrage (travée > ${nf(bm.Lmax/1000,0)} m) : cadre d'about bois en bout de chaque coffrage, abouter, puis visser la lisse de raccord sur chaque face.`);
   steps.push(`${P}mettre en place les boîtes de poches dans les voiles avant coulage des voiles.`);
@@ -3727,8 +3852,10 @@ function gizmo3(t,cam,P,x,y){const pr=v=>[dot(v,cam.r),-dot(v,cam.up)];let k=0;
 const N3=48; // segments de toutes les pièces circulaires concentriques (mêmes sommets → pas de recouvrement de cordes)
 // Rôles : base (fond, posé) · wall (paroi plane) · ring (paroi cintrée) · top (fond sup. / dessus) · in (intérieur) · ctx (béton existant, hors contrôle)
 function S3(){const solids=[];return{solids,role:'base',nm:'',
-  g(role,nm){this.role=role;this.nm=nm||'';return this},
-  push(o){o.role=o.role||this.role;o.nm=o.nm||this.nm;solids.push(o);return this},
+  // exv (v18) : vecteur d'éclatement imposé (mm) — pièces rattachées à une paroi (raidisseurs, lisses, tasseaux…) qui s'écartent avec elle
+  g(role,nm,exv){this.role=role;this.nm=nm||'';this.exv=exv||null;this.exd=null;return this},
+  push(o){o.role=o.role||this.role;o.nm=o.nm||this.nm;if(this.exv&&!o.exv)o.exv=this.exv;if(this.exd&&!o.exd)o.exd=this.exd;solids.push(o);return this},
+  dir(x,y){this.exd=[x,y];return this},
   prism(poly,z0,h,col,tag,op){// polygone (x,y) extrudé de z0 à z0+h
     const A=polyArea2(poly);if(A<0)poly=poly.slice().reverse();const F=[];const n=poly.length;
     F.push(poly.map(([x,y])=>[x,y,z0+h]));F.push(poly.slice().reverse().map(([x,y])=>[x,y,z0]));
@@ -3749,7 +3876,7 @@ function S3(){const solids=[];return{solids,role:'base',nm:'',
     cx=cx||0;cy=cy||0;const n=nseg||Math.max(6,Math.ceil(Math.abs(a2-a1)/(Math.PI/18)));let ti=Math.floor(n*0.35);
     const ang=(t,u)=>Math.abs(Math.atan2(Math.sin(t-u),Math.cos(t-u))),isCut=i=>cut&&ang(a1+(a2-a1)*(i+.5)/n,5*Math.PI/4)<0.95;
     if(tagAt!=null){let bd=1e9;for(let i=0;i<n;i++){if(isCut(i))continue;const t=a1+(a2-a1)*(i+.5)/n,dd=ang(t,tagAt);if(dd<bd){bd=dd;ti=i}}}
-    const rg={cx,cy,r1,r2,a1,a2,col,full:Math.abs(Math.abs(a2-a1)-2*Math.PI)<1e-9,id:solids.length}; // v17 : contour exact pour l'export DXF
+    const rg={cx,cy,r1,r2,a1,a2,n,col,full:Math.abs(Math.abs(a2-a1)-2*Math.PI)<1e-9,id:solids.length}; // v17 : contour exact pour l'export DXF
     for(let i=0;i<n;i++){const t1=a1+(a2-a1)*i/n,t2=a1+(a2-a1)*(i+1)/n;
       this.prism([[cx+r1*Math.cos(t1),cy+r1*Math.sin(t1)],[cx+r2*Math.cos(t1),cy+r2*Math.sin(t1)],[cx+r2*Math.cos(t2),cy+r2*Math.sin(t2)],[cx+r1*Math.cos(t2),cy+r1*Math.sin(t2)]],z0,h,col,i===ti&&!isCut(i)?tag:null);
       const o=solids[solids.length-1];o.seg=true;o.rg=rg;if(isCut(i))o.cut=true;if(cut){o.cutable=true;o.ca=a1+(a2-a1)*(i+.5)/n}}return this},
@@ -3783,14 +3910,28 @@ function overlap3(sc,tol,N){tol=tol==null?0.5:tol;N=N||7;const S=sc.solids.filte
   return out}
 // ---------- Vue éclatée : parois planes écartées, parois cintrées puis fond sup. / dessus soulevés ; béton existant masqué ----------
 function needExplode(sc){const r=new Set(sc.solids.map(s=>s.role));return r.has('top')||(r.has('in')&&r.has('ring'))}
-// vecteurs d'éclatement (levée adaptative calculée pour la vue isométrique de référence cam)
+// v18 — vecteurs d'éclatement : TOUTES les pièces non posées s'écartent.
+//  · base (fond, appui, poutrelles, tubes) : reste en place ;
+//  · wall (parois planes + pièces rattachées) : écartée horizontalement (vecteur imposé exv, sinon direction depuis le centre) ;
+//  · in (cerces, montants, goussets, croix, traverses, poches…) : soulevée et étagée (les niveaux s'écartent les uns des autres) ;
+//  · ring (parois cintrées) : soulevée au-dessus des pièces intérieures ;  · top (fond sup., dessus, linteau) : soulevé au-dessus de tout.
+// Levée adaptative calculée pour la vue isométrique de référence cam.
 function exVec3(sc,cam){cam=cam||V3;
   const S=sc.solids.filter(s=>s.role!=='ctx'),B=[1e18,1e18,1e18,-1e18,-1e18,-1e18];S.forEach(s=>{const b=bb3(s);for(let k=0;k<3;k++){B[k]=Math.min(B[k],b[k]);B[k+3]=Math.max(B[k+3],b[k+3])}});
-  const H=B[5]-B[2],Wx=(B[3]-B[0])/2||1,Wy=(B[4]-B[1])/2||1,cx=(B[0]+B[3])/2,cy=(B[1]+B[4])/2,hasR=S.some(s=>s.role==='ring');
-  const kW=0.45*Math.max(Wx,Wy)+150,kR=1.3*H+0.25*Math.max(Wx,Wy)+150,kT=(hasR?kR+H:0.35*H+0.3*Math.max(Wx,Wy))+200;
-  const vec=m=>S.map(s=>{const b=bb3(s),c=[(b[0]+b[3])/2,(b[1]+b[4])/2];
-    if(s.role==='top')return[0,0,kT*m];if(s.role==='ring')return[0,0,kR*m];
-    if(s.role==='wall'){const dx=(c[0]-cx)/Wx,dy=(c[1]-cy)/Wy;return Math.abs(dx)>=Math.abs(dy)?[Math.sign(dx)*kW,0,0]:[0,Math.sign(dy)*kW,0]}return[0,0,0]});
+  const H=B[5]-B[2]||1,Wx=(B[3]-B[0])/2||1,Wy=(B[4]-B[1])/2||1,cx=(B[0]+B[3])/2,cy=(B[1]+B[4])/2,Wm=Math.max(Wx,Wy);
+  const IN=S.filter(s=>s.role==='in'),RG=S.filter(s=>s.role==='ring'),TP=S.filter(s=>s.role==='top'),SP=0.6;
+  const zi0=IN.length?Math.min(...IN.map(s=>bb3(s)[2])):0,zi1=IN.length?Math.max(...IN.map(s=>bb3(s)[5])):0,Hin=zi1-zi0;
+  const vec=m=>{const kI=(0.3*H+0.15*Wm+150)*m,inTop=IN.length?zi1+kI+SP*Hin*m:-1e18;
+    const kR0=(1.3*H+0.25*Wm+150)*m,kR=RG.length?Math.max(kR0,IN.length?inTop-Math.min(...RG.map(s=>bb3(s)[2]))+150*m:0):0;
+    const rgTop=RG.length?Math.max(...RG.map(s=>bb3(s)[5]))+kR:-1e18,zt0=TP.length?Math.min(...TP.map(s=>bb3(s)[2])):0;
+    const kT=TP.length?Math.max((0.35*H+0.3*Wm)*m,Math.max(inTop,rgTop,B[5])-zt0+(0.1*H+200)*m):0;
+    const V0=S.map(s=>{const b=bb3(s),c=[(b[0]+b[3])/2,(b[1]+b[4])/2];
+      if(s.exv)return s.exv.map(v=>v*m);
+      if(s.exd)return[s.exd[0]*(0.6*Wx+200)*m,s.exd[1]*(0.6*Wy+200)*m,0];
+      if(s.role==='top')return[0,0,kT];if(s.role==='ring')return[0,0,kR];
+      if(s.role==='in')return[0,0,kI+SP*(b[2]-zi0)*m];
+      if(s.role==='wall'){const dx=(c[0]-cx)/Wx,dy=(c[1]-cy)/Wy,kx=(0.6*Wx+200)*m,ky=(0.6*Wy+200)*m;return Math.abs(dx)>=Math.abs(dy)?[Math.sign(dx)*kx,0,0]:[0,Math.sign(dy)*ky,0]}return[0,0,0]});
+    S.forEach((s,i)=>{if(s.exParent){const j=S.indexOf(s.exParent);if(j>=0)V0[i]=V0[j]}});return V0};
   // levée augmentée jusqu'à ce que les pièces soulevées ne masquent plus l'intérieur (recouvrement des emprises projetées < 10 %)
   const {r,up}=cam,bb2=(L,V)=>{const b=[1e18,1e18,-1e18,-1e18];L.forEach((o,i)=>{const v=V[i];o.F.forEach(f=>f.forEach(q=>{const p=[q[0]+v[0],q[1]+v[1],q[2]+v[2]],x=dot(p,r),y=-dot(p,up);b[0]=Math.min(b[0],x);b[1]=Math.min(b[1],y);b[2]=Math.max(b[2],x);b[3]=Math.max(b[3],y)}))});return b};
   let m=1,V=vec(m);const iIN=S.map((o,i)=>o.role==='in'||o.role==='base'?i:-1).filter(i=>i>=0),iUP=S.map((o,i)=>o.role==='top'||o.role==='ring'?i:-1).filter(i=>i>=0);
@@ -3799,11 +3940,13 @@ function exVec3(sc,cam){cam=cam||V3;
     if(cov<0.1)break;m*=1.25;V=vec(m)}
   return{S,V};
 }
-// Vue éclatée (t = 0 → assemblé, 1 → éclaté complet) : parois planes écartées, parois cintrées puis fond sup. / dessus soulevés ; béton existant masqué.
-// Dalle (exMode « hide ») : le platelage s'efface pour montrer poutrelles et coffrages de poutres.
-function explode3(sc,t,cam,X){t=t==null?1:t;const {S,V}=X||exVec3(sc,cam);
-  const mv=(s,v)=>Object.assign({},s,{F:v[0]||v[1]||v[2]?s.F.map(f=>f.map(p=>[p[0]+v[0]*t,p[1]+v[1]*t,p[2]+v[2]*t])):s.F,cut:false,cutable:false,_bb:null,_pl:null,pm:null,op:s.role==='wall'?null:s.op});
-  if(sc.exMode==='hide')return{solids:S.filter(s=>s.role!=='top'||t<1).map(s=>s.role==='top'?Object.assign({},s,{op:Math.max(0.12,1-t),tag:t<0.5?s.tag:null,cut:false}):Object.assign({},s,{cut:false})),exMode:'hide'};
+// Vue éclatée (t = 0 → assemblé, 1 → éclaté complet) ; béton existant masqué. Dalle (exMode « hide ») : le platelage s'efface, les coffrages s'écartent.
+// Chaque pièce déplacée garde son contour de prisme (pm) translaté → contrôle d'interpénétration possible sur la vue éclatée. src = pièce d'origine.
+function explode3(sc,t,cam,X){t=t==null?1:t;const {S,V}=X||exVec3(sc,cam),hide=sc.exMode==='hide';
+  const mv=(s,v0)=>{const v=[v0[0]*t,v0[1]*t,v0[2]*t],z=!(v[0]||v[1]||v[2]);let pm=null;
+    if(s.pm)pm=s.pm.inv?Object.assign({},s.pm,{inv:p=>s.pm.inv([p[0]-v[0],p[1]-v[1],p[2]-v[2]])}):{poly:s.pm.poly.map(([x,y])=>[x+v[0],y+v[1]]),z0:s.pm.z0+v[2],h:s.pm.h};
+    return Object.assign({},s,{F:z?s.F:s.F.map(f=>f.map(p=>[p[0]+v[0],p[1]+v[1],p[2]+v[2]])),cut:false,cutable:false,_bb:null,_pl:null,pm,src:s,op:s.role==='wall'?null:s.op})};
+  if(hide)return{solids:S.map((s,i)=>s.role==='top'?(t<1?Object.assign({},s,{op:Math.max(0.12,1-t),tag:t<0.5?s.tag:null,cut:false,src:s}):null):mv(s,V[i])).filter(Boolean),exMode:'hide'};
   return{solids:S.map((s,i)=>mv(s,V[i]))};
 }
 // point dans polygone (pair-impair)
@@ -3871,14 +4014,18 @@ function beam3(s,bm,zTop,eF,eJ,T,tg,first){
   const o=bm.o||0,b=bm.b,zB=zTop-bm.h-eF,hJ=bm.hJ,ws=BM_WS,wl=BM_WL,rw=BM_RW,vs=n=>Array.from({length:n+1},(_,i)=>-b/2+b*i/n);
   bm.segs.forEach((sg,i)=>{const f1=first&&i===0;
     s.g('base','fond de poutre').prism(vs(12).map(v=>[sg.lf(v),o+v]).concat(vs(12).reverse().map(v=>[sg.rf(v),o+v])),zB,eF,C3.fs,f1?tg:null);
+    if(s.reg){const dl=(sg.ends[0]==='poteau'?1:0)+(sg.ends[1]==='poteau'?1:0),x0=Math.min(...vs(12).map(sg.lf));
+      s.reg('Fond de poutre'+(dl?' (découpe au Ø du poteau)':''),{t:'flat',F0:[x0,o-b/2,zB],A:[1,0,0],B:[0,1,0],N:[0,0,-1]},sg.Lfmax,b)}
     [[sg.j1,-1],[sg.j2,1]].forEach(([jj,sd],k)=>{const L=jj[1]-jj[0];if(!(L>1))return;const y0=sd<0?o-b/2-eJ:o+b/2;
-      s.g('wall','joue de poutre').box(jj[0],y0,zB,L,eJ,hJ,C3.j,f1&&k===0?T('Joue de poutre'):null);
-      const yr=sd<0?y0-ws:y0+eJ;sg.rx[k].forEach((x,r)=>{const sh=sg.rxS[k][r]?eF:0;s.g('base','raidisseur').box(x,yr,zB+sh,rw,ws,hJ-sh,C3.bois,f1&&k===0&&r===1?'raidisseurs':null)});
-      const yl=sd<0?yr-wl:yr+ws;sg.lis[k].forEach(([a,z],q)=>[12].concat(bm.lisH?[hJ-83]:[]).forEach((zz,qq)=>s.g('base','lisse').box(a,yl,zB+zz,z-a,wl,ws,C3.bois,f1&&k===0&&q===0&&qq===0?'lisses':null)))})});
+      const ex=[0,sd*(1.2*(b/2+eJ+ws+wl)+300),0],lh=BM_LH,zL=bm.zLH; // éclaté : joue + raidisseurs + lisses s'écartent ensemble
+      s.g('wall','joue de poutre',ex).box(jj[0],y0,zB,L,eJ,hJ,C3.j,f1&&k===0?T('Joue de poutre'):null);
+      const yr=sd<0?y0-ws:y0+eJ;sg.rx[k].forEach((x,r)=>{const z0=sg.rxS[k][r]?eF:lh;s.g('wall','raidisseur',ex).box(x,yr,zB+z0,rw,ws,zL-lh-z0,C3.bois,f1&&k===0&&r===1?'raidisseurs':null)});
+      sg.lisB[k].forEach(([a,z],q)=>s.g('wall','lisse basse',ex).box(a,yr,zB,z-a,ws,lh,C3.bois,f1&&k===0&&q===0?'lisses':null));
+      sg.lisH[k].forEach(([a,z])=>s.g('wall','lisse haute',ex).box(a,yr,zB+zL-lh,z-a,ws,lh,C3.bois,null))})});
   // joints de coffrage : traverses de cadre d'about sous le fond (une par coffrage) + lisses de raccord à mi-hauteur
   bm.joints.forEach(j=>{const w=b/2+eJ+ws;[-1,1].forEach(sd=>s.g('base','cadre d\'about').box(sd<0?j.x-rw:j.x,o-w,zB-ws,rw,2*w,ws,C3.bois,null));
-    [-1,1].forEach(sd=>{const y=sd<0?o-b/2-eJ-ws-wl:o+b/2+eJ+ws;s.g('base','lisse de raccord').box(j.x-300,y,zB+hJ/2-ws/2,600,wl,ws,C3.bois,null)})});
-  bm.abouts.forEach(ab=>s.g('wall','about').box(ab.side<0?ab.x:ab.x-eJ,o-b/2,zB,eJ,b,hJ,C3.j,T('About')));
+    [-1,1].forEach(sd=>{const y=sd<0?o-b/2-eJ-ws-wl:o+b/2+eJ+ws;s.g('wall','lisse de raccord',[0,sd*(1.2*(b/2+eJ+ws+wl)+300),0]).box(j.x-300,y,zB+(BM_LH+bm.zLH-BM_LH)/2-ws/2,600,wl,ws,C3.bois,null)})});
+  bm.abouts.forEach(ab=>s.g('wall','about',[ab.side*400,0,0]).box(ab.side<0?ab.x:ab.x-eJ,o-b/2,zB,eJ,b,hJ,C3.j,T('About')));
   bm.cour.forEach(c=>[-1,1].forEach(sd=>{const a0=Math.asin(c.v0/c.ro),A=[];for(let i=0;i<=24;i++){const a=a0+(Math.PI-2*a0)*i/24;A.push([c.s+c.ro*Math.cos(a),o+sd*c.ro*Math.sin(a)])}
     s.g('base','couronne').prism(A,zB,eF,C3.fs,first&&sd<0?T('Couronne'):null)}));
   bm.poch.forEach((pc,i)=>s.g('in','poche').prism(pc.poly.map(([u,v])=>[u,o+v]),zTop-bm.h,bm.h,C3.poche,first&&i===0?'poches':null));
@@ -3888,21 +4035,37 @@ function beam3(s,bm,zTop,eF,eJ,T,tg,first){
   [bm.sL,bm.sR].forEach(S0=>{if(S0&&S0.t==='poteau')tube(S0.s,S0.D)});
   return zB;
 }
-function model3(d,R){
+function model3(d,R,opt){
   const f=d.forme,ep=d.ep||0,eF=d.epF||ep,eS=d.epS||ep,s=S3(),tg=k=>{const r=R&&R.find(x=>x.k===k);return r?r.tag:null},T=n=>{const r=R&&R.find(x=>x.n.startsWith(n));return r?r.tag:null},TB=re=>{const r=R&&(R.bois||[]).find(x=>re.test(x.n));return r?r.tag:null};
+  // v18 : registre des faces portant des renforts de joint (géométrie lue par jointGeo, pour le débit comme pour la 3D)
+  //  flat : F0 (point a = 0, b = 0 sur la face côté renforts), A (le long de a), B (le long de b), N (normale côté renforts)
+  //  ring : centre (cx, cy), rf (rayon de la face côté renforts), sg (N = sg × radial), a0 (angle de départ), dir, rn (rayon de la fibre neutre du développé), z0
+  //  xcut : poly (contour en plan), x0 / y0 (origine de la grille de découpe), zf (cote de la face côté renforts), N (±1 en z)
+  const JWL=[],jcnt=new Map();s.jw=JWL;
+  const reg=(name,geom,a,b)=>{if(!R)return;const r=R.find(x=>(x.n===name||x.n.startsWith(name))&&(a==null||Math.abs(x.a-a)<1)&&(b==null||Math.abs(x.b-b)<1));
+    if(!r||!(r.split||r.cells||geom.lens))return;const c=jcnt.get(r)||0;jcnt.set(r,c+1);JWL.push({r,copy:c,geom,parent:s.solids[s.solids.length-1]})};
+  s.reg=reg;
   const gsTri=(GS,x0,y0,x1,y1,z0)=>{const a=GS.a,gt=T('Goussets');GS.za.forEach((z,zi)=>[[x0,y0,1,1],[x1,y0,-1,1],[x0,y1,1,-1],[x1,y1,-1,-1]].forEach(([x,y,sx,sy],ci)=>s.g('in','gousset').prism([[x,y],[x+sx*a,y],[x,y+sy*a]],z0+z,ep,C3.gs,zi===0&&ci===3?gt:null)))};
   if(RECT.includes(f)){const mas=f==='massif',Lx=mas?d.L+2*ep:d.L,lx=mas?d.l+2*ep:d.l,fond=FOND.includes(f)||mas&&d.fondMassif,z0=mas&&d.fondMassif?-eF:0,h=d.h+(mas&&d.fondMassif?eF:0);
     const opN=fond&&h>0.45*Math.min(Lx,lx)?0.35:null; // parois avant transparentes si boîte profonde (fond visible)
-    if(fond)s.g('base','fond').box(ep,ep,z0,Lx-2*ep,lx-2*ep,eF,C3.fi,tg('fi'));
-    s.g('wall','côté filant').box(0,0,z0,Lx,ep,h,C3.j,T('Côtés filants')||T('Joues filantes'),opN);s.box(0,lx-ep,z0,Lx,ep,h,C3.j);
-    s.g('wall','côté entre').box(0,ep,z0,ep,lx-2*ep,h,C3.j,T('Côtés entre')||T('Joues entre'),opN);s.box(Lx-ep,ep,z0,ep,lx-2*ep,h,C3.j);
+    const nF=mas?'Joues filantes':'Côtés filants',nE=mas?'Joues entre':'Côtés entre',m=mas?-1:1; // massif : renforts à l'extérieur ; réservation : à l'intérieur (vide)
+    if(fond){s.g('base','fond').box(ep,ep,z0,Lx-2*ep,lx-2*ep,eF,C3.fi,tg('fi'));reg(mas?'Fond (entre joues)':'Fond (entre côtés)',{t:'flat',F0:[ep,ep,mas?z0:z0+eF],A:[1,0,0],B:[0,1,0],N:[0,0,m]})}
+    s.g('wall','côté filant').box(0,0,z0,Lx,ep,h,C3.j,T('Côtés filants')||T('Joues filantes'),opN);reg(nF,{t:'flat',F0:[0,mas?0:ep,z0],A:[1,0,0],B:[0,0,1],N:[0,m,0]});
+    s.box(0,lx-ep,z0,Lx,ep,h,C3.j);reg(nF,{t:'flat',F0:[0,mas?lx:lx-ep,z0],A:[1,0,0],B:[0,0,1],N:[0,-m,0]});
+    s.g('wall','côté entre').box(0,ep,z0,ep,lx-2*ep,h,C3.j,T('Côtés entre')||T('Joues entre'),opN);reg(nE,{t:'flat',F0:[mas?0:ep,ep,z0],A:[0,1,0],B:[0,0,1],N:[m,0,0]});
+    s.box(Lx-ep,ep,z0,ep,lx-2*ep,h,C3.j);reg(nE,{t:'flat',F0:[mas?Lx:Lx-ep,ep,z0],A:[0,1,0],B:[0,0,1],N:[-m,0,0]});
     const GS=gsGeo(d);if(GS&&GS.a>0)gsTri(GS,ep,ep,Lx-ep,lx-ep,0);
-    if(d.feuil&&d.fL>0&&d.fH>0){const zt=z0+h-(d.fNiv||0)-d.fH,fl=d.fL;s.g('base','feuillure');s.box(-fl,-fl,zt,Lx+2*fl,fl,d.fH,C3.bois,TB(/feuillure/));s.box(-fl,lx,zt,Lx+2*fl,fl,d.fH,C3.bois);s.box(-fl,0,zt,fl,lx,d.fH,C3.bois);s.box(Lx,0,zt,fl,lx,d.fH,C3.bois)}
-    if(mas&&d.ren){s.g('base','renfort');[0.25,0.75].forEach(z=>{s.box(-50,-50,z0+h*z,Lx+100,50,50,C3.bois);s.box(-50,lx,z0+h*z,Lx+100,50,50,C3.bois)})}}
+    if(d.feuil&&d.fL>0&&d.fH>0){const zt=z0+h-(d.fNiv||0)-d.fH,fl=d.fL,ft=TB(/feuillure/);
+      s.g('wall','feuillure').dir(0,-1).box(-fl,-fl,zt,Lx+2*fl,fl,d.fH,C3.bois,ft);s.g('wall','feuillure').dir(0,1).box(-fl,lx,zt,Lx+2*fl,fl,d.fH,C3.bois);
+      s.g('wall','feuillure').dir(-1,0).box(-fl,0,zt,fl,lx,d.fH,C3.bois);s.g('wall','feuillure').dir(1,0).box(Lx,0,zt,fl,lx,d.fH,C3.bois)}
+    if(mas&&d.ren){const lt=TB(/Lisses 50×50/);massifRenZ(d).forEach((z,i)=>{s.g('wall','lisse').dir(0,-1).box(-50,-50,z,Lx+100,50,50,C3.bois,i?null:lt);s.g('wall','lisse').dir(0,1).box(-50,lx,z,Lx+100,50,50,C3.bois);
+      s.g('wall','lisse').dir(-1,0).box(-50,0,z,50,lx,50,C3.bois);s.g('wall','lisse').dir(1,0).box(Lx,0,z,50,lx,50,C3.bois)})}}
   else if(f==='circ'){s.g('ring','tube PVC').cyl(0,0,d.D/2,0,d.h,C3.pvc,'tube Ø'+nf(d.D))}
   else if(f==='circ_fond'||f==='circ_sf'){const Ro=d.Dext/2,Ri=d.Dint>0?d.Dint/2:0;
-    if(f==='circ_fond'){s.g('base','fond');if(Ri>0)s.ring(Ri+ep,Ro-ep,0,2*Math.PI,0,eF,C3.fi,tg('fi'),N3,Math.PI/4);else s.disc(Ro-ep,0,eF,C3.fi,tg('fi'),null,0,N3)}
-    s.g('ring','paroi ext.').ring(Ro-ep,Ro,0,2*Math.PI,0,d.h,C3.j,T('Paroi ext'),N3,5*Math.PI/4,true);if(Ri>0)s.g('in','paroi int.').ring(Ri,Ri+ep,0,2*Math.PI,0,d.h,C3.j,T('Paroi int'),N3,Math.PI/4);}
+    if(f==='circ_fond'){s.g('base','fond');if(Ri>0)s.ring(Ri+ep,Ro-ep,0,2*Math.PI,0,eF,C3.fi,tg('fi'),N3,Math.PI/4);else s.disc(Ro-ep,0,eF,C3.fi,tg('fi'),null,0,N3);
+      reg('Fond ',{t:'xcut',poly:circPoly(2*(Ro-ep),96).map(([x,y])=>[x-(Ro-ep),y-(Ro-ep)]),hole:Ri>0?circPoly(2*(Ri+ep),96).map(([x,y])=>[x-(Ri+ep),y-(Ri+ep)]):null,zf:eF,N:1})}
+    s.g('ring','paroi ext.').ring(Ro-ep,Ro,0,2*Math.PI,0,d.h,C3.j,T('Paroi ext'),N3,5*Math.PI/4,true);reg('Paroi ext. cintrée',{t:'ring',full:1,cx:0,cy:0,rf:Ro-ep,sg:-1,a0:Math.PI/2,dir:1,rn:Ro-ep/2,z0:0});
+    if(Ri>0){s.g('in','paroi int.').ring(Ri,Ri+ep,0,2*Math.PI,0,d.h,C3.j,T('Paroi int'),N3,Math.PI/4);reg('Paroi int. cintrée',{t:'ring',full:1,cx:0,cy:0,rf:Ri+ep,sg:1,a0:Math.PI/2,dir:1,rn:Ri+ep/2,z0:0})}}
   else if(f==='voile'){const g=voileGeo(d);if(g.ok){const Rm=(g.Ri+g.Re)/2,cais=d.constr==='caisson',al=g.al||0,L2=g.L/2;
       // repère : centre de la cuve, axe de la baie = y, puis recentré sur le voile (y − Rm)
       const sh=P=>P.map(([x,y])=>[x,y-Rm]);
@@ -3913,66 +4076,83 @@ function model3(d,R){
       const joue=(sg,r1,r2)=>clip(band(r1,r2,0),sg,ep,false);
       const xl=Y=>g.rad?Y*Math.tan(al)-ep/Math.cos(al):L2-ep;
       if(!cais){const M=manGeo(d,g),pl=sh(band(g.Ri,g.Re,ep));
-        if(M.app)s.g('base','appui').prism(pl,0,eF,C3.fi,T('Appui'));
-        s.g('base','linteau').prism(pl,d.h-eS,eS,C3.fs,tg('fs'));
+        const plR=sh(platePolyRaw(g,true,false));
+        if(M.app){s.g('base','appui').prism(pl,0,eF,C3.fi,T('Appui'));reg('Appui entre joues',{t:'xcut',poly:plR,zf:eF,N:1,dy:-Rm})}
+        s.g('top','linteau').prism(pl,d.h-eS,eS,C3.fs,tg('fs'));reg('Linteau entre joues',{t:'xcut',poly:plR,zf:d.h-eS,N:-1,dy:-Rm});
         if(M.cBois){const TP=travPos(d,g),bt=TB(/Traverses de cerce/);(M.levels||[]).forEach((z,i)=>[TP.ext,TP.int].forEach((q,k)=>s.g('in',k?'traverse de cerce int.':'traverse de cerce ext.').prism(sh(q.poly),z,M.tC,C3.bois,i===0&&k===0?bt:null)))}
-        else (M.levels||[]).forEach((z,i)=>s.g('in','cerce').prism(pl,z,eF,C3.fi,i===0?T('Cerces'):null));
-        [-1,1].forEach((sg,i)=>s.g('wall','joue').prism(sh(joue(sg,g.Ri,g.Re)),0,d.h,C3.j,i?null:T('Joues')));
+        else (M.levels||[]).forEach((z,i)=>{s.g('in','cerce').prism(pl,z,eF,C3.fi,i===0?T('Cerces'):null);reg('Cerces interm.',{t:'xcut',poly:plR,zf:z,N:-1,dy:-Rm})});
+        [-1,1].forEach((sg,i)=>{s.g('wall','joue').prism(sh(joue(sg,g.Ri,g.Re)),0,d.h,C3.j,i?null:T('Joues'));reg('Joues pleine hauteur',voileJoueFace(g,sg,ep,Rm,false,d.h))});
         const b=d.bM||0,br=d.bMr||b;if(b>0&&M.xs.length){const zz=[M.zb].concat(M.levels.flatMap(z=>[z,z+M.tC]),[M.zt]),cp=d.mS==='cp',mt=cp?T('Montants CP'):TB(/^Montants/);
           M.xs.forEach((x,ix)=>{const c=g.rad?[M.Rm*Math.sin(Math.asin(x/M.Rm)),M.Rm*Math.cos(Math.asin(x/M.Rm))]:[x,(Math.sqrt(g.Ri*g.Ri-x*x)+Math.sqrt(g.Re*g.Re-x*x))/2],r=Math.hypot(...c),u=[c[0]/r,c[1]/r],tv=[u[1],-u[0]];
             const q=(p1,p2)=>[c[0]+tv[0]*p1+u[0]*p2,c[1]+tv[1]*p1+u[1]*p2],poly=sh([q(-b/2,-br/2),q(b/2,-br/2),q(b/2,br/2),q(-b/2,br/2)]);
             for(let k=0;k<zz.length;k+=2)if(zz[k+1]-zz[k]>1)s.g('in','montant').prism(poly,zz[k],zz[k+1]-zz[k],cp?C3.cl:C3.bois,ix===0&&k===0?mt:null)})}
-        const gg=M.gous||0;if(gg>0){const xi=xl(Rm-ep/2),gt=T('Goussets'),o=[0,Rm-ep/2-Rm,0];let first=true;
-          const tri=(x1,z1,dx,dz)=>{s.g('in','gousset').vprism([[x1,z1],[x1+dx,z1],[x1,z1+dz]],o,[1,0],ep,C3.gs,first?gt:null);first=false};
-          tri(xi,M.zt,-gg,-gg);tri(-xi,M.zt,gg,-gg);if(M.app){tri(xi,M.zb,-gg,gg);tri(-xi,M.zb,gg,gg)}}}
-      else{s.g('wall','face ext.').prism(sh(band(g.Re-ep,g.Re,0)),0,d.h,C3.j,T('Face ext'));s.g('wall','face int.').prism(sh(band(g.Ri,g.Ri+ep,0)),0,d.h,C3.j,T('Face int'));
-        [-1,1].forEach((sg,i)=>s.g('wall','joue').prism(sh(joue(sg,g.Ri+ep,g.Re-ep)),0,d.h,C3.j,i?null:T('Joues')));
-        const zf=d.ferme?eF:0,ztp=d.h-(d.ferme?eS:0),pin=sh(band(g.Ri+ep,g.Re-ep,ep));
-        if(d.ferme){s.g('base','dessous').prism(pin,0,eF,C3.fi,tg('fi'));s.g('top','dessus').prism(pin,d.h-eS,eS,C3.fs,tg('fs'))}
-        if(d.renV){const cg=caisGs(d,g),hp=ztp-zf,lv=gsLevels(hp,ep,600),a=cg.a,gt=T('Goussets');
-          // goussets : coin joue / face ; branche le long de la joue + corde (face ext.) ou tangente (face int.) → jamais dans la face
-          if(a>0)cg.lv.forEach((z,zi)=>[-1,1].forEach(sg=>[[g.Re-ep,-1],[g.Ri+ep,1]].forEach(([r,io],ci)=>{
-            let c,jd;if(g.rad){const n=[-sg*Math.cos(al),Math.sin(al)],rh=[sg*Math.sin(al),Math.cos(al)],t=Math.sqrt(r*r-ep*ep);c=[n[0]*ep+rh[0]*t,n[1]*ep+rh[1]*t];jd=[rh[0]*io,rh[1]*io]}
-            else{c=[sg*(L2-ep),Math.sqrt(r*r-(L2-ep)**2)];jd=[0,io]}
-            let p2;if(io<0){const t0=Math.atan2(c[0],c[1]),dt=-sg*2*Math.asin(a/2/r);p2=[r*Math.sin(t0+dt),r*Math.cos(t0+dt)]}
-            else{const tt=[c[1]/r,-c[0]/r],sgn=tt[0]*-sg>0?1:-1;p2=[c[0]+tt[0]*sgn*a,c[1]+tt[1]*sgn*a]}
-            s.g('in','gousset').prism(sh([c,p2,[c[0]+jd[0]*a,c[1]+jd[1]*a]]),zf+z,ep,C3.gs,zi===0&&sg>0&&ci===0?gt:null)})));
-          // croix : tasseau radial continu sur l'axe + 2 tronçons de corde en butée, au-dessus (ou sous le dernier) niveau de goussets
-          const ym=Rm,bt=TB(/Croix du caisson/);lv.forEach((z,i)=>{const zc=z+ep+50<=hp?zf+z+ep:zf+z-50,r1=g.Ri+ep,r2=g.Re-ep;
-            s.g('in','croix').prism(sh([[-25,r1+0.6],[25,r1+0.6],[25,Math.sqrt(r2*r2-625)-0.6],[-25,Math.sqrt(r2*r2-625)-0.6]]),zc,50,C3.bois,i===0?bt:null);
-            [-1,1].forEach(sg=>{const y1=ym-25,y2=ym+25,P=[[sg*25,y1],[sg*xl(y1),y1],[sg*xl(y2),y2],[sg*25,y2]];s.g('in','croix').prism(sh(P),zc,50,C3.bois)})})}}}}
+        const gg=M.gous||0;if(gg>0){const gt=T('Goussets');let first=true;
+          [-1,1].forEach(sg=>{let c,jd;
+            if(g.rad){const t=g.al-Math.asin(ep/Rm);c=[sg*Rm*Math.sin(t),Rm*Math.cos(t)];jd=[sg*Math.sin(g.al),Math.cos(g.al)]}else{const x=sg*(L2-ep);c=[x,Math.sqrt(Rm*Rm-x*x)];jd=[0,1]}
+            const ph=Math.atan2(c[0],c[1]),u=[-sg*Math.cos(ph),sg*Math.sin(ph)],n=[-u[1],u[0]];
+            // décalage le long de la tangente : l'arête du gousset (épaisseur ep) ne doit pas entrer dans la joue
+            const cs=Math.min(1,Math.abs(n[0]*jd[0]+n[1]*jd[1])),a0=ep/2*Math.tan(Math.acos(cs))+0.3;
+            const o=[c[0]-n[0]*ep/2+u[0]*a0,c[1]-Rm-n[1]*ep/2+u[1]*a0,0];
+            const tri=(z1,dz)=>{s.g('in','gousset').vprism([[0,z1],[gg,z1],[0,z1+dz]],o,u,ep,C3.gs,first?gt:null);first=false};
+            tri(M.zt,-gg);if(M.app)tri(M.zb,gg)})}}
+      else{const thE=g.aExt/2/(g.Re-ep/2),thI=g.aInt/2/(g.Ri+ep/2);
+        s.g('wall','face ext.').prism(sh(band(g.Re-ep,g.Re,0)),0,d.h,C3.j,T('Face ext'));reg('Face ext. cintrée',{t:'ring',cx:0,cy:-Rm,rf:g.Re-ep,sg:-1,a0:Math.PI/2+thE,dir:-1,rn:g.Re-ep/2,z0:0});
+        s.g('wall','face int.').prism(sh(band(g.Ri,g.Ri+ep,0)),0,d.h,C3.j,T('Face int'));reg('Face int. cintrée',{t:'ring',cx:0,cy:-Rm,rf:g.Ri+ep,sg:1,a0:Math.PI/2+thI,dir:-1,rn:g.Ri+ep/2,z0:0});
+        [-1,1].forEach((sg,i)=>{s.g('wall','joue').prism(sh(joue(sg,g.Ri+ep,g.Re-ep)),0,d.h,C3.j,i?null:T('Joues'));reg(g.rad?'Joues radiales':'Joues',voileJoueFace(g,sg,ep,Rm,true,d.h))});
+        const zf=d.ferme?eF:0,ztp=d.h-(d.ferme?eS:0),pin=sh(band(g.Ri+ep,g.Re-ep,ep)),pinR=sh(platePolyRaw(g,true,true));
+        if(d.ferme){s.g('base','dessous').prism(pin,0,eF,C3.fi,tg('fi'));reg('Dessous entre faces',{t:'xcut',poly:pinR,zf:eF,N:1,dy:-Rm});
+          s.g('top','dessus').prism(pin,d.h-eS,eS,C3.fs,tg('fs'));reg('Dessus entre faces',{t:'xcut',poly:pinR,zf:d.h-eS,N:-1,dy:-Rm})}
+        const CC=caisCer(d,g);if(CC&&CC.n){const r1=g.Ri+ep,r2=g.Re-ep,w=CC.hole,ct=T('Cerces CP');
+          const parts=w?[band(r2-w,r2,ep),band(r1,r1+w,ep)].concat([-1,1].map(sg=>clip(band(r1+w,r2-w,ep),sg,ep+w,false))):[band(r1,r2,ep)];
+          CC.lv.forEach((z,i)=>{parts.forEach((q,k)=>{if(q.length>=3)s.g('in','cerce').prism(sh(q),z,CC.t,C3.fi,i===0&&k===0?ct:null)});reg('Cerces CP au gabarit',{t:'xcut',poly:pinR,zf:z,N:-1,dy:-Rm})})}}}}
   else if(f==='special'){const Z=specGeo(d),circ=d.base==='circ';
-    if(circ){if(d.fondInf)s.g('base','fond inf.').disc(d.D/2-ep,0,eF,C3.fi,tg('fi'),null,0,N3);s.g('ring','paroi').ring(d.D/2-ep,d.D/2,0,2*Math.PI,0,d.h,C3.j,T('Paroi'),N3,5*Math.PI/4,d.fondInf||d.conc||d.pot)}
-    else{if(d.fondInf)s.g('base','fond inf.').box(-d.L/2+ep,-d.l/2+ep,0,d.L-2*ep,d.l-2*ep,eF,C3.fi,tg('fi'));
+    const bet=d.nat==='beton',m=bet?-1:1,Di=d.D-2*ep; // intérieur béton : renforts à l'extérieur
+    if(circ){if(d.fondInf){s.g('base','fond inf.').disc(d.D/2-ep,0,eF,C3.fi,tg('fi'),null,0,N3);reg('Base (entre parois)',{t:'xcut',poly:circPoly(Di,96).map(([x,y])=>[x-Di/2,y-Di/2]),zf:bet?0:eF,N:m})}
+      s.g('ring','paroi').ring(d.D/2-ep,d.D/2,0,2*Math.PI,0,d.h,C3.j,T('Paroi'),N3,5*Math.PI/4,d.fondInf||d.conc||d.pot);reg('Paroi cintrée',{t:'ring',full:1,cx:0,cy:0,rf:bet?d.D/2:d.D/2-ep,sg:-m,a0:Math.PI/2,dir:1,rn:(d.D-ep)/2,z0:0})}
+    else{if(d.fondInf){s.g('base','fond inf.').box(-d.L/2+ep,-d.l/2+ep,0,d.L-2*ep,d.l-2*ep,eF,C3.fi,tg('fi'));reg('Base (entre parois)',{t:'flat',F0:[-d.L/2+ep,-d.l/2+ep,bet?0:eF],A:[1,0,0],B:[0,1,0],N:[0,0,m]})}
       const opF=Z.sup?0.35:null; // boîte fermée : parois avant transparentes (intérieur visible)
-      s.g('wall','côté filant').box(-d.L/2,-d.l/2,0,d.L,ep,d.h,C3.j,T('Côtés filants'),opF);s.box(-d.L/2,d.l/2-ep,0,d.L,ep,d.h,C3.j);
-      s.g('wall','côté entre').box(-d.L/2,-d.l/2+ep,0,ep,d.l-2*ep,d.h,C3.j,T('Côtés entre'),opF);s.box(d.L/2-ep,-d.l/2+ep,0,ep,d.l-2*ep,d.h,C3.j);
+      s.g('wall','côté filant').box(-d.L/2,-d.l/2,0,d.L,ep,d.h,C3.j,T('Côtés filants'),opF);reg('Côtés filants',{t:'flat',F0:[-d.L/2,bet?-d.l/2:-d.l/2+ep,0],A:[1,0,0],B:[0,0,1],N:[0,m,0]});
+      s.box(-d.L/2,d.l/2-ep,0,d.L,ep,d.h,C3.j);reg('Côtés filants',{t:'flat',F0:[-d.L/2,bet?d.l/2:d.l/2-ep,0],A:[1,0,0],B:[0,0,1],N:[0,-m,0]});
+      s.g('wall','côté entre').box(-d.L/2,-d.l/2+ep,0,ep,d.l-2*ep,d.h,C3.j,T('Côtés entre'),opF);reg('Côtés entre',{t:'flat',F0:[bet?-d.L/2:-d.L/2+ep,-d.l/2+ep,0],A:[0,1,0],B:[0,0,1],N:[m,0,0]});
+      s.box(d.L/2-ep,-d.l/2+ep,0,ep,d.l-2*ep,d.h,C3.j);reg('Côtés entre',{t:'flat',F0:[bet?d.L/2:d.L/2-ep,-d.l/2+ep,0],A:[0,1,0],B:[0,0,1],N:[-m,0,0]});
       const GS=gsGeo(d);if(GS&&GS.a>0)gsTri(GS,-d.L/2+ep,-d.l/2+ep,d.L/2-ep,d.l/2-ep,0)}
-    if(d.conc&&d.Dint>0){const r=concW1(d);s.g('in','concentrique').ring(r,r+ep,0,2*Math.PI,Z.cb,Z.hInt,C3.j,T('Concentrique'),N3,5*Math.PI/4)}
+    if(d.conc&&d.Dint>0){const r=concW1(d);s.g('in','concentrique').ring(r,r+ep,0,2*Math.PI,Z.cb,Z.hInt,C3.j,T('Concentrique'),N3,5*Math.PI/4);reg('Concentrique cintrée',{t:'ring',full:1,cx:0,cy:0,rf:r,sg:-1,a0:Math.PI/2,dir:1,rn:r+ep/2,z0:Z.cb})}
     if(d.pot)potAngles(d).forEach((a,i)=>s.g('in','tube carton').tube(d.pR*Math.cos(a*Math.PI/180),-d.pR*Math.sin(a*Math.PI/180),(d.pD||0)/2,8,Z.zb,d.pH||100,C3.carton,i?null:'tubes carton'));
-    if(Z.sup){const zt=Z.zFS-eS,cutC=d.fondInf||d.conc||d.pot;s.g('top','fond sup.');if(circ){if(cutC)s.ring(0.5,d.D/2-ep,0,2*Math.PI,zt,eS,C3.fs,tg('fs'),N3,Math.PI/4,true);else s.disc(d.D/2-ep,zt,eS,C3.fs,tg('fs'),null,0,N3)}else s.box(-d.L/2+ep,-d.l/2+ep,zt,d.L-2*ep,d.l-2*ep,eS,C3.fs,tg('fs'))}}
+    if(Z.sup){const zt=Z.zFS-eS,cutC=d.fondInf||d.conc||d.pot;s.g('top','fond sup.');if(circ){if(cutC)s.ring(0.5,d.D/2-ep,0,2*Math.PI,zt,eS,C3.fs,tg('fs'),N3,Math.PI/4,true);else s.disc(d.D/2-ep,zt,eS,C3.fs,tg('fs'),null,0,N3)}else s.box(-d.L/2+ep,-d.l/2+ep,zt,d.L-2*ep,d.l-2*ep,eS,C3.fs,tg('fs'))}
+    if(Z.sup){const zt=Z.zFS-eS;reg('Fond sup.',circ?{t:'xcut',poly:circPoly(Di,96).map(([x,y])=>[x-Di/2,y-Di/2]),zf:bet?zt+eS:zt,N:-m}:{t:'flat',F0:[-d.L/2+ep,-d.l/2+ep,bet?zt+eS:zt],A:[1,0,0],B:[0,1,0],N:[0,0,-m]})}}
   else if(f==='goulotte'){const G=gouGeo(d);if(G.ok){const th=G.full?2*Math.PI:G.Th,a1=Math.PI/2-th/2,a2=Math.PI/2+th/2,n=Math.min(96,Math.max(8,Math.ceil(th/(Math.PI/24))));
       s.g('base','fond').ring(G.r1,G.r2,a1,a2,0,G.eF,C3.fi,tg('fi'),n);
-      if(G.jE)s.g('ring','joue ext.').ring(G.r2,G.r2+(G.eJ||ep),a1,a2,0,G.hE+G.eF,C3.j,T('Joue ext'),n);if(G.jI)s.g('ring','joue int.').ring(G.r1-(G.eJ||ep),G.r1,a1,a2,0,G.hI+G.eF,C3.j,T('Joue int'),n);
+      const eJ=G.eJ||ep;
+      if(G.jE){s.g('ring','joue ext.').ring(G.r2,G.r2+eJ,a1,a2,0,G.hE+G.eF,C3.j,T('Joue ext'),n);if(G.JE&&!G.JE.err&&G.JE.n>1)reg('Joue ext. cintrée',{t:'ring',cx:0,cy:0,rf:G.r2+eJ,sg:1,a0:a1,dir:1,rn:G.r2+eJ/2,z0:0,lens:Array(G.JE.n).fill(G.JE.Lp),closed:G.full,hb:G.hE+G.eF})}
+      if(G.jI){s.g('ring','joue int.').ring(G.r1-eJ,G.r1,a1,a2,0,G.hI+G.eF,C3.j,T('Joue int'),n);if(G.JI&&!G.JI.err&&G.JI.n>1)reg('Joue int. cintrée',{t:'ring',cx:0,cy:0,rf:G.r1-eJ,sg:-1,a0:a1,dir:1,rn:G.r1-eJ/2,z0:0,lens:Array(G.JI.n).fill(G.JI.Lp),closed:G.full,hb:G.hI+G.eF})}
       if(G.hAb)[[a1,1],[a2,-1]].forEach(([t,sn],i)=>{const u=[Math.cos(t),Math.sin(t)],nn=[-sn*u[1],sn*u[0]];
         s.g('base','about').prism([[G.r1*u[0],G.r1*u[1]],[G.r2*u[0],G.r2*u[1]],[G.r2*u[0]+nn[0]*ep,G.r2*u[1]+nn[1]*ep],[G.r1*u[0]+nn[0]*ep,G.r1*u[1]+nn[1]*ep]],G.eF,G.hAb,C3.j,i?null:T('Abouts'))})}}
   else if(f==='dalle'){const G=dalGeo(d);if(G.ok){const sh=G.shL,ePl=G.ePl;
       s.exMode='hide';s.g('top','planche');G.pcs.forEach((p,i)=>{s.prism(p.poly,0,ePl,C3.fi,i===0?'platelage':null);s.solids[s.solids.length-1].ly=1});
-      if(d.dlRv){const Rv=riveGeo(d),rt=T('Rive');s.g('base','rive');if(Rv&&Rv.t==='circ')s.ring(Rv.Rr,Rv.Rr+Rv.ep,0,2*Math.PI,0,Rv.h+ePl,C3.j,rt,N3,5*Math.PI/4,true);else if(Rv){const a=Rv.A/2,b=Rv.B/2,e=Rv.ep,hh=Rv.h+ePl;s.box(-a-e,-b-e,0,Rv.A+2*e,e,hh,C3.j,rt);s.box(-a-e,b,0,Rv.A+2*e,e,hh,C3.j);s.box(-a-e,-b,0,e,Rv.B,hh,C3.j);s.box(a,-b,0,e,Rv.B,hh,C3.j)}}
+      if(d.dlRv){const Rv0=riveGeo(d),Rv=Rv0&&G.rot?Object.assign({},Rv0,{A:Rv0.B,B:Rv0.A}):Rv0,rt=T('Rive');s.g('base','rive');
+        if(Rv&&Rv.t==='circ'){s.ring(Rv.Rr,Rv.Rr+Rv.ep,0,2*Math.PI,ePl,Rv.h,C3.j,rt,N3,5*Math.PI/4,true);reg('Rive de dalle cintrée',{t:'ring',full:1,cx:0,cy:0,rf:Rv.Rr+Rv.ep,sg:1,a0:Math.PI/2,dir:1,rn:Rv.Rr+Rv.ep/2,z0:ePl})}
+        else if(Rv0){const a=Rv0.A/2,b=Rv0.B/2,e=Rv0.ep,hh=Rv0.h,Q=(x,y)=>G.rot?[y,x]:[x,y],bx=(x,y,dx,dy)=>{const [X,Y]=Q(x,y),[DX,DY]=Q(dx,dy);s.box(X,Y,ePl,DX,DY,hh,C3.j,null)};
+          s.solids.length;bx(-a-e,-b-e,Rv0.A+2*e,e);s.solids[s.solids.length-1].tag=rt;reg('Rive de dalle (filantes)',{t:'flat',F0:[...Q(-a-e,-b-e),ePl],A:[...Q(1,0),0],B:[0,0,1],N:[...Q(0,-1),0]});
+          bx(-a-e,b,Rv0.A+2*e,e);reg('Rive de dalle (filantes)',{t:'flat',F0:[...Q(-a-e,b+e),ePl],A:[...Q(1,0),0],B:[0,0,1],N:[...Q(0,1),0]});
+          bx(-a-e,-b,e,Rv0.B);reg('Rive de dalle (entre)',{t:'flat',F0:[...Q(-a-e,-b),ePl],A:[...Q(0,1),0],B:[0,0,1],N:[...Q(-1,0),0]});
+          bx(a,-b,e,Rv0.B);reg('Rive de dalle (entre)',{t:'flat',F0:[...Q(a+e,-b),ePl],A:[...Q(0,1),0],B:[0,0,1],N:[...Q(1,0),0]})}
+        // v18 : équerres de rive (63 × 75, entraxe ≤ 600) au dos de la rive, descendant de 150 mm sous le niveau du platelage
+        if(Rv0){const L=Rv0.h+150,zt=Rv0.h+ePl,et=TB(/Équerres de rive/),Q=(v)=>G.rot&&Rv0.t!=='circ'?[v[1],v[0]]:v;riveEq(Rv0).forEach((q0,i)=>{const q={c:Q(q0.c),u:Q(q0.u)},[cx,cy]=q.c,[ux,uy]=q.u,tx=-uy,ty=ux;
+          s.g('wall','équerre de rive',[ux*400,uy*400,0]).prism([[cx+tx*31.5,cy+ty*31.5],[cx+tx*31.5+ux*75,cy+ty*31.5+uy*75],[cx-tx*31.5+ux*75,cy-ty*31.5+uy*75],[cx-tx*31.5,cy-ty*31.5]],zt-L,L,C3.bois,i?null:et)})}}
       // poutrelles (principe : bois 63 × 175 sous le platelage), arrêtées avant le coffrage des poutres
-      const BG=G.BG,clr=(BG?BG.eJ:ep)+63+75+10,beamEdge=y=>BG&&BG.beams.some(bm=>Math.abs(Math.abs(y-bm.o)-bm.b/2)<1);let fp=true;
+      const BG=G.BG,hpt=bmPar(d).hpt,clr=BG&&BG.beams[0]&&BG.beams[0].lhs?BG.eJ+0.5:(BG?BG.eJ:ep)+BM_WS+10,beamEdge=y=>BG&&BG.beams.some(bm=>Math.abs(Math.abs(y-bm.o)-bm.b/2)<1);let fp=true;
       // tubes carton qui montent jusqu'à la sous-face du platelage : poutrelles interrompues autour
       const TB0=[]; // v17 : tubes arrêtés sous la poutre → plus de conflit avec les poutrelles
       G.zones.forEach(z=>{for(let k=Math.ceil((-sh.A/2-z.sx)/G.e);z.sx+k*G.e<=sh.A/2;k++){const x=z.sx+k*G.e;let y1=z.Z1,y2=z.Z2;
         if(beamEdge(y1))y1+=clr;if(beamEdge(y2))y2-=clr;
         if(sh.t==='circ'){const xx=Math.abs(x)+31.5;if(xx>=sh.R)continue;const yy=Math.sqrt(sh.R**2-xx*xx);y1=Math.max(y1,-yy);y2=Math.min(y2,yy)}
         let segs=[[y1,y2]];TB0.forEach(c=>{const dx=Math.max(0,Math.abs(x-c.s)-31.5);if(dx>=c.R)return;const hy=Math.sqrt(c.R*c.R-dx*dx);segs=segs.flatMap(([a,b])=>{const r=[];if(c.o-hy>a)r.push([a,Math.min(b,c.o-hy)]);if(c.o+hy<b)r.push([Math.max(a,c.o+hy),b]);return r})});
-        segs.forEach(([a,b])=>{if(b-a>50){s.g('base','poutrelle').box(x-31.5,a,-175,63,b-a,175,C3.bois,fp?'poutrelles':null);fp=false}})}});
+        segs.forEach(([a,b])=>{if(b-a>50){s.g('base','poutrelle').box(x-31.5,a,-hpt,63,b-a,hpt,C3.bois,fp?'poutrelles':null);fp=false}})}});
       if(BG)BG.beams.forEach((bm,i)=>beam3(s,bm,ePl,BG.eF,BG.eJ,T,T('Fond de poutre'),i===0))}}
   else if(f==='poutre'){const G=ptGeo(d);if(G.ok){const bm=G.bm;
       beam3(s,bm,0,G.BG.eF,G.BG.eJ,T,tg('fs'),true);
       [[bm.sL,-1],[bm.sR,1]].forEach(([S0,sg])=>{if(S0.t!=='poteau'){const u=S0.at(0,0),ev=G.P.ev;s.g('ctx','voile').box(sg<0?u-ev:u,-Math.max(600,bm.b*2),-bm.h-1500,ev,2*Math.max(600,bm.b*2),1500+bm.h,C3.conc,null,0.45)}})}}
-  else if(f==='para'){const g=paraGeo(d);if(g.ok){g.panels.forEach((p,i)=>{const c=p.pts;if(c.length===8)s.g(i===0?'top':i===1?'base':'wall',p.n.toLowerCase()).hexa(c,i<2?C3.j:C3.j,i===0?T('Dessus'):i===2?T('Joues'):null)});
+  else if(f==='para'){const g=paraGeo(d);if(g.ok){const kw=0.6*g.b+200;g.panels.forEach((p,i)=>{const c=p.pts,sw=i===2?1:-1;if(c.length===8)s.g(i===0?'top':i===1?'base':'wall',p.n.toLowerCase(),i>=2?[g.w[0]*sw*kw,g.w[1]*sw*kw,0]:null).hexa(c,C3.j,i===0?T('Dessus'):i===2?T('Joues'):null)});
       if(g.tr){const C0=[g.e/2,0,0],add=(a,b,k)=>[a[0]+b[0]*k,a[1]+b[1]*k,a[2]+b[2]*k],bt=TB(/Traverses horiz/);
         for(let i=0;i<g.tr.n;i++){const c=add(C0,g.u,-g.Lr/2+g.Lr*(i+1)/(g.tr.n+1));
           s.g('in','traverse').bx3(c,g.w,g.v,g.u,g.tr.Lh/2,25,25,C3.bois,i===0?bt:null);
@@ -3990,9 +4170,19 @@ function model3(d,R){
       let q=[[br.x1+sx+nx,sy-br.y1-ny],[br.x2+sx+nx,sy-br.y2-ny],[br.x2+sx-nx,sy-br.y2+ny],[br.x1+sx-nx,sy-br.y1+ny]];
       if(cw)q=clipConvex(q,cw);if(q.length<3)return;
       s.g('in','croix').prism(q,zc-RX.hs/2,RX.hs,RX.full?C3.cl:C3.bois,li===0&&bi===0?(bt?bt.tag:bb?bb.tag:null):null);
-      s.solids[s.solids.length-1].tk='rx'+Math.round(br.span)+(br.seg?'t':'c')}))}
+      s.solids[s.solids.length-1].tk='rx'+Math.round(br.span)+(br.seg?'t':'c');
+      // v18 : cloison CP plus longue que le panneau → face enregistrée pour ses couvre-joints
+      if(RX.full){const ax=dx/L0,ay=-dy/L0,nx2=-ay,ny2=ax;reg(br.seg?'Cloisons CP (tronçons)':'Cloisons CP (continues)',{t:'flat',F0:[br.x1+sx+nx2*RX.b/2,sy-br.y1+ny2*RX.b/2,zc-RX.hs/2],A:[ax,ay,0],B:[0,0,1],N:[nx2,ny2,0]},Math.round(br.span),RX.hs)}}))}
+  if(!(opt&&opt.base))joint3(s,R);
   return s;
 }
+// v18 : renforts de joint (calculés par jointGeo au débit) ajoutés à la 3D ; ils s'écartent avec leur paroi dans la vue éclatée
+function joint3(s,R){if(!R||!R.jg||!R.jg.length||!s.jw)return;const first=new Set();
+  R.jg.forEach(b=>{const w=s.jw[b.jw];if(!w)return;const par=w.parent,lt=(R.bois||[]).find(x=>x.n===b.name),tag=lt&&!first.has(lt)?(first.add(lt),lt.tag):null,n0=s.solids.length;
+    s.g(par.role,{cj:'couvre-joint',lj:'lisse de joint',tj:'tasseau de joint'}[b.kind]);
+    if(b.geo.t==='box'){const G=b.geo;s.bx3(G.c,G.e1,G.e2,G.e3,G.a,G.b,G.k,C3.bois,tag)}
+    else{const G=b.geo;s.ring(G.r1,G.r2,G.a1,G.a2,G.z0,G.h,C3.bois,tag,G.n||Math.max(4,Math.ceil((G.a2-G.a1)/(Math.PI/36))),null,!!par.cutable,G.cx,G.cy)}
+    for(let i=n0;i<s.solids.length;i++){const o=s.solids[i];o.exParent=par;if(par.cutable&&b.ang!=null&&b.geo.t==='box'){o.cutable=true;o.ca=b.ang}}})}
 function legend3(t,used,x,y){const L=C3L.filter(([k])=>used.has(C3[k]));if(!L.length)return[x,y,0,0];const w=Math.max(...L.map(([,l])=>l.length))*5.2+30,h=L.length*13+8;
   t.a(`<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="3" fill="#fff" fill-opacity="0.92" stroke="#bbb" stroke-width="0.5"/>`);
   L.forEach(([k,l],i)=>{t.a(`<rect x="${x+6}" y="${y+5+i*13}" width="14" height="9" fill="${C3[k]}" stroke="${shade(C3[k],0.55)}" stroke-width="0.6"/>`);t.T(x+25,y+13+i*13,l,7.5,'#333','start',600,'Barlow,sans-serif')});return[x,y,w,h]}
@@ -4068,39 +4258,61 @@ function gabArcBand(a,mode){const R=a.R,roll=parseFloat(S('iRoll','914'))||914,a
 // Pièces du platelage (planches D) : une bande d'arc ou la pièce entière par page
 function gabDallePieces(d,full,mode){
   const G=dalGeo(d);if(!G.ok)return{msg:'Calepinage impossible.'};if(G.shL.t!=='circ')return{msg:'Dalle rectangulaire : toutes les coupes sont droites, utiliser les cotes des feuilles CP À DÉCOUPER.'};
-  const R=G.shL.R,mg=100,L=[];let fb=0;
-  G.sheets.forEach((sh,si)=>sh.items.forEach(it=>{const pc=it.pc,n=it.poly.length,isA=i=>Math.abs(Math.hypot(pc.poly[(i+n)%n][0],pc.poly[(i+n)%n][1])-R)<0.6;
+  const R=G.shL.R,mg=100,L=[],NS=G.sheets.length;let fb=0;
+  const edgeLb={b:'bord bas',t:'bord haut',l:'bord gauche',r:'bord droit'};
+  G.sheets.forEach((sh,si)=>{const MK=dalMarks(G,sh);sh.items.forEach(it=>{const pc=it.pc,n=it.poly.length,isA=i=>Math.abs(Math.hypot(pc.poly[(i+n)%n][0],pc.poly[(i+n)%n][1])-R)<0.6;
     const idx=pc.poly.map((q,i)=>isA(i)?i:-1).filter(i=>i>=0);if(idx.length<2)return;
     let st=0;for(let i=0;i<n;i++)if(isA(i)&&!isA(i-1)){st=i;break}const ord=[];for(let k=0;k<n;k++){const i=(st+k)%n;if(!isA(i))break;ord.push(it.poly[i])}
-    const rx1=it.ox,ry1=it.oy,rx2=it.ox+it.w,ry2=it.oy+it.h,ab=bbox(ord);
+    const mk=MK.filter(m=>m.it===it),rx1=it.ox,ry1=it.oy,rx2=it.ox+it.w,ry2=it.oy+it.h,ab=bbox(ord);
     const band=[Math.max(rx1,ab[0]-mg),Math.max(ry1,ab[1]-mg),Math.min(rx2,ab[2]+mg),Math.min(ry2,ab[3]+mg)];
-    // 1) pièce entière (si demandé) ou bande de l'arc dans le repère du panneau (cotes X / Y depuis le coin ●)
+    const ttl=`PIÈCE ${pc.id}${it.rot?' (retournée)':''} — PANNEAU ${si+1} / ${NS}`;
+    // repères communs avec la feuille « CP À DÉCOUPER » : ● point de l'arc, gris = position le long du bord (depuis ●), rouge = cote d'équerre depuis le bord de référence
+    // segment (a → b) limité au cadre [0,W] × [0,H] du gabarit (Liang-Barsky)
+    const segClip=(a,b,W,H,x0,y0)=>{x0=x0||0;y0=y0||0;let t0=0,t1=1;const dx=b[0]-a[0],dy=b[1]-a[1];
+      for(const [p,q] of [[-dx,a[0]-x0],[dx,W-a[0]],[-dy,a[1]-y0],[dy,H-a[1]]]){if(Math.abs(p)<1e-12){if(q<0)return null;continue}const r=q/p;if(p<0)t0=Math.max(t0,r);else t1=Math.min(t1,r)}
+      return t0>t1?null:{p:[a[0]+dx*t1,a[1]+dy*t1],clip:t1<1-1e-6}};
+    const marks=(o,T,W,H,x0,y0)=>mk.forEach(m=>{const [gx,gy]=T(m.X,m.Y),e=m.ref,dn=e==='b'||e==='l';
+      o.push(`<circle class="gmk" data-v="${Math.round(m.v)}" data-val="${Math.round(m.val)}" data-ref="${e}" cx="${gx.toFixed(2)}" cy="${gy.toFixed(2)}" r="1.6" fill="#c0392b"/>`);
+      // ligne de mesure vers le bord de référence, arrêtée au cadre du gabarit
+      const E=e==='b'?[m.X,0]:e==='t'?[m.X,G.Q]:e==='l'?[0,m.Y]:[G.P,m.Y],lim=segClip([gx,gy],T(...E),W,H,x0,y0)||{p:[gx,gy],clip:true};const [ex,ey]=lim.p;
+      gLn(o,gx,gy,ex,ey,0.35,lim.clip?'3,2':null,'#c0392b');
+      const h=m.ax==='x',lx=gx+(h?2:(dn?3:-3)),ly=gy+(h?(dn?-3:6):-2);
+      gTx(o,lx,ly,nf(m.val,0),4.2,h?'start':(dn?'start':'end'),700,'#c0392b');
+      gTx(o,lx,ly+(h?(dn?-5:5):5),'@'+nf(m.v,0),3.2,h?'start':(dn?'start':'end'),400,'#666');
+      if(lim.clip)gTx(o,ex+(h?2:0),ey+(h?(e==='b'?-1:4):-1.5),'→ '+edgeLb[e],3,'start',400,'#c0392b')});
+    const mkNote=mk.length?` · repères identiques à la feuille CP À DÉCOUPER : rouge = cote d'équerre depuis le ${edgeLb[mk[0].ref]}, gris @ = position le long du bord depuis le coin ●`:'';
+    // 1) pièce entière ou bande de l'arc, dans le repère du panneau (graduations X / Y depuis le coin ●)
     const axis=(B,isFull)=>{const [bx1,by1,bx2,by2]=B,w=bx2-bx1+80,h=by2-by1+50,X=x=>40+(x-bx1),Y=v=>20+(by2-v),o=[];
       o.push(`<rect x="${X(bx1)}" y="${Y(by2)}" width="${bx2-bx1}" height="${by2-by1}" fill="none" stroke="#999" stroke-width="0.3" stroke-dasharray="4,3"/>`);
       const clip=clipBox(it.poly,bx1,by1,bx2,by2);if(clip)o.push(`<path d="M${clip.map(([x,v])=>X(x).toFixed(2)+','+Y(v).toFixed(2)).join(' L')}Z" fill="url(#gj)" fill-opacity="0.35" stroke="#555" stroke-width="0.35"/>`);
       const arc=ord.filter(([x,v])=>x>=bx1-0.5&&x<=bx2+0.5&&v>=by1-0.5&&v<=by2+0.5);
-      if(arc.length>1)o.push(`<polyline points="${arc.map(([x,v])=>X(x).toFixed(2)+','+Y(v).toFixed(2)).join(' ')}" fill="none" stroke="#000" stroke-width="0.9"/>`);
-      for(let x=Math.ceil(bx1/100)*100;x<=bx2;x+=100){gLn(o,X(x),Y(by1),X(x),Y(by1)+4,0.3);gTx(o,X(x),Y(by1)+9,nf(x,0),3.2,'middle',400,'#c0392b')}
-      for(let v=Math.ceil(by1/100)*100;v<=by2;v+=100){gLn(o,X(bx1),Y(v),X(bx1)-4,Y(v),0.3);gTx(o,X(bx1)-6,Y(v)+1.2,nf(v,0),3.2,'end',400,'#c0392b')}
-      if(bx1<=rx1+0.5&&by1<=ry1+0.5)o.push(`<circle cx="${X(bx1)}" cy="${Y(by1)}" r="2.5" fill="#c0392b"/>`);
-      return{id:pc.id,title:`PIÈCE ${pc.id} — panneau platelage ${si+1}`,kind:isFull?'full':'band',note:`${isFull?'pièce entière':'bande de l\'arc'} : X ${nf(bx1,0)} → ${nf(bx2,0)} · Y ${nf(by1,0)} → ${nf(by2,0)} depuis le coin ● du panneau · trait fort = arc de découpe · hachures = pièce à conserver`,w,h,svg:o.join('')}};
-    // 2) bande suivant la corde de l'arc (arc en diagonale) : posée sur les extrémités A et B de l'arc, cotées sur les bords du panneau
-    const chord=()=>{const A=ord[0],Bp=ord[ord.length-1],c=Math.hypot(Bp[0]-A[0],Bp[1]-A[1]),u=[(Bp[0]-A[0])/c,(Bp[1]-A[1])/c];let n=[-u[1],u[0]];
-      const dd=ord.map(q=>(q[0]-A[0])*n[0]+(q[1]-A[1])*n[1]);if(Math.max(...dd.map(Math.abs))===Math.max(...dd.map(x=>-x)))n=[-n[0],-n[1]];
-      const L=q=>[(q[0]-A[0])*u[0]+(q[1]-A[1])*u[1],(q[0]-A[0])*n[0]+(q[1]-A[1])*n[1]],fl=Math.max(...ord.map(q=>L(q)[1])),m=40,mt=50;
+      if(arc.length>1)o.push(`<polyline class="garc" points="${arc.map(([x,v])=>X(x).toFixed(2)+','+Y(v).toFixed(2)).join(' ')}" fill="none" stroke="#000" stroke-width="0.9"/>`);
+      for(let x=Math.ceil(bx1/100)*100;x<=bx2;x+=100){gLn(o,X(x),Y(by1),X(x),Y(by1)+4,0.3,null,'#888');gTx(o,X(x),Y(by1)+9,nf(x,0),3,'middle',400,'#888')}
+      for(let v=Math.ceil(by1/100)*100;v<=by2;v+=100){gLn(o,X(bx1),Y(v),X(bx1)-4,Y(v),0.3,null,'#888');gTx(o,X(bx1)-6,Y(v)+1.2,nf(v,0),3,'end',400,'#888')}
+      [[rx1,ry1],[rx2,ry1],[rx1,ry2],[rx2,ry2]].forEach(([cx,cy])=>{if(cx===0&&cy===0&&cx>=bx1-0.5&&cx<=bx2+0.5&&cy>=by1-0.5&&cy<=by2+0.5)o.push(`<circle cx="${X(cx)}" cy="${Y(cy)}" r="2.5" fill="#c0392b"/>`)});
+      marks(o,(x,y)=>[X(x),Y(y)],X(bx2)+0.01,Y(by1)+0.01,X(bx1)-0.01,Y(by2)-0.01);
+      return{id:pc.id,title:ttl,kind:isFull?'full':'band',note:`${isFull?'pièce entière':'bande de l\'arc'} : X ${nf(bx1,0)} → ${nf(bx2,0)} · Y ${nf(by1,0)} → ${nf(by2,0)} depuis le coin ● du panneau (graduations grises)${mkNote} · trait fort = arc de découpe · hachures = pièce à conserver`,w,h,svg:o.join(''),
+        map:(gx,gy)=>[gx-40+bx1,by2-(gy-20)],arc:ord,mk}};
+    // 2) bande suivant la corde AB de l'arc (arc en diagonale) : A et B cotés depuis le coin ● du PANNEAU
+    const chord=()=>{const A=ord[0],Bp=ord[ord.length-1],c=Math.hypot(Bp[0]-A[0],Bp[1]-A[1]),u=[(Bp[0]-A[0])/c,(Bp[1]-A[1])/c];let nv=[-u[1],u[0]];
+      const dd=ord.map(q=>(q[0]-A[0])*nv[0]+(q[1]-A[1])*nv[1]);if(Math.max(...dd.map(Math.abs))===Math.max(...dd.map(x=>-x)))nv=[-nv[0],-nv[1]];
+      const Lq=q=>[(q[0]-A[0])*u[0]+(q[1]-A[1])*u[1],(q[0]-A[0])*nv[0]+(q[1]-A[1])*nv[1]],fl=Math.max(...ord.map(q=>Lq(q)[1])),m=40,mt=50;
       const w=c+2*m,h=fl+2*mt+30,X=x=>m+x,Y=y=>mt+fl-y,o=[];
-      const pl=it.poly.map(L),clip=clipBox(pl,-m,-mt,c+m,fl+mt);if(clip)o.push(`<path d="M${clip.map(([x,y])=>X(x).toFixed(2)+','+Y(y).toFixed(2)).join(' L')}Z" fill="url(#gj)" fill-opacity="0.35" stroke="#555" stroke-width="0.35"/>`);
-      o.push(`<polyline points="${ord.map(q=>{const [x,y]=L(q);return X(x).toFixed(2)+','+Y(y).toFixed(2)}).join(' ')}" fill="none" stroke="#000" stroke-width="0.9"/>`);
+      const pl=it.poly.map(Lq),clip=clipBox(pl,-m,-mt,c+m,fl+mt);if(clip)o.push(`<path d="M${clip.map(([x,y])=>X(x).toFixed(2)+','+Y(y).toFixed(2)).join(' L')}Z" fill="url(#gj)" fill-opacity="0.35" stroke="#555" stroke-width="0.35"/>`);
+      o.push(`<polyline class="garc" points="${ord.map(q=>{const [x,y]=Lq(q);return X(x).toFixed(2)+','+Y(y).toFixed(2)}).join(' ')}" fill="none" stroke="#000" stroke-width="0.9"/>`);
       gLn(o,X(0),Y(0),X(c),Y(0),0.3,'4,3','#777');
-      const at=x=>{let y=0;for(let k=0;k<ord.length-1;k++){const p=L(ord[k]),q=L(ord[k+1]);if((p[0]-x)*(q[0]-x)<=0&&p[0]!==q[0]){y=p[1]+(x-p[0])*(q[1]-p[1])/(q[0]-p[0]);break}}return y};
+      const at=x=>{let y=0;for(let k=0;k<ord.length-1;k++){const p=Lq(ord[k]),q=Lq(ord[k+1]);if((p[0]-x)*(q[0]-x)<=0&&p[0]!==q[0]){y=p[1]+(x-p[0])*(q[1]-p[1])/(q[0]-p[0]);break}}return y};
       for(let x=100;x<c-20;x+=100){const y=at(x);gLn(o,X(x),Y(0),X(x),Y(y),0.25,null,'#555');gTx(o,X(x)+1,Y(0)+5,nf(y,1),3.2,'start',400,'#333')}
-      const edge=q=>Math.abs(q[0]-rx1)<0.6?'bord gauche':Math.abs(q[0]-rx2)<0.6?'bord droit':Math.abs(q[1]-ry1)<0.6?'bord bas':Math.abs(q[1]-ry2)<0.6?'bord haut':'';
-      [[A,0,'A'],[Bp,c,'B']].forEach(([q,x,lb])=>{o.push(`<circle cx="${X(x)}" cy="${Y(0)}" r="2.2" fill="#c0392b"/>`);gTx(o,X(x)+(x?-4:4),Y(0)+14,`${lb} : X ${nf(q[0]-rx1,0)} · Y ${nf(q[1]-ry1,0)} (${edge(q)})`,3.6,x?'end':'start',700,'#c0392b')});
-      return{id:pc.id,title:`PIÈCE ${pc.id} — panneau platelage ${si+1}`,kind:'chord',note:`bande suivant la corde AB (${nf(c,0)} mm, flèche ${nf(fl,1)} mm) : poser A et B sur leurs cotes (depuis le coin ● du panneau), tracer l'arc · ordonnées depuis la corde tous les 100 mm`,w,h,svg:o.join('')}};
+      const edge=q=>Math.abs(q[0])<0.6?'bord gauche':Math.abs(q[0]-G.P)<0.6?'bord droit':Math.abs(q[1])<0.6?'bord bas':Math.abs(q[1]-G.Q)<0.6?'bord haut':Math.abs(q[0]-rx1)<0.6||Math.abs(q[0]-rx2)<0.6?'coupe verticale':'coupe horizontale';
+      [[A,0,'A'],[Bp,c,'B']].forEach(([q,x,lb])=>{o.push(`<circle class="gab-ab" data-x="${Math.round(q[0])}" data-y="${Math.round(q[1])}" cx="${X(x)}" cy="${Y(0)}" r="2.2" fill="#c0392b"/>`);gTx(o,X(x)+(x?-4:4),Y(0)+14,`${lb} : X ${nf(q[0],0)} · Y ${nf(q[1],0)} depuis ● (${edge(q)})`,3.6,x?'end':'start',700,'#c0392b')});
+      const T=(x,y)=>{const [a,b]=Lq([x,y]);return[X(a),Y(b)]};
+      marks(o,T,w,h-30);
+      return{id:pc.id,title:ttl,kind:'chord',note:`bande suivant la corde AB (${nf(c,0)} mm, flèche ${nf(fl,1)} mm) : poser A et B sur leurs cotes (depuis le coin ● du panneau), tracer l'arc · ordonnées depuis la corde tous les 100 mm${mkNote}`,w,h,svg:o.join(''),
+        map:(gx,gy)=>{const a=gx-m,b=mt+fl-gy;return[A[0]+u[0]*a+nv[0]*b,A[1]+u[1]*a+nv[1]*b]},arc:ord,mk}};
     const cands=(full?[()=>axis([rx1,ry1,rx2,ry2],true)]:[]).concat([()=>axis(band,false),chord]);
     let pcF=null;for(const k of cands){const q=k();if(gabFit(q,mode)){pcF=q;break}}if(!pcF)pcF=chord();
     if(full&&pcF.kind!=='full')fb++;
-    L.push(pcF)}));
+    pcF.sheet=si;pcF.it=it;L.push(pcF)})});
   if(!L.length)return{msg:'Aucune planche découpée cintrée.'};
   L.sort((a,b)=>+a.id.slice(1)-+b.id.slice(1));
   return{title:`PLANCHES DÉCOUPÉES DU PLATELAGE (R ${nf(R)})`,pieces:L,fb};
@@ -4162,7 +4374,14 @@ function rivePlan(t,d,sh,X,Y,s,big){const Rv=riveGeo(d);if(!Rv)return;
 function riveDebit(d,R){const Rv=riveGeo(d);if(!Rv)return;const c=cpOf(d,'j'),add=(q,n,a,b,sh)=>R.push({q,n,a,b,k:'j',m2:q*a*b/1e6,sh});
   if(Rv.t==='circ')add(1,'Rive de dalle cintrée (dév.)',Rv.dev,Rv.h,{t:'dev'});
   else{add(2,'Rive de dalle (filantes)',Rv.A+2*Rv.ep,Rv.h);add(2,'Rive de dalle (entre)',Rv.B,Rv.h)}
-  const per=Rv.t==='circ'?Rv.dev:2*(Rv.A+Rv.B);R.bois=R.bois||[];R.bois.push({q:Math.ceil(per/600),n:'Équerres de rive 63×75 (entraxe ≤ 600)',L:Math.round(Rv.h+150)})}
+  R.bois=R.bois||[];R.bois.push({q:riveEq(Rv).length,n:'Équerres de rive 63×75 (entraxe ≤ 600)',L:Math.round(Rv.h+150)})}
+// v18 : positions des équerres de rive (repère du plan, x ∥ L) — communes au débit et à la 3D. c = point au dos de la rive, u = normale sortante
+function riveEq(Rv){const out=[];if(!Rv)return out;
+  if(Rv.t==='circ'){const r=Rv.Rr+Rv.ep,n=Math.max(4,Math.ceil(2*Math.PI*r/600-1e-9));for(let i=0;i<n;i++){const a=2*Math.PI*i/n;out.push({c:[r*Math.cos(a),r*Math.sin(a)],u:[Math.cos(a),Math.sin(a)]})}return out}
+  const a=Rv.A/2+Rv.ep,b=Rv.B/2+Rv.ep;
+  [[[-a+100,-b],[a-100,-b],[0,-1]],[[-a+100,b],[a-100,b],[0,1]],[[-a,-b+100],[-a,b-100],[-1,0]],[[a,-b+100],[a,b-100],[1,0]]].forEach(([p1,p2,u])=>{
+    const L=Math.hypot(p2[0]-p1[0],p2[1]-p1[1]),n=Math.max(2,Math.ceil(L/600-1e-9)+1);for(let i=0;i<n;i++){const t=i/(n-1);out.push({c:[p1[0]+(p2[0]-p1[0])*t,p1[1]+(p2[1]-p1[1])*t],u})}});
+  return out}
 function checksExt(d,e,w,cr){
   if(d.forme==='voile'&&d.constr!=='caisson'){const tr=d.cS&&d.cS!=='cp'?2*(d.cR||0):0,mr=(d.eM>0&&d.mS!=='cp')?(d.bMr||0):0;
     const g0=voileGeo(d),TP=tr&&g0.ok?travPos(d,g0):null;
@@ -4293,12 +4512,6 @@ function voileBois(d,g,R,BX){
     BX.push({q:M.nC,n:`Traverses de cerce ${secName(d.cS,d)} — côté banche ext.${bv}`,L:Math.round(T.ext.L)});
     BX.push({q:M.nC,n:`Traverses de cerce ${secName(d.cS,d)} — côté banche int.${bv}`,L:Math.round(T.int.L)})}
 }
-// Croix du caisson (renforts internes) : tasseau 50 × 50 radial continu sur l'axe + 2 tronçons de corde en butée, par niveau de goussets
-function caisCroix(d,g){if(!d.renV)return null;const ep=d.ep||0,eF=d.epF||ep,eS=d.epS||ep,hp=d.h-(d.ferme?eF+eS:0),lv=gsLevels(hp,ep,600),Rm=(g.Ri+g.Re)/2,al=g.al||0;
-  if(!lv.length)return null;const xl=Y=>g.rad?Y*Math.tan(al)-ep/Math.cos(al):g.L/2-ep;
-  return{n:lv.length,Lr:Math.sqrt((g.Re-ep)**2-625)-(g.Ri+ep)-1.2,Lc:Math.max(xl(Rm-25),xl(Rm+25))-25}}
-function caisBois(d,g,BX){const C=caisCroix(d,g);if(!C)return;
-  BX.push({q:C.n,n:'Croix du caisson — tasseau 50 × 50 radial',L:Math.round(C.Lr)});BX.push({q:2*C.n,n:'Croix du caisson — tasseau 50 × 50 (tronçon de corde)',L:Math.round(C.Lc)})}
 // Montants en CP (bandes de la largeur des joues) : pièces CP du débit
 function voileCPLines(d,g,R){const M=manGeo(d,g);if(!(M.nM&&d.mS==='cp'))return;
   R.push({q:M.nM*(M.nC+1),n:'Montants CP (bandes, largeur des joues)',a:Math.round(M.gap),b:Math.round(d.bMr),k:'j',m2:M.nM*(M.nC+1)*M.gap*d.bMr/1e6})}
@@ -4719,7 +4932,7 @@ function svgPathPts(d){const tk=String(d||'').match(/[MmLlHhVvCcSsQqTtAaZz]|-?(?
       const sg=fa===fs?-1:1,num2=rx*rx*ry*ry-rx*rx*y1*y1-ry*ry*x1*x1,co=sg*Math.sqrt(Math.max(0,num2/(rx*rx*y1*y1+ry*ry*x1*x1))),cx1=co*rx*y1/ry,cy1=-co*ry*x1/rx;
       const cx=cp*cx1-sp*cy1+(x+ex)/2,cy=sp*cx1+cp*cy1+(y+ey)/2,an=(ux,uy,vx,vy)=>{const a=Math.atan2(ux*vy-uy*vx,ux*vx+uy*vy);return a};
       const t1=an(1,0,(x1-cx1)/rx,(y1-cy1)/ry);let dt=an((x1-cx1)/rx,(y1-cy1)/ry,(-x1-cx1)/rx,(-y1-cy1)/ry);if(!fs&&dt>0)dt-=2*Math.PI;else if(fs&&dt<0)dt+=2*Math.PI;
-      const ns=Math.max(4,Math.ceil(Math.abs(dt)/(Math.PI/36)));for(let k=1;k<=ns;k++){const t=t1+dt*k/ns,a=rx*Math.cos(t),b=ry*Math.sin(t);to(cp*a-sp*b+cx,sp*a+cp*b+cy)}x=ex;y=ey}
+      const rm=Math.max(rx,ry),stp=rm>0.2?2*Math.acos(Math.max(-1,1-0.1/rm)):Math.PI/36,ns=Math.min(4000,Math.max(4,Math.ceil(Math.abs(dt)/Math.min(Math.PI/36,stp)))); /* v18 : flèche de corde ≤ 0,1 mm */for(let k=1;k<=ns;k++){const t=t1+dt*k/ns,a=rx*Math.cos(t),b=ry*Math.sin(t);to(cp*a-sp*b+cx,sp*a+cp*b+cy)}x=ex;y=ey}
     px=null;py=null}
   return out}
 // Écrit le contenu d'un <svg> (chaîne ou élément) dans le DXF : k = mm par unité svg, (ox, oy) = position DXF du coin haut gauche de la vue
@@ -4799,18 +5012,20 @@ function dxfPlanDoc(d){const g=d.forme==='voile'?voileGeo(d):null;if(limErr(d).l
   if(d.forme==='goulotte')D.text('CARTOUCHE',0,y+60,40,'Segments de fond de goulotte : contour sur le gabarit 1:1 ci-dessus (calepinage propre, voir feuilles CP).',0);
   const vw=dxfViews(D,d,0,y-300);st.vues=vw.n;
   return{D,st}}
+function dxfPlanFile(d0){let d;try{d=canon(migr(d0))}catch(e){return{err:'DXF : saisie incomplète'}}const r=dxfPlanDoc(d);if(r.err)return r;
+  return{name:fileStem([d]).replace(/^debit_/,'plan_')+'.dxf',bytes:dxfBytes(r.D.out()),st:r.st}}
+function dxfChantierFile(list,ch){const C=chantierData(list),D=DXF(),G=Object.values(C.cp).filter(o=>o.nest&&o.nest.sheets.length).map(o=>{const [W,H]=cpFmt(o.cp);return{name:cpName(o.cp),W,H,sheets:o.nest.sheets.map(s=>({items:s.items,pre:null}))}});
+  D.text('CARTOUCHE',0,400,120,`CHANTIER ${ch||'—'} — CALEPINAGE CP CONSOLIDÉ (${C.plans.length} plan(s)) — mm`,0);
+  const r=dxfPanels(D,G,0,0);return{name:('calepinage_'+(ch||'chantier')+'_'+new Date().toISOString().slice(0,10)).replace(/[^\w\-]+/g,'_')+'.dxf',bytes:dxfBytes(D.out()),st:{panneaux:r.np,pieces:r.npc}}}
 function expDxf(scope){
   if(scope==='chantier')return expDxfChantier();
-  const d0=EI>=0&&P[EI]?P[EI]:coll();let d;try{d=canon(migr(d0))}catch(e){toast('DXF : saisie incomplète');return}
-  const r=dxfPlanDoc(d);if(r.err){toast(r.err);return}
-  dlBlob(new Blob([dxfBytes(r.D.out())],{type:'application/dxf'}),fileStem([d]).replace(/^debit_/,'plan_')+'.dxf');
-  toast(`DXF : ${r.st.panneaux} panneau(x), ${r.st.pieces} pièce(s), gabarits et vues — unités mm`);return r.st}
+  const f=dxfPlanFile(EI>=0&&P[EI]?P[EI]:coll());if(f.err){toast(f.err);return}
+  dlBlob(new Blob([f.bytes],{type:'application/dxf'}),f.name);
+  toast(`DXF : ${f.st.panneaux} panneau(x), ${f.st.pieces} pièce(s), gabarits et vues — unités mm`);return f.st}
 // calepinage consolidé du chantier (toutes pièces de tous les plans)
 function expDxfChantier(){const ch=S('iCh',''),list=chantierPlans(ch);if(!list.length){toast('Aucun plan enregistré.');return}
-  const C=chantierData(list),D=DXF(),G=Object.values(C.cp).filter(o=>o.nest&&o.nest.sheets.length).map(o=>{const [W,H]=cpFmt(o.cp);return{name:cpName(o.cp),W,H,sheets:o.nest.sheets.map(s=>({items:s.items,pre:null}))}});
-  D.text('CARTOUCHE',0,400,120,`CHANTIER ${ch||'—'} — CALEPINAGE CP CONSOLIDÉ (${C.plans.length} plan(s)) — mm`,0);
-  const r=dxfPanels(D,G,0,0);dlBlob(new Blob([dxfBytes(D.out())],{type:'application/dxf'}),('calepinage_'+(ch||'chantier')+'_'+new Date().toISOString().slice(0,10)).replace(/[^\w\-]+/g,'_')+'.dxf');
-  toast(`DXF chantier : ${r.np} panneau(x), ${r.npc} pièce(s)`);return{panneaux:r.np,pieces:r.npc}}
+  const f=dxfChantierFile(list,ch);dlBlob(new Blob([f.bytes],{type:'application/dxf'}),f.name);
+  toast(`DXF chantier : ${f.st.panneaux} panneau(x), ${f.st.pieces} pièce(s)`);return f.st}
 
 // ---------- Dossier chantier (PDF via l'impression) : page de garde, sommaire paginé, plans, récapitulatif, numérotation continue ----------
 let DOS=null;
@@ -4899,6 +5114,123 @@ function acChantierShow(){const r=acChantier();if(!r){alert('Aucun plan enregist
 <div class="g2" style="margin-top:12px"><button class="btn bs bo" onclick="closeModal()">Fermer</button><button class="btn bs bo" onclick="closeModal();autoControl(true)">Auto-contrôle de tous les plans</button></div>`);return{nk,n:r.length}}
 {const _sc=showChantier;showChantier=function(){const r=_sc.apply(this,arguments);const bar=el('pvA').querySelector('.no-print');
   if(bar&&!el('bAcCh'))bar.insertAdjacentHTML('afterbegin','<button class="btn bs bo" id="bAcCh" style="background:#fff" onclick="acChantierShow()" title="Plans pris en compte, imbrication, barres, lisibilité">🔍 Auto-contrôle</button>');return r}}
+
+// ====== v18 — EXPORTS : classeur XLSX mis en forme, menu « Exporter », archive ZIP ======
+// Classeur : Synthèse (à commander + plans) · Débit CP (par plan, sous-totaux) · Débit bois (par plan, sous-totaux) · Barres bois (plan de débit des barres).
+// Mise en forme : titres, en-têtes colorés figés et répétés à l'impression, bordures, formats numériques, filtres, A4 paysage ajusté en largeur.
+const XS={def:0,head:1,title:2,sub:3,txt:4,int:5,dec1:6,dec2:7,grp:8,stxt:9,sdec2:10,sint:11,ital:12,pct:13,sect:14,sdec1:15,ctr:16};
+function xlsxBook(sheets){
+  const x=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])).replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/g,'');
+  const col=i=>{let s='';i++;while(i){const m=(i-1)%26;s=String.fromCharCode(65+m)+s;i=Math.floor((i-1)/26)}return s};
+  const cell=(v,ri,ci)=>{if(v==null||v==='')return'';const o=typeof v==='object'?v:{v};let s=o.s!=null?o.s:typeof o.v==='number'?XS.int:XS.txt;const r=col(ci)+(ri+1);
+    if(o.v==null||o.v==='')return`<c r="${r}" s="${s}"/>`;
+    if(typeof o.v==='number'&&isFinite(o.v))return`<c r="${r}" s="${s}"><v>${Math.round(o.v*1000)/1000}</v></c>`;
+    return`<c r="${r}" s="${s}" t="inlineStr"><is><t xml:space="preserve">${x(o.v)}</t></is></c>`};
+  const sh=sheets.map(S=>{const nc=Math.max(1,...S.rows.map(r=>r.length)),last=col(nc-1)+Math.max(1,S.rows.length);
+    const fr=S.freeze?`<pane ySplit="${S.freeze}" topLeftCell="A${S.freeze+1}" activePane="bottomLeft" state="frozen"/><selection pane="bottomLeft" activeCell="A${S.freeze+1}" sqref="A${S.freeze+1}"/>`:'';
+    return`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">`+
+      `<sheetPr><pageSetUpPr fitToPage="1"/></sheetPr><dimension ref="A1:${last}"/><sheetViews><sheetView workbookViewId="0"${S.freeze?'':' tabSelected="0"'}>${fr}</sheetView></sheetViews><sheetFormatPr defaultRowHeight="15"/>`+
+      `<cols>${(S.cols||[]).map((w,i)=>`<col min="${i+1}" max="${i+1}" width="${w}" customWidth="1"/>`).join('')}</cols>`+
+      `<sheetData>${S.rows.map((r,ri)=>`<row r="${ri+1}"${S.ht&&S.ht[ri]?` ht="${S.ht[ri]}" customHeight="1"`:''}>${(r||[]).map((v,ci)=>cell(v,ri,ci)).join('')}</row>`).join('')}</sheetData>`+
+      (S.filter?`<autoFilter ref="${S.filter}"/>`:'')+
+      (S.merges&&S.merges.length?`<mergeCells count="${S.merges.length}">${S.merges.map(m=>`<mergeCell ref="${m}"/>`).join('')}</mergeCells>`:'')+
+      `<pageMargins left="0.4" right="0.4" top="0.5" bottom="0.5" header="0.3" footer="0.3"/><pageSetup paperSize="9" orientation="landscape" fitToWidth="1" fitToHeight="0"/>`+
+      `<headerFooter><oddFooter>&amp;L${x(S.name)}&amp;RPage &amp;P / &amp;N</oddFooter></headerFooter></worksheet>`});
+  const dn=sheets.map((S,i)=>S.printRow?`<definedName name="_xlnm.Print_Titles" localSheetId="${i}">'${x(S.name.slice(0,31)).replace(/'/g,"''")}'!$${S.printRow}:$${S.printRow}</definedName>`:'').join('');
+  const F=(b,i,sz,c)=>`<font>${b?'<b/>':''}${i?'<i/>':''}<sz val="${sz||10}"/>${c?`<color rgb="FF${c}"/>`:''}<name val="Calibri"/></font>`;
+  const fill=c=>`<fill><patternFill patternType="solid"><fgColor rgb="FF${c}"/><bgColor indexed="64"/></patternFill></fill>`;
+  const B='<border><left style="thin"><color rgb="FFBFBFBF"/></left><right style="thin"><color rgb="FFBFBFBF"/></right><top style="thin"><color rgb="FFBFBFBF"/></top><bottom style="thin"><color rgb="FFBFBFBF"/></bottom><diagonal/></border>';
+  // xf : [numFmt, font, fill, border, alignement]
+  const XF=[[0,0,0,0,''],[0,2,2,1,'<alignment horizontal="center" vertical="center" wrapText="1"/>'],[0,3,0,0,''],[0,4,0,0,''],[0,0,0,1,'<alignment vertical="top" wrapText="1"/>'],[3,0,0,1,'<alignment vertical="top"/>'],[164,0,0,1,'<alignment vertical="top"/>'],[4,0,0,1,'<alignment vertical="top"/>'],
+    [0,5,3,1,'<alignment vertical="center"/>'],[0,1,4,1,''],[4,1,4,1,''],[3,1,4,1,''],[0,4,0,1,'<alignment vertical="top" wrapText="1" indent="1"/>'],[9,0,0,1,''],[0,5,0,0,''],[164,1,4,1,''],[0,0,0,1,'<alignment horizontal="center" vertical="top"/>']];
+  const styles=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><numFmts count="1"><numFmt numFmtId="164" formatCode="#,##0.0"/></numFmts>`+
+    `<fonts count="6">${F(0,0,10)}${F(1,0,10)}${F(1,0,10,'FFFFFF')}${F(1,0,14,'1A2035')}${F(0,1,9,'595959')}${F(1,0,10,'1A2035')}</fonts>`+
+    `<fills count="5"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill>${fill('1A2035')}${fill('FCE4C4')}${fill('EDEDED')}</fills>`+
+    `<borders count="2"><border><left/><right/><top/><bottom/><diagonal/></border>${B}</borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>`+
+    `<cellXfs count="${XF.length}">${XF.map(([n,f,fi,b,al])=>`<xf numFmtId="${n}" fontId="${f}" fillId="${fi}" borderId="${b}" xfId="0"${n?' applyNumberFormat="1"':''}${f?' applyFont="1"':''}${fi?' applyFill="1"':''}${b?' applyBorder="1"':''}${al?' applyAlignment="1">'+al+'</xf>':'/>'}`).join('')}</cellXfs>`+
+    `<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>`;
+  const files=[['[Content_Types].xml',`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>${sh.map((_,i)=>`<Override PartName="/xl/worksheets/sheet${i+1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`).join('')}</Types>`],
+    ['_rels/.rels',`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`],
+    ['xl/workbook.xml',`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><bookViews><workbookView activeTab="0"/></bookViews><sheets>${sheets.map((S,i)=>`<sheet name="${x(S.name.slice(0,31))}" sheetId="${i+1}" r:id="rId${i+1}"/>`).join('')}</sheets>${dn?`<definedNames>${dn}</definedNames>`:''}</workbook>`],
+    ['xl/_rels/workbook.xml.rels',`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${sh.map((_,i)=>`<Relationship Id="rId${i+1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet${i+1}.xml"/>`).join('')}<Relationship Id="rId${sh.length+1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>`],
+    ['xl/styles.xml',styles]];
+  sh.forEach((s,i)=>files.push([`xl/worksheets/sheet${i+1}.xml`,s]));
+  return files;
+}
+// Compatibilité : ancienne signature [[nom, lignes]] → classeur simple (en-tête en première ligne)
+function xlsxBlob(sheets){return zipStore(xlsxBook(sheets.map(([name,rows])=>({name,cols:rows[0]?rows[0].map(()=>16):[],freeze:1,printRow:1,rows:rows.map((r,i)=>i?r:r.map(v=>({v,s:XS.head})))}))))}
+// Données de débit d'un plan (lignes CP + bois, avec remarques)
+function debitData(d0){const d=canon(migr(d0)),g=d.forme==='voile'?voileGeo(d):null,nb=d.nb||1;
+  if(limErr(d).length||badDims(checks(d,g)))return{d,nb,err:true,cp:[],bois:[]};const R=debit(d,g),clean=s=>String(s||'').replace(/<[^>]+>/g,'').trim();
+  const cp=[];R.forEach(r=>{const c=cpOf(d,r.k);cp.push({tag:r.ftag,des:r.n,q:r.q,qt:r.q*nb,L:r.a>0?r.a:null,l:r.b>0?r.b:null,mat:cpName(c),m2:r.m2*nb,rem:[r.txt&&!/gabarit 1:1$/.test(r.txt)?clean(r.txt):'',clean(r.note),clean(r.splitTxt)].filter(Boolean).join(' · ')||(r.txt?clean(r.txt):'')});
+    if(r.split){const lt='abcdefghijklmnopqrstuvwxyz',seen=[];r.split.copies.forEach(sp=>{const sg=sp.lens.join('|')+'/'+sp.bands.join('|');if(seen.includes(sg))return;const off=seen.reduce((s,x)=>s+x.split('/')[0].split('|').length*x.split('/')[1].split('|').length,0);seen.push(sg);
+      const n=r.split.copies.filter(x=>x.lens.join('|')+'/'+x.bands.join('|')===sg).length;let k=0;sp.bands.forEach(B=>sp.lens.forEach(L=>cp.push({sub:true,tag:r.ftag+lt[(off+k++)%26],des:'↳ morceau de '+r.tag,q:n,qt:n*nb,L,l:B,mat:cpName(c)})))})}});
+  const bois=(R.bois||[]).map(b=>{const m=String(b.n).match(/(\d+)\s*[×x]\s*(\d+)/);return{tag:b.ftag,des:b.n,sec:m?m[1]+' × '+m[2]:'',q:b.q,qt:b.q*nb,L:b.L,ml:b.q*nb*b.L/1000}});
+  return{d,nb,cp,bois}}
+function debitXlsx(list){
+  list=Array.isArray(list)?list:[list];const ch=[...new Set(list.map(d=>d.ch).filter(Boolean))].join(' · ')||'—',date=new Date().toLocaleDateString('fr-FR');
+  const D=list.map(debitData),T=(t,sub,nc)=>({rows:[[{v:t,s:XS.title}],[{v:sub,s:XS.sub}],[]],merges:[`A1:${String.fromCharCode(64+nc)}1`,`A2:${String.fromCharCode(64+nc)}2`],ht:{0:22}});
+  const plTitle=x=>`${x.d.ref||'—'} — ${TM[x.d.forme]||x.d.forme}${x.d.ouv?' — ouvrage '+x.d.ouv:''} — × ${x.nb} exemplaire(s)${x.err?' — ⚠ PLAN INCOHÉRENT, NON COMPTÉ':''}`;
+  // --- Débit CP
+  const H1=['Repère','Désignation','Qté / ex.','Qté totale','Longueur (mm)','Largeur (mm)','Matériau','Surface totale (m²)','Remarques'],cp=T(`DÉBIT CONTREPLAQUÉ — ${ch}`,`${list.length} plan(s) · édité le ${date} · quantités totales = qté / ex. × nombre d'exemplaires`,9);
+  cp.rows.push(H1.map(v=>({v,s:XS.head})));let r0=cp.rows.length,tot=0;
+  D.forEach(x=>{cp.rows.push([{v:plTitle(x),s:XS.grp},...Array(8).fill({v:'',s:XS.grp})]);cp.merges.push(`A${cp.rows.length}:I${cp.rows.length}`);let st=0;
+    x.cp.forEach(c=>{if(!c.sub)st+=c.m2||0;cp.rows.push(c.sub?[{v:c.tag,s:XS.ital},{v:c.des,s:XS.ital},{v:c.q,s:XS.int},{v:c.qt,s:XS.int},{v:c.L,s:XS.int},{v:c.l,s:XS.int},{v:'',s:XS.txt},{v:'',s:XS.txt},{v:'',s:XS.txt}]:
+      [{v:c.tag,s:XS.txt},{v:c.des,s:XS.txt},{v:c.q,s:XS.int},{v:c.qt,s:XS.int},{v:c.L,s:XS.int},{v:c.l,s:XS.int},{v:c.mat,s:XS.txt},{v:c.m2,s:XS.dec2},{v:c.rem||'',s:XS.txt}])});
+    cp.rows.push([{v:'Sous-total '+(x.d.ref||''),s:XS.stxt},...Array(6).fill({v:'',s:XS.stxt}),{v:st,s:XS.sdec2},{v:'',s:XS.stxt}]);tot+=st});
+  cp.rows.push([],[{v:'TOTAL CONTREPLAQUÉ',s:XS.stxt},...Array(6).fill({v:'',s:XS.stxt}),{v:tot,s:XS.sdec2},{v:'',s:XS.stxt}]);
+  Object.assign(cp,{name:'Débit CP',cols:[12,40,9,10,13,12,30,13,60],freeze:r0,printRow:r0,filter:`A${r0}:I${r0}`});
+  // --- Débit bois
+  const H2=['Repère','Désignation','Section (mm)','Qté / ex.','Qté totale','Longueur (mm)','Linéaire total (m)'],bo=T(`DÉBIT BOIS MASSIF — ${ch}`,`${list.length} plan(s) · édité le ${date} · plan de débit des barres : onglet « Barres bois »`,7);
+  bo.rows.push(H2.map(v=>({v,s:XS.head})));const r1=bo.rows.length;let tml=0;
+  D.forEach(x=>{if(!x.bois.length)return;bo.rows.push([{v:plTitle(x),s:XS.grp},...Array(6).fill({v:'',s:XS.grp})]);bo.merges.push(`A${bo.rows.length}:G${bo.rows.length}`);let st=0;
+    x.bois.forEach(b=>{st+=b.ml;bo.rows.push([{v:b.tag,s:XS.txt},{v:b.des,s:XS.txt},{v:b.sec,s:XS.ctr},{v:b.q,s:XS.int},{v:b.qt,s:XS.int},{v:b.L,s:XS.int},{v:b.ml,s:XS.dec2}])});
+    bo.rows.push([{v:'Sous-total '+(x.d.ref||''),s:XS.stxt},...Array(5).fill({v:'',s:XS.stxt}),{v:st,s:XS.sdec2}]);tml+=st});
+  bo.rows.push([],[{v:'TOTAL BOIS MASSIF',s:XS.stxt},...Array(5).fill({v:'',s:XS.stxt}),{v:tml,s:XS.sdec2}]);
+  Object.assign(bo,{name:'Débit bois',cols:[12,62,13,9,10,13,15],freeze:r1,printRow:r1,filter:`A${r1}:G${r1}`});
+  // --- Synthèse (à commander) + Barres bois
+  const C=chantierData(list),sy=T(`À COMMANDER — ${ch}`,`${C.plans.length} plan(s) pris en compte · édité le ${date} · prévoir 5 à 10 % de réserve selon la casse habituelle`,5);
+  sy.rows.push([{v:'Contreplaqué',s:XS.sect}],['Référence','Panneaux','Surface utile (m²)','Rendement','Détail'].map(v=>({v,s:XS.head})));
+  Object.values(C.cp).sort((a,b)=>b.m2-a.m2).forEach(o=>sy.rows.push([{v:cpName(o.cp),s:XS.txt},{v:o.nP,s:XS.int},{v:o.m2,s:XS.dec2},{v:o.rate,s:XS.pct},{v:(o.est?'quantité estimée (trop de pièces) · ':'')+'imbrication réelle, trait de scie '+nf(C.kerf)+' mm',s:XS.txt}]));
+  sy.rows.push([],[{v:'Bois massif',s:XS.sect}],['Section','Longueur de barre (m)','Barres','Linéaire utile (ml)','Rendement'].map(v=>({v,s:XS.head})));
+  Object.values(C.bois).forEach(o=>Object.keys(o.byL).sort((a,b)=>b-a).forEach((L,i)=>sy.rows.push([{v:o.sec,s:XS.ctr},{v:L/1000,s:XS.dec1},{v:o.byL[L],s:XS.int},{v:i?'':o.ml,s:i?XS.txt:XS.dec1},{v:i?'':o.cut.rate,s:i?XS.txt:XS.pct}])));
+  sy.rows.push([],[{v:'Plans',s:XS.sect}],['Réf.','Ouvrage','Désignation','Nombre','État'].map(v=>({v,s:XS.head})));
+  D.forEach(x=>sy.rows.push([{v:x.d.ref||'—',s:XS.txt},{v:x.d.ouv||'',s:XS.txt},{v:TM[x.d.forme]||x.d.forme,s:XS.txt},{v:x.nb,s:XS.int},{v:x.err?'incohérent — non compté':'compté',s:XS.txt}]));
+  if(C.warn.length)C.warn.forEach(w=>sy.rows.push([{v:'⚠ '+w,s:XS.txt}]));
+  Object.assign(sy,{name:'Synthèse',cols:[34,20,18,18,56]});
+  const ba=T(`DÉBIT DES BARRES DE BOIS — ${ch}`,`barres du commerce ${C.stock.map(L=>nf(L/1000,1)+' m').join(' / ')} · trait de scie ${nf(C.kerf)} mm · chute = reste de barre`,6);
+  ba.rows.push(['Section','Barre n°','Longueur barre (mm)','Coupes (mm)','Repères','Chute (mm)'].map(v=>({v,s:XS.head})));const r2=ba.rows.length;
+  Object.values(C.bois).forEach(o=>o.cut.bars.forEach((b,i)=>ba.rows.push([{v:o.sec,s:XS.ctr},{v:i+1,s:XS.int},{v:b.L,s:XS.int},{v:b.cuts.map(c=>nf(c,0)).join(' + '),s:XS.txt},{v:b.tags.join(' · '),s:XS.txt},{v:Math.round(b.waste),s:XS.int}])));
+  Object.assign(ba,{name:'Barres bois',cols:[12,9,16,50,50,11],freeze:r2,printRow:r2,filter:`A${r2}:F${r2}`});
+  return zipBytes(xlsxBook([sy,cp,bo,ba]));
+}
+function zipBytes(files){const enc=new TextEncoder(),parts=[],cen=[];let off=0;const u16=v=>[v&255,(v>>8)&255],u32=v=>[v&255,(v>>8)&255,(v>>16)&255,(v>>>24)&255];
+  files.forEach(([name,txt])=>{const nm=enc.encode(name),data=txt instanceof Uint8Array?txt:enc.encode(txt),crc=crc32(data);
+    const lh=new Uint8Array([0x50,0x4b,3,4,...u16(20),...u16(0x0800),...u16(0),...u16(0),...u16(0x21),...u32(crc),...u32(data.length),...u32(data.length),...u16(nm.length),...u16(0)]);parts.push(lh,nm,data);
+    cen.push(new Uint8Array([0x50,0x4b,1,2,...u16(20),...u16(20),...u16(0x0800),...u16(0),...u16(0),...u16(0x21),...u32(crc),...u32(data.length),...u32(data.length),...u16(nm.length),...u16(0),...u16(0),...u16(0),...u16(0),...u32(0),...u32(off)]),nm);off+=lh.length+nm.length+data.length});
+  const cs=cen.reduce((s,a)=>s+a.length,0),end=new Uint8Array([0x50,0x4b,5,6,...u16(0),...u16(0),...u16(files.length),...u16(files.length),...u32(cs),...u32(off),...u16(0)]);
+  const all=[...parts,...cen,end],n=all.reduce((s,a)=>s+a.length,0),o=new Uint8Array(n);let k=0;all.forEach(a=>{o.set(a,k);k+=a.length});return o}
+// ---------- Menu « Exporter » ----------
+function exportFiles(kind,scope){const list=expList(scope),ch=S('iCh',''),out=[],err=[];
+  if(kind==='dxf'||kind==='zip'){if(scope==='all'&&P.length){out.push(dxfChantierFile(list,ch));if(kind==='zip')list.forEach(d=>{const f=dxfPlanFile(d);if(f.err)err.push((d.ref||'?')+' : '+f.err);else out.push(Object.assign(f,{name:'plans/'+f.name}))})}
+    else{const f=dxfPlanFile(list[0]);if(f.err)err.push(f.err);else out.push(f)}}
+  if(kind==='csv'||kind==='zip')out.push({name:fileStem(list)+'.csv',bytes:new TextEncoder().encode(debitCSV(list))});
+  if(kind==='xlsx'||kind==='zip')out.push({name:fileStem(list)+'.xlsx',bytes:debitXlsx(list)});
+  return{files:out,err}}
+function expRun(kind,scope){scope=scope||S('exSc','cur');const r=exportFiles(kind,scope);if(!r.files.length){toast(r.err[0]||'Rien à exporter');return r}
+  const MIME={dxf:'application/dxf',csv:'text/csv;charset=utf-8',xlsx:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'};
+  if(kind==='zip'){const stem=fileStem(expList(scope)).replace(/^debit_/,'export_');dlBlob(new Blob([zipBytes(r.files.map(f=>[f.name,f.bytes]))],{type:'application/zip'}),stem+'.zip');toast(`ZIP : ${r.files.length} fichier(s)${r.err.length?' · '+r.err.length+' plan(s) DXF ignoré(s) (incohérents)':''}`)}
+  else r.files.forEach(f=>dlBlob(new Blob([f.bytes],{type:MIME[kind]}),f.name.replace(/^plans\//,'')));
+  return r}
+function openExport(){const cur=EI>=0&&P[EI]?P[EI]:coll(),list=P.length?chantierPlans(S('iCh','')):[];
+  modal(`<div class="ct">📤 Exporter</div>
+<div class="fd"><label>Étendue</label><select class="fi" id="exSc"><option value="cur">Plan affiché${cur.ref?' ('+esc(cur.ref)+')':''}</option><option value="all"${list.length?'':' disabled'}>Tous les plans du chantier${list.length?' ('+list.length+')':' — aucun plan enregistré'}</option></select></div>
+<div class="g2" style="margin-bottom:8px"><button class="btn bs bo" id="exDxf" onclick="expRun('dxf')" title="Plan affiché : vue en plan, panneaux CP, gabarits 1:1, vues · Chantier : calepinage CP consolidé">📐 DXF</button><button class="btn bs bo" id="exCsv" onclick="expRun('csv')" title="Débit (séparateur ;, ouvre dans Excel)">📄 CSV</button>
+<button class="btn bs bo" id="exXlsx" onclick="expRun('xlsx')" title="Synthèse à commander, débit CP et bois par plan, débit des barres">📊 XLSX</button><button class="btn bs" id="exZip" style="background:var(--accent);color:#fff" onclick="expRun('zip')" title="DXF + CSV + XLSX dans une seule archive">🗜 Tout (ZIP)</button></div>
+<div class="hint"><b>DXF</b> (R12, millimètres, par calques) — plan affiché : vue en plan, panneaux CP à découper, gabarits 1:1 et vues ; chantier : calepinage CP consolidé (+ un DXF par plan dans le ZIP). À l'import, régler les unités en <b>mm</b>.<br><b>XLSX</b> : synthèse à commander, débit CP et bois par plan avec sous-totaux, débit des barres.</div>
+<div class="hint" style="border-left-color:var(--muted)"><b>DWG</b> : non généré. Format propriétaire d'Autodesk ; aucune bibliothèque libre ne l'écrit de façon fiable dans une page web autonome. Ouvrir le DXF dans AutoCAD, BricsCAD ou DraftSight puis « Enregistrer sous… DWG ».</div>
+<button class="btn bs bo" style="width:100%;margin-top:6px" onclick="closeModal()">Fermer</button>`);
+  if(EI<0&&!list.length)el('exSc').value='cur'}
 
 applyPage();prtUI();updF();if(draftRestore())setTimeout(()=>toast('Brouillon restauré'),300);profFromPlans(P);profLists();libUI();rnL();updBtn();prev();_ready=true;hisPush();updExp();
 el('iCh').addEventListener('change',()=>{profLists();if(EI<0)applyProf()});el('iOuv').addEventListener('change',()=>{profLists();if(EI<0)applyProf()});
