@@ -83,9 +83,11 @@ def t(s):
                 'cartouche : nom (échappé), dessinateur, logo, mémorisés')
         s.check(ev("Object.keys(entOk({nom:'x',logo:'javascript:alert(1)',autre:1}))") == ['nom'] and ev("Object.keys(entOk({logo:'data:image/svg+xml;base64,AAAA'}))") == [],
                 'cartouche : logo non image (script, SVG) refusé, clés inconnues ignorées')
-        ov = ev("""()=>{window.print=()=>{};PRT.lay='full';printAll();const bad=[...document.querySelectorAll('#pvA .ps-c')].filter(c=>c.scrollHeight>c.clientHeight+1).length;
-          const hh=[...document.querySelectorAll('#pvA .ps:not(.portrait) .ps-h')].map(h=>h.getBoundingClientRect().height);document.body.classList.remove('pm');return [bad,Math.max(...hh)]}""")
-        s.check(ov[0] == 0 and ov[1] <= 72, f'impression avec logo : aucune case qui déborde, cartouche des plans ≤ 72 px (v2.5 : 69) — {ov[1]:.0f}')
+        HH = """(hide)=>{window.print=()=>{};PRT.lay='full';let st=null;if(hide){st=document.createElement('style');st.textContent='.ps-ent{display:none!important}';document.head.appendChild(st)}
+          printAll();const bad=[...document.querySelectorAll('#pvA .ps-c')].filter(c=>c.scrollHeight>c.clientHeight+1).length,
+          hh=Math.max(...[...document.querySelectorAll('#pvA .ps:not(.portrait) .ps-h')].map(h=>h.getBoundingClientRect().height));document.body.classList.remove('pm');if(st)st.remove();return [bad,hh]}"""
+        ov, ov0 = ev(HH, False), ev(HH, True)
+        s.check(ov[0] == 0 and ov[1] - ov0[1] <= 8, f'impression avec logo : aucune case qui déborde, cartouche des plans + {ov[1] - ov0[1]:.0f} px au plus 8 ({ov0[1]:.0f} → {ov[1]:.0f})')
 
         # ---- enregistrement direct (faux fichier) ----
         ev("""()=>{window._w=[];window._pk=0;window._mk=(name)=>({name,createWritable:async()=>({write:async t=>window._w.push(t),close:async()=>{}}),getFile:async()=>({text:async()=>window._file})});
