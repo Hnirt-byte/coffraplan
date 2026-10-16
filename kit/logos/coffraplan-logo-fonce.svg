@@ -1,0 +1,72 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="750" height="188" viewBox="0 0 750 188" role="img" aria-label="CoffraPlan, plans de coffrage">
+<defs>
+ <linearGradient id="outerBack" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#27384e"/><stop offset="1" stop-color="#101a29"/></linearGradient>
+ <linearGradient id="outerLeft" x1="0" y1="0" x2="1" y2=".7"><stop stop-color="#1a2739"/><stop offset="1" stop-color="#334559"/></linearGradient>
+ <linearGradient id="outerFront" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#2f4255"/><stop offset="1" stop-color="#101b2c"/></linearGradient>
+ <linearGradient id="outerCap" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#b7c1c8"/><stop offset="1" stop-color="#4f6272"/></linearGradient>
+ <linearGradient id="orangeFace" x1="0" y1="0" x2=".85" y2=".2"><stop stop-color="#ffb03c"/><stop offset=".49" stop-color="#ff8b19"/><stop offset="1" stop-color="#de5608"/></linearGradient>
+ <linearGradient id="orangeFaceDark" x1="0" y1="0" x2="1" y2=".3"><stop stop-color="#ff7f12"/><stop offset="1" stop-color="#af3807"/></linearGradient>
+ <linearGradient id="concreteTop" x1="0" y1="0" x2="1" y2=".8"><stop stop-color="#ffffff"/><stop offset=".48" stop-color="#b4c4cf"/><stop offset="1" stop-color="#738596"/></linearGradient>
+ </defs>
+<g transform="translate(2,0) scale(.94)"><path d="M22.0,66.0 L102.0,19.0 L187.0,66.0" fill="none" stroke="#93a8be" stroke-width="0.72" stroke-opacity="0.42" stroke-linecap="round" />
+<path d="M22.0,75.0 L104.0,123.0 L190.0,75.0" fill="none" stroke="#8193a9" stroke-width="0.65" stroke-opacity="0.32" stroke-linecap="round" />
+<path d="M104.0,8.0 L104.0,167.0" fill="none" stroke="#71849b" stroke-width="0.65" stroke-opacity="0.3" stroke-linecap="round" stroke-dasharray="3 5"/>
+<path d="M17.0,70.0 L17.0,134.0" fill="none" stroke="#94a5b6" stroke-width="0.7" stroke-opacity="0.42" stroke-linecap="round" />
+<path d="M185.0,64.0 L185.0,141.0" fill="none" stroke="#94a5b6" stroke-width="0.7" stroke-opacity="0.36" stroke-linecap="round" />
+<path d="M27.0,50.0 L27.0,158.0" fill="none" stroke="#94a5b6" stroke-width="0.65" stroke-opacity="0.24" stroke-linecap="round" />
+<path d="M35.0,32.0 L35.0,170.0" fill="none" stroke="#94a5b6" stroke-width="0.65" stroke-opacity="0.22" stroke-linecap="round" />
+<path d="M24.0,70.0 L106.0,116.0 L184.0,70.0" fill="none" stroke="#a6b7c8" stroke-width="0.7" stroke-opacity="0.31" stroke-linecap="round" />
+<path d="M12.0,70.0 L22.0,70.0" fill="none" stroke="#7e95ac" stroke-width="0.8" stroke-opacity="0.54" stroke-linecap="round" />
+<path d="M17.0,65.0 L17.0,75.0" fill="none" stroke="#7e95ac" stroke-width="0.8" stroke-opacity="0.54" stroke-linecap="round" />
+<path d="M12.0,134.0 L22.0,134.0" fill="none" stroke="#7e95ac" stroke-width="0.8" stroke-opacity="0.54" stroke-linecap="round" />
+<path d="M17.0,129.0 L17.0,139.0" fill="none" stroke="#7e95ac" stroke-width="0.8" stroke-opacity="0.54" stroke-linecap="round" />
+<path d="M99.0,8.0 L109.0,8.0" fill="none" stroke="#7e95ac" stroke-width="0.8" stroke-opacity="0.54" stroke-linecap="round" />
+<path d="M104.0,3.0 L104.0,13.0" fill="none" stroke="#7e95ac" stroke-width="0.8" stroke-opacity="0.54" stroke-linecap="round" />
+<path d="M99.0,167.0 L109.0,167.0" fill="none" stroke="#7e95ac" stroke-width="0.8" stroke-opacity="0.54" stroke-linecap="round" />
+<path d="M104.0,162.0 L104.0,172.0" fill="none" stroke="#7e95ac" stroke-width="0.8" stroke-opacity="0.54" stroke-linecap="round" />
+<path d="M180.0,64.0 L190.0,64.0" fill="none" stroke="#7e95ac" stroke-width="0.8" stroke-opacity="0.54" stroke-linecap="round" />
+<path d="M185.0,59.0 L185.0,69.0" fill="none" stroke="#7e95ac" stroke-width="0.8" stroke-opacity="0.54" stroke-linecap="round" />
+<path d="M180.0,141.0 L190.0,141.0" fill="none" stroke="#7e95ac" stroke-width="0.8" stroke-opacity="0.54" stroke-linecap="round" />
+<path d="M185.0,136.0 L185.0,146.0" fill="none" stroke="#7e95ac" stroke-width="0.8" stroke-opacity="0.54" stroke-linecap="round" />
+<path d="M22.0,158.0 L32.0,158.0" fill="none" stroke="#7e95ac" stroke-width="0.8" stroke-opacity="0.54" stroke-linecap="round" />
+<path d="M27.0,153.0 L27.0,163.0" fill="none" stroke="#7e95ac" stroke-width="0.8" stroke-opacity="0.54" stroke-linecap="round" />
+<path d="M55.0,34.0 L104.0,7.0 L162.0,40.0" fill="none" stroke="#ff8517" stroke-width="1.3" stroke-opacity="0.95" stroke-linecap="round" />
+<path d="M126.0,157.0 L153.0,142.0 L180.0,127.0" fill="none" stroke="#ff8517" stroke-width="1.15" stroke-opacity="0.85" stroke-linecap="round" />
+<polygon points="104.00,20.00 170.10,58.08 170.10,102.08 104.00,64.00" fill="url(#outerBack)" stroke="#172537" stroke-width="1.1" stroke-linejoin="round" />
+<polygon points="104.00,20.00 37.90,58.08 37.90,102.08 104.00,64.00" fill="url(#outerLeft)" stroke="#172537" stroke-width="1.1" stroke-linejoin="round" />
+<polygon points="37.90,58.08 104.00,96.16 104.00,140.16 37.90,102.08" fill="url(#outerFront)" stroke="#172537" stroke-width="1.1" stroke-linejoin="round" />
+<polygon points="170.10,58.08 159.57,64.15 159.57,108.15 170.10,102.08" fill="url(#outerCap)" stroke="#172537" stroke-width="1.1" stroke-linejoin="round" />
+<polygon points="114.53,90.10 104.00,96.16 104.00,140.16 114.53,134.10" fill="url(#outerCap)" stroke="#172537" stroke-width="1.1" stroke-linejoin="round" />
+<polygon points="104.00,32.13 159.57,64.15 159.57,108.15 104.00,76.13" fill="url(#orangeFace)" stroke="#172537" stroke-width="1.1" stroke-linejoin="round" />
+<polygon points="104.00,32.13 58.96,58.08 58.96,102.08 104.00,76.13" fill="url(#orangeFaceDark)" stroke="#172537" stroke-width="1.1" stroke-linejoin="round" />
+<polygon points="58.96,58.08 114.53,90.10 114.53,134.10 58.96,102.08" fill="url(#orangeFace)" stroke="#172537" stroke-width="1.1" stroke-linejoin="round" />
+<path d="M113.9,38.9 L113.9,79.9" fill="none" stroke="#ffd39a" stroke-width="0.65" stroke-opacity="0.7" stroke-linecap="round" />
+<path d="M124.5,44.9 L124.5,85.9" fill="none" stroke="#ffd39a" stroke-width="0.65" stroke-opacity="0.7" stroke-linecap="round" />
+<path d="M135.0,51.0 L135.0,92.0" fill="none" stroke="#ffd39a" stroke-width="0.65" stroke-opacity="0.7" stroke-linecap="round" />
+<path d="M145.5,57.1 L145.5,98.1" fill="none" stroke="#ffd39a" stroke-width="0.65" stroke-opacity="0.7" stroke-linecap="round" />
+<path d="M155.5,62.8 L155.5,103.8" fill="none" stroke="#ffd39a" stroke-width="0.65" stroke-opacity="0.7" stroke-linecap="round" />
+<path d="M95.8,37.9 L95.8,78.8" fill="none" stroke="#ffcb88" stroke-width="0.7" stroke-opacity="0.52" stroke-linecap="round" />
+<path d="M86.5,43.2 L86.5,84.2" fill="none" stroke="#ffcb88" stroke-width="0.7" stroke-opacity="0.52" stroke-linecap="round" />
+<path d="M77.1,48.6 L77.1,89.6" fill="none" stroke="#ffcb88" stroke-width="0.7" stroke-opacity="0.52" stroke-linecap="round" />
+<path d="M67.7,54.0 L67.7,95.0" fill="none" stroke="#ffcb88" stroke-width="0.7" stroke-opacity="0.52" stroke-linecap="round" />
+<path d="M68.9,64.8 L68.9,105.8" fill="none" stroke="#ffd39a" stroke-width="0.7" stroke-opacity="0.54" stroke-linecap="round" />
+<path d="M80.0,71.2 L80.0,112.2" fill="none" stroke="#ffd39a" stroke-width="0.7" stroke-opacity="0.54" stroke-linecap="round" />
+<path d="M91.7,78.0 L91.7,119.0" fill="none" stroke="#ffd39a" stroke-width="0.7" stroke-opacity="0.54" stroke-linecap="round" />
+<path d="M103.4,84.7 L103.4,125.7" fill="none" stroke="#ffd39a" stroke-width="0.7" stroke-opacity="0.54" stroke-linecap="round" />
+<polygon points="104.00,20.00 170.10,58.08 159.57,64.15 93.47,26.07" fill="url(#concreteTop)" stroke="#cbd4db" stroke-width="1.1" stroke-linejoin="round" />
+<polygon points="104.00,20.00 114.53,26.07 48.43,64.15 37.90,58.08" fill="url(#concreteTop)" stroke="#cbd4db" stroke-width="1.1" stroke-linejoin="round" />
+<polygon points="48.43,52.02 114.53,90.10 104.00,96.16 37.90,58.08" fill="url(#concreteTop)" stroke="#cbd4db" stroke-width="1.1" stroke-linejoin="round" />
+<path d="M104.0,19.0 L170.1,57.1" fill="none" stroke="#ecf3ff" stroke-width="1.25" stroke-opacity="0.84" stroke-linecap="round" />
+<path d="M104.0,19.0 L37.9,57.1" fill="none" stroke="#edf4ff" stroke-width="1.1" stroke-opacity="0.68" stroke-linecap="round" />
+<path d="M117.2,20.8 L121.2,28.8" fill="none" stroke="#b4c3d2" stroke-width="0.9" stroke-opacity="0.68" stroke-linecap="round" />
+<path d="M133.6,30.2 L137.6,38.2" fill="none" stroke="#b4c3d2" stroke-width="0.9" stroke-opacity="0.68" stroke-linecap="round" />
+<path d="M150.0,39.6 L154.0,47.6" fill="none" stroke="#b4c3d2" stroke-width="0.9" stroke-opacity="0.68" stroke-linecap="round" />
+<path d="M166.3,49.1 L170.3,57.1" fill="none" stroke="#b4c3d2" stroke-width="0.9" stroke-opacity="0.68" stroke-linecap="round" />
+<circle cx="112.19" cy="43.85" r="1.05" fill="#ffeece" opacity=".86"/>
+<circle cx="126.23" cy="51.94" r="1.05" fill="#ffeece" opacity=".86"/>
+<circle cx="140.27" cy="60.03" r="1.05" fill="#ffeece" opacity=".86"/>
+<circle cx="154.89" cy="68.45" r="1.05" fill="#ffeece" opacity=".86"/></g>
+<text x="191" y="115" fill="#f9fbff" font-family="Inter Display,Inter,Arial,sans-serif" font-size="79" font-weight="900" letter-spacing="-4.5">Coffra</text>
+<text x="415" y="115" fill="#ff8517" font-family="Inter Display,Inter,Arial,sans-serif" font-size="79" font-weight="900" letter-spacing="-4.5">Plan</text>
+<path d="M 197 133 H 272" stroke="#ff8517" stroke-width="5"/><text x="299" y="141" fill="#c2cce0" font-family="Inter, Arial, sans-serif" font-size="20" font-weight="700" letter-spacing="5.4">PLANS DE COFFRAGE</text>
+</svg>

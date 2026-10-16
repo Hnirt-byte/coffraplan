@@ -1,0 +1,17 @@
+/* COFFRAPLAN - Identité visuelle. Ne modifie pas la zone de dessin ni les styles d'impression. */
+:root {
+  --cp-bg: #192136;
+  --cp-panel: #202b45;
+  --cp-dark: #111b2c;
+  --cp-orange: #ff8517;
+  --cp-orange-hover: #ff9b38;
+  --cp-text: #f9fbff;
+  --cp-muted: #a8b6cf;
+  --cp-border: #364361;
+}
+/* Usage proposé si l'entête peut recevoir ce composant */
+.cp-brand { display:inline-flex; align-items:center; gap:10px; text-decoration:none; color:var(--cp-text); min-width:0; }
+.cp-brand img { display:block; width:auto; height:35px; max-width:min(48vw,245px); object-fit:contain; object-position:left center; }
+.cp-brand-version { color:var(--cp-muted); font:600 11px/1.2 Arial,sans-serif; white-space:nowrap; }
+@media (max-width:600px) { .cp-brand img { height:29px; max-width:172px; } .cp-brand-version { font-size:9px; } }
+@media print { .cp-brand { display:none !important; } }

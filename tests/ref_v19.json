@@ -1,0 +1,2305 @@
+{
+ "carre": {
+  "W": [],
+  "cp": [
+   [
+    "R01-J1",
+    "Côtés filants",
+    2,
+    500,
+    200,
+    0.2,
+    ""
+   ],
+   [
+    "R01-J2",
+    "Côtés entre",
+    2,
+    464,
+    200,
+    0.1856,
+    ""
+   ],
+   [
+    "R01-J3",
+    "Cloisons CP (continues)",
+    1,
+    464,
+    200,
+    0.0928,
+    ""
+   ],
+   [
+    "R01-J4",
+    "Cloisons CP (tronçons)",
+    2,
+    223,
+    200,
+    0.0892,
+    ""
+   ]
+  ],
+  "bois": []
+ },
+ "carre_fond": {
+  "W": [],
+  "cp": [
+   [
+    "R01-J1",
+    "Côtés filants",
+    2,
+    500,
+    200,
+    0.2,
+    ""
+   ],
+   [
+    "R01-J2",
+    "Côtés entre",
+    2,
+    464,
+    200,
+    0.1856,
+    ""
+   ],
+   [
+    "R01-F1",
+    "Fond (entre côtés)",
+    1,
+    464,
+    464,
+    0.21530000000000002,
+    ""
+   ],
+   [
+    "R01-J3",
+    "Cloisons CP (continues)",
+    1,
+    464,
+    182,
+    0.0844,
+    ""
+   ],
+   [
+    "R01-J4",
+    "Cloisons CP (tronçons)",
+    2,
+    223,
+    182,
+    0.08120000000000001,
+    ""
+   ]
+  ],
+  "bois": []
+ },
+ "rect": {
+  "W": [],
+  "cp": [
+   [
+    "R01-J1",
+    "Côtés filants",
+    2,
+    1200,
+    300,
+    0.72,
+    ""
+   ],
+   [
+    "R01-J2",
+    "Côtés entre",
+    2,
+    764,
+    300,
+    0.4584,
+    ""
+   ],
+   [
+    "R01-J3",
+    "Cloisons CP (continues)",
+    1,
+    1164,
+    300,
+    0.3492,
+    ""
+   ],
+   [
+    "R01-J4",
+    "Cloisons CP (tronçons)",
+    4,
+    373,
+    300,
+    0.4476,
+    ""
+   ]
+  ],
+  "bois": []
+ },
+ "rect_fond_gs": {
+  "W": [],
+  "cp": [
+   [
+    "R01-J1",
+    "Côtés filants",
+    2,
+    1500,
+    600,
+    1.8,
+    ""
+   ],
+   [
+    "R01-J2",
+    "Côtés entre",
+    2,
+    1064,
+    600,
+    1.2768,
+    ""
+   ],
+   [
+    "R01-F1",
+    "Fond (entre côtés)",
+    1,
+    1464,
+    1064,
+    1.5577,
+    ""
+   ],
+   [
+    "R01-J3",
+    "Goussets (triangles)",
+    8,
+    250,
+    250,
+    0.25,
+    "250 × 250 (hyp. 354)"
+   ]
+  ],
+  "bois": [
+   [
+    "R01-B1",
+    "Chevron 63 × 75",
+    2,
+    1464
+   ],
+   [
+    "R01-B2",
+    "Chevron 63 × 75 (tronçon)",
+    4,
+    323
+   ],
+   [
+    "R01-B3",
+    "Chevron 63 × 75 (tronçon)",
+    2,
+    292
+   ]
+  ]
+ },
+ "puisard": {
+  "W": [],
+  "cp": [
+   [
+    "R01-J1",
+    "Côtés filants",
+    2,
+    800,
+    900,
+    1.44,
+    ""
+   ],
+   [
+    "R01-J2",
+    "Côtés entre",
+    2,
+    764,
+    900,
+    1.3752,
+    ""
+   ],
+   [
+    "R01-F1",
+    "Fond (entre côtés)",
+    1,
+    764,
+    764,
+    0.5837,
+    ""
+   ],
+   [
+    "R01-J3",
+    "Cloisons CP (continues)",
+    1,
+    764,
+    882,
+    0.6738,
+    ""
+   ],
+   [
+    "R01-J4",
+    "Cloisons CP (tronçons)",
+    2,
+    373,
+    882,
+    0.658,
+    ""
+   ]
+  ],
+  "bois": [
+   [
+    "R01-B1",
+    "Tasseaux de feuillure 70×70",
+    2,
+    940
+   ],
+   [
+    "R01-B2",
+    "Tasseaux de feuillure 70×70",
+    2,
+    800
+   ]
+  ]
+ },
+ "massif": {
+  "W": [],
+  "cp": [
+   [
+    "R01-J1",
+    "Joues filantes",
+    2,
+    1036,
+    618,
+    1.2805,
+    ""
+   ],
+   [
+    "R01-J2",
+    "Joues entre",
+    2,
+    800,
+    618,
+    0.9887999999999999,
+    ""
+   ],
+   [
+    "R01-F1",
+    "Fond (entre joues)",
+    1,
+    1000,
+    800,
+    0.8,
+    ""
+   ]
+  ],
+  "bois": [
+   [
+    "R01-B1",
+    "Lisses 50×50 (2 niveaux)",
+    4,
+    1136
+   ],
+   [
+    "R01-B2",
+    "Lisses 50×50 (2 niveaux)",
+    4,
+    836
+   ]
+  ]
+ },
+ "massif_sans": {
+  "W": [],
+  "cp": [
+   [
+    "R01-J1",
+    "Joues filantes",
+    2,
+    536,
+    200,
+    0.2144,
+    ""
+   ],
+   [
+    "R01-J2",
+    "Joues entre",
+    2,
+    500,
+    200,
+    0.2,
+    ""
+   ]
+  ],
+  "bois": []
+ },
+ "rect_long": {
+  "W": [
+   "warn:Renforts Chevron 63 × 75 : risque de flambement (portée 3164 mm, effort ≈ 12,61 kN, charge critique ≈ 9,24 kN < 3 × effort) → passer en bois 63 × 175"
+  ],
+  "cp": [
+   [
+    "R01-J1",
+    "Côtés filants",
+    2,
+    3200,
+    1400,
+    8.96,
+    ""
+   ],
+   [
+    "R01-J2",
+    "Côtés entre",
+    2,
+    1564,
+    1400,
+    4.3792,
+    ""
+   ],
+   [
+    "R01-F1",
+    "Fond (entre côtés)",
+    1,
+    3164,
+    1564,
+    4.9485,
+    ""
+   ],
+   [
+    "R01-J3",
+    "Goussets (triangles)",
+    16,
+    250,
+    250,
+    0.5,
+    "250 × 250 (hyp. 354)"
+   ]
+  ],
+  "bois": [
+   [
+    "R01-B1",
+    "Chevron 63 × 75",
+    4,
+    3164
+   ],
+   [
+    "R01-B2",
+    "Chevron 63 × 75 (tronçon)",
+    16,
+    490
+   ],
+   [
+    "R01-B3",
+    "Chevron 63 × 75 (tronçon)",
+    8,
+    458
+   ],
+   [
+    "R01-B4",
+    "Couvre-joints 63×75 (F1)",
+    1,
+    1213
+   ],
+   [
+    "R01-B5",
+    "Couvre-joints 63×75 (F1)",
+    1,
+    277
+   ],
+   [
+    "R01-B6",
+    "Lisses de joint 63×75 (F1)",
+    1,
+    3164
+   ],
+   [
+    "R01-B7",
+    "Couvre-joints 63×75 (J1)",
+    1,
+    405
+   ],
+   [
+    "R01-B8",
+    "Couvre-joints 63×75 (J1)",
+    1,
+    365
+   ],
+   [
+    "R01-B9",
+    "Couvre-joints 63×75 (J1)",
+    2,
+    263
+   ],
+   [
+    "R01-B10",
+    "Lisses de joint 63×75 (J1)",
+    2,
+    3148
+   ],
+   [
+    "R01-B11",
+    "Couvre-joints 63×75 (J1)",
+    1,
+    1037
+   ],
+   [
+    "R01-B12",
+    "Lisses de joint 63×75 (J2)",
+    2,
+    1413
+   ]
+  ]
+ },
+ "massif_long": {
+  "W": [],
+  "cp": [
+   [
+    "R01-J1",
+    "Joues filantes",
+    2,
+    3036,
+    1418,
+    8.610100000000001,
+    ""
+   ],
+   [
+    "R01-J2",
+    "Joues entre",
+    2,
+    1200,
+    1418,
+    3.4032,
+    ""
+   ],
+   [
+    "R01-F1",
+    "Fond (entre joues)",
+    1,
+    3000,
+    1200,
+    3.6,
+    ""
+   ]
+  ],
+  "bois": [
+   [
+    "R01-B1",
+    "Lisses 50×50 (2 niveaux)",
+    4,
+    3136
+   ],
+   [
+    "R01-B2",
+    "Lisses 50×50 (2 niveaux)",
+    4,
+    1236
+   ],
+   [
+    "R01-B3",
+    "Couvre-joints 63×75 (F1)",
+    1,
+    1200
+   ],
+   [
+    "R01-B4",
+    "Couvre-joints 63×75 (J1)",
+    2,
+    603
+   ],
+   [
+    "R01-B5",
+    "Couvre-joints 63×75 (J1)",
+    2,
+    331
+   ],
+   [
+    "R01-B6",
+    "Couvre-joints 63×75 (J1)",
+    2,
+    263
+   ],
+   [
+    "R01-B7",
+    "Lisses de joint 63×75 (J1)",
+    2,
+    3036
+   ]
+  ]
+ },
+ "special_long": {
+  "W": [
+   "warn:Renforts Cloison CP pleine hauteur : risque de flambement (portée 2964 mm, effort ≈ 18,68 kN, charge critique ≈ 2,76 kN < 3 × effort) → passer en chevron 63 × 75 ou bois 63 × 175"
+  ],
+  "cp": [
+   [
+    "R01-J1",
+    "Côtés filants",
+    2,
+    3000,
+    1300,
+    7.8,
+    ""
+   ],
+   [
+    "R01-J2",
+    "Côtés entre",
+    2,
+    1364,
+    1300,
+    3.5464,
+    ""
+   ],
+   [
+    "R01-F1",
+    "Base (entre parois)",
+    1,
+    2964,
+    1364,
+    4.0429,
+    ""
+   ],
+   [
+    "R01-S1",
+    "Fond sup. (entre parois, en tête)",
+    1,
+    2964,
+    1364,
+    4.0429,
+    ""
+   ],
+   [
+    "R01-J3",
+    "Cloisons CP (continues)",
+    2,
+    2964,
+    1264,
+    7.493,
+    ""
+   ],
+   [
+    "R01-J4",
+    "Cloisons CP (tronçons)",
+    6,
+    446,
+    1264,
+    3.3825,
+    ""
+   ],
+   [
+    "R01-J5",
+    "Cloisons CP (tronçons)",
+    3,
+    437,
+    1264,
+    1.6571,
+    ""
+   ],
+   [
+    "R01-J6",
+    "Goussets (triangles)",
+    16,
+    250,
+    250,
+    0.5,
+    "250 × 250 (hyp. 354)"
+   ]
+  ],
+  "bois": [
+   [
+    "R01-B1",
+    "Lisses de joint 63×75 (F1)",
+    1,
+    693
+   ],
+   [
+    "R01-B2",
+    "Lisses de joint 63×75 (F1)",
+    2,
+    707
+   ],
+   [
+    "R01-B3",
+    "Lisses de joint 63×75 (F1)",
+    1,
+    742
+   ],
+   [
+    "R01-B4",
+    "Couvre-joints 63×75 (J1)",
+    2,
+    937
+   ],
+   [
+    "R01-B5",
+    "Couvre-joints 63×75 (J1)",
+    2,
+    237
+   ],
+   [
+    "R01-B6",
+    "Lisses de joint 63×75 (J1)",
+    2,
+    688
+   ],
+   [
+    "R01-B7",
+    "Lisses de joint 63×75 (J1)",
+    4,
+    698
+   ],
+   [
+    "R01-B8",
+    "Lisses de joint 63×75 (J1)",
+    2,
+    738
+   ],
+   [
+    "R01-B9",
+    "Lisses de joint 63×75 (J2)",
+    4,
+    356
+   ],
+   [
+    "R01-B10",
+    "Lisses de joint 63×75 (J2)",
+    2,
+    416
+   ],
+   [
+    "R01-B11",
+    "Lisses de joint 63×75 (S1)",
+    1,
+    693
+   ],
+   [
+    "R01-B12",
+    "Lisses de joint 63×75 (S1)",
+    2,
+    707
+   ],
+   [
+    "R01-B13",
+    "Lisses de joint 63×75 (S1)",
+    1,
+    742
+   ],
+   [
+    "R01-B14",
+    "Couvre-joints 63×75 (J3)",
+    2,
+    927
+   ],
+   [
+    "R01-B15",
+    "Couvre-joints 63×75 (J3)",
+    2,
+    263
+   ],
+   [
+    "R01-B16",
+    "Lisses de joint 63×75 (J3)",
+    2,
+    617
+   ],
+   [
+    "R01-B17",
+    "Lisses de joint 63×75 (J3)",
+    4,
+    707
+   ],
+   [
+    "R01-B18",
+    "Lisses de joint 63×75 (J3)",
+    2,
+    667
+   ]
+  ]
+ },
+ "circ": {
+  "W": [],
+  "cp": [],
+  "bois": []
+ },
+ "circ_fond": {
+  "W": [
+   "warn:Renforts Cloison CP pleine hauteur : risque de flambement (portée 380 mm, effort ≈ 28,05 kN, charge critique ≈ 21,46 kN < 3 × effort) → passer en chevron 63 × 75 ou bois 63 × 175"
+  ],
+  "cp": [
+   [
+    "R01-J1",
+    "Paroi ext. cintrée (dév.)",
+    1,
+    4995.1,
+    960,
+    4.7953,
+    ""
+   ],
+   [
+    "R01-J2",
+    "Paroi int. cintrée (dév.)",
+    1,
+    2544.7,
+    960,
+    2.4429000000000003,
+    ""
+   ],
+   [
+    "R01-F1",
+    "Fond annulaire entre parois",
+    1,
+    1580,
+    1580,
+    1.4325999999999999,
+    "Ø1580 / Ø820"
+   ],
+   [
+    "R01-J3",
+    "Cloisons CP (continues)",
+    4,
+    380,
+    942,
+    1.4318,
+    ""
+   ]
+  ],
+  "bois": [
+   [
+    "R01-B1",
+    "Couvre-joints 63×75 (J1)",
+    1,
+    934
+   ],
+   [
+    "R01-B2",
+    "Couvre-joints 63×75 (J2)",
+    2,
+    934
+   ]
+  ]
+ },
+ "circ_sf": {
+  "W": [
+   "warn:Renforts Cloison CP pleine hauteur : risque de flambement (portée 1486,1 mm, effort ≈ 12,13 kN, charge critique ≈ 1,43 kN < 3 × effort) → passer en chevron 63 × 75 ou bois 63 × 175"
+  ],
+  "cp": [
+   [
+    "R01-J1",
+    "Paroi ext. cintrée (dév.)",
+    1,
+    4995.1,
+    960,
+    4.7953,
+    ""
+   ],
+   [
+    "R01-J2",
+    "Cloisons CP (continues)",
+    2,
+    1486,
+    960,
+    2.8531,
+    ""
+   ],
+   [
+    "R01-J3",
+    "Cloisons CP (tronçons)",
+    2,
+    517,
+    960,
+    0.9926,
+    ""
+   ],
+   [
+    "R01-J4",
+    "Cloisons CP (tronçons)",
+    2,
+    483,
+    960,
+    0.9274,
+    ""
+   ],
+   [
+    "R01-J5",
+    "Cloisons CP (tronçons)",
+    2,
+    465,
+    960,
+    0.8927999999999999,
+    ""
+   ]
+  ],
+  "bois": [
+   [
+    "R01-B1",
+    "Couvre-joints 63×75 (J1)",
+    1,
+    960
+   ]
+  ]
+ },
+ "voile_man": {
+  "W": [
+   "warn:Joues parallèles : extrémités à couper en biais ≈ 5,5° / 5,7° (joues radiales = coupes d'équerre)"
+  ],
+  "cp": [
+   [
+    "R01-S1",
+    "Linteau entre joues (gabarit 1:1)",
+    1,
+    0,
+    0,
+    0.2565,
+    "corde 1164,0 × l 220"
+   ],
+   [
+    "R01-F1",
+    "Appui entre joues (gabarit 1:1)",
+    1,
+    0,
+    0,
+    0.2565,
+    "corde 1164,0 × l 220"
+   ],
+   [
+    "R01-F2",
+    "Cerces interm. (gabarit)",
+    3,
+    0,
+    0,
+    0.7694,
+    "corde 1164,0 × l 220"
+   ],
+   [
+    "R01-J1",
+    "Joues pleine hauteur (biais)",
+    2,
+    221.1,
+    2000,
+    0.8843,
+    "221,1 × 2000,0"
+   ],
+   [
+    "R01-J2",
+    "Goussets (triangles)",
+    4,
+    120,
+    120,
+    0.0288,
+    "120 × 120 (hyp. 170)"
+   ]
+  ],
+  "bois": [
+   [
+    "R01-B1",
+    "Montants 63 × 75",
+    4,
+    478
+   ]
+  ]
+ },
+ "voile_man_rad": {
+  "W": [],
+  "cp": [
+   [
+    "R01-S1",
+    "Linteau entre joues (gabarit 1:1)",
+    1,
+    0,
+    0,
+    0.2518,
+    "corde 1163,5 × l 220"
+   ],
+   [
+    "R01-F1",
+    "Appui entre joues (gabarit 1:1)",
+    1,
+    0,
+    0,
+    0.2518,
+    "corde 1163,5 × l 220"
+   ],
+   [
+    "R01-F2",
+    "Cerces interm. (gabarit)",
+    3,
+    0,
+    0,
+    0.7554,
+    "corde 1163,5 × l 220"
+   ],
+   [
+    "R01-J1",
+    "Joues pleine hauteur",
+    2,
+    220,
+    2000,
+    0.88,
+    ""
+   ],
+   [
+    "R01-J2",
+    "Goussets (triangles)",
+    4,
+    120,
+    120,
+    0.0288,
+    "120 × 120 (hyp. 170)"
+   ]
+  ],
+  "bois": [
+   [
+    "R01-B1",
+    "Montants 63 × 75",
+    4,
+    478
+   ]
+  ]
+ },
+ "voile_man_L3000": {
+  "W": [
+   "warn:Joues parallèles : extrémités à couper en biais ≈ 14,0° / 14,5° (joues radiales = coupes d'équerre)"
+  ],
+  "cp": [
+   [
+    "R01-S1",
+    "Linteau entre joues (gabarit 1:1)",
+    1,
+    0,
+    0,
+    0.6587000000000001,
+    "corde 2964,0 × l 220"
+   ],
+   [
+    "R01-F1",
+    "Appui entre joues (gabarit 1:1)",
+    1,
+    0,
+    0,
+    0.6587000000000001,
+    "corde 2964,0 × l 220"
+   ],
+   [
+    "R01-F2",
+    "Cerces interm. (gabarit)",
+    4,
+    0,
+    0,
+    2.6346,
+    "corde 2964,0 × l 220"
+   ],
+   [
+    "R01-J1",
+    "Joues pleine hauteur (biais)",
+    2,
+    226.9,
+    2500,
+    1.1347,
+    "226,9 × 2500,0"
+   ],
+   [
+    "R01-J2",
+    "Goussets (triangles)",
+    4,
+    120,
+    120,
+    0.0288,
+    "120 × 120 (hyp. 170)"
+   ]
+  ],
+  "bois": [
+   [
+    "R01-B1",
+    "Montants 63 × 75",
+    15,
+    478
+   ]
+  ]
+ },
+ "voile_man_L3000_rad": {
+  "W": [],
+  "cp": [
+   [
+    "R01-S1",
+    "Linteau entre joues (gabarit 1:1)",
+    1,
+    0,
+    0,
+    0.6469,
+    "corde 2964,4 × l 220"
+   ],
+   [
+    "R01-F1",
+    "Appui entre joues (gabarit 1:1)",
+    1,
+    0,
+    0,
+    0.6469,
+    "corde 2964,4 × l 220"
+   ],
+   [
+    "R01-F2",
+    "Cerces interm. (gabarit)",
+    4,
+    0,
+    0,
+    2.5874,
+    "corde 2964,4 × l 220"
+   ],
+   [
+    "R01-J1",
+    "Joues pleine hauteur",
+    2,
+    220,
+    2500,
+    1.1,
+    ""
+   ],
+   [
+    "R01-J2",
+    "Goussets (triangles)",
+    4,
+    120,
+    120,
+    0.0288,
+    "120 × 120 (hyp. 170)"
+   ]
+  ],
+  "bois": [
+   [
+    "R01-B1",
+    "Montants 63 × 75",
+    15,
+    478
+   ]
+  ]
+ },
+ "voile_man_bois": {
+  "W": [
+   "warn:Joues parallèles : extrémités à couper en biais ≈ 6,9° / 7,2° (joues radiales = coupes d'équerre)"
+  ],
+  "cp": [
+   [
+    "R01-S1",
+    "Linteau entre joues (gabarit 1:1)",
+    1,
+    0,
+    0,
+    0.32289999999999996,
+    "corde 1464,0 × l 220"
+   ],
+   [
+    "R01-F1",
+    "Appui entre joues (gabarit 1:1)",
+    1,
+    0,
+    0,
+    0.32289999999999996,
+    "corde 1464,0 × l 220"
+   ],
+   [
+    "R01-J1",
+    "Joues pleine hauteur (biais)",
+    2,
+    221.7,
+    2000,
+    0.8867,
+    "221,7 × 2000,0"
+   ],
+   [
+    "R01-J2",
+    "Goussets (triangles)",
+    4,
+    110,
+    110,
+    0.0242,
+    "110 × 110 (hyp. 156)"
+   ]
+  ],
+  "bois": [
+   [
+    "R01-B1",
+    "Montants 63 × 75",
+    4,
+    454
+   ],
+   [
+    "R01-B2",
+    "Traverses de cerce 50 × 50 — côté banche ext.",
+    3,
+    1464
+   ],
+   [
+    "R01-B3",
+    "Traverses de cerce 50 × 50 — côté banche int.",
+    3,
+    1464
+   ]
+  ]
+ },
+ "voile_cais": {
+  "W": [],
+  "cp": [
+   [
+    "R01-J1",
+    "Face ext. cintrée (dév.)",
+    1,
+    1201.9,
+    2000,
+    2.4036999999999997,
+    ""
+   ],
+   [
+    "R01-J2",
+    "Face int. cintrée (dév.)",
+    1,
+    1202,
+    2000,
+    2.404,
+    ""
+   ],
+   [
+    "R01-J3",
+    "Joues",
+    2,
+    184.9,
+    2000,
+    0.7395,
+    ""
+   ],
+   [
+    "R01-F1",
+    "Cerces CP au gabarit",
+    5,
+    0,
+    0,
+    1.0725,
+    "gabarit 1:1"
+   ]
+  ],
+  "bois": []
+ },
+ "voile_cais_ferme": {
+  "W": [],
+  "cp": [
+   [
+    "R01-J1",
+    "Face ext. cintrée (dév.)",
+    1,
+    1201.9,
+    2000,
+    2.4036999999999997,
+    ""
+   ],
+   [
+    "R01-J2",
+    "Face int. cintrée (dév.)",
+    1,
+    1202,
+    2000,
+    2.404,
+    ""
+   ],
+   [
+    "R01-J3",
+    "Joues",
+    2,
+    184.9,
+    2000,
+    0.7395,
+    ""
+   ],
+   [
+    "R01-F1",
+    "Dessous entre faces",
+    1,
+    0,
+    0,
+    0.2145,
+    "gabarit 1:1"
+   ],
+   [
+    "R01-S1",
+    "Dessus entre faces",
+    1,
+    0,
+    0,
+    0.2145,
+    "gabarit 1:1"
+   ],
+   [
+    "R01-F2",
+    "Cerces CP au gabarit",
+    3,
+    0,
+    0,
+    0.6435,
+    "gabarit 1:1"
+   ]
+  ],
+  "bois": []
+ },
+ "voile_cais_L3000": {
+  "W": [],
+  "cp": [
+   [
+    "R01-J1",
+    "Face ext. cintrée (dév.)",
+    1,
+    3028.2,
+    1500,
+    4.5424,
+    ""
+   ],
+   [
+    "R01-J2",
+    "Face int. cintrée (dév.)",
+    1,
+    3032.1,
+    1500,
+    4.548100000000001,
+    ""
+   ],
+   [
+    "R01-J3",
+    "Joues",
+    2,
+    375,
+    1500,
+    1.125,
+    ""
+   ],
+   [
+    "R01-F1",
+    "Dessous entre faces",
+    1,
+    0,
+    0,
+    1.0895,
+    "gabarit 1:1"
+   ],
+   [
+    "R01-S1",
+    "Dessus entre faces",
+    1,
+    0,
+    0,
+    1.0895,
+    "gabarit 1:1"
+   ],
+   [
+    "R01-F2",
+    "Cerces CP au gabarit (évidées)",
+    2,
+    0,
+    0,
+    1.2646,
+    "gabarit 1:1 · bande 100 mm"
+   ]
+  ],
+  "bois": [
+   [
+    "R01-B1",
+    "Couvre-joints 63×75 (J1)",
+    2,
+    455
+   ],
+   [
+    "R01-B2",
+    "Couvre-joints 63×75 (J1)",
+    1,
+    143
+   ],
+   [
+    "R01-B3",
+    "Couvre-joints 63×75 (J1)",
+    1,
+    237
+   ],
+   [
+    "R01-B4",
+    "Lisses de joint 63×75 cintrées (J1)",
+    1,
+    2969
+   ],
+   [
+    "R01-B5",
+    "Couvre-joints 63×75 (J2)",
+    2,
+    455
+   ],
+   [
+    "R01-B6",
+    "Couvre-joints 63×75 (J2)",
+    1,
+    143
+   ],
+   [
+    "R01-B7",
+    "Couvre-joints 63×75 (J2)",
+    1,
+    237
+   ],
+   [
+    "R01-B8",
+    "Lisses de joint 63×75 cintrées (J2)",
+    1,
+    2973
+   ],
+   [
+    "R01-B9",
+    "Tasseaux de joint 63×75 (F1)",
+    1,
+    364
+   ],
+   [
+    "R01-B10",
+    "Tasseaux de joint 63×75 (S1)",
+    1,
+    364
+   ],
+   [
+    "R01-B11",
+    "Tasseaux de joint 63×75 (F2)",
+    2,
+    364
+   ]
+  ]
+ },
+ "voile_cais_rad": {
+  "W": [],
+  "cp": [
+   [
+    "R01-J1",
+    "Face ext. cintrée (dév.)",
+    1,
+    2005.6,
+    2000,
+    4.0113,
+    ""
+   ],
+   [
+    "R01-J2",
+    "Face int. cintrée (dév.)",
+    1,
+    1915.7,
+    2000,
+    3.8314,
+    ""
+   ],
+   [
+    "R01-J3",
+    "Joues radiales",
+    2,
+    264,
+    2000,
+    1.056,
+    ""
+   ],
+   [
+    "R01-F1",
+    "Cerces CP au gabarit",
+    5,
+    0,
+    0,
+    2.5406,
+    "gabarit 1:1"
+   ]
+  ],
+  "bois": [
+   [
+    "R01-B1",
+    "Couvre-joints 63×75 (J1)",
+    4,
+    458
+   ],
+   [
+    "R01-B2",
+    "Couvre-joints 63×75 (J2)",
+    4,
+    458
+   ]
+  ]
+ },
+ "special_rect": {
+  "W": [],
+  "cp": [
+   [
+    "R01-J1",
+    "Côtés filants",
+    2,
+    1000,
+    305,
+    0.61,
+    ""
+   ],
+   [
+    "R01-J2",
+    "Côtés entre",
+    2,
+    964,
+    305,
+    0.588,
+    ""
+   ],
+   [
+    "R01-F1",
+    "Base (entre parois)",
+    1,
+    964,
+    964,
+    0.9292999999999999,
+    ""
+   ],
+   [
+    "R01-S1",
+    "Fond sup. (entre parois, en tête)",
+    1,
+    964,
+    964,
+    0.9292999999999999,
+    ""
+   ],
+   [
+    "R01-J3",
+    "Cloisons CP (tronçons)",
+    1,
+    663,
+    269,
+    0.17830000000000001,
+    ""
+   ],
+   [
+    "R01-J4",
+    "Cloisons CP (tronçons)",
+    2,
+    473,
+    269,
+    0.2545,
+    ""
+   ],
+   [
+    "R01-J5",
+    "Goussets (triangles)",
+    8,
+    240,
+    240,
+    0.2304,
+    "240 × 240 (hyp. 339)"
+   ]
+  ],
+  "bois": []
+ },
+ "special_circ": {
+  "W": [],
+  "cp": [
+   [
+    "R01-J1",
+    "Paroi cintrée (dév.)",
+    1,
+    3085,
+    305,
+    0.9409,
+    ""
+   ],
+   [
+    "R01-F1",
+    "Base (entre parois)",
+    1,
+    964,
+    964,
+    0.7299,
+    "disque Ø964"
+   ],
+   [
+    "R01-S1",
+    "Fond sup. (entre parois, en tête)",
+    1,
+    964,
+    964,
+    0.7299,
+    "disque Ø964"
+   ],
+   [
+    "R01-J2",
+    "Concentrique cintrée (dév.)",
+    1,
+    2456.7,
+    269,
+    0.6608999999999999,
+    ""
+   ],
+   [
+    "R01-J3",
+    "Cloisons CP (continues)",
+    4,
+    82,
+    269,
+    0.0882,
+    ""
+   ]
+  ],
+  "bois": [
+   [
+    "R01-B1",
+    "Couvre-joints 63×75 (J1)",
+    1,
+    254
+   ]
+  ]
+ },
+ "goulotte": {
+  "W": [
+   "warn:Joues cintrées R 4,80–5,00 m en CP CTBX okoumé 10 mm (2500 × 1220) : vérifier le rayon mini de cintrage (fiche fournisseur) ou passer en CP cintrable"
+  ],
+  "cp": [
+   [
+    "R01-F1",
+    "Segments de fond (gabarit 1:1)",
+    13,
+    0,
+    0,
+    6.1575,
+    "θ 27,69° · corde 2393,2 · prof. 339,5"
+   ],
+   [
+    "R01-J1",
+    "Joue int. cintrée (bandes)",
+    13,
+    2317.5,
+    318,
+    9.5807,
+    ""
+   ]
+  ],
+  "bois": []
+ },
+ "goulotte_angle": {
+  "W": [
+   "warn:Joues cintrées R 4,80–5,00 m en CP CTBX okoumé 10 mm (2500 × 1220) : vérifier le rayon mini de cintrage (fiche fournisseur) ou passer en CP cintrable"
+  ],
+  "cp": [
+   [
+    "R01-F1",
+    "Segments de fond (gabarit 1:1)",
+    5,
+    0,
+    0,
+    2.0525,
+    "θ 24,00° · corde 2079,1 · prof. 304,9"
+   ],
+   [
+    "R01-J1",
+    "Joue ext. cintrée (bandes)",
+    5,
+    2096.5,
+    318,
+    3.3334,
+    ""
+   ],
+   [
+    "R01-J2",
+    "Joue int. cintrée (bandes)",
+    5,
+    2008.5,
+    318,
+    3.1936,
+    ""
+   ],
+   [
+    "R01-J3",
+    "Abouts",
+    2,
+    200,
+    300,
+    0.12,
+    ""
+   ]
+  ],
+  "bois": []
+ },
+ "dalle_circ": {
+  "W": [],
+  "cp": [
+   [
+    "R01-F1",
+    "Planches entières (E)",
+    3,
+    2500,
+    1250,
+    9.375,
+    ""
+   ],
+   [
+    "R01-F2",
+    "Planches découpées (D) — feuille 1",
+    12,
+    0,
+    0,
+    18.8992,
+    "sur 9 panneau(x)"
+   ]
+  ],
+  "bois": []
+ },
+ "dalle_circ_pt": {
+  "W": [
+   "warn:Poutre 1 : joue de 5992 mm > panneau (2500) → 3 longueurs, joints au droit d'un raidisseur"
+  ],
+  "cp": [
+   [
+    "R01-F1",
+    "Planches entières (E)",
+    2,
+    2500,
+    1250,
+    6.25,
+    ""
+   ],
+   [
+    "R01-F2",
+    "Planches découpées (D) — feuille 1",
+    16,
+    0,
+    0,
+    20.225,
+    "sur 10 panneau(x)"
+   ],
+   [
+    "R01-S1",
+    "Fond de poutre",
+    1,
+    6000,
+    300,
+    1.8,
+    ""
+   ],
+   [
+    "R01-J1",
+    "Joue de poutre",
+    2,
+    5992.5,
+    400,
+    4.794,
+    ""
+   ],
+   [
+    "R01-J2",
+    "Poches : dessous (bords cintrés)",
+    2,
+    300,
+    160.2,
+    0.09609999999999999,
+    ""
+   ],
+   [
+    "R01-J3",
+    "Poches : côtés",
+    4,
+    160.2,
+    382,
+    0.24480000000000002,
+    ""
+   ],
+   [
+    "R01-J4",
+    "Poches : fond",
+    2,
+    264,
+    382,
+    0.2017,
+    ""
+   ]
+  ],
+  "bois": [
+   [
+    "R01-B1",
+    "Raidisseurs chevron 63×75 (entre lisses)",
+    26,
+    250
+   ],
+   [
+    "R01-B2",
+    "Lisses basses chevron 63×75",
+    2,
+    5992
+   ],
+   [
+    "R01-B3",
+    "Lisses hautes chevron 63×75",
+    2,
+    5992
+   ],
+   [
+    "R01-B4",
+    "Couvre-joints 63×75 (S1)",
+    2,
+    300
+   ]
+  ]
+ },
+ "dalle_rect": {
+  "W": [],
+  "cp": [
+   [
+    "R01-F1",
+    "Planches entières (E)",
+    4,
+    2500,
+    1250,
+    12.5,
+    ""
+   ],
+   [
+    "R01-F2",
+    "Planches découpées (D) — feuille 1",
+    4,
+    0,
+    0,
+    7.5,
+    "sur 4 panneau(x)"
+   ]
+  ],
+  "bois": []
+ },
+ "poutre": {
+  "W": [
+   "warn:Poutre 1 : joue de 6000 mm > panneau (2500) → 3 longueurs, joints au droit d'un raidisseur"
+  ],
+  "cp": [
+   [
+    "R01-S1",
+    "Fond de poutre",
+    1,
+    6000,
+    300,
+    1.8,
+    ""
+   ],
+   [
+    "R01-J1",
+    "Joue de poutre",
+    2,
+    6000,
+    518,
+    6.216,
+    ""
+   ],
+   [
+    "R01-J2",
+    "Poches : dessous",
+    2,
+    300,
+    160,
+    0.096,
+    ""
+   ],
+   [
+    "R01-J3",
+    "Poches : côtés",
+    4,
+    160,
+    482,
+    0.3085,
+    ""
+   ],
+   [
+    "R01-J4",
+    "Poches : fond",
+    2,
+    264,
+    482,
+    0.2545,
+    ""
+   ]
+  ],
+  "bois": [
+   [
+    "R01-B1",
+    "Raidisseurs chevron 63×75 (entre lisses)",
+    26,
+    368
+   ],
+   [
+    "R01-B2",
+    "Lisses basses chevron 63×75",
+    2,
+    6000
+   ],
+   [
+    "R01-B3",
+    "Lisses hautes chevron 63×75",
+    2,
+    6000
+   ],
+   [
+    "R01-B4",
+    "Couvre-joints 63×75 (S1)",
+    2,
+    300
+   ]
+  ]
+ },
+ "poutre_po": {
+  "W": [
+   "warn:Poutre 1 : joue de 5032 mm > panneau (2500) → 3 longueurs, joints au droit d'un raidisseur",
+   "warn:Poutre 1 : joue de 4366 mm > panneau (2500) → 2 longueurs, joints au droit d'un raidisseur"
+  ],
+  "cp": [
+   [
+    "R01-S1",
+    "Fond de poutre (découpe au Ø du poteau)",
+    1,
+    4435.4,
+    300,
+    1.3306,
+    ""
+   ],
+   [
+    "R01-S2",
+    "Fond de poutre (découpe au Ø du poteau)",
+    1,
+    4367.7,
+    300,
+    1.3103,
+    ""
+   ],
+   [
+    "R01-S3",
+    "Couronne de poteau (fermeture du tube, 2 segments)",
+    4,
+    314.2,
+    62,
+    0.07790000000000001,
+    ""
+   ],
+   [
+    "R01-J1",
+    "Joue de poutre",
+    2,
+    5032.3,
+    718,
+    7.2264,
+    ""
+   ],
+   [
+    "R01-J2",
+    "Joue de poutre",
+    2,
+    4365.8,
+    718,
+    6.2693,
+    ""
+   ],
+   [
+    "R01-J3",
+    "About de bout de poutre (sur poteau)",
+    1,
+    300,
+    718,
+    0.2154,
+    ""
+   ],
+   [
+    "R01-J4",
+    "Poches : dessous (bords cintrés)",
+    1,
+    300,
+    160,
+    0.048,
+    ""
+   ],
+   [
+    "R01-J5",
+    "Poches : côtés",
+    2,
+    160,
+    682,
+    0.21830000000000002,
+    ""
+   ],
+   [
+    "R01-J6",
+    "Poches : fond",
+    1,
+    264,
+    682,
+    0.18,
+    ""
+   ]
+  ],
+  "bois": [
+   [
+    "R01-B1",
+    "Raidisseurs chevron 63×75 (entre lisses)",
+    54,
+    568
+   ],
+   [
+    "R01-B2",
+    "Raidisseurs chevron 63×75 (entre lisses) courts, posés sur couronne",
+    2,
+    625
+   ],
+   [
+    "R01-B3",
+    "Lisses basses chevron 63×75",
+    2,
+    4386
+   ],
+   [
+    "R01-B4",
+    "Lisses basses chevron 63×75",
+    2,
+    4341
+   ],
+   [
+    "R01-B5",
+    "Lisses hautes chevron 63×75",
+    2,
+    5032
+   ],
+   [
+    "R01-B6",
+    "Lisses hautes chevron 63×75",
+    2,
+    4366
+   ],
+   [
+    "R01-B7",
+    "Couvre-joints 63×75 (S1)",
+    1,
+    300
+   ],
+   [
+    "R01-B8",
+    "Couvre-joints 63×75 (S2)",
+    1,
+    300
+   ]
+  ]
+ },
+ "dalle_pt_lhs": {
+  "W": [
+   "warn:Poutre 1 : joue de 5992 mm > panneau (2500) → 3 longueurs, joints au droit d'un raidisseur"
+  ],
+  "cp": [
+   [
+    "R01-F1",
+    "Planches entières (E)",
+    2,
+    2500,
+    1250,
+    6.25,
+    ""
+   ],
+   [
+    "R01-F2",
+    "Planches découpées (D) — feuille 1",
+    16,
+    0,
+    0,
+    20.225,
+    "sur 10 panneau(x)"
+   ],
+   [
+    "R01-S1",
+    "Fond de poutre",
+    1,
+    6000,
+    300,
+    1.8,
+    ""
+   ],
+   [
+    "R01-J1",
+    "Joue de poutre",
+    2,
+    5992.5,
+    500,
+    5.9925,
+    ""
+   ],
+   [
+    "R01-J2",
+    "Poches : dessous (bords cintrés)",
+    2,
+    300,
+    160.2,
+    0.09609999999999999,
+    ""
+   ],
+   [
+    "R01-J3",
+    "Poches : côtés",
+    4,
+    160.2,
+    482,
+    0.3088,
+    ""
+   ],
+   [
+    "R01-J4",
+    "Poches : fond",
+    2,
+    264,
+    482,
+    0.2545,
+    ""
+   ]
+  ],
+  "bois": [
+   [
+    "R01-B1",
+    "Raidisseurs chevron 63×75 (entre lisses)",
+    26,
+    150
+   ],
+   [
+    "R01-B2",
+    "Lisses basses chevron 63×75",
+    2,
+    5992
+   ],
+   [
+    "R01-B3",
+    "Lisses hautes chevron 63×75 (sous les poutrelles)",
+    2,
+    5992
+   ],
+   [
+    "R01-B4",
+    "Couvre-joints 63×75 (S1)",
+    2,
+    300
+   ]
+  ]
+ },
+ "poutre_lhs": {
+  "W": [
+   "warn:Poutre 1 : joue de 6000 mm > panneau (2500) → 3 longueurs, joints au droit d'un raidisseur"
+  ],
+  "cp": [
+   [
+    "R01-S1",
+    "Fond de poutre",
+    1,
+    6000,
+    300,
+    1.8,
+    ""
+   ],
+   [
+    "R01-J1",
+    "Joue de poutre",
+    2,
+    6000,
+    600,
+    7.2,
+    ""
+   ],
+   [
+    "R01-J2",
+    "Poches : dessous",
+    2,
+    300,
+    160,
+    0.096,
+    ""
+   ],
+   [
+    "R01-J3",
+    "Poches : côtés",
+    4,
+    160,
+    582,
+    0.3725,
+    ""
+   ],
+   [
+    "R01-J4",
+    "Poches : fond",
+    2,
+    264,
+    582,
+    0.3073,
+    ""
+   ]
+  ],
+  "bois": [
+   [
+    "R01-B1",
+    "Raidisseurs chevron 63×75 (entre lisses)",
+    34,
+    275
+   ],
+   [
+    "R01-B2",
+    "Lisses basses chevron 63×75",
+    2,
+    6000
+   ],
+   [
+    "R01-B3",
+    "Lisses hautes chevron 63×75 (sous les poutrelles)",
+    2,
+    6000
+   ],
+   [
+    "R01-B4",
+    "Couvre-joints 63×75 (S1)",
+    2,
+    300
+   ]
+  ]
+ },
+ "dalle_rive": {
+  "W": [
+   "warn:Rive cintrée R 3,25 m en CP filmé 18 mm (2500 × 1250) : vérifier le rayon mini de cintrage (fiche fournisseur) ou passer en CP cintrable"
+  ],
+  "cp": [
+   [
+    "R01-F1",
+    "Planches entières (E)",
+    3,
+    2500,
+    1250,
+    9.375,
+    ""
+   ],
+   [
+    "R01-F2",
+    "Planches découpées (D) — feuille 1",
+    12,
+    0,
+    0,
+    18.8992,
+    "sur 9 panneau(x)"
+   ],
+   [
+    "R01-J1",
+    "Rive de dalle cintrée (dév.)",
+    1,
+    20476.9,
+    220,
+    4.504899999999999,
+    ""
+   ]
+  ],
+  "bois": [
+   [
+    "R01-B1",
+    "Équerres de rive 63×75 (entraxe ≤ 600)",
+    35,
+    370
+   ],
+   [
+    "R01-B2",
+    "Couvre-joints 63×75 (J1)",
+    7,
+    220
+   ]
+  ]
+ },
+ "para": {
+  "W": [],
+  "cp": [
+   [
+    "R01-J1",
+    "Dessus / dessous (filants) — parallélogramme",
+    2,
+    380.9,
+    259.8,
+    0.12,
+    "231 × 260 · décal. 150 · chant 0,0°"
+   ],
+   [
+    "R01-J2",
+    "Joues (entre dessus / dessous) — parallélogramme",
+    2,
+    230.9,
+    164,
+    0.0757,
+    "231 × 164 · décal. 0 · chant 30,0°"
+   ]
+  ],
+  "bois": [
+   [
+    "R01-B1",
+    "Traverses horiz. 50×50",
+    1,
+    223.8
+   ],
+   [
+    "R01-B2",
+    "Traverses vert. 50×50 (tronçons)",
+    2,
+    57
+   ]
+  ]
+ },
+ "para_long": {
+  "W": [
+   "warn:Panneau plus long que le CP : 2 tronçons par panneau, joints sur 1 cadre(s) de joint 50 × 50 (voir plan) — un format plus grand les évite s'il existe"
+  ],
+  "cp": [
+   [
+    "R01-J1",
+    "Dessus — parallélogramme en 2 tronçons",
+    1,
+    4301.9,
+    459.6,
+    1.8,
+    "3916 × 460"
+   ],
+   [
+    "R01-J2",
+    "Dessous — parallélogramme en 2 tronçons",
+    1,
+    4301.9,
+    459.6,
+    1.8,
+    "3916 × 460"
+   ],
+   [
+    "R01-J3",
+    "Joue gauche — parallélogramme en 2 tronçons",
+    1,
+    3916.2,
+    464,
+    1.8171,
+    "3916 × 464"
+   ],
+   [
+    "R01-J4",
+    "Joue droite — parallélogramme en 2 tronçons",
+    1,
+    3916.2,
+    464,
+    1.8171,
+    "3916 × 464"
+   ]
+  ],
+  "bois": [
+   [
+    "R01-B1",
+    "Traverses horiz. 50×50",
+    8,
+    423.6
+   ],
+   [
+    "R01-B2",
+    "Traverses vert. 50×50 (tronçons)",
+    16,
+    207
+   ],
+   [
+    "R01-B3",
+    "Cadres de joint 50×50 — traverses (sous dessus / sur dessous)",
+    2,
+    423.6
+   ],
+   [
+    "R01-B4",
+    "Cadres de joint 50×50 — montants (contre les joues)",
+    2,
+    364
+   ]
+  ]
+ }
+}

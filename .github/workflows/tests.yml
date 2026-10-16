@@ -1,0 +1,46 @@
+name: Tests
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      complet:
+        description: 'Toutes les suites (long)'
+        type: boolean
+        default: false
+  schedule:
+    - cron: '0 3 * * 1'   # lundi 3 h UTC : campagne complète
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: tests/requirements.txt
+      - name: Dépendances
+        run: |
+          pip install -r tests/requirements.txt
+          python -m playwright install --with-deps chromium
+          sudo apt-get install -y --no-install-recommends libreoffice-calc
+      - name: Syntaxe
+        run: sh tests/syntax.sh
+      - name: Tests
+        run: |
+          if [ "${{ github.event_name }}" = "schedule" ] || [ "${{ inputs.complet }}" = "true" ]; then
+            python tests/run.py complet -j 4
+          else
+            python tests/run.py -j 4
+          fi
+      - name: Résultats détaillés
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: resultats-tests
+          path: tests/out/*.json
+          retention-days: 14

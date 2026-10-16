@@ -1,0 +1,39 @@
+"""Lance les suites de tests et résume.
+  python tests/run.py               → suites rapides (≈ quelques minutes)
+  python tests/run.py complet       → toutes les suites (revue 420 plans, gabarits, avant / après : bien plus long)
+  python tests/run.py t_v25 t_ux    → suites nommées
+  option -j N : N suites en parallèle (défaut 1)
+Code de sortie 0 seulement si toutes les suites passent. Détail de chaque suite : tests/out/<suite>.json"""
+import os, subprocess, sys, time
+from concurrent.futures import ThreadPoolExecutor
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+RAPIDE = ['t_v25', 't_v24', 't_ux', 't_v23', 't_ui', 't_regress', 't_special', 't_3d', 't_renforts', 't_poutre', 't_export', 't_forme']
+LONG = ['t_avap', 't_audit', 't_gab_ident', 't_gab_dalle']
+
+
+def one(name):
+    t0 = time.time()
+    p = subprocess.run([sys.executable, name + '.py'], cwd=HERE, capture_output=True, text=True)
+    out = (p.stdout + p.stderr).strip()
+    return name, p.returncode, time.time() - t0, out
+
+
+def main(args):
+    j = 1
+    if '-j' in args:
+        i = args.index('-j'); j = int(args[i + 1]); del args[i:i + 2]
+    names = RAPIDE + LONG if args == ['complet'] else (args or RAPIDE)
+    ko = []
+    with ThreadPoolExecutor(j) as ex:
+        for name, rc, dt, out in ex.map(one, names):
+            head = next((l for l in out.splitlines() if l.startswith('[' + name + ']')), out.splitlines()[-1] if out else '(aucune sortie)')
+            print(f'{"✓" if rc == 0 else "✗"} {head}  ({dt:.0f} s)', flush=True)
+            if rc:
+                ko.append(name); print('\n'.join('    ' + l for l in out.splitlines()[-25:]))
+    print(f'\n{len(names) - len(ko)}/{len(names)} suites OK' + (f' — en échec : {", ".join(ko)}' if ko else ''))
+    return not ko
+
+
+if __name__ == '__main__':
+    sys.exit(0 if main(sys.argv[1:]) else 1)

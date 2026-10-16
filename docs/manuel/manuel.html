@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="utf-8"><title>CoffraPlan v{{VERSION}} — Mode d'emploi</title>
+<style>
+@page{size:A4;margin:16mm 15mm 16mm 15mm}
+@page :first{margin:0}
+:root{--navy:#1a2035;--or:#e8820c;--ort:#b45309;--mut:#56627a;--bd:#d8dde6;--bg:#f5f7fb}
+*{box-sizing:border-box}
+body{font-family:Inter,'DejaVu Sans',sans-serif;font-size:10pt;line-height:1.5;color:#1d2433;margin:0}
+h1{font-size:19pt;color:var(--navy);margin:0 0 4mm;padding-bottom:2mm;border-bottom:2.5pt solid var(--or);break-after:avoid}
+h2{font-size:13pt;color:var(--navy);margin:6mm 0 2mm;break-after:avoid}
+h3{font-size:10.5pt;color:var(--ort);margin:4mm 0 1.5mm;text-transform:uppercase;letter-spacing:.6pt;break-after:avoid}
+p{margin:0 0 2.2mm}ul,ol{margin:0 0 2.5mm;padding-left:6mm}li{margin:0 0 1mm}
+.chap{break-before:page}
+.fig{margin:3mm 0 4mm;text-align:center;break-inside:avoid}
+.fig img{max-width:100%;border:0.6pt solid var(--bd);border-radius:2mm}
+.fig .cap{font-size:8.5pt;color:var(--mut);margin-top:1.2mm}
+.fig.half img{max-width:62%}.fig.third img{max-width:46%}
+.row{display:flex;gap:5mm;align-items:flex-start;break-inside:avoid}.row>*{flex:1}
+.note,.warn,.tip{border-left:3pt solid var(--or);background:#fff6ea;padding:2.2mm 3mm;margin:2.5mm 0 3.5mm;border-radius:0 1.5mm 1.5mm 0;break-inside:avoid}
+.warn{border-left-color:#c0392b;background:#fdecea}.tip{border-left-color:#1e8449;background:#eaf6ee}
+.note b:first-child,.warn b:first-child,.tip b:first-child{display:block;margin-bottom:.6mm}
+table{border-collapse:collapse;width:100%;margin:2mm 0 4mm;font-size:9pt;break-inside:auto}
+th{background:var(--navy);color:#fff;text-align:left;padding:1.6mm 2mm;font-weight:600}
+td{padding:1.4mm 2mm;border-bottom:.5pt solid var(--bd);vertical-align:top}
+tr{break-inside:avoid}
+kbd{display:inline-block;padding:0 1.5mm;border:.6pt solid #b8c0cf;border-bottom-width:1.4pt;border-radius:1mm;background:#f3f5f9;font:600 8.5pt 'DejaVu Sans Mono',monospace}
+code{font:9pt 'DejaVu Sans Mono',monospace;background:#f1f3f7;padding:0 1mm;border-radius:.8mm}
+.k{display:inline-block;min-width:5mm;height:5mm;line-height:5mm;border-radius:50%;background:#d62828;color:#fff;text-align:center;font-weight:700;font-size:8pt;margin-right:1mm}
+/* couverture */
+.cover{height:297mm;background:var(--navy);color:#fff;padding:30mm 22mm 20mm;position:relative;break-after:page}
+.cover .sub{font-size:13pt;color:#c2cce0;letter-spacing:4pt;text-transform:uppercase;margin-top:6mm}
+.cover h0{display:block;font-size:30pt;font-weight:800;margin-top:16mm}
+.cover .ver{font-size:13pt;color:var(--or);margin-top:3mm;font-weight:600}
+.cover .bar{height:3pt;background:var(--or);width:60mm;margin:7mm 0}
+.cover .meta{position:absolute;left:22mm;bottom:22mm;font-size:10pt;color:#c2cce0;line-height:1.7}
+.cover img{width:88%;border-radius:2mm;margin-top:10mm;opacity:.95}
+/* sommaire */
+.toc{columns:2;column-gap:10mm;font-size:9.6pt}.toc div{break-inside:avoid;margin-bottom:1.2mm}.toc .c{font-weight:700;color:var(--navy);margin-top:2mm}
+.small{font-size:8.6pt;color:var(--mut)}
+</style></head><body>
+
+<!-- ======================= COUVERTURE ======================= -->
+<div class="cover">
+<svg xmlns="http://www.w3.org/2000/svg" style="width:150mm;height:auto;display:block" viewBox="0 0 750 188" role="img" aria-label="CoffraPlan, plans de coffrage">
+<defs>
+ <linearGradient id="outerBack" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#27384e"/><stop offset="1" stop-color="#101a29"/></linearGradient>
+ <linearGradient id="outerLeft" x1="0" y1="0" x2="1" y2=".7"><stop stop-color="#1a2739"/><stop offset="1" stop-color="#334559"/></linearGradient>
+ <linearGradient id="outerFront" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#2f4255"/><stop offset="1" stop-color="#101b2c"/></linearGradient>
+ <linearGradient id="outerCap" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#b7c1c8"/><stop offset="1" stop-color="#4f6272"/></linearGradient>
+ <linearGradient id="orangeFace" x1="0" y1="0" x2=".85" y2=".2"><stop stop-color="#ffb03c"/><stop offset=".49" stop-color="#ff8b19"/><stop offset="1" stop-color="#de5608"/></linearGradient>
+ <linearGradient id="orangeFaceDark" x1="0" y1="0" x2="1" y2=".3"><stop stop-color="#ff7f12"/><stop offset="1" stop-color="#af3807"/></linearGradient>
+ <linearGradient id="concreteTop" x1="0" y1="0" x2="1" y2=".8"><stop stop-color="#ffffff"/><stop offset=".48" stop-color="#b4c4cf"/><stop offset="1" stop-color="#738596"/></linearGradient>
+ </defs>
+<g transform="translate(2,0) scale(.94)"><path d="M22.0,66.0 L102.0,19.0 L187.0,66.0" fill="none" stroke="#93a8be" stroke-width="0.72" stroke-opacity="0.42" stroke-linecap="round" />
+<path d="M22.0,75.0 L104.0,123.0 L190.0,75.0" fill="none" stroke="#8193a9" stroke-width="0.65" stroke-opacity="0.32" stroke-linecap="round" />
+<path d="M104.0,8.0 L104.0,167.0" fill="none" stroke="#71849b" stroke-width="0.65" stroke-opacity="0.3" stroke-linecap="round" stroke-dasharray="3 5"/>
+<path d="M17.0,70.0 L17.0,134.0" fill="none" stroke="#94a5b6" stroke-width="0.7" stroke-opacity="0.42" stroke-linecap="round" />
+<path d="M185.0,64.0 L185.0,141.0" fill="none" stroke="#94a5b6" stroke-width="0.7" stroke-opacity="0.36" stroke-linecap="round" />
+<path d="M27.0,50.0 L27.0,158.0" fill="none" stroke="#94a5b6" stroke-width="0.65" stroke-opacity="0.24" stroke-linecap="round" />
+<path d="M35.0,32.0 L35.0,170.0" fill="none" stroke="#94a5b6" stroke-width="0.65" stroke-opacity="0.22" stroke-linecap="round" />
+<path d="M24.0,70.0 L106.0,116.0 L184.0,70.0" fill="none" stroke="#a6b7c8" stroke-width="0.7" stroke-opacity="0.31" stroke-linecap="round" />
+<path d="M12.0,70.0 L22.0,70.0" fill="none" stroke="#7e95ac" stroke-width="0.8" stroke-opacity="0.54" stroke-linecap="round" />
+<path d="M17.0,65.0 L17.0,75.0" fill="none" stroke="#7e95ac" stroke-width="0.8" stroke-opacity="0.54" stroke-linecap="round" />
+<path d="M12.0,134.0 L22.0,134.0" fill="none" stroke="#7e95ac" stroke-width="0.8" stroke-opacity="0.54" stroke-linecap="round" />
+<path d="M17.0,129.0 L17.0,139.0" fill="none" stroke="#7e95ac" stroke-width="0.8" stroke-opacity="0.54" stroke-linecap="round" />
+<path d="M99.0,8.0 L109.0,8.0" fill="none" stroke="#7e95ac" stroke-width="0.8" stroke-opacity="0.54" stroke-linecap="round" />
+<path d="M104.0,3.0 L104.0,13.0" fill="none" stroke="#7e95ac" stroke-width="0.8" stroke-opacity="0.54" stroke-linecap="round" />
+<path d="M99.0,167.0 L109.0,167.0" fill="none" stroke="#7e95ac" stroke-width="0.8" stroke-opacity="0.54" stroke-linecap="round" />
+<path d="M104.0,162.0 L104.0,172.0" fill="none" stroke="#7e95ac" stroke-width="0.8" stroke-opacity="0.54" stroke-linecap="round" />
+<path d="M180.0,64.0 L190.0,64.0" fill="none" stroke="#7e95ac" stroke-width="0.8" stroke-opacity="0.54" stroke-linecap="round" />
+<path d="M185.0,59.0 L185.0,69.0" fill="none" stroke="#7e95ac" stroke-width="0.8" stroke-opacity="0.54" stroke-linecap="round" />
+<path d="M180.0,141.0 L190.0,141.0" fill="none" stroke="#7e95ac" stroke-width="0.8" stroke-opacity="0.54" stroke-linecap="round" />
+<path d="M185.0,136.0 L185.0,146.0" fill="none" stroke="#7e95ac" stroke-width="0.8" stroke-opacity="0.54" stroke-linecap="round" />
+<path d="M22.0,158.0 L32.0,158.0" fill="none" stroke="#7e95ac" stroke-width="0.8" stroke-opacity="0.54" stroke-linecap="round" />
+<path d="M27.0,153.0 L27.0,163.0" fill="none" stroke="#7e95ac" stroke-width="0.8" stroke-opacity="0.54" stroke-linecap="round" />
+<path d="M55.0,34.0 L104.0,7.0 L162.0,40.0" fill="none" stroke="#ff8517" stroke-width="1.3" stroke-opacity="0.95" stroke-linecap="round" />
+<path d="M126.0,157.0 L153.0,142.0 L180.0,127.0" fill="none" stroke="#ff8517" stroke-width="1.15" stroke-opacity="0.85" stroke-linecap="round" />
+<polygon points="104.00,20.00 170.10,58.08 170.10,102.08 104.00,64.00" fill="url(#outerBack)" stroke="#172537" stroke-width="1.1" stroke-linejoin="round" />
+<polygon points="104.00,20.00 37.90,58.08 37.90,102.08 104.00,64.00" fill="url(#outerLeft)" stroke="#172537" stroke-width="1.1" stroke-linejoin="round" />
+<polygon points="37.90,58.08 104.00,96.16 104.00,140.16 37.90,102.08" fill="url(#outerFront)" stroke="#172537" stroke-width="1.1" stroke-linejoin="round" />
+<polygon points="170.10,58.08 159.57,64.15 159.57,108.15 170.10,102.08" fill="url(#outerCap)" stroke="#172537" stroke-width="1.1" stroke-linejoin="round" />
+<polygon points="114.53,90.10 104.00,96.16 104.00,140.16 114.53,134.10" fill="url(#outerCap)" stroke="#172537" stroke-width="1.1" stroke-linejoin="round" />
+<polygon points="104.00,32.13 159.57,64.15 159.57,108.15 104.00,76.13" fill="url(#orangeFace)" stroke="#172537" stroke-width="1.1" stroke-linejoin="round" />
+<polygon points="104.00,32.13 58.96,58.08 58.96,102.08 104.00,76.13" fill="url(#orangeFaceDark)" stroke="#172537" stroke-width="1.1" stroke-linejoin="round" />
+<polygon points="58.96,58.08 114.53,90.10 114.53,134.10 58.96,102.08" fill="url(#orangeFace)" stroke="#172537" stroke-width="1.1" stroke-linejoin="round" />
+<path d="M113.9,38.9 L113.9,79.9" fill="none" stroke="#ffd39a" stroke-width="0.65" stroke-opacity="0.7" stroke-linecap="round" />
+<path d="M124.5,44.9 L124.5,85.9" fill="none" stroke="#ffd39a" stroke-width="0.65" stroke-opacity="0.7" stroke-linecap="round" />
+<path d="M135.0,51.0 L135.0,92.0" fill="none" stroke="#ffd39a" stroke-width="0.65" stroke-opacity="0.7" stroke-linecap="round" />
+<path d="M145.5,57.1 L145.5,98.1" fill="none" stroke="#ffd39a" stroke-width="0.65" stroke-opacity="0.7" stroke-linecap="round" />
+<path d="M155.5,62.8 L155.5,103.8" fill="none" stroke="#ffd39a" stroke-width="0.65" stroke-opacity="0.7" stroke-linecap="round" />
+<path d="M95.8,37.9 L95.8,78.8" fill="none" stroke="#ffcb88" stroke-width="0.7" stroke-opacity="0.52" stroke-linecap="round" />
+<path d="M86.5,43.2 L86.5,84.2" fill="none" stroke="#ffcb88" stroke-width="0.7" stroke-opacity="0.52" stroke-linecap="round" />
+<path d="M77.1,48.6 L77.1,89.6" fill="none" stroke="#ffcb88" stroke-width="0.7" stroke-opacity="0.52" stroke-linecap="round" />
+<path d="M67.7,54.0 L67.7,95.0" fill="none" stroke="#ffcb88" stroke-width="0.7" stroke-opacity="0.52" stroke-linecap="round" />
+<path d="M68.9,64.8 L68.9,105.8" fill="none" stroke="#ffd39a" stroke-width="0.7" stroke-opacity="0.54" stroke-linecap="round" />
+<path d="M80.0,71.2 L80.0,112.2" fill="none" stroke="#ffd39a" stroke-width="0.7" stroke-opacity="0.54" stroke-linecap="round" />
+<path d="M91.7,78.0 L91.7,119.0" fill="none" stroke="#ffd39a" stroke-width="0.7" stroke-opacity="0.54" stroke-linecap="round" />
+<path d="M103.4,84.7 L103.4,125.7" fill="none" stroke="#ffd39a" stroke-width="0.7" stroke-opacity="0.54" stroke-linecap="round" />
+<polygon points="104.00,20.00 170.10,58.08 159.57,64.15 93.47,26.07" fill="url(#concreteTop)" stroke="#cbd4db" stroke-width="1.1" stroke-linejoin="round" />
+<polygon points="104.00,20.00 114.53,26.07 48.43,64.15 37.90,58.08" fill="url(#concreteTop)" stroke="#cbd4db" stroke-width="1.1" stroke-linejoin="round" />
+<polygon points="48.43,52.02 114.53,90.10 104.00,96.16 37.90,58.08" fill="url(#concreteTop)" stroke="#cbd4db" stroke-width="1.1" stroke-linejoin="round" />
+<path d="M104.0,19.0 L170.1,57.1" fill="none" stroke="#ecf3ff" stroke-width="1.25" stroke-opacity="0.84" stroke-linecap="round" />
+<path d="M104.0,19.0 L37.9,57.1" fill="none" stroke="#edf4ff" stroke-width="1.1" stroke-opacity="0.68" stroke-linecap="round" />
+<path d="M117.2,20.8 L121.2,28.8" fill="none" stroke="#b4c3d2" stroke-width="0.9" stroke-opacity="0.68" stroke-linecap="round" />
+<path d="M133.6,30.2 L137.6,38.2" fill="none" stroke="#b4c3d2" stroke-width="0.9" stroke-opacity="0.68" stroke-linecap="round" />
+<path d="M150.0,39.6 L154.0,47.6" fill="none" stroke="#b4c3d2" stroke-width="0.9" stroke-opacity="0.68" stroke-linecap="round" />
+<path d="M166.3,49.1 L170.3,57.1" fill="none" stroke="#b4c3d2" stroke-width="0.9" stroke-opacity="0.68" stroke-linecap="round" />
+<circle cx="112.19" cy="43.85" r="1.05" fill="#ffeece" opacity=".86"/>
+<circle cx="126.23" cy="51.94" r="1.05" fill="#ffeece" opacity=".86"/>
+<circle cx="140.27" cy="60.03" r="1.05" fill="#ffeece" opacity=".86"/>
+<circle cx="154.89" cy="68.45" r="1.05" fill="#ffeece" opacity=".86"/></g>
+<text x="191" y="115" fill="#f9fbff" font-family="Inter Display,Inter,Arial,sans-serif" font-size="79" font-weight="900" letter-spacing="-4.5">Coffra</text>
+<text x="415" y="115" fill="#ff8517" font-family="Inter Display,Inter,Arial,sans-serif" font-size="79" font-weight="900" letter-spacing="-4.5">Plan</text>
+<path d="M 197 133 H 272" stroke="#ff8517" stroke-width="5"/><text x="299" y="141" fill="#c2cce0" font-family="Inter, Arial, sans-serif" font-size="20" font-weight="700" letter-spacing="5.4">PLANS DE COFFRAGE</text>
+</svg>
+<h0>Mode d'emploi</h0>
+<div class="ver">Version {{VERSION}} — {{MOIS}}</div>
+<div class="bar"></div>
+<div style="font-size:11.5pt;line-height:1.6;max-width:150mm;color:#e8eaf0">Conception des plans de réservation et de coffrage bois, débit des panneaux et des bois, gabarits 1:1, exports DXF / XLSX, dossier PDF et suivi de chantier — dans un seul fichier HTML, sans installation.</div>
+<img src="img/02_interface.png">
+<div class="meta">Conçu par Kévin TRINH · Conducteur de travaux<br>Application : <b>CoffraPlan_v{{VERSION}}.html</b> · fonctionne hors connexion</div>
+</div>
+
+<!-- ======================= SOMMAIRE ======================= -->
+<h1>Sommaire</h1>
+<div class="toc">
+<div class="c">1. Prise en main</div><div>Ouvrir l'application · L'écran · Thème · Où sont mes données</div>
+<div class="c">2. Créer un plan pas à pas</div><div>Chantier · Type et forme · Dimensions · Contreplaqué · Options · Contrôles · Ajouter</div>
+<div class="c">3. Les formes disponibles</div>
+<div class="c">4. Lire les feuilles</div><div>Plan · Débit · traçage · contrôles · Informations · CP à découper · Montage 3D · Fiche atelier · Repères</div>
+<div class="c">5. Gérer les plans</div><div>Liste · Modifier · Dupliquer · Supprimer · Annuler / rétablir</div>
+<div class="c">6. Sauvegarder et charger</div><div>Fichier .json · Rappel · Brouillon</div>
+<div class="c">7. Fonctions avancées</div><div>Profil chantier · Bibliothèque · Série depuis un tableau · Comparer deux indices · Auto-contrôle et corrections · Vue 3D · Gabarits 1:1 · Déplacement à la souris · Récapitulatif chantier · Dossier PDF · Exports DXF / CSV / XLSX · Mode chantier · Impression · Aperçu en attente · Cartes repliables</div>
+<div class="c">8. Raccourcis clavier</div>
+<div class="c">9. Bonnes pratiques et dépannage</div>
+<div class="c">Annexe — calques DXF</div>
+</div>
+<div class="note" style="margin-top:8mm"><b>À retenir en 4 points</b>
+1. Les plans sont gardés dans le navigateur, mais <b>seul le fichier .json les protège</b> : 💾 Sauvegarder (<kbd>Ctrl</kbd>+<kbd>S</kbd>) régulièrement.<br>
+2. Les alertes ⚠ / ⛔ du panneau se cliquent : elles amènent au champ concerné.<br>
+3. Les cotes de fabrication sont celles <b>écrites</b> sur les feuilles et au débit, jamais la mesure sur le papier.<br>
+4. Avant de lancer la fabrication : 🔍 Auto-contrôle, puis impression ou dossier PDF.</div>
+
+<!-- ======================= 1 ======================= -->
+<h1 class="chap">1. Prise en main</h1>
+<h2>Ouvrir l'application</h2>
+<p>CoffraPlan est un <b>fichier unique</b> (<code>CoffraPlan_v{{VERSION}}.html</code>). Double-cliquer dessus : il s'ouvre dans le navigateur. Aucune installation, aucun compte, aucun serveur ; il fonctionne <b>hors connexion</b> (sans internet, seules les polices de caractères sont remplacées par celles du système).</p>
+<p>Navigateur conseillé : <b>Google Chrome</b> ou <b>Microsoft Edge</b> (l'application est testée sous Chromium). Firefox et Safari ne sont pas validés.</p>
+<div class="tip"><b>Conseil</b>Garder toujours le même fichier au même endroit et l'ouvrir avec le même navigateur : les plans enregistrés dans le navigateur sont liés à ce couple fichier / navigateur.</div>
+
+<h2>L'écran</h2>
+<div class="fig"><img src="img/02_interface.png"><div class="cap">Écran principal (thème clair)</div></div>
+<table><tr><th style="width:9mm">N°</th><th>Zone</th><th>Rôle</th></tr>
+<tr><td><span class="k">1</span></td><td>Logo et version</td><td>Version de l'application (à citer en cas de problème).</td></tr>
+<tr><td><span class="k">2</span></td><td>↶ ↷</td><td>Annuler / rétablir la dernière modification du formulaire.</td></tr>
+<tr><td><span class="k">3</span></td><td>Commandes fichier</td><td>🖨 Imprimer · 💾 Sauvegarder (pastille orange = modifications non sauvegardées) · 📂 Charger · 📱 Mode chantier.</td></tr>
+<tr><td><span class="k">4</span></td><td>Thème · aide</td><td>◐ Auto / ☀ Clair / ☾ Sombre, et « ? » : aide des raccourcis.</td></tr>
+<tr><td><span class="k">5</span></td><td>Panneau de saisie</td><td>Cartes Chantier, Type, Dimensions, Contreplaqué, Options, puis contrôles, boutons d'action, impression, traceur et liste des plans.</td></tr>
+<tr><td><span class="k">6</span></td><td>Aperçu</td><td>Feuilles du plan en cours, recalculées à chaque saisie, telles qu'elles seront imprimées.</td></tr></table>
+
+<h2>Premier lancement</h2>
+<div class="row"><div>
+<p>Tant qu'aucun plan n'est enregistré, une carte <b>Bienvenue</b> propose : un modèle courant (trémie, réservation avec fond, fourreau), la série depuis un tableau, le chargement d'un projet existant et les raccourcis. « Masquer » la fait disparaître définitivement.</p>
+<p>Un <b>brouillon</b> du formulaire est gardé en permanence : après une fermeture accidentelle, la saisie en cours revient à la réouverture (message « Brouillon restauré »).</p></div>
+<div class="fig" style="flex:0 0 40%"><img src="img/01_accueil.png" style="max-width:100%"><div class="cap">Accueil</div></div></div>
+
+<h2>Thème clair / sombre / automatique</h2>
+<p>Le sélecteur de la barre choisit l'apparence de l'interface ; <b>Auto</b> (par défaut) suit le réglage de l'ordinateur ou de la tablette, y compris s'il change en cours de séance. Le choix est mémorisé.</p>
+<div class="note"><b>Les plans ne changent jamais de couleur</b>Feuilles, gabarits, dossier PDF et impressions restent sur fond blanc avec leurs couleurs conventionnelles, quel que soit le thème.</div>
+<div class="row"><div class="fig"><img src="img/24_sombre.png"><div class="cap">Thème sombre</div></div><div class="fig" style="flex:0 0 22%"><img src="img/25_mobile.png"><div class="cap">Écran étroit (téléphone)</div></div></div>
+
+<h2>Où sont mes données ?</h2>
+<table><tr><th>Donnée</th><th>Stockage</th><th>Protégée par le fichier .json ?</th></tr>
+<tr><td>Plans enregistrés</td><td>Navigateur (automatique)</td><td>Oui</td></tr>
+<tr><td>Profils de chantier / d'ouvrage</td><td>Navigateur</td><td>Oui</td></tr>
+<tr><td>Mes modèles (bibliothèque)</td><td>Navigateur</td><td>Oui</td></tr>
+<tr><td>Brouillon du formulaire, thème, réglages d'impression, cartes repliées, repères cochés du mode chantier</td><td>Navigateur</td><td>Non (préférences de ce poste)</td></tr></table>
+<div class="warn"><b>Attention</b>Vider le cache / les données du navigateur, changer de poste ou de navigateur fait disparaître les plans gardés dans le navigateur. Le fichier <b>.json</b> sauvegardé permet de tout recharger (§ 6).</div>
+
+<!-- ======================= 2 ======================= -->
+<h1 class="chap">2. Créer un plan pas à pas</h1>
+<h3>Étape 1 — Chantier</h3>
+<p><b>Nom du chantier</b> (obligatoire), <b>Ouvrage</b> (ex. Clarificateur), <b>Indice</b> (A, B…), <b>Nombre</b> d'exemplaires identiques à fabriquer, <b>Montage</b> (clou, vis, mixte) et taille des <b>Textes des plans</b>. Le bouton ⚙ ouvre le profil du chantier (§ 7.1). Les noms déjà utilisés sont proposés à la saisie.</p>
+<h3>Étape 2 — Type</h3>
+<p>Choisir la <b>Forme</b> (§ 3) ou partir d'un modèle de la <b>Bibliothèque</b> (§ 7.2). La <b>Référence</b> (R01, R02…) se remplit seule à l'ajout si elle est vide.</p>
+<h3>Étape 3 — Dimensions</h3>
+<p>Les champs changent selon la forme. Les petits boutons <b>?</b> expliquent chaque cote (ex. L = cote <b>extérieure</b> de la boîte = vide laissé dans le béton ; h = hauteur <b>hors-tout</b>, fond compris). Saisie souple : <code>1200</code>, <code>1,2 m</code>, <code>2500-2*18</code> (calcul), <code>12,5</code> m pour un Ø de cuve.</p>
+<h3>Étape 4 — Contreplaqué</h3>
+<p>Matériau (CP filmé, CTBX okoumé, cintrable), épaisseur et format de panneau, par famille de pièces (joues / parois, fonds…). Ces choix déterminent le débit et l'imbrication.</p>
+<h3>Étape 5 — Options</h3>
+<p>Selon la forme : feuillure, goussets d'angle, renforts en croix, fond supérieur, forme concentrique, poteaux, cerces et montants, poutres et poches… Les champs dépendants n'apparaissent que si l'option est cochée.</p>
+<h3>Étape 6 — Contrôles</h3>
+<div class="row"><div>
+<p>Sous les options, l'application liste en direct :</p>
+<ul><li><b>⛔ erreurs</b> : géométrie impossible, valeur hors bornes, saisie illisible (champ encadré en rouge) ;</li>
+<li><b>⚠ alertes</b> : points à vérifier ayant une incidence sur la fabrication (flambement d'un renfort, poteau qui coupe une paroi, rayon de cintrage du CP…).</li></ul>
+<p><b>Cliquer sur une alerte</b> (ou Entrée quand elle est sélectionnée) amène au champ concerné et le surligne, <b>sans rien modifier</b>.</p></div>
+<div class="fig" style="flex:0 0 36%"><img src="img/04_alertes.png"><div class="cap">Alertes cliquables</div></div></div>
+<h3>Étape 7 — Ajouter</h3>
+<p><b>➕ AJOUTER</b> enregistre le plan dans la liste. Si le plan contient des incohérences ou si la référence existe déjà dans l'ouvrage, une question s'affiche (« Enregistrer quand même » / « Annuler »). La référence suivante est proposée automatiquement et le nombre revient à 1.</p>
+<div class="tip"><b>Méthode rapide</b>Pour une série de réservations voisines : remplir la première, AJOUTER, changer seulement les cotes, AJOUTER… ou utiliser la série depuis un tableau (§ 7.3).</div>
+
+<!-- ======================= 3 ======================= -->
+<h1 class="chap">3. Les formes disponibles</h1>
+<table><tr><th style="width:52mm">Forme</th><th>Usage / particularités</th></tr>
+<tr><td><b>Carré</b> / <b>Rectangulaire</b></td><td>Réservation (trémie) sans fond : boîte de 4 parois, renforts en croix, goussets, feuillure en option.</td></tr>
+<tr><td><b>Carré avec fond</b> / <b>Rectangulaire avec fond</b></td><td>Réservation dans une dalle avec fond (puisard, regard) : parois + fond.</td></tr>
+<tr><td><b>Parallélépipède oblique</b></td><td>Traversée biaise d'un voile : angles α et β, joues en biais.</td></tr>
+<tr><td><b>Voile cintré</b></td><td>Baie ou réservation dans un voile de cuve : mannequin (joues, appui, linteau, cerces, montants, goussets) ou caisson ; Ø de cuve en mètres. Joues radiales ou parallèles.</td></tr>
+<tr><td><b>Circulaire (PVC / polystyrène)</b></td><td>Fourreau / réservation ronde.</td></tr>
+<tr><td><b>Concentrique circulaire avec / sans fond</b></td><td>Anneau entre deux parois circulaires (parois cintrées en CP).</td></tr>
+<tr><td><b>Massif</b></td><td>Coffrage d'un massif béton (cote = béton), renforts et fond en option.</td></tr>
+<tr><td><b>Spéciale</b></td><td>Boîte rectangulaire ou circulaire composite : forme concentrique intérieure, poteaux circulaires (tubes carton) qui traversent la base et le fond supérieur, fonds percés automatiquement (Ø poteau + jeu).</td></tr>
+<tr><td><b>Goulotte cintrée</b></td><td>Goulotte de coffrage béton sur un rayon : fond en segments, joues extérieure / intérieure, optimisation de la découpe.</td></tr>
+<tr><td><b>Dalle de couverture (platelage)</b></td><td>Platelage d'une dalle circulaire ou rectangulaire : calepinage des panneaux et planches D, poutres avec poches dans le voile, rive de dalle.</td></tr>
+<tr><td><b>Poutre</b></td><td>Coffrage de poutre (joues, fond, poches dans les voiles d'appui), poteaux intermédiaires.</td></tr></table>
+<div class="note"><b>Règles intégrées (exemples)</b>
+· Mannequin de voile : au moins un renfort perpendiculaire au plus grand côté — si la largeur entre joues dépasse la hauteur, un montant est posé au milieu ; si la hauteur dépasse la largeur, une cerce à mi-hauteur (un entraxe saisi à 0 = « aucun » reste respecté).<br>
+· Forme spéciale : poteaux du dessous de la boîte au-dessus du fond supérieur ; conflit signalé seulement si un poteau coupe la <b>paroi</b> de la forme concentrique.</div>
+
+<!-- ======================= 4 ======================= -->
+<h1 class="chap">4. Lire les feuilles</h1>
+<p>Chaque plan produit une ou plusieurs feuilles paysage (A3 ou A4). La feuille 1 est toujours le <b>plan</b>. Avec la mise en page par défaut <b>« Plan pleine page »</b>, elle ne porte que les vues ; la <b>feuille 1b</b> qui la suit regroupe le débit, les informations et les hypothèses (au dos du plan en recto-verso). Les autres feuilles s'ajoutent selon les cases cochées dans la carte Impression (§ 7.13).</p>
+<div class="fig"><img src="img/07_feuille_plan.png"><div class="cap">Feuille 1 — plan pleine page (vue de dessus sur toute la largeur, vues B et A)</div></div>
+<div class="fig"><img src="img/07b_feuille_1b.png"><div class="cap">Feuille 1b — débit · traçage · contrôles, informations, hypothèses</div></div>
+<table><tr><th style="width:45mm">Partie</th><th>Contenu</th></tr>
+<tr><td>Cartouche</td><td>Chantier, ouvrage, référence, désignation, n° de feuille, nombre d'exemplaires, indice, date ; bandeau du mode de montage ; <b>ligne d'hypothèses</b> (poussée du béton retenue, contreplaqués, tolérances et parement selon CCTP).</td></tr>
+<tr><td>Vues</td><td>Vue de dessus / en plan, vues A et B (coupes ou élévations), cotes de fabrication en rouge, cotes d'implantation en bleu.</td></tr>
+<tr><td><b>Débit · traçage · contrôles</b></td><td>Par matériau : repère, quantité, désignation, dimensions de chaque pièce ; panneaux CP à commander ; bois massif ; tableaux de traçage (ex. cerces) ; contrôles restants.</td></tr>
+<tr><td><b>Informations</b></td><td>Synthèse des choix (matériaux, dimensions intérieures, renforts, goussets, montage…).</td></tr>
+<tr><td><b>Hypothèses</b></td><td>Pour chaque hypothèse : valeur retenue et origine — <i>Norme</i>, <i>Calcul</i>, <i>Saisie</i>, <i>Fournisseur</i>, <i>Marché</i> ou <i>Règle de l'appli — à valider</i>. Les limites y sont écrites (ex. flèche du CP non vérifiée, étaiement hors périmètre).</td></tr>
+<tr><td>Pied de page</td><td>Légende des couleurs (CP, fonds, goussets, bois, tubes, béton, cotes).</td></tr></table>
+<h3>Repères des pièces</h3>
+<p>Chaque pièce porte un repère <b>Réf-Famille+n°</b> : <code>R01-J1</code> (joues / parois), <code>F</code> (fond inférieur, appui), <code>S</code> (fond supérieur, linteau), <code>B</code> (bois massif)… Le même repère se retrouve au débit, sur la feuille CP à découper, sur le gabarit 1:1, en 3D et dans le mode chantier : <b>l'écrire sur chaque pièce découpée</b>.</p>
+<div class="row"><div class="fig"><img src="img/08_feuille_cp.png"><div class="cap">CP à découper : imbrication sur panneaux, positions depuis le coin ●</div></div>
+<div class="fig"><img src="img/09_feuille_montage.png"><div class="cap">Montage 3D + contrôles : vue éclatée, étapes, cases à cocher</div></div></div>
+<div class="row"><div class="fig"><img src="img/10_fiche_atelier.png"><div class="cap">Fiche atelier A4 portrait : pièces à débiter, montage, contrôles, visa</div></div>
+<div><h3>Feuille CP à découper</h3><p>Plan de découpe de chaque panneau à commander (trait de scie compris) : pièces tournées si besoin, perçages, cotes de position depuis le coin <b>●</b> du panneau ; tableau des pièces. Les pièces cintrées ont un gabarit 1:1 (§ 7.7).</p>
+<h3>Montage 3D + contrôles</h3><p>Vue en perspective éclatée, ordre de montage et points à contrôler avant coulage.</p>
+<h3>Fiche atelier</h3><p>Version A4 portrait à remettre à l'atelier, avec cases à cocher et signature.</p></div></div>
+<div class="warn"><b>Cotes</b>Fabriquer avec les cotes inscrites. Les vues ne sont pas à l'échelle exacte sur le papier (et la courbure des voiles cintrés est volontairement amplifiée pour la lisibilité, ce qui est indiqué sur la vue).</div>
+
+<!-- ======================= 5 ======================= -->
+<h1 class="chap">5. Gérer les plans</h1>
+<div class="row"><div>
+<h3>Liste des plans</h3>
+<p>En bas du panneau, la carte <b>Plans</b> regroupe les plans par <b>chantier · ouvrage</b> (ordre alphabétique, nombre de plans par groupe).</p>
+<ul><li><b>Rechercher</b> : tous les mots tapés, sans tenir compte des accents (référence, ouvrage, forme, indice…). Le compteur affiche « trouvés / total ».</li>
+<li><b>Trier</b> chaque ouvrage par ordre de saisie, référence (R2 avant R10) ou forme.</li>
+<li>Cliquer un plan (ou Tab puis Entrée) pour l'afficher et le modifier ; ⧉ duplique ; × supprime.</li></ul></div>
+<div class="fig" style="flex:0 0 38%"><img src="img/11_liste.png"><div class="cap">Liste groupée, recherche et tri</div></div></div>
+<h3>Modifier un plan</h3>
+<div class="row"><div>
+<p>Un plan ouvert affiche <b>✔ METTRE À JOUR R01</b>. Tant que le formulaire diffère du plan enregistré, une <b>pastille rouge</b> et la ligne « ● R01 modifié — non enregistré dans le plan » le signalent. Revenir à la valeur d'origine (ou <kbd>Ctrl</kbd>+<kbd>Z</kbd>) retire le signalement.</p>
+<ul><li><b>Mettre à jour</b> : remplace le plan enregistré ;</li>
+<li><b>➕ Nouveau</b> : enregistre le formulaire comme un nouveau plan (ex. indice B en gardant l'indice A) ;</li>
+<li><b>⇄ Comparer</b> : § 7.4 ; <b>✖ Annuler</b> : quitte la modification.</li></ul>
+<p>Si un autre plan est ouvert alors qu'une saisie n'est pas enregistrée, un message propose <b>« Revenir »</b> pendant 10 secondes pour la retrouver.</p></div>
+<div class="fig" style="flex:0 0 38%"><img src="img/05_modifie.png"><div class="cap">Plan modifié, non mis à jour</div></div></div>
+<h3>Supprimer, annuler</h3>
+<div class="row"><div>
+<p>× supprime <b>immédiatement</b> ; le message « Plan R03 supprimé · <b>Annuler</b> » permet de le rétablir à sa place pendant 10 s. « Tout supprimer » demande confirmation (bouton rouge) puis reste annulable.</p>
+<p>↶ / ↷ (<kbd>Ctrl</kbd>+<kbd>Z</kbd> / <kbd>Ctrl</kbd>+<kbd>Y</kbd>) annulent et rétablissent les modifications du formulaire et le changement de plan affiché (100 étapes).</p></div>
+<div class="fig" style="flex:0 0 40%"><img src="img/12_question.png"><div class="cap">Question dans la fenêtre de l'application</div></div></div>
+
+<!-- ======================= 6 ======================= -->
+<h1 class="chap">6. Sauvegarder et charger</h1>
+<h3>Sauvegarder (fichier .json)</h3>
+<p>💾 <b>Sauvegarder</b> (<kbd>Ctrl</kbd>+<kbd>S</kbd>) télécharge <code>coffraplan_AAAA-MM-JJ.json</code> contenant <b>tous</b> les plans, profils de chantier et modèles. Le ranger dans le dossier du chantier (réseau, cloud) : c'est la vraie sauvegarde.</p>
+<h3>Charger</h3>
+<p>📂 <b>Charger</b> (<kbd>Ctrl</kbd>+<kbd>O</kbd>) relit un fichier .json. S'il y a déjà des plans, l'application demande de les <b>remplacer</b> (les profils et modèles du fichier sont ajoutés). Les fichiers des versions précédentes sont convertis automatiquement.</p>
+<h3>Rappel de sauvegarde</h3>
+<div class="row"><div>
+<ul><li><b>Pastille orange</b> sur 💾 et bandeau dans le panneau dès que le projet diffère du dernier fichier sauvegardé ou chargé.</li>
+<li><b>Rappel</b> 5 minutes après la première modification non sauvegardée : « Sauvegarder » ou « Plus tard » (nouveau rappel 15 min après ; <kbd>Échap</kbd> = Plus tard). Jamais à l'ouverture, jamais par-dessus une fenêtre ouverte.</li>
+<li>Fermer ou recharger l'onglet avec des modifications : le navigateur demande confirmation.</li>
+<li>Aucune sauvegarde automatique de fichier : c'est toujours vous qui sauvegardez.</li></ul></div>
+<div class="fig" style="flex:0 0 40%"><img src="img/13_rappel.png"><div class="cap">Rappel après 5 minutes</div></div></div>
+<div class="note"><b>Ce qui compte comme « modifié »</b>Ajouter, mettre à jour, supprimer un plan, modifier un profil ou un modèle. Taper dans le formulaire sans enregistrer le plan ne modifie pas le projet (voir la pastille « Mettre à jour », § 5) : <kbd>Ctrl</kbd>+<kbd>S</kbd> le rappelle dans son message.</div>
+<div class="warn"><b>Stockage du navigateur plein ou bloqué</b>Un message l'indique une fois par séance : sauvegarder immédiatement le fichier .json.</div>
+
+<!-- ======================= 7 ======================= -->
+<h1 class="chap">7. Fonctions avancées</h1>
+<h2>7.1 Profil de chantier et d'ouvrage</h2>
+<div class="row"><div>
+<p>Bouton <b>⚙</b> à côté du nom du chantier. Le profil définit les <b>valeurs par défaut</b> de chaque nouveau plan du chantier : CP (matériau, épaisseur, format), montage, trait de scie, entraxe des poutrelles, format d'impression, longueurs de bois du commerce (pour le débit des barres).</p>
+<p>Par <b>ouvrage</b> : Ø de cuve, épaisseur de voile, profondeur des poches. Si ces valeurs changent, l'application propose de mettre à jour les plans de l'ouvrage qui utilisaient les anciennes.</p>
+<p>Un plan garde ses propres valeurs si elles ont été modifiées à la main.</p></div>
+<div class="fig" style="flex:0 0 44%"><img src="img/14_profil.png"><div class="cap">Profil chantier</div></div></div>
+
+<h2>7.2 Bibliothèque de modèles</h2>
+<p>Liste « 📚 Bibliothèque » de la carte Type : <b>modèles courants</b> (trémies, réservation avec fond, fourreaux, puisard, massif, traversée biaise, baie de voile cintré) et <b>mes modèles</b>. <b>＋</b> enregistre le plan affiché comme modèle (nom demandé) ; <b>☰</b> liste les modèles personnels et permet de les supprimer. Charger un modèle garde le chantier et l'ouvrage en cours et propose la référence suivante.</p>
+
+<h2>7.3 Série de plans depuis un tableau</h2>
+<p>Pour créer d'un coup les réservations d'une liste (nomenclature du bureau d'études, métré) : <b>📋 Série de plans depuis un tableau</b> (carte Plans ou accueil).</p>
+<ol><li>Saisir d'abord le <b>nom du chantier</b> (et l'ouvrage par défaut) dans le formulaire ; régler le contreplaqué et les options : ils seront repris.</li>
+<li>Dans Excel, sélectionner les lignes (avec ou sans en-tête), copier, puis coller dans la fenêtre.</li>
+<li>Vérifier le tableau d'analyse : <b>✓ prêt</b>, <b>⚠</b> (avertissement, plan créé), <b>⛔ non créé</b> (motif affiché).</li>
+<li><b>Créer N plan(s)</b>. « Annuler » dans le message retire toute la série pendant 10 s.</li></ol>
+<table><tr><th>Colonne (en-tête)</th><th>Contenu</th><th>Remarques</th></tr>
+<tr><td>Réf</td><td>Référence</td><td>Vide → numérotation automatique.</td></tr>
+<tr><td>Forme</td><td>Nom ou abréviation</td><td>« Rectangulaire », « rect », « Carré », « Fourreau » (→ circulaire), « Puisard »… Vide : déduite (Ø → circulaire ; L = l → carré ; L ≠ l → rectangulaire).</td></tr>
+<tr><td>L · l · h · Ø</td><td>Cotes (mm)</td><td>Virgule décimale acceptée. Une cote sans objet pour la forme est signalée.</td></tr>
+<tr><td>Nombre</td><td>Exemplaires</td><td>1 par défaut.</td></tr>
+<tr><td>Ouvrage · Indice · Désignation</td><td>Facultatif</td><td>Vide → valeur du formulaire.</td></tr></table>
+<p class="small">Sans en-tête, l'ordre attendu est : Réf, Forme, L, l, h, Nombre. Séparateurs acceptés : tabulation (copier-coller Excel), point-virgule ou virgule. Les autres formes (dalle, poutre, goulotte…) se créent mieux une par une.</p>
+<div class="fig"><img src="img/15_serie.png" style="max-width:88%"><div class="cap">Analyse ligne par ligne avant création</div></div>
+
+<h2>7.4 Comparer deux indices</h2>
+<p>Plan affiché (ex. R02 ind. B) → <b>⇄ Comparer</b> → choisir la version de référence (le même repère est proposé par défaut) → la feuille de comparaison A4 s'affiche :</p>
+<ul><li><b>Saisies</b> différentes (rubrique, donnée, valeur A, valeur B) ;</li>
+<li><b>Débit</b> : lignes modifiées (jaune), ajoutées (vert), supprimées (rouge barré) ;</li>
+<li><b>Contrôles</b> nouveaux ou levés ; synthèse chiffrée et case <b>Visa</b>.</li></ul>
+<p>« 🖨 Imprimer la comparaison » (ou <kbd>Ctrl</kbd>+<kbd>P</kbd>) ; « Retour au plan » pour revenir. Idéal pour un visa ou pour prévenir l'atelier d'une modification.</p>
+<div class="fig half"><img src="img/16_comparaison.png"><div class="cap">Comparaison R02 ind. A → ind. B</div></div>
+
+<h2>7.5 Auto-contrôle et corrections automatiques</h2>
+<div class="row"><div>
+<p><b>🔍 Auto-contrôle</b> vérifie le plan affiché (ou tous les plans) : saisie dans les bornes, cohérence, valeurs lisibles, <b>textes qui se chevauchent</b> sur les feuilles, repères uniques, imbrication CP (pièces dans le panneau, trait de scie), surfaces imbriquées = surfaces du débit, rechargement identique.</p>
+<p>Pour les alertes de saisie, la partie <b>🛠 Corrections automatiques</b> propose une valeur qui lève l'alerte (ex. section de renfort suffisante contre le flambement) : « Corriger », « Tout corriger », ou pour tous les plans « Corriger tous les plans », toujours <b>annulable</b>. Si aucune valeur ne convient, l'application le dit (« à reprendre à la main »).</p></div>
+<div class="fig" style="flex:0 0 46%"><img src="img/17_autocontrole.png"><div class="cap">Auto-contrôle et corrections</div></div></div>
+
+<h2>7.6 Vue 3D interactive</h2>
+<p><b>🧊 Vue 3D interactive</b> : tourner (glisser), zoomer (molette, + / −), vues prédéfinies (ISO, dessus = plan, face, côté, dessous), <b>éclaté</b> (curseur), repères affichés, masquer le CP ou un type de pièce, cliquer une pièce pour afficher son repère. Clavier : flèches, + / −, <kbd>Échap</kbd> pour fermer. Les perçages, tubes et renforts sont modélisés ; l'application vérifie qu'aucune pièce n'en traverse une autre.</p>
+<div class="fig"><img src="img/20_3d.png" style="max-width:85%"><div class="cap">Vue 3D (forme spéciale circulaire)</div></div>
+
+<h2>7.7 Gabarits 1:1 des pièces cintrées</h2>
+<div class="row"><div>
+<p>Carte <b>Traceur — taille réelle</b> : largeur du rouleau (594 à 1067 mm) et sortie (<b>rouleau traceur</b>, ou A3 / A4 pour les pièces qui tiennent entières), puis <b>📏 Gabarit 1:1</b>. Une fenêtre s'ouvre avec un gabarit par pièce cintrée de la feuille CP à découper : même repère, même orientation, même position depuis le coin ● du panneau.</p>
+<ul><li>Pièces à coupes droites : pas de gabarit (cotes du plan).</li>
+<li>Pièce plus grande que la feuille : feuilles à assembler (recouvrement 20 mm, croix ✚ de calage) ; collage accepté.</li>
+<li>Dalle : gabarit des planches D limité à la <b>zone des arcs</b> (+100 mm) ou pièce entière.</li>
+<li>Fonds percés : centres et cercles de perçage reportés (P1…Pn).</li></ul></div>
+<div class="fig" style="flex:0 0 40%"><img src="img/22_gabarit.png"><div class="cap">Gabarit 1:1</div></div></div>
+<div class="warn"><b>Impression des gabarits</b>Imprimer à <b>100 % / taille réelle</b>, sans « ajuster à la page », puis contrôler une cote connue au mètre avant de tracer. Si la fenêtre ne s'ouvre pas : autoriser les fenêtres pop-up pour ce fichier.</div>
+
+<h2>7.8 Déplacement à la souris</h2>
+<p>Sur l'aperçu, certaines pièces ont une <b>poignée</b> (surbrillance orange au survol) : poutres de la dalle de couverture, poteaux de la forme spéciale. Glisser déplace la pièce ; la valeur s'affiche pendant le geste et le champ du formulaire est mis à jour (message « Position mise à jour — Ctrl+Z pour annuler »).</p>
+
+<h2>7.9 Récapitulatif chantier · commande</h2>
+<div class="row"><div>
+<p><b>🧾 Récapitulatif chantier</b> rassemble tous les plans du chantier : <b>bon de commande</b> (panneaux CP par matériau avec surfaces et rendement, bois massif en barres du commerce), débit des barres (optimisation des longueurs), liste des plans pris en compte (un plan incohérent est signalé « non compté »). Imprimable et exportable en XLSX.</p></div>
+<div class="fig" style="flex:0 0 50%"><img src="img/21_recap.png"><div class="cap">Récapitulatif chantier</div></div></div>
+
+<h2>7.10 Dossier PDF</h2>
+<p><b>📘 Dossier PDF</b> compose un dossier complet du chantier : page de garde, sommaire paginé, tous les plans, récapitulatif. Choisir « Enregistrer au format PDF » dans la fenêtre d'impression du navigateur (le nom de fichier est proposé automatiquement).</p>
+
+<h2>7.11 Exports DXF, CSV, XLSX, ZIP</h2>
+<div class="row"><div>
+<p><b>📤 Exporter</b> : étendue « plan affiché » ou « tous les plans du chantier ».</p>
+<ul><li><b>DXF</b> (R12, millimètres, par calques — annexe) : vue en plan à l'échelle 1, panneaux CP à découper, gabarits 1:1 et vues des feuilles ; pour le chantier : calepinage CP consolidé (+ un DXF par plan dans le ZIP).</li>
+<li><b>CSV</b> : débit à plat, pour un tableur ou un logiciel de découpe.</li>
+<li><b>XLSX</b> : synthèse à commander, débit CP et bois par plan avec sous-totaux, débit des barres.</li>
+<li><b>ZIP</b> : tout à la fois.</li></ul></div>
+<div class="fig" style="flex:0 0 42%"><img src="img/18_export.png"><div class="cap">Fenêtre Exporter</div></div></div>
+<div class="note"><b>Ouvrir le DXF dans AutoCAD</b>Régler les unités d'insertion en <b>millimètres</b>. Les textes utilisent la police standard (txt.shx) : les caractères spéciaux sont remplacés (Ø écrit avec le code AutoCAD <code>%%c</code>, ° avec <code>%%d</code>). Le <b>DWG</b> n'est pas généré (format propriétaire) : ouvrir le DXF puis « Enregistrer sous… DWG ». Les vues des feuilles ne sont pas à l'échelle : utiliser les cotes inscrites.</div>
+
+<h2>7.12 Mode chantier (tablette)</h2>
+<div class="fig"><img src="img/23_chantier.png" style="max-width:88%"><div class="cap">Mode chantier avec la liste des repères posés</div></div>
+<p><b>📱 Chantier</b> (barre du haut) affiche les feuilles en <b>plein écran, une à la fois</b>, ajustées à la largeur, en lecture seule (aucune modification possible par erreur).</p>
+<ul><li>Feuille suivante / précédente : boutons ‹ ›, <b>balayage du doigt</b>, flèches du clavier.</li>
+<li>Liste déroulante : choisir le plan.</li>
+<li><b>✓ Repères</b> : liste des pièces du plan à <b>cocher au montage</b>, avec compteur (ex. 5 / 8). Les coches restent sur la tablette (pas dans le fichier projet) ; « Tout décocher » pour recommencer.</li>
+<li>Tablette à l'horizontale pour une meilleure lisibilité ; <kbd>Échap</kbd> ou ✕ pour quitter.</li></ul>
+<div class="tip"><b>Sur chantier</b>Copier le fichier HTML et le dernier .json sur la tablette, ouvrir le HTML, 📂 Charger le .json, puis 📱 Chantier. Aucune connexion n'est nécessaire.</div>
+
+<h2>7.13 Impression</h2>
+<p>🖨 <b>Imprimer</b> (<kbd>Ctrl</kbd>+<kbd>P</kbd>) met en page <b>tous les plans enregistrés</b> (ou le plan affiché s'il n'y en a aucun) au format choisi. Carte <b>Impression</b> :</p>
+<table><tr><th>Réglage</th><th>Effet</th><th>Défaut</th></tr>
+<tr><td>Format</td><td>Profil du chantier, A3 paysage ou A4 paysage</td><td>Profil chantier</td></tr>
+<tr><td>Mise en page des feuilles</td><td><b>Plan pleine page</b> : feuille 1 = vues seules, feuille 1b = débit, informations, hypothèses · <b>Compacte</b> : vues, débit et informations sur la feuille 1 (mise en page des versions précédentes) · <b>Vues uniquement</b> : vues seules, sans feuille 1b</td><td>Plan pleine page</td></tr>
+<tr><td>Sommaire</td><td>Page de sommaire en tête si plus de 5 feuilles</td><td>Jamais</td></tr>
+<tr><td>Feuilles CP à découper</td><td>Ajoute les plans de découpe des panneaux</td><td>Décoché</td></tr>
+<tr><td>Montage 3D + contrôles</td><td>Ajoute la feuille de montage</td><td>Décoché</td></tr>
+<tr><td>Fiche atelier (A4 portrait)</td><td>Ajoute la fiche atelier</td><td>Décoché</td></tr>
+<tr><td>Noir et blanc</td><td>Couleurs remplacées par des motifs (photocopie)</td><td>Décoché</td></tr></table>
+<p>Si un texte est trop long pour sa case, la police est réduite automatiquement ; au-delà, une feuille « suite » est ajoutée et un message l'indique.</p>
+<div class="note"><b>Recto-verso</b>En « Plan pleine page », la feuille 1b tombe au dos du plan quand le plan commence sur une page recto. Avec plusieurs plans et un nombre impair de feuilles annexes, un plan peut commencer sur un verso : aucune page blanche n'est ajoutée.</div>
+
+<h2>7.14 Aperçu en attente (formes lourdes)</h2>
+<p>Quand un recalcul prend plus de 0,3 s, la frappe ne relance plus le calcul à chaque touche : l'aperçu est grisé avec le bandeau « ✎ Aperçu en attente — Entrée ou Tab pour recalculer (ou cliquer ici) ». Les listes déroulantes et les cases recalculent tout de suite. Les plans légers se recalculent pendant la frappe, comme d'habitude.</p>
+
+<h2>7.15 Cartes repliables</h2>
+<div class="row"><div>
+<p>Cliquer sur le titre d'une carte (ou Entrée au clavier) la replie : une ligne résume son contenu. L'état est mémorisé. Une alerte qui mène vers un champ d'une carte repliée la déplie automatiquement.</p></div>
+<div class="fig" style="flex:0 0 36%"><img src="img/06_replie.png"><div class="cap">Cartes Chantier et Type repliées</div></div></div>
+
+<!-- ======================= 8 ======================= -->
+<h1 class="chap">8. Raccourcis clavier</h1>
+<p>Sur Mac, <kbd>⌘</kbd> remplace <kbd>Ctrl</kbd>. Le bouton « ? » de la barre (ou la touche <kbd>?</kbd> hors saisie) affiche cette liste dans l'application.</p>
+<table><tr><th style="width:55mm">Raccourci</th><th>Action</th></tr>
+<tr><td><kbd>Ctrl</kbd>+<kbd>S</kbd></td><td>Sauvegarder le projet (fichier .json) — fonctionne aussi pendant une saisie</td></tr>
+<tr><td><kbd>Ctrl</kbd>+<kbd>O</kbd></td><td>Charger un projet</td></tr>
+<tr><td><kbd>Ctrl</kbd>+<kbd>P</kbd></td><td>Imprimer avec la mise en page de l'application (plans, récapitulatif ou comparaison affichés)</td></tr>
+<tr><td><kbd>Ctrl</kbd>+<kbd>Z</kbd></td><td>Annuler (dans un champ en cours de frappe : annule d'abord la frappe)</td></tr>
+<tr><td><kbd>Ctrl</kbd>+<kbd>Y</kbd> ou <kbd>Ctrl</kbd>+<kbd>Maj</kbd>+<kbd>Z</kbd></td><td>Rétablir</td></tr>
+<tr><td><kbd>Échap</kbd></td><td>Fermer la question, la fenêtre, le mode chantier ou l'aide ; « Plus tard » sur le rappel ; sinon quitter le champ</td></tr>
+<tr><td><kbd>?</kbd></td><td>Aide des raccourcis (hors saisie)</td></tr>
+<tr><td><kbd>Entrée</kbd></td><td>Sur une alerte : aller au champ · sur un plan de la liste : l'ouvrir · dans un champ (forme lourde) : recalculer</td></tr>
+<tr><td><kbd>←</kbd> <kbd>→</kbd></td><td>Mode chantier : feuille précédente / suivante</td></tr>
+<tr><td>Flèches, <kbd>+</kbd> <kbd>−</kbd></td><td>Vue 3D : tourner, zoomer</td></tr></table>
+<div class="fig half"><img src="img/19_raccourcis.png"><div class="cap">Aide intégrée</div></div>
+
+<!-- ======================= 9 ======================= -->
+<h1 class="chap">9. Bonnes pratiques et dépannage</h1>
+<h2>Routine conseillée</h2>
+<ol><li>Créer le <b>profil du chantier</b> (⚙) avant le premier plan.</li>
+<li>Saisir les plans (ou la série depuis le tableau du BE), traiter les alertes.</li>
+<li><b>💾 Sauvegarder</b> le .json dans le dossier du chantier (au moins à chaque fin de séance).</li>
+<li>🔍 Auto-contrôle de tous les plans.</li>
+<li>Récapitulatif chantier → commande ; impression ou dossier PDF ; gabarits 1:1 ; export DXF si besoin.</li>
+<li>Sur chantier : mode chantier sur tablette, repères cochés au montage.</li>
+<li>Modification : nouvel indice (➕ Nouveau), ⇄ Comparer, imprimer la comparaison pour visa.</li></ol>
+<h2>Questions fréquentes</h2>
+<table><tr><th style="width:62mm">Problème</th><th>Solution</th></tr>
+<tr><td>Mes plans ont disparu</td><td>Le navigateur a été vidé ou ce n'est pas le même navigateur / poste : 📂 Charger le dernier .json. D'où l'intérêt de sauvegarder souvent.</td></tr>
+<tr><td>Transférer sur un autre poste ou une tablette</td><td>Copier le fichier HTML et le .json ; ouvrir le HTML puis 📂 Charger.</td></tr>
+<tr><td>Le bouton « Mettre à jour » a une pastille rouge</td><td>Le formulaire diffère du plan enregistré : « Mettre à jour » pour enregistrer, ou ✖ Annuler.</td></tr>
+<tr><td>Un plan est refusé / « Plan incohérent »</td><td>Lire les alertes ⛔, cliquer dessus pour aller au champ ; 🔍 Auto-contrôle propose souvent une correction automatique.</td></tr>
+<tr><td>La fenêtre des gabarits ne s'ouvre pas</td><td>Autoriser les fenêtres pop-up pour ce fichier dans le navigateur.</td></tr>
+<tr><td>Le gabarit imprimé n'est pas à la bonne taille</td><td>Imprimer à 100 % (« taille réelle »), sans ajustement ; vérifier une cote au mètre.</td></tr>
+<tr><td>DXF : dessin minuscule ou énorme dans AutoCAD</td><td>Unités d'insertion en millimètres.</td></tr>
+<tr><td>L'aperçu est grisé « en attente »</td><td>Forme lourde : appuyer sur Entrée ou Tab, ou cliquer sur le bandeau.</td></tr>
+<tr><td>Textes trop petits à l'impression</td><td>Passer en A3, ou « Textes des plans » plus grands dans la carte Chantier ; décocher les feuilles inutiles.</td></tr>
+<tr><td>Je veux une copie papier en noir et blanc</td><td>Cocher « Noir et blanc » : les couleurs deviennent des motifs.</td></tr></table>
+<div class="note"><b>Limites connues</b>Testé sous Chrome / Edge (Chromium) ; Firefox et Safari non validés. DXF vérifié avec un lecteur DXF (ezdxf) ; ouverture dans AutoCAD à confirmer sur vos fichiers. Les valeurs d'efforts (flambement des renforts) sont des aides à la décision, pas une note de calcul : faire vérifier en cas de doute.</div>
+
+<h1 style="margin-top:8mm">Annexe — calques DXF</h1>
+<table><tr><th style="width:55mm">Calque</th><th>Contenu</th></tr>
+<tr><td>PLAN_CP_JOUES, PLAN_CP_FOND_INF, PLAN_CP_FOND_SUP</td><td>Vue en plan : contreplaqué des parois, du fond inférieur et supérieur</td></tr>
+<tr><td>PLAN_GOUSSETS, PLAN_CLOISONS, PLAN_BOIS</td><td>Goussets, cloisons / montants CP, bois massif</td></tr>
+<tr><td>PLAN_TUBES_CARTON, PLAN_TUBE_PVC, PLAN_POCHES, PLAN_BETON</td><td>Tubes, fourreaux, poches, béton</td></tr>
+<tr><td>CP_PANNEAUX</td><td>Contour des panneaux à commander</td></tr>
+<tr><td>CP_DECOUPE, CP_TROUS, CP_PERCAGES</td><td>Trait de découpe des pièces, évidements, perçages</td></tr>
+<tr><td>CP_PLATELAGE</td><td>Panneaux et planches de platelage (dalle)</td></tr>
+<tr><td>CP_REPERES, CP_TEXTES</td><td>Repères et cotes des pièces, libellés des panneaux</td></tr>
+<tr><td>GABARIT_DECOUPE, GABARIT_REPERES, GABARIT_TEXTES</td><td>Gabarits 1:1 : trait de découpe, repères, textes</td></tr>
+<tr><td>VUES_TRAITS, VUES_COTES, VUES_TEXTES</td><td>Vues des feuilles (échelle du dessin)</td></tr>
+<tr><td>CARTOUCHE</td><td>Titres des sections</td></tr></table>
+<p class="small" style="margin-top:10mm;text-align:center">CoffraPlan v{{VERSION}} — mode d'emploi — Conçu par Kévin TRINH · Conducteur de travaux</p>
+</body></html>
