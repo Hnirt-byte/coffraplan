@@ -117,7 +117,7 @@ body.pm .inf{font-size:9.5px;line-height:1.25}body.pm .inf .nt{font-size:.95em}b
 </head>
 <body>
 <div class="hdr">
-<div class="hdr-t">📐 Plans <span>Réservation</span></div>
+<div class="hdr-t">📐 Plans <span>Réservation</span> <small id="appVer" style="font-size:11px;opacity:.7;font-weight:600">v2.0</small></div>
 <div style="flex:1"></div>
 <button class="btn bs bo no-print" id="bUndo" onclick="undo()" title="Annuler (Ctrl+Z)">↶</button>
 <button class="btn bs bo no-print" id="bRedo" onclick="redo()" title="Rétablir (Ctrl+Y)">↷</button>
@@ -178,9 +178,9 @@ body.pm .inf{font-size:9.5px;line-height:1.25}body.pm .inf .nt{font-size:.95em}b
 <div class="cd"><div class="ct">📏 Traceur — taille réelle</div>
 <div class="fd"><label>Largeur du rouleau</label><select class="fi" id="iRoll" onchange="try{localStorage.setItem('resaRoll',this.value)}catch(e){}"><option value="594">594 mm (A1)</option><option value="610">610 mm (24")</option><option value="841">841 mm (A0)</option><option value="914" selected>914 mm (36")</option><option value="1067">1067 mm (42")</option></select></div>
 <div class="fd"><label>Sortie</label><select class="fi" id="iGabFmt" onchange="try{localStorage.setItem('resaGabFmt',this.value)}catch(e){}"><option value="roll">Rouleau traceur</option><option value="A3">A3 (pièces qui tiennent entières)</option><option value="A4">A4 (pièces qui tiennent entières)</option></select></div>
-<div class="fd"><label>Dalle : gabarits</label><select class="fi" id="iGabDal"><option value="band">Planches D : bande de l'arc (par pièce)</option><option value="full">Planches D : pièce entière</option><option value="arc">Arc générique (une corde)</option></select></div>
+<div class="fd"><label>Dalle : gabarit des planches D</label><select class="fi" id="iGabDal"><option value="band">Zone des arcs (+100 mm)</option><option value="full">Pièce entière</option></select></div>
 <button class="btn bs bo" onclick="openGab()" style="width:100%">📏 Gabarit 1:1 des pièces cintrées</button>
-<div class="hint" style="margin:8px 0 0">Voile cintré : linteau / appui / cerces. Concentrique : fond et cerces. Goulotte : segment de fond. Dalle : planches D. Une pièce entière par page (pivotée si besoin), aucun assemblage ; pièces trop grandes pour A4 / A3 → traceur.</div></div>
+<div class="hint" style="margin:8px 0 0">Un gabarit par pièce cintrée de la feuille CP À DÉCOUPER : même repère, même orientation, même position depuis le coin ● du panneau. Pièces à coupes droites : cotes du plan, pas de gabarit. Pièce plus grande que la feuille : feuilles à assembler (recouvrement 20 mm, croix ✚).</div></div>
 <div class="sep"></div>
 <div id="zExp" class="hint" style="display:none;border-left-color:var(--red);margin:0 0 10px"></div>
 <div class="cd"><div class="ct">📑 Plans (<span id="pc">0</span>)</div><div id="sl" style="max-height:220px;overflow-y:auto"></div>
@@ -1459,87 +1459,6 @@ function axisMannequin(d,g,M,ep){
 // Tout en millimètres : 1 unité SVG = 1 mm
 function gTx(o,x,y,s,sz,an,fw,c){o.push(`<text x="${x.toFixed(2)}" y="${y.toFixed(2)}" font-size="${sz}" text-anchor="${an||'start'}" font-weight="${fw||400}" fill="${c||'#000'}" font-family="Arial,Helvetica,sans-serif">${s}</text>`)}
 function gLn(o,x1,y1,x2,y2,sw,da,c){o.push(`<line x1="${x1.toFixed(2)}" y1="${y1.toFixed(2)}" x2="${x2.toFixed(2)}" y2="${y2.toFixed(2)}" stroke="${c||'#000'}" stroke-width="${sw||0.3}"${da?` stroke-dasharray="${da}"`:''}/>`)}
-// Carré de contrôle 100 × 100 + règle graduée
-function gCtrl(o,x,y,wAv){
-  o.push(`<rect x="${x}" y="${y}" width="100" height="100" fill="none" stroke="#000" stroke-width="0.5"/>`);
-  gLn(o,x,y,x+100,y+100,0.2,'2,2','#999');gLn(o,x+100,y,x,y+100,0.2,'2,2','#999');
-  gTx(o,x+50,y+46,'CONTRÔLE',6,'middle',700);gTx(o,x+50,y+56,'100 × 100 mm',5,'middle');gTx(o,x+50,y+64,'diag. 141,4 mm',4,'middle');
-  const Lr=Math.min(1000,Math.floor((wAv-130)/100)*100);
-  if(Lr>=100){const x0=x+130,yb=y+70;gLn(o,x0,yb,x0+Lr,yb,0.4);
-    for(let i=0;i<=Lr;i+=10){const hh=i%100===0?12:i%50===0?8:4;gLn(o,x0+i,yb,x0+i,yb-hh,i%100===0?0.4:0.25);if(i%100===0)gTx(o,x0+i,yb+7,String(i),4.5,'middle')}
-    gTx(o,x0+Lr+4,yb+2,'mm',4.5)}
-}
-function gabVoile(d,g){
-  const ep=d.ep,L2=g.L/2,Ri=g.Ri,Re=g.Re,rad=g.rad,al=g.al||0,man=d.constr!=='caisson';
-  const yAt=(r,x)=>Math.sqrt(r*r-x*x),pol=(r,th)=>[r*Math.sin(th),r*Math.cos(th)],mx=p=>[-p[0],p[1]];
-  const oR=rad?pol(Re,al):[L2,yAt(Re,L2)],iR=rad?pol(Ri,al):[L2,yAt(Ri,L2)],oL=mx(oR),iL=mx(iR);
-  const xM=Math.max(oR[0],iR[0]),ybot=iR[1],m=40,top=115,bot=160;
-  const W=Math.max(2*xM+2*m,420),H=(Re-ybot)+top+bot,cx0=W/2;
-  const X=x=>cx0+x,Y=y=>top+(Re-y),P=p=>`${X(p[0]).toFixed(2)},${Y(p[1]).toFixed(2)}`;
-  const A=(r,p,sw)=>`A${r.toFixed(3)},${r.toFixed(3)} 0 0,${sw} ${P(p)}`,o=[];
-  // Emplacement des joues (hachuré)
-  let jR,cut;
-  if(rad){const n=[-Math.cos(al),Math.sin(al)],P3=[oR[0]+n[0]*ep,oR[1]+n[1]*ep],P4=[iR[0]+n[0]*ep,iR[1]+n[1]*ep];jR=[iR,oR,P3,P4];cut=[P4,P3]}
-  else{const xa=L2-ep;jR=[iR,oR,[xa,yAt(Re,xa)],[xa,yAt(Ri,xa)]];cut=[jR[3],jR[2]]}
-  [jR,jR.map(mx)].forEach(q=>o.push(`<path d="M${q.map(P).join(' L')} Z" fill="url(#gj)" stroke="#777" stroke-width="0.2"/>`));
-  // Emprise (nus béton) en tirets ; contour de découpe des plaques (entre joues, et entre faces pour le caisson) en trait fort
-  o.push(`<path d="M${P(oL)} ${A(Re,oR,1)} L${P(iR)} ${A(Ri,iL,0)} Z" fill="none" stroke="#777" stroke-width="0.3" stroke-dasharray="6,3"/>`);
-  const rO=Re-(man?0:ep),rI=Ri+(man?0:ep),cx2=(r,p)=>rad?(()=>{const a=Math.atan2(p[0],p[1]);return[r*Math.sin(a),r*Math.cos(a)]})():[p[0],yAt(r,p[0])];
-  const q2=cx2(rO,cut[1]),q3=cx2(rI,cut[0]);
-  if(!man){o.push(`<path d="M${P(oL)} ${A(Re,oR,1)} L${P([oR[0],yAt(Re-ep,oR[0])])} ${A(Re-ep,[-oR[0],yAt(Re-ep,oR[0])],0)} Z" fill="url(#gj)" stroke="#777" stroke-width="0.2"/>`);
-    o.push(`<path d="M${P([-iR[0],yAt(Ri+ep,iR[0])])} ${A(Ri+ep,[iR[0],yAt(Ri+ep,iR[0])],1)} L${P(iR)} ${A(Ri,iL,0)} Z" fill="url(#gj)" stroke="#777" stroke-width="0.2"/>`)}
-  // v18 : contour de découpe = même polygone que le débit / l'imbrication (platePolyRaw) ; évidement des cerces et joints des plaques plus longues que le panneau
-  const PL=q=>'M'+q.map(P).join(' L')+' Z',Rd=debit(d,g),pls=Rd.filter(r=>r.sh&&r.sh.t==='plate');nestPieces(d,Rd); // renseigne r.cells (découpe des plaques trop longues)
-  o.push(`<path class="gcut" d="${PL(platePolyRaw(g,true,!man))}" fill="none" stroke="#000" stroke-width="0.8"/>`);
-  const hl=pls.find(r=>r.sh.hole>0);if(hl){o.push(`<path class="ghole" d="${PL(platePolyRaw(g,true,!man,hl.sh.hole))}" fill="none" stroke="#000" stroke-width="0.8"/>`);
-    const hp=platePolyRaw(g,true,!man,hl.sh.hole),hb=bbox(hp);gTx(o,X((hb[0]+hb[2])/2),Y((hb[1]+hb[3])/2)+1.5,'ÉVIDEMENT (cerces '+esc(hl.tag)+' seulement)',4,'middle',700,'#c0392b')}
-  const cl=pls.map(r=>r.cells).find(c=>c&&c.cells.length>1);let nJ=0;
-  if(cl){const poly=platePolyRaw(g,true,!man),xs=[...new Set(cl.cells.map(c=>c[0]).filter(a=>a>0.5))],ys=[...new Set(cl.cells.map(c=>c[1]).filter(b=>b>0.5))];
-    const cutY=xv=>{const I=[];for(let i=0;i<poly.length;i++){const a=poly[i],b=poly[(i+1)%poly.length];if((a[0]-xv)*(b[0]-xv)<=0&&a[0]!==b[0])I.push(a[1]+(xv-a[0])*(b[1]-a[1])/(b[0]-a[0]))}return I.length?[Math.min(...I),Math.max(...I)]:null};
-    xs.forEach(a=>{const xv=cl.x0+a,yy=cutY(xv);if(!yy)return;nJ++;o.push(`<line class="gjoint" data-x="${xv.toFixed(2)}" x1="${X(xv).toFixed(2)}" y1="${Y(yy[1]).toFixed(2)}" x2="${X(xv).toFixed(2)}" y2="${Y(yy[0]).toFixed(2)}" stroke="${BM_JC}" stroke-width="0.6" stroke-dasharray="5,2"/>`);
-      gTx(o,X(xv)+1.5,Y(yy[1])-2,'joint '+nf(a,0)+' depuis le bord gauche',3.4,'start',700,BM_JC)});
-    ys.forEach(b=>{const yv=cl.y0+b;nJ++;gLn(o,X(cl.x0),Y(yv),X(cl.x0+cl.w),Y(yv),0.6,'5,2',BM_JC)});
-    cl.cells.forEach((c,j)=>{const cx=cl.x0+(c[0]+c[2])/2,cy=cl.y0+(c[1]+c[3])/2;gTx(o,X(cx),Y(cy)+2,'abcdefghijklmnopqrstuvwxyz'[j%26],7,'middle',800,BM_JC)});}
-  // Axe + cordes
-  gLn(o,X(0),Y(Re)+-20,X(0),Y(ybot)+14,0.3,'12,3,2,3','#555');
-  gLn(o,X(oL[0]),Y(oL[1]),X(oR[0]),Y(oR[1]),0.25,'3,2','#777');gLn(o,X(iL[0]),Y(iL[1]),X(iR[0]),Y(iR[1]),0.25,'3,2','#777');
-  // Ordonnées de traçage depuis la corde
-  const st=g.L>=800?100:50;
-  for(let x=st;x<g.cExt/2-1;x+=st){const ya=yAt(Re,x);[1,-1].forEach(sg=>gLn(o,X(sg*x),Y(oR[1]),X(sg*x),Y(ya),0.25,null,'#555'));
-    gTx(o,X(x)+1,Y(oR[1])+5,nf(GEO.ord(Re,g.cExt,x),1),3.5,'start',400,'#333');gTx(o,X(x),Y(ya)-2,nf(x),3.2,'middle',400,'#777')}
-  for(let x=st;x<g.cInt/2-1;x+=st){const ya=yAt(Ri,x);[1,-1].forEach(sg=>gLn(o,X(sg*x),Y(iR[1]),X(sg*x),Y(ya),0.25,null,'#555'));
-    gTx(o,X(x)+1,Y(iR[1])+5,nf(GEO.ord(Ri,g.cInt,x),1),3.5,'start',400,'#333')}
-  gTx(o,X(0)+2,Y(oR[1])+5,'f '+nf(g.fExt,1),4,'start',700);gTx(o,X(0)+2,Y(iR[1])+5,'f '+nf(g.fInt,1),4,'start',700);
-  // Repères des montants
-  if(man&&d.bM>0){const M=manGeo(d,g);M.xs.forEach(x=>{const c=rad?pol(M.Rm,Math.asin(x/M.Rm)):[x,(yAt(Ri,x)+yAt(Re,x))/2],b=d.bM,br=d.bMr||b;
-    o.push(`<rect x="${(X(c[0])-b/2).toFixed(2)}" y="${(Y(c[1])-br/2).toFixed(2)}" width="${b}" height="${br}" fill="none" stroke="#000" stroke-width="0.3" stroke-dasharray="2,1.5"/>`);
-    gTx(o,X(c[0]),Y(c[1])+1.5,'M',4,'middle',700)})}
-  // Textes
-  gTx(o,m,16,`GABARIT 1:1 — ${man?(d.cS&&d.cS!=='cp'?'LINTEAU / APPUI':'LINTEAU / APPUI / CERCES'):(d.ferme?'DESSUS / DESSOUS':'')+(d.ferme&&d.renV?' / ':'')+(d.renV?'CERCES':'')} — ${esc(d.ch)} ${esc(d.ouv||'')} ${esc(d.ref)}${d.ind?' ind. '+esc(d.ind):''}`,8,'start',700);
-  gTx(o,m,28,`R int (parement int.) ${nf(Ri,1)} · R ext ${nf(Re,1)} · corde ext ${nf(g.cExt,1)} · corde int ${nf(g.cInt,1)} · l axe ${nf(g.l)} · f ext ${nf(g.fExt,1)} · f int ${nf(g.fInt,1)} (mm)`,4.5);
-  gTx(o,m,38,'Trait fort : contour de découpe '+(man?'linteau / appui / cerces (entre les joues)':'dessus / dessous (entre faces et joues)')+' · Tirets : nus béton · Hachures : joues'+(man?'':' et faces')+(man&&d.bM>0?' · M : montants':''),4.2);
-  gTx(o,m,47,'Traits fins : ordonnée corde → arc (mm) tous les '+st+' mm depuis l\'axe. Joues '+(rad?'radiales':'parallèles')+(nJ?' · Tirets violets : plaque plus longue que le panneau CP, débitée en morceaux '+cl.cells.map((c,j)=>'abcdefghijklmnopqrstuvwxyz'[j%26]).join(' / ')+' (repères du débit), joint sur tasseau':''),4.2);
-  gTx(o,m,56,'Imprimer à 100 % (taille réelle). Vérifier le carré 100 × 100 mm AVANT de tracer.',4.2,'start',700,'#c0392b');
-  gTx(o,X(0),Y(Re)-24,'PAREMENT EXTÉRIEUR (R '+nf(Re,1)+')',5.5,'middle',700);
-  gTx(o,X(0),Y(ybot)+26,'PAREMENT INTÉRIEUR (R '+nf(Ri,1)+') — centre cuve ↓',5.5,'middle',700);
-  gCtrl(o,m,Y(ybot)+45,W-2*m);
-  return{w:W,h:H,svg:o.join(''),name:'gabarit_'+(d.ref||'voile')};
-}
-function gabCirc(d){
-  const De=d.Dext,Di=d.Dint>0?d.Dint:0,ep=d.ep,m=40,top=70,bot=150;
-  const W=Math.max(De+2*m,420),H=De+top+bot,cx=W/2,cy=top+De/2,o=[];
-  const ci=(r,sw,da)=>o.push(`<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="#000" stroke-width="${sw}"${da?` stroke-dasharray="${da}"`:''}/>`);
-  ci(De/2,0.3,'6,3');ci(De/2-ep,0.8);if(Di>0){ci(Di/2,0.3,'6,3');ci(Di/2+ep,0.8)}
-  gLn(o,cx-De/2-15,cy,cx+De/2+15,cy,0.3,'12,3,2,3','#555');gLn(o,cx,cy-De/2-15,cx,cy+De/2+15,0.3,'12,3,2,3','#555');
-  for(let a=0;a<360;a+=15){const r=a*Math.PI/180,r1=De/2,r2=De/2+(a%45===0?10:5);
-    gLn(o,cx+r1*Math.cos(r),cy+r1*Math.sin(r),cx+r2*Math.cos(r),cy+r2*Math.sin(r),0.3);
-    if(a%45===0)gTx(o,cx+(r2+6)*Math.cos(r),cy+(r2+6)*Math.sin(r)+1.5,a+'°',4,'middle')}
-  gTx(o,m,16,`GABARIT 1:1 — ${d.forme==='circ_fond'?'FOND ANNULAIRE / CERCES':'CERCES'} — ${esc(d.ch)} ${esc(d.ouv||'')} ${esc(d.ref)}`,8,'start',700);
-  gTx(o,m,28,`Trait fort : découpe fond / cerces Ø ${nf(De-2*ep)}`+(Di>0?` et Ø ${nf(Di+2*ep)}`:'')+` (parois fixées contre le chant) · Tirets : faces coffrantes Ø ${nf(De)}`+(Di>0?` / Ø ${nf(Di)}`:'')+' (mm)',4.5);
-  gTx(o,m,38,'Imprimer à 100 % (taille réelle). Vérifier le carré 100 × 100 mm AVANT de tracer.',4.2,'start',700,'#c0392b');
-  gCtrl(o,m,top+De+30,W-2*m);
-  return{w:W,h:H,svg:o.join(''),name:'gabarit_'+(d.ref||'circulaire')};
-}
 // openGab : voir module « gabarits 1:1 » (rouleau / A4 / A3)
 // ====== GOULOTTE CINTRÉE (coffrage du béton) ======
 // Repère : centre de l'ouvrage à l'origine. R0 = nu béton ext. (face coffrante de la joue ext.), R1 = R0 − b (nu béton int.).
@@ -1692,31 +1611,6 @@ function gouCal(d,G){
   v.T(160,9,f.per+' segment(s) par panneau — '+(f.flip?'tête-bêche':'même sens')+', trait de scie '+nf(G.kerf)+' mm',6.5,'#888','middle',400,'Barlow,sans-serif');
   v.T(160,20,'segment : corde '+nf(G.c,1)+' · profondeur '+nf(G.t,1)+' · θ '+nf(G.th*180/Math.PI,2)+'°',6.5,DC,'middle',600);
   return v.out();
-}
-// Gabarit 1:1 d'un segment de fond
-function gabGoulotte(d){
-  const G=gouGeo(d),o=[],m=40,top=120,bot=160,h=G.th/2,cO=2*G.rO*Math.sin(h),W=Math.max(cO+2*m,420),H=(G.rO-G.rI*Math.cos(h))+top+bot,cx0=W/2;
-  const y0=G.r1*Math.cos(h),X=x=>cx0+x,Y=y=>top+(G.rO-y),P=(r,a)=>`${X(r*Math.sin(a)).toFixed(2)},${Y(r*Math.cos(a)).toFixed(2)}`;
-  const A=(r,a,sw)=>`A${r.toFixed(3)},${r.toFixed(3)} 0 0,${sw} ${P(r,a)}`;
-  if(G.jE)o.push(`<path d="M${P(G.rO,-h)} ${A(G.rO,h,1)} L${P(G.R0,h)} ${A(G.R0,-h,0)} Z" fill="url(#gj)" stroke="#777" stroke-width="0.2"/>`);
-  if(G.jI)o.push(`<path d="M${P(G.R1,-h)} ${A(G.R1,h,1)} L${P(G.rI,h)} ${A(G.rI,-h,0)} Z" fill="url(#gj)" stroke="#777" stroke-width="0.2"/>`);
-  o.push(`<path d="M${P(G.r2,-h)} ${A(G.r2,h,1)} L${P(G.r1,h)} ${A(G.r1,-h,0)} Z" fill="none" stroke="#000" stroke-width="0.8"/>`);
-  const yc2=G.r2*Math.cos(h),yc1=y0;
-  gLn(o,X(-G.r2*Math.sin(h)),Y(yc2),X(G.r2*Math.sin(h)),Y(yc2),0.25,'3,2','#777');
-  gLn(o,X(-G.r1*Math.sin(h)),Y(yc1),X(G.r1*Math.sin(h)),Y(yc1),0.25,'3,2','#777');
-  gLn(o,X(0),Y(G.rO)-20,X(0),Y(yc1)+14,0.3,'12,3,2,3','#555');
-  const st=G.c>=800?100:50,c2=2*G.r2*Math.sin(h),c1=2*G.r1*Math.sin(h);
-  for(let x=st;x<c2/2-1;x+=st){const ya=Math.sqrt(G.r2*G.r2-x*x);[1,-1].forEach(sg=>gLn(o,X(sg*x),Y(yc2),X(sg*x),Y(ya),0.25,null,'#555'));
-    gTx(o,X(x)+1,Y(yc2)+5,nf(ya-yc2,1),3.5,'start',400,'#333');gTx(o,X(x),Y(ya)-2,nf(x),3.2,'middle',400,'#777')}
-  for(let x=st;x<c1/2-1;x+=st){const ya=Math.sqrt(G.r1*G.r1-x*x);[1,-1].forEach(sg=>gLn(o,X(sg*x),Y(yc1),X(sg*x),Y(ya),0.25,null,'#555'));
-    gTx(o,X(x)+1,Y(yc1)+5,nf(ya-yc1,1),3.5,'start',400,'#333')}
-  gTx(o,X(0)+2,Y(yc2)+5,'f '+nf(G.r2-yc2,1),4,'start',700);gTx(o,X(0)+2,Y(yc1)+5,'f '+nf(G.r1-yc1,1),4,'start',700);
-  gTx(o,m,16,`GABARIT 1:1 — SEGMENT DE FOND DE GOULOTTE (× ${G.n}) — ${esc(d.ch)} ${esc(d.ouv||'')} ${esc(d.ref)}`,8,'start',700);
-  gTx(o,m,28,`R ext ${nf(G.r2,1)} · R int ${nf(G.r1,1)} · θ ${nf(G.th*180/Math.PI,3)}° · corde ext ${nf(c2,1)} · corde int ${nf(c1,1)} · profondeur ${nf(G.t,1)} · b ${nf(G.b)} (mm)`,4.5);
-  gTx(o,m,38,'Trait fort : contour du segment (nus béton) · Hachures : joues fixées contre le chant du fond · Traits fins : ordonnée corde → arc tous les '+st+' mm',4.2);
-  gTx(o,m,56,'Imprimer à 100 % (taille réelle). Vérifier le carré 100 × 100 mm AVANT de tracer.',4.2,'start',700,'#c0392b');
-  gCtrl(o,m,Y(G.rI*Math.cos(h))+40,W-2*m);
-  return{w:W,h:H,svg:o.join(''),name:'gabarit_goulotte_'+(d.ref||'segment')};
 }
 
 // ====== DALLE DE COUVERTURE (platelage CP + poutres) ======
@@ -2570,20 +2464,6 @@ function bmInfo(BG,row){const P=BG.P;
   const pots=BG.beams.flatMap(bm=>bm.pots.map(p=>`P${bm.n} @ ${nf(p.s)} Ø${nf(p.D)}`));if(pots.length)row('Poteaux',pots.join(' · '));
   const pc=BG.beams.flatMap(bm=>bm.poch);if(pc.length)row('Poches voile',`${pc.length} × ${[...new Set(pc.map(p=>nf(p.W)+' × '+nf(p.h)))].join(' / ')} mm · profondeur ${nf(P.pp)} mm ⟂ voile${pc.some(p=>p.R)?' (fond cintré)':''}<br><span class="nt">voile ${nf(P.ev)} mm · côtés de ${nf(Math.min(...pc.flatMap(p=>p.Ls)),0)} à ${nf(Math.max(...pc.flatMap(p=>p.Ls)),0)} mm le long de l'axe</span>`);
 }
-// Gabarit 1:1 : portion d'arc (bande de 150 mm) pour tracer les découpes circulaires
-function gabDalle(d){
-  const G=dalGeo(d);if(G.sh.t!=='circ')return{msg:'Dalle rectangulaire : toutes les coupes sont droites, utiliser les cotes de la feuille 1.'};
-  const R=G.sh.R,b=Math.min(150,R/3),c=Math.min(1200,1.8*R),th=2*Math.asin(c/2/R),h=th/2,r1=R-b,o=[],m=40,top=110,bot=150;
-  const W=Math.max(c+2*m,420),H=(R-r1*Math.cos(h))+top+bot,cx0=W/2,X=x=>cx0+x,Y=y=>top+(R-y),P=(r,a)=>`${X(r*Math.sin(a)).toFixed(2)},${Y(r*Math.cos(a)).toFixed(2)}`;
-  o.push(`<path d="M${P(R,-h)} A${R.toFixed(3)},${R.toFixed(3)} 0 0,1 ${P(R,h)} L${P(r1,h)} A${r1.toFixed(3)},${r1.toFixed(3)} 0 0,0 ${P(r1,-h)} Z" fill="none" stroke="#000" stroke-width="0.8"/>`);
-  const yc=R*Math.cos(h);gLn(o,X(-R*Math.sin(h)),Y(yc),X(R*Math.sin(h)),Y(yc),0.25,'3,2','#777');gLn(o,X(0),Y(R)-20,X(0),Y(r1*Math.cos(h))+14,0.3,'12,3,2,3','#555');
-  for(let x=100;x<c/2-1;x+=100){const ya=Math.sqrt(R*R-x*x);[1,-1].forEach(sg=>gLn(o,X(sg*x),Y(yc),X(sg*x),Y(ya),0.25,null,'#555'));gTx(o,X(x)+1,Y(yc)+5,nf(ya-yc,1),3.5,'start',400,'#333')}
-  gTx(o,m,16,`GABARIT 1:1 — ARC DE DÉCOUPE DU PLATELAGE R ${nf(R)} — ${esc(d.ch)} ${esc(d.ouv||'')} ${esc(d.ref)}`,8,'start',700);
-  gTx(o,m,28,`Trait fort extérieur : arc R ${nf(R,1)} mm (corde ${nf(c,1)}) à reporter sur chaque planche D en faisant glisser le gabarit le long du tracé.`,4.5);
-  gTx(o,m,38,'Imprimer à 100 % (taille réelle). Vérifier le carré 100 × 100 mm AVANT de tracer.',4.2,'start',700,'#c0392b');
-  gCtrl(o,m,Y(r1*Math.cos(h))+40,W-2*m);
-  return{w:W,h:H,svg:o.join(''),name:'gabarit_arc_dalle_'+(d.ref||'R'+Math.round(R))};
-}
 
 // ====== PLAN COMPLET ======
 function gen(d0){
@@ -3202,7 +3082,8 @@ function platePolyRaw(g,inner,faces,w){
 }
 function platePoly(g,inner,faces){return normPoly(platePolyRaw(g,inner,faces))}
 function normPoly(P){const x0=Math.min(...P.map(p=>p[0])),y0=Math.min(...P.map(p=>p[1]));return P.map(([x,y])=>[x-x0,y-y0])}
-function circPoly(D,n){n=n||72;const r=D/2,P=[];for(let i=0;i<n;i++){const t=2*Math.PI*i/n;P.push([r+r*Math.cos(t),r+r*Math.sin(t)])}return P}
+// v2.0 : nombre de côtés tel que la flèche entre deux sommets reste ≤ 0,05 mm (72 côtés fixes en v19 : jusqu'à 1,4 mm d'écart sur un fond Ø 3 m, repris par la feuille de débit et le DXF)
+function circPoly(D,n){n=n||Math.max(72,Math.ceil(Math.PI/Math.acos(1-0.05/Math.max(D/2,1))));const r=D/2,P=[];for(let i=0;i<n;i++){const t=2*Math.PI*i/n;P.push([r+r*Math.cos(t),r+r*Math.sin(t)])}return P}
 const bbox=P=>{let a=1e18,b=1e18,c=-1e18,e=-1e18;P.forEach(([x,y])=>{if(x<a)a=x;if(y<b)b=y;if(x>c)c=x;if(y>e)e=y});return[a,b,c,e]};
 // Découpe d'un polygone par une fenêtre [x1,x2] × [y1,y2] (Sutherland-Hodgman)
 function clipBox(P,x1,y1,x2,y2){
@@ -3396,17 +3277,16 @@ function labelSpot(P,H){
 function compLabels(d,comps){const P=cpParts(d.forme,d.constr);return comps.map(k=>(P.find(p=>p[0]===k)||[k,k])[1]).join(' + ')}
 // Pages « CP À DÉCOUPER » (une série par référence de CP) : [[sous-titre, titre, svg, tableau latéral]]
 function cpCutPages(d,R){
-  let N=cpNest(d,R),per1=false;const nb=d.nb||1;
-  if(nb>1&&Object.values(N).reduce((s,n)=>s+Math.ceil(n.sheets.length/4),0)>10){N=cpNest(Object.assign({},d,{nb:1}),R);per1=true}
+  const {N,per1}=cutNest(d,R),nb=d.nb||1;
   const pages=[];
   Object.keys(N).forEach(rf=>{const n=N[rf];if(!n.sheets.length)return;const lb=compLabels(d,n.comps);
     let i=0;while(i<n.sheets.length){let j=i,rows=0;while(j<n.sheets.length&&j-i<4&&(j===i||rows+n.sheets[j].length+1<=34)){rows+=n.sheets[j].length+1;j++}
       const grp=n.sheets.slice(i,j),cols=grp.length<=2?1:2,rws=Math.ceil(grp.length/cols),cw=1000/cols,ch=Math.round((cw-120)*n.H/n.W+94),t=SB(1000,rws*ch);
       grp.forEach((s,gi)=>nestPanelSvg(t,n,s,i+gi,(gi%cols)*cw,Math.floor(gi/cols)*ch,cw,ch,n.pre[i+gi],n.sheets.length));
       const leg=n.comps.length>1?`<div class="nt">${n.comps.map(k=>`<span style="display:inline-block;width:10px;height:8px;background:${PCOL[k]};border:1px solid #5a3e1b;margin-right:3px"></span>${esc((cpParts(d.forme,d.constr).find(p=>p[0]===k)||[k,k])[1])}`).join(' · ')}</div>`:'';
-      const side=`<div class="sub">${esc(cpName(n.cp))}</div><div class="nt">${esc(lb)} — pièces de toutes les parties sur les mêmes panneaux. Cotes depuis le coin ● : X sous le panneau, Y à droite (coupes). Trait de scie ${nf(n.kerf)} mm. ↻ = pièce tournée de 90°.</div>${leg}`+
+      const side=`<div class="sub">${esc(cpName(n.cp))}</div><div class="nt">${esc(lb)}${n.gou?' — segments de fond (tête-bêche)':' — pièces de toutes les parties sur les mêmes panneaux'}. Cotes depuis le coin ● : X sous le panneau, Y à droite (coupes). Trait de scie ${nf(n.kerf)} mm. ↻ = pièce tournée de 90°.</div>${leg}`+
         grp.map((s,gi)=>`<div class="sub" style="margin-top:4px">Panneau ${i+gi+1}${n.pre[i+gi]?' — chute '+esc(n.pre[i+gi].id):''}</div><table>${s.map(p=>`<tr><td style="font-family:'JetBrains Mono',monospace">${esc(p.ftag)}</td><td class="nm">${p.dims}${p.rot?' ↻':''}</td><td class="nm">X ${nf(p.x,0)} · Y ${nf(p.y,0)}</td></tr>`).join('')}</table>`).join('');
-      pages.push(['CP À DÉCOUPER — '+cpName(n.cp).toUpperCase(),`Calepinage ${cpName(n.cp)} · ${esc(lb)} · panneaux ${i+1} à ${j} / ${n.sheets.length}${per1?' — POUR 1 EXEMPLAIRE, À RÉPÉTER × '+nb:n.copies<nb?' (pour '+n.copies+' exemplaire(s), à répéter)':''}`,t.out(),side]);i=j}});
+      pages.push(['CP À DÉCOUPER — '+(n.gou?'FOND DE GOULOTTE — ':'')+cpName(n.cp).toUpperCase(),`Calepinage ${cpName(n.cp)} · ${esc(lb)} · panneaux ${i+1} à ${j} / ${n.sheets.length}${per1?' — POUR 1 EXEMPLAIRE, À RÉPÉTER × '+nb:n.copies<nb?' (pour '+n.copies+' exemplaire(s), à répéter)':''}`,t.out(),side]);i=j}});
   return pages;
 }
 // Panneaux par référence de CP (imbrication commune) ; alt = autre format du catalogue qui achète moins de surface
@@ -3787,7 +3667,7 @@ function montageInfo(d,R){
     ctl.push([`Cotes extérieures ${nf(Lx)} × ${nf(lx)} × ${nf(d.h+(f==='massif'&&d.fondMassif?d.epF:0))}`,'mètre'],[`Diagonales égales`,`théorique ${diag(Lx,lx)}`],['Repères des pièces lisibles','']);
     ctl.push(['Boîte calée et fixée en position','']);}
   else if(f==='circ'){steps.push('Couper le tube / polystyrène à la hauteur, boucher les extrémités (ruban) pour éviter l\'entrée de laitance.');ctl.push([`Ø ${nf(d.D)} × h ${nf(d.h)}`,''],['Calage / fixation en position','']);}
-  else if(f==='circ_fond'||f==='circ_sf'){steps.push(`Découper ${f==='circ_fond'?'le fond '+tg('fi')+' et ':''}les cerces / gabarits au rayon (gabarit 1:1).`);
+  else if(f==='circ_fond'||f==='circ_sf'){steps.push(f==='circ_fond'?`Tracer et découper le fond ${tg('fi')} au gabarit 1:1 (une page par pièce de la feuille CP À DÉCOUPER), puis les cerces au rayon.`:'Découper les cerces au rayon (tracé au compas / à la ficelle depuis le centre).');
     steps.push('Cintrer la paroi extérieure sur les cerces, puis la paroi intérieure, joints décalés.');if(f==='circ_fond')steps.push(`Fixer les parois contre le chant du fond ${tg('fi')}.`);
     ctl.push([`Ø ext. ${nf(d.Dext)} (2 mesures à 90°)`,'écart ≤ ovalisation admise'],[d.Dint>0?`Ø int. ${nf(d.Dint)}`:'—',''],[`Hauteur ${nf(d.h)}`,''],['Boîte calée et fixée en position','']);}
   else if(f==='voile'){if(d.constr!=='caisson'){steps.push(`Tracer et découper linteau ${tg('fs')}${d.appui!==false?', appui':''} et cerces ${tg('fi')} au gabarit 1:1 (rayons R int / R ext).`);
@@ -3798,7 +3678,7 @@ function montageInfo(d,R){
     ctl.push(['Mannequin calé et fixé en position','']);}
   else if(f==='special'){steps.push('Assembler les parois contre le chant de la base, puis le fond supérieur éventuel.');if(d.conc)steps.push('Cintrer et fixer la forme concentrique (centrage au cordeau, 2 diamètres).');if(d.pot)steps.push('Positionner les poteaux aux angles indiqués (tracer les axes depuis le centre).');
     ctl.push([d.base==='circ'?`Ø ${nf(d.D)}`:`Cotes ${nf(d.L)} × ${nf(d.l)}`,''],d.base==='circ'?['Ovalisation (2 mesures à 90°)','']:[`Diagonales égales`,`théorique ${diag(d.L,d.l)}`],[`Hauteur ${nf(d.h)}`,'']);}
-  else if(f==='goulotte'){steps.push(`Tracer chaque segment de fond ${tg('fi')} au gabarit 1:1, découper et numéroter.`);steps.push('Poser les segments bout à bout sur le support, joints serrés.');if(d.gJE||d.gJI)steps.push('Cintrer les joues (bandes) contre le chant du fond, joints décalés.');
+  else if(f==='goulotte'){steps.push(`Tracer les segments de fond ${tg('fi')} au gabarit 1:1 aux positions de la feuille CP À DÉCOUPER — FOND DE GOULOTTE (tête-bêche), découper et numéroter.`);steps.push('Poser les segments bout à bout sur le support, joints serrés.');if(d.gJE||d.gJI)steps.push('Cintrer les joues (bandes) contre le chant du fond, joints décalés.');
     const G=gouGeo(d);if(G.ok)ctl.push([`Rayon nu béton ext. ${nf(G.R0)}`,'depuis le centre'],[`Largeur du fond ${nf(G.b)}`,'en 3 points']);}
   else if(f==='dalle'){steps.push('Poser les poutrelles à l\'entraxe indiqué (axes cotés sur le PLAN DE POSE).');if(d.dlPt){const G=dalGeo(d);(G.ok&&G.BG?G.BG.beams:[]).forEach(bm=>bmSteps(bm,steps,ctl,tg))}
     steps.push('Poser les panneaux entiers E (non recoupés) puis les découpées D, rangée par rangée, en calant les joints d\'about indiqués.');
@@ -4212,20 +4092,127 @@ const LEGEND=`<span class="lg">${[['j','CP joues / parois'],['fi','CP fond inf.'
 // A4 / A3 : seules les pièces qui tiennent entières sont imprimées ; les autres sont listées avec un bouton « ouvrir au traceur ».
 const GAB_MG=8,GAB_HD=16,GAB_ST=30,GAB_MAXL=5000;
 // Liste des pièces à tracer : {id, title, note, w, h, svg (repère local mm, origine en haut à gauche)}
+// ====== v2.0 — GABARITS 1:1 TIRÉS DU PLAN DE DÉCOUPE ======
+// Principe : un gabarit = la pièce telle qu'elle est sur la feuille « CP À DÉCOUPER » (même repère, même orientation, mêmes
+// coordonnées depuis le coin ● du panneau), tracée en vraie grandeur. Aucun recalcul séparé de la forme de l'ouvrage.
+// Pièces à coupes droites : pas de gabarit (cotes du plan). Pièce plus grande que la feuille : feuilles à assembler (collage).
+const GAB_OV=20; // recouvrement entre feuilles à assembler (mm)
+// Arcs d'un contour polygonal : suites d'arêtes « lisses » (angle entre arêtes voisines entre 1e-6 et 0,3 rad),
+// cercle exact par 3 sommets intérieurs (les sommets d'un arc discrétisé sont SUR le cercle), extrémités recalculées
+// à l'intersection du cercle et de l'arête droite voisine (exactes même si le polygone est grossier : disque à 72 côtés).
+function circ3(a,b,c){const d=2*(a[0]*(b[1]-c[1])+b[0]*(c[1]-a[1])+c[0]*(a[1]-b[1]));if(Math.abs(d)<1e-9)return null;
+  const A=a[0]*a[0]+a[1]*a[1],B=b[0]*b[0]+b[1]*b[1],C=c[0]*c[0]+c[1]*c[1];
+  const x=(A*(b[1]-c[1])+B*(c[1]-a[1])+C*(a[1]-b[1]))/d,y=(A*(c[0]-b[0])+B*(a[0]-c[0])+C*(b[0]-a[0]))/d;return[x,y,Math.hypot(a[0]-x,a[1]-y)]}
+function lineCirc(J,K,c,r){const dx=K[0]-J[0],dy=K[1]-J[1],L2=dx*dx+dy*dy;if(L2<1e-12)return null;const fx=J[0]-c[0],fy=J[1]-c[1];
+  const b=2*(fx*dx+fy*dy),cc=fx*fx+fy*fy-r*r,disc=b*b-4*L2*cc;if(disc<0)return null;const sq=Math.sqrt(disc);
+  const t=[(-b-sq)/(2*L2),(-b+sq)/(2*L2)].sort((u,v)=>Math.abs(u)-Math.abs(v))[0],p=[J[0]+t*dx,J[1]+t*dy];return Math.hypot(p[0]-J[0],p[1]-J[1])<=2?p:null}
+function polyArcs(P){
+  const n=P?P.length:0;if(n<4)return[];
+  const T=P.map((b,i)=>{const a=P[(i-1+n)%n],c=P[(i+1)%n],ux=b[0]-a[0],uy=b[1]-a[1],vx=c[0]-b[0],vy=c[1]-b[1];if(Math.hypot(ux,uy)<1e-9||Math.hypot(vx,vy)<1e-9)return 0;return Math.atan2(ux*vy-uy*vx,ux*vx+uy*vy)});
+  const sm=T.map(t=>Math.abs(t)>1e-6&&Math.abs(t)<0.3),E=P.map((_,i)=>sm[i]||sm[(i+1)%n]),runs=[];
+  if(E.every(Boolean))runs.push({ix:P.map((_,i)=>i),closed:true});
+  else{const st=E.findIndex(e=>!e);let cur=null;for(let k=1;k<=n;k++){const i=(st+k)%n;if(E[i]){if(!cur){cur={ix:[i]};runs.push(cur)}cur.ix.push((i+1)%n)}else cur=null}}
+  const out=[];
+  runs.forEach(run=>{const ix=run.ix;if(ix.length<3)return;
+    const inner=run.closed?ix:ix.slice(1,-1),Q=(inner.length>=3?inner:ix).map(i=>P[i]),c=circ3(Q[0],Q[Q.length>>1],Q[Q.length-1]);if(!c)return;
+    if(Math.max(...Q.map(q=>Math.abs(Math.hypot(q[0]-c[0],q[1]-c[1])-c[2])))>0.2)return; // pas un arc de cercle
+    const ctr=[c[0],c[1]],r=c[2];if(run.closed){out.push({c:ctr,r,closed:true,a0:0,a1:2*Math.PI,ix});return}
+    const p0=lineCirc(P[ix[0]],P[(ix[0]-1+n)%n],ctr,r)||P[ix[0]].slice(),p1=lineCirc(P[ix[ix.length-1]],P[(ix[ix.length-1]+1)%n],ctr,r)||P[ix[ix.length-1]].slice();
+    const a0=Math.atan2(p0[1]-ctr[1],p0[0]-ctr[0]),a1=Math.atan2(p1[1]-ctr[1],p1[0]-ctr[0]),m=P[ix[ix.length>>1]],am=Math.atan2(m[1]-ctr[1],m[0]-ctr[0]),N2=v=>((v%(2*Math.PI))+2*Math.PI)%(2*Math.PI);
+    let s=N2(a1-a0);if(N2(am-a0)>s)s-=2*Math.PI;
+    out.push({c:ctr,r,closed:false,a0,a1:a0+s,ix,p0,p1})});
+  return out;
+}
+// points d'un arc (flèche entre deux points ≤ 0,02 mm), extrémités exactes
+function arcPts(A){const s=A.a1-A.a0,da=2*Math.acos(Math.max(-1,1-0.02/Math.max(A.r,1))),n=Math.max(2,Math.ceil(Math.abs(s)/da)),o=[];
+  for(let i=0;i<=n;i++){const a=A.a0+s*i/n;o.push([A.c[0]+A.r*Math.cos(a),A.c[1]+A.r*Math.sin(a)])}
+  if(A.closed)o.pop();else{o[0]=A.p0.slice();o[o.length-1]=A.p1.slice()}return o}
+// contour exact : les arcs du polygone remplacés par leurs points exacts
+function exactContour(P,arcs){const cl=arcs.find(a=>a.closed);if(cl)return arcPts(cl);
+  const skip=new Set(),start=new Map();arcs.forEach(a=>{a.ix.forEach(i=>skip.add(i));start.set(a.ix[0],a)});
+  const o=[];for(let i=0;i<P.length;i++){if(start.has(i)){arcPts(start.get(i)).forEach(q=>o.push(q));continue}if(!skip.has(i))o.push(P[i])}return o}
+// ---------- Plan de découpe du fond de goulotte (segments tête-bêche, même calepinage que le débit : gouGeo / segPerSheet) ----------
+function gouNest(d,R){const G=gouGeo(d);if(!G.ok||!G.fit||!(G.fit.per>0))return null;
+  const r=(R||[]).find(x=>x.k==='fi'&&/^Segments de fond/.test(x.n));if(!r)return null;
+  const f=G.fit,c=f.c,t=f.t,nb=Math.max(1,d.nb||1),tot=G.n*nb,p=annPoly(G.r1,G.r2,G.th,96),sheets=[];
+  for(let s=0;s<tot;s++){const si=Math.floor(s/f.per),j=s%f.per,row=Math.floor(j/f.k),col=j%f.k,flip=!!f.flip&&col%2===1,cx=c/2+col*f.pitch,y0=row*(t+G.kerf);
+    (sheets[si]=sheets[si]||[]).push({tag:r.tag,ftag:r.ftag,line:r,copy:Math.floor(s/G.n),x:cx-c/2,y:y0,pw:c,ph:t,w:c,h:t,rot:false,flip,lock:true,hole:null,
+      poly:p.map(([x,y])=>flip?[cx-x,y0+t-y]:[cx+x,y0+y]),dims:`${nf(c,0)} × ${nf(t,0)}${flip?' (tête-bêche)':''}`})}
+  return{W:f.W,H:f.H,kerf:G.kerf,cp:cpOf(d,'fi'),comps:['fi'],sheets,pre:sheets.map(()=>null),copies:nb,nb,gou:true}}
+// Imbrication utilisée par les feuilles « CP À DÉCOUPER » ET par les gabarits (même objet : mêmes pièces, mêmes positions)
+function cutNest(d,R){let N=cpNest(d,R),per1=false;const nb=d.nb||1;
+  if(nb>1&&Object.values(N).reduce((s,n)=>s+Math.ceil(n.sheets.length/4),0)>10){N=cpNest(Object.assign({},d,{nb:1}),R);per1=true}
+  const out=Object.assign({},N);if(d.forme==='goulotte'){const gn=gouNest(per1?Object.assign({},d,{nb:1}):d,R);if(gn)out.gou=gn}
+  return{N:out,per1}}
+// ---------- Gabarits des pièces imbriquées (toutes formes sauf planches D de la dalle) ----------
+// Un gabarit par repère et par orientation : cadre = encombrement de la pièce sur le panneau ; graduations depuis le coin
+// bas-gauche du cadre ; positions du coin du cadre depuis le coin ● de chaque panneau (= tableau de la feuille CP À DÉCOUPER).
+function gabNestPieces(d){
+  const g=d.forme==='voile'?voileGeo(d):null,R=debit(d,g),{N}=cutNest(d,R),groups=new Map();
+  Object.values(N).forEach(n=>n.sheets.forEach((s,si)=>s.forEach(p=>{const arcs=polyArcs(p.poly),harcs=p.hole?polyArcs(p.hole):[];if(!arcs.length&&!harcs.length)return;
+    const B=bbox(p.poly),key=p.ftag+'|'+p.poly.map(([x,y])=>Math.round(x-B[0])+','+Math.round(y-B[1])).join(';');
+    let G=groups.get(key);if(!G){G={p,arcs,harcs,B,pos:[]};groups.set(key,G)}G.pos.push({si,N:n.sheets.length,x:p.x,y:p.y,ref:cpName(n.cp),gou:!!n.gou})})));
+  const L=[],GV=[...groups.values()],nOr=t=>GV.filter(x=>x.p.ftag===t).length,kOr={};GV.forEach(G=>{const {p,arcs,harcs,B}=G,w=B[2]-B[0],h=B[3]-B[1],loc=q=>[q[0]-B[0],q[1]-B[1]];
+    const multi=Object.values(N).filter(n=>n.sheets.length).length>1,pos=G.pos.map(q=>`${multi?q.ref+(q.gou?' (fond de goulotte)':'')+' — ':''}panneau ${q.si+1}/${q.N} : X ${nf(q.x,0)} · Y ${nf(q.y,0)}`);
+    const PL=[];for(let i=0;i<pos.length;i+=multi?2:4)PL.push(pos.slice(i,i+(multi?2:4)).join(' ; '));
+    const C=exactContour(p.poly,arcs).map(loc),H=p.hole?exactContour(p.hole,harcs).map(loc):null,m=40,top=34+5*(PL.length-1),X=x=>m+x,Y=y=>top+(h-y),o=[];
+    const pth=Q=>'M'+Q.map(([x,y])=>X(x).toFixed(2)+','+Y(y).toFixed(2)).join(' L')+'Z';
+    o.push(`<rect class="gframe" x="${X(0)}" y="${Y(h)}" width="${w}" height="${h}" fill="none" stroke="#999" stroke-width="0.3" stroke-dasharray="4,3"/>`);
+    o.push(`<path class="ghatch" d="${pth(C)}${H?' '+pth(H):''}" fill="url(#gj)" fill-opacity="0.35" fill-rule="evenodd" stroke="#555" stroke-width="0.35"/>`);
+    arcs.concat(harcs).forEach(a=>o.push(`<polyline class="garc" points="${arcPts(a).map(loc).map(([x,y])=>X(x).toFixed(2)+','+Y(y).toFixed(2)).join(' ')}${a.closed?' '+(()=>{const q=loc(arcPts(a)[0]);return X(q[0]).toFixed(2)+','+Y(q[1]).toFixed(2)})():''}" fill="none" stroke="#000" stroke-width="0.9"/>`));
+    for(let x=0;x<=w+1e-6;x+=100){gLn(o,X(x),Y(0),X(x),Y(0)+4,0.3,null,'#888');gTx(o,X(x),Y(0)+9,nf(x,0),3,'middle',400,'#888')}
+    for(let v=0;v<=h+1e-6;v+=100){gLn(o,X(0),Y(v),X(0)-4,Y(v),0.3,null,'#888');gTx(o,X(0)-6,Y(v)+1.2,nf(v,0),3,'end',400,'#888')}
+    o.push(`<circle class="gcorner" cx="${X(0)}" cy="${Y(0)}" r="2.5" fill="#c0392b"/>`);
+    gTx(o,X(w),Y(0)+9,nf(w,0),3.4,'middle',700,'#c0392b');gTx(o,X(0)-6,Y(h)+1.2,nf(h,0),3.4,'end',700,'#c0392b');
+    const sp=labelSpot(C,H);gTx(o,X(sp[0]),Y(sp[1])+3,esc(p.tag),Math.max(6,Math.min(30,sp[2]*0.5)),'middle',700,'#1a2035');
+    const posTxt=pos.slice(0,6).join(' ; ')+(pos.length>6?` ; … (+${pos.length-6}, voir le gabarit)`:'');
+    gTx(o,m,10,`${esc(p.ftag)} — ${esc(p.dims)}${p.rot?' ↻':''} — ${G.pos.length} pièce(s) — cadre ${nf(w,0)} × ${nf(h,0)} mm`,5,'start',700);
+    gTx(o,m,16,'Coin bas-gauche du cadre (●) depuis le coin ● du panneau :',3.4,'start',700,'#c0392b');PL.forEach((t,i)=>gTx(o,m+2,21+5*i,`<tspan class="gpos">${esc(t)}</tspan>`,3.4,'start',400,'#c0392b'));
+    gTx(o,m,top-6,'Trait fort : arc de découpe · hachures : pièce · tirets : cadre de la pièce sur le panneau (feuille CP À DÉCOUPER) · graduations depuis le coin ● du cadre',3,'start',400,'#333');
+    const no=nOr(p.ftag),ko=kOr[p.ftag]=(kOr[p.ftag]||0)+1,orl=no>1?` — orientation ${ko}/${no}`:'';
+    L.push({id:p.ftag+(no>1?'·'+ko:''),tag:p.tag,title:`PIÈCE ${p.ftag}${p.rot?' ↻':''}${orl}`,kind:'nest',note:`cadre ${nf(w,0)} × ${nf(h,0)} — coin ● du cadre : ${posTxt}`,w:w+2*m,h:h+top+16,svg:o.join(''),
+      frame:{x:m,y:top,w,h},pos:G.pos,box:B,it:p})});
+  L.sort((a,b)=>a.id.localeCompare(b.id,'fr',{numeric:true}));
+  return{title:'PIÈCES CINTRÉES — GABARITS 1:1 (plan de découpe)',pieces:L};
+}
+// ---------- Planches découpées (D) de la dalle : zone des arcs (+100 mm) ou pièce entière, repère du PANNEAU ----------
+function gabDallePieces(d,full){
+  const G=dalGeo(d);if(!G.ok)return{pieces:[]};if(G.shL.t!=='circ')return{pieces:[]};
+  const R=G.shL.R,mg=100,L=[],NS=G.sheets.length,edgeLb={b:'bord bas',t:'bord haut',l:'bord gauche',r:'bord droit'};
+  const segClip=(a,b,W,H,x0,y0)=>{let t0=0,t1=1;const dx=b[0]-a[0],dy=b[1]-a[1];
+    for(const [p,q] of [[-dx,a[0]-x0],[dx,W-a[0]],[-dy,a[1]-y0],[dy,H-a[1]]]){if(Math.abs(p)<1e-12){if(q<0)return null;continue}const r=q/p;if(p<0)t0=Math.max(t0,r);else t1=Math.min(t1,r)}
+    return t0>t1?null:{p:[a[0]+dx*t1,a[1]+dy*t1],clip:t1<1-1e-6}};
+  G.sheets.forEach((sh,si)=>{const MK=dalMarks(G,sh);sh.items.forEach(it=>{const pc=it.pc,runs=dalArcRuns(pc.poly,R);if(!runs.length)return;
+    const rx1=it.ox,ry1=it.oy,rx2=it.ox+it.w,ry2=it.oy+it.h,ords=runs.map(r=>r.map(i=>it.poly[i])),mk=MK.filter(m=>m.it===it),ab=bbox(ords.flat());
+    const B=full?[rx1,ry1,rx2,ry2]:[Math.max(rx1,ab[0]-mg),Math.max(ry1,ab[1]-mg),Math.min(rx2,ab[2]+mg),Math.min(ry2,ab[3]+mg)];
+    const [bx1,by1,bx2,by2]=B,w=bx2-bx1+80,h=by2-by1+50,X=x=>40+(x-bx1),Y=v=>20+(by2-v),o=[];
+    o.push(`<rect class="gframe" x="${X(bx1)}" y="${Y(by2)}" width="${bx2-bx1}" height="${by2-by1}" fill="none" stroke="#999" stroke-width="0.3" stroke-dasharray="4,3"/>`);
+    const clip=clipBox(it.poly,bx1,by1,bx2,by2);if(clip)o.push(`<path class="ghatch" d="M${clip.map(([x,v])=>X(x).toFixed(2)+','+Y(v).toFixed(2)).join(' L')}Z" fill="url(#gj)" fill-opacity="0.35" stroke="#555" stroke-width="0.35"/>`);
+    ords.forEach(ord=>{const arc=ord.filter(([x,v])=>x>=bx1-0.5&&x<=bx2+0.5&&v>=by1-0.5&&v<=by2+0.5);
+      if(arc.length>1)o.push(`<polyline class="garc" points="${arc.map(([x,v])=>X(x).toFixed(2)+','+Y(v).toFixed(2)).join(' ')}" fill="none" stroke="#000" stroke-width="0.9"/>`)});
+    for(let x=Math.ceil(bx1/100)*100;x<=bx2;x+=100){gLn(o,X(x),Y(by1),X(x),Y(by1)+4,0.3,null,'#888');gTx(o,X(x),Y(by1)+9,nf(x,0),3,'middle',400,'#888')}
+    for(let v=Math.ceil(by1/100)*100;v<=by2;v+=100){gLn(o,X(bx1),Y(v),X(bx1)-4,Y(v),0.3,null,'#888');gTx(o,X(bx1)-6,Y(v)+1.2,nf(v,0),3,'end',400,'#888')}
+    if(bx1<=0.5&&by1<=0.5)o.push(`<circle cx="${X(0)}" cy="${Y(0)}" r="2.5" fill="#c0392b"/>`);
+    // repères ● identiques à la feuille CP À DÉCOUPER (dalMarks) : rouge = cote d'équerre depuis le bord indiqué, gris @ = position le long de ce bord
+    mk.forEach(m=>{const gx=X(m.X),gy=Y(m.Y),e=m.ref,dn=e==='b'||e==='l';
+      o.push(`<circle class="gmk" data-v="${Math.round(m.v)}" data-val="${Math.round(m.val)}" data-ref="${e}" cx="${gx.toFixed(2)}" cy="${gy.toFixed(2)}" r="1.6" fill="#c0392b"/>`);
+      const E=e==='b'?[m.X,0]:e==='t'?[m.X,G.Q]:e==='l'?[0,m.Y]:[G.P,m.Y],lim=segClip([gx,gy],[X(E[0]),Y(E[1])],X(bx2)+0.01,Y(by1)+0.01,X(bx1)-0.01,Y(by2)-0.01)||{p:[gx,gy],clip:true};const [ex,ey]=lim.p;
+      gLn(o,gx,gy,ex,ey,0.35,lim.clip?'3,2':null,'#c0392b');
+      const hz=m.ax==='x',lx=gx+(hz?2:(dn?3:-3)),ly=gy+(hz?(dn?-3:6):-2);
+      gTx(o,lx,ly,nf(m.val,0),4.2,hz?'start':(dn?'start':'end'),700,'#c0392b');gTx(o,lx,ly+(hz?(dn?-5:5):5),'@'+nf(m.v,0),3.2,hz?'start':(dn?'start':'end'),400,'#666');
+      if(lim.clip)gTx(o,ex+(hz?2:0),ey+(hz?(e==='b'?-1:4):-1.5),'→ '+edgeLb[e],3,'start',400,'#c0392b')});
+    L.push({id:pc.id,title:`PIÈCE ${pc.id}${it.rot?' (retournée)':''} — PANNEAU ${si+1} / ${NS}`,kind:full?'full':'band',
+      note:`${full?'pièce entière':'zone des arcs (+100 mm)'} : X ${nf(bx1,0)} → ${nf(bx2,0)} · Y ${nf(by1,0)} → ${nf(by2,0)} depuis le coin ● du panneau (graduations grises) · repères identiques à la feuille CP À DÉCOUPER (rouge = cote d'équerre depuis le bord indiqué, gris @ = position le long de ce bord) · trait fort = arc de découpe · hachures = pièce`,
+      w,h,svg:o.join(''),map:(gx,gy)=>[gx-40+bx1,by2-(gy-20)],arc:ords.flat(),mk,sheet:si,it})})});
+  L.sort((a,b)=>+a.id.slice(1)-+b.id.slice(1));
+  return{title:`PLANCHES DÉCOUPÉES DU PLATELAGE (R ${nf(R)})`,pieces:L};
+}
 function gabPieces(d,mode){
   const f=d.forme,g=f==='voile'?voileGeo(d):null;
   if(badDims(checks(d,g)))return{msg:'Corriger d\'abord les incohérences (voir contrôles).'};
-  const one=(G,id,title,note)=>G.msg?G:{title,pieces:[{id,title,note:note||'',w:G.w,h:G.h,svg:G.svg}]};
-  if(f==='voile')return one(gabVoile(d,g),'G1',d.constr==='caisson'?'DESSUS / DESSOUS':'LINTEAU / APPUI / CERCES');
-  if(f==='goulotte'){const G=gabGoulotte(d);if(G.msg||gabFit({w:G.w,h:G.h},mode))return one(G,'G1','SEGMENT DE FOND');
-    // segment plus large que la page : gabarits des deux arcs du segment (posés sur les coins du segment, corde = côté droit du segment)
-    const g=gouGeo(d);return{title:'ARCS DU SEGMENT DE FOND',pieces:[{id:'A1',R:g.r2,lb:'ARC EXTÉRIEUR DU SEGMENT R '+nf(g.r2),th:g.th,n:g.n},{id:'A2',R:g.r1,lb:'ARC INTÉRIEUR DU SEGMENT R '+nf(g.r1),th:g.th,n:g.n,inner:true}].map(a=>gabArcBand(a,mode))}}
-  if(f==='circ_fond'||f==='circ_sf'){const G=gabCirc(d);if(gabFit({w:G.w,h:G.h},mode))return one(G,'G1',d.forme==='circ_fond'?'FOND / CERCES':'CERCES');
-    // trop grand pour une page : gabarits d'arc à faire pivoter autour du centre (aucun collage)
-    const ep=d.ep,L=[{id:'A1',R:d.Dext/2-ep,lb:'ARC DE DÉCOUPE EXTÉRIEUR Ø '+nf(d.Dext-2*ep)}];if(d.Dint>0)L.push({id:'A2',R:d.Dint/2+ep,lb:'ARC DE DÉCOUPE INTÉRIEUR Ø '+nf(d.Dint+2*ep),inner:true});
-    return{title:'ARCS DE DÉCOUPE (gabarit à faire pivoter)',pieces:L.map(a=>gabArcBand(a,mode))}}
-  if(f==='dalle'){const m=S('iGabDal','band');if(m==='arc')return one(gabDalle(d),'G1','ARC DE LA DALLE');return gabDallePieces(d,m==='full',mode)}
-  return{msg:'Pas de gabarit nécessaire pour cette forme : toutes les coupes sont droites, utiliser les cotes du plan.'};
+  const Dl=f==='dalle'?gabDallePieces(d,S('iGabDal','band')==='full'):{pieces:[]},Ns=gabNestPieces(d),P=Dl.pieces.concat(Ns.pieces);
+  if(!P.length)return{msg:'Pas de gabarit : aucune pièce cintrée, toutes les coupes sont droites — utiliser les cotes des feuilles CP À DÉCOUPER.'};
+  return{title:Dl.pieces.length?Dl.title:Ns.title,pieces:P};
 }
 // Zone imprimable (mm) et orientation retenue pour une pièce de w × h ; null si elle ne tient pas entière
 function gabFit(pc,mode){const roll=parseFloat(S('iRoll','914'))||914,mg=GAB_MG,extra=GAB_HD+GAB_ST;
@@ -4236,129 +4223,46 @@ function gabFit(pc,mode){const roll=parseFloat(S('iRoll','914'))||914,mg=GAB_MG,
   const P=mode==='A3'?[297,420]:[210,297];
   for(const [pw,ph] of [[P[0],P[1]],[P[1],P[0]]])for(const rot of [false,true]){const w=rot?pc.h:pc.w,h=rot?pc.w:pc.h;if(w<=pw-2*mg&&h<=ph-2*mg-extra)return{rot,pw,ph}}
   return null}
-// Bande d'arc de rayon R : arc tracé sur une corde qui tient sur la page, ordonnées depuis la corde, repères d'alignement aux deux bouts
-function gabArcBand(a,mode){const R=a.R,roll=parseFloat(S('iRoll','914'))||914,avail=mode==='roll'?roll-2*GAB_MG-60:(mode==='A3'?420:297)-2*GAB_MG-60;
-  const band=120,c0=Math.min(avail,2*R*0.95),th=2*Math.asin(c0/2/R),n=a.th?a.n:Math.ceil(2*Math.PI/th-1e-9),thU=a.th||2*Math.PI/n,c=2*R*Math.sin(thU/2),fl=R*(1-Math.cos(thU/2));
-  const m=30,w=c+2*m,h=fl+band+2*m,o=[],X=x=>m+c/2+x,yC=R*Math.cos(thU/2),P=t=>[R*Math.sin(t),R*Math.cos(t)];
-  // repère local : corde horizontale en bas (arc ext.) — arc en haut ; bande de matière côté pièce
-  const ys=y=>m+(R-y),pts=[];for(let i=0;i<=96;i++){const t=-thU/2+thU*i/96;pts.push(P(t))}
-  o.push(`<polyline points="${pts.map(([x,y])=>X(x).toFixed(2)+','+ys(y).toFixed(2)).join(' ')}" fill="none" stroke="#000" stroke-width="0.9"/>`);
-  const yc=ys(yC);gLn(o,X(-c/2),yc,X(c/2),yc,0.3,'4,3','#777');
-  [-1,1].forEach(sg=>{const q=P(sg*thU/2);gLn(o,X(q[0]),ys(q[1]),X(q[0]*(1-band/R)),ys(q[1]*(1-band/R)),0.4,'',BM_JC);gTx(o,X(q[0]*(1-band/2/R))+(sg<0?3:-3),ys(q[1]*(1-band/2/R)),sg<0?'repère ◄':'► repère',3.6,sg<0?'start':'end',700,BM_JC)});
-  const st=c>=800?100:50;for(let x=-Math.floor(c/2/st)*st;x<=c/2+1e-6;x+=st){const y=Math.sqrt(R*R-x*x);gLn(o,X(x),yc,X(x),ys(y),0.25,null,'#555');gTx(o,X(x)+1,yc+5,nf(y-yC,1),3.2,'start',400,'#333')}
-  gTx(o,X(0),yc+12,a.th?`corde ${nf(c,1)} mm · flèche ${nf(fl,1)} mm · un tracé par segment (${n} segments) — extrémités = coins du segment`:`corde ${nf(c,1)} mm · flèche ${nf(fl,1)} mm · ${n} positions de ${nf(360/n,2)}° pour le tour complet`,4,'middle',700);
-  gTx(o,X(0),yc+20,'Tracer l\'arc, faire glisser le gabarit le long du cercle : son repère de gauche sur le repère de droite du tracé précédent. Centre de l\'arc : '+(a.inner?'au-dessus':'sous la corde')+' à '+nf(yC,0)+' mm.',3.4,'middle',400);
-  return{id:a.id,title:a.lb,note:a.th?`R ${nf(R,1)} mm — poser les repères sur les coins du segment — trait fort = arc de découpe`:`R ${nf(R,1)} mm — gabarit à faire pivoter (${n} positions) — trait fort = arc de découpe`,w,h:h+12,svg:o.join('')}}
-// Pièces du platelage (planches D) : une bande d'arc ou la pièce entière par page
-// v19 : un gabarit par ARC de la pièce (dalArcRuns) ; corde AB orientée pour que le gabarit ne soit jamais vu en miroir
-// (v18 : sur les gabarits « corde », l'arc était tracé du côté opposé une fois A et B posés) ; arc trop long pour la page →
-// gabarits partiels successifs (A → B, B → C…), chacun calé sur ses deux points cotés depuis le coin ● du panneau.
-function gabDallePieces(d,full,mode){
-  const G=dalGeo(d);if(!G.ok)return{msg:'Calepinage impossible.'};if(G.shL.t!=='circ')return{msg:'Dalle rectangulaire : toutes les coupes sont droites, utiliser les cotes des feuilles CP À DÉCOUPER.'};
-  const R=G.shL.R,mg=100,L=[],NS=G.sheets.length;let fb=0;
-  const edgeLb={b:'bord bas',t:'bord haut',l:'bord gauche',r:'bord droit'};
-  // segment (a → b) limité au cadre [x0,W] × [y0,H] du gabarit (Liang-Barsky)
-  const segClip=(a,b,W,H,x0,y0)=>{x0=x0||0;y0=y0||0;let t0=0,t1=1;const dx=b[0]-a[0],dy=b[1]-a[1];
-    for(const [p,q] of [[-dx,a[0]-x0],[dx,W-a[0]],[-dy,a[1]-y0],[dy,H-a[1]]]){if(Math.abs(p)<1e-12){if(q<0)return null;continue}const r=q/p;if(p<0)t0=Math.max(t0,r);else t1=Math.min(t1,r)}
-    return t0>t1?null:{p:[a[0]+dx*t1,a[1]+dy*t1],clip:t1<1-1e-6}};
-  G.sheets.forEach((sh,si)=>{const MK=dalMarks(G,sh);sh.items.forEach(it=>{const pc=it.pc,runs=dalArcRuns(pc.poly,R);if(!runs.length)return;
-    const rx1=it.ox,ry1=it.oy,rx2=it.ox+it.w,ry2=it.oy+it.h,base=`PIÈCE ${pc.id}${it.rot?' (retournée)':''}`,pan=`PANNEAU ${si+1} / ${NS}`;
-    // repères communs avec la feuille « CP À DÉCOUPER » : ● point de l'arc, gris = position le long du bord (depuis ●), rouge = cote d'équerre depuis le bord de référence
-    const drawMarks=(o,mk,T,W,H,x0,y0,maxL)=>mk.forEach(m=>{const [gx,gy]=T(m.X,m.Y),e=m.ref,dn=e==='b'||e==='l';
-      o.push(`<circle class="gmk" data-v="${Math.round(m.v)}" data-val="${Math.round(m.val)}" data-ref="${e}" cx="${gx.toFixed(2)}" cy="${gy.toFixed(2)}" r="1.6" fill="#c0392b"/>`);
-      const E=e==='b'?[m.X,0]:e==='t'?[m.X,G.Q]:e==='l'?[0,m.Y]:[G.P,m.Y],lim=segClip([gx,gy],T(...E),W,H,x0,y0)||{p:[gx,gy],clip:true};
-      // gabarit « corde » : simple amorce (12 mm) dans la direction du bord de référence, pour ne pas barrer le gabarit
-      if(maxL){const dx=lim.p[0]-gx,dy=lim.p[1]-gy,Ld=Math.hypot(dx,dy);if(Ld>maxL){lim.p=[gx+dx/Ld*maxL,gy+dy/Ld*maxL];lim.clip=true}}
-      const [ex,ey]=lim.p;
-      gLn(o,gx,gy,ex,ey,0.35,lim.clip?'3,2':null,'#c0392b');
-      const h=m.ax==='x',lx=gx+(h?2:(dn?3:-3)),ly=gy+(h?(dn?-3:6):-2);
-      gTx(o,lx,ly,nf(m.val,0),4.2,h?'start':(dn?'start':'end'),700,'#c0392b');
-      gTx(o,lx,ly+(h?(dn?-5:5):5),'@'+nf(m.v,0),3.2,h?'start':(dn?'start':'end'),400,'#666');
-      if(lim.clip)gTx(o,ex+(h?2:0),ey+(h?(e==='b'?-1:4):-1.5),'→ '+edgeLb[e],3,'start',400,'#c0392b')});
-    const mkNote=mk=>mk.length?` · repères identiques à la feuille CP À DÉCOUPER : rouge = cote d'équerre depuis le bord indiqué, gris @ = position le long de ce bord depuis le coin ●`:'';
-    // 1) pièce entière ou bande d'un arc, dans le repère du panneau (graduations X / Y depuis le coin ●)
-    const axis=(B,ords,mk,isFull,ttl)=>{const [bx1,by1,bx2,by2]=B,w=bx2-bx1+80,h=by2-by1+50,X=x=>40+(x-bx1),Y=v=>20+(by2-v),o=[];
-      o.push(`<rect x="${X(bx1)}" y="${Y(by2)}" width="${bx2-bx1}" height="${by2-by1}" fill="none" stroke="#999" stroke-width="0.3" stroke-dasharray="4,3"/>`);
-      const clip=clipBox(it.poly,bx1,by1,bx2,by2);if(clip)o.push(`<path d="M${clip.map(([x,v])=>X(x).toFixed(2)+','+Y(v).toFixed(2)).join(' L')}Z" fill="url(#gj)" fill-opacity="0.35" stroke="#555" stroke-width="0.35"/>`);
-      ords.forEach(ord=>{const arc=ord.filter(([x,v])=>x>=bx1-0.5&&x<=bx2+0.5&&v>=by1-0.5&&v<=by2+0.5);
-        if(arc.length>1)o.push(`<polyline class="garc" points="${arc.map(([x,v])=>X(x).toFixed(2)+','+Y(v).toFixed(2)).join(' ')}" fill="none" stroke="#000" stroke-width="0.9"/>`)});
-      for(let x=Math.ceil(bx1/100)*100;x<=bx2;x+=100){gLn(o,X(x),Y(by1),X(x),Y(by1)+4,0.3,null,'#888');gTx(o,X(x),Y(by1)+9,nf(x,0),3,'middle',400,'#888')}
-      for(let v=Math.ceil(by1/100)*100;v<=by2;v+=100){gLn(o,X(bx1),Y(v),X(bx1)-4,Y(v),0.3,null,'#888');gTx(o,X(bx1)-6,Y(v)+1.2,nf(v,0),3,'end',400,'#888')}
-      if(bx1<=0.5&&by1<=0.5)o.push(`<circle cx="${X(0)}" cy="${Y(0)}" r="2.5" fill="#c0392b"/>`);
-      drawMarks(o,mk,(x,y)=>[X(x),Y(y)],X(bx2)+0.01,Y(by1)+0.01,X(bx1)-0.01,Y(by2)-0.01);
-      return{id:pc.id,title:ttl,kind:isFull?'full':'band',note:`${isFull?'pièce entière':'bande de l\'arc'} : X ${nf(bx1,0)} → ${nf(bx2,0)} · Y ${nf(by1,0)} → ${nf(by2,0)} depuis le coin ● du panneau (graduations grises)${mkNote(mk)} · trait fort = arc de découpe · hachures = pièce à conserver`,w,h,svg:o.join(''),
-        map:(gx,gy)=>[gx-40+bx1,by2-(gy-20)],arc:ords.flat(),mk}};
-    // 2) bande suivant la corde AB d'un arc (ou d'une partie d'arc) : A et B cotés depuis le coin ● du PANNEAU.
-    //    A → B pris de sorte que l'arc soit à GAUCHE de AB : vu sur la feuille (A à gauche, B à droite, arc au-dessus), le gabarit
-    //    se pose face imprimée visible, A sur A et B sur B (jamais en miroir).
-    const chord=(seg,mk,ttl,part)=>{let ord=seg.slice();const lft=q=>(ord[ord.length-1][0]-ord[0][0])*(q[1]-ord[0][1])-(ord[ord.length-1][1]-ord[0][1])*(q[0]-ord[0][0]);
-      if(ord.reduce((a,q)=>a+lft(q),0)<0)ord.reverse();
-      const A=ord[0],Bp=ord[ord.length-1],c=Math.hypot(Bp[0]-A[0],Bp[1]-A[1]),u=[(Bp[0]-A[0])/c,(Bp[1]-A[1])/c],nv=[-u[1],u[0]];
-      const Lq=q=>[(q[0]-A[0])*u[0]+(q[1]-A[1])*u[1],(q[0]-A[0])*nv[0]+(q[1]-A[1])*nv[1]],fl=Math.max(0,...ord.map(q=>Lq(q)[1])),m=40,mt=50;
-      const w=c+2*m,h=fl+2*mt+36,X=x=>m+x,Y=y=>mt+fl-y,o=[];
-      const pl=it.poly.map(Lq),clip=clipBox(pl,-m,-mt,c+m,fl+mt);if(clip)o.push(`<path d="M${clip.map(([x,y])=>X(x).toFixed(2)+','+Y(y).toFixed(2)).join(' L')}Z" fill="url(#gj)" fill-opacity="0.35" stroke="#555" stroke-width="0.35"/>`);
-      o.push(`<polyline class="garc" points="${ord.map(q=>{const [x,y]=Lq(q);return X(x).toFixed(2)+','+Y(y).toFixed(2)}).join(' ')}" fill="none" stroke="#000" stroke-width="0.9"/>`);
-      gLn(o,X(0),Y(0),X(c),Y(0),0.3,'4,3','#777');
-      const at=x=>{let y=0;for(let k=0;k<ord.length-1;k++){const p=Lq(ord[k]),q=Lq(ord[k+1]);if((p[0]-x)*(q[0]-x)<=0&&p[0]!==q[0]){y=p[1]+(x-p[0])*(q[1]-p[1])/(q[0]-p[0]);break}}return y};
-      for(let x=100;x<c-20;x+=100){const y=at(x);gLn(o,X(x),Y(0),X(x),Y(y),0.25,null,'#555');gTx(o,X(x)+1,Y(0)+5,nf(y,1),3.2,'start',400,'#333')}
-      const edge=q=>Math.hypot(q[0],q[1])<0.6?'= coin ●':Math.abs(q[0])<0.6?'bord gauche':Math.abs(q[0]-G.P)<0.6?'bord droit':Math.abs(q[1])<0.6?'bord bas':Math.abs(q[1]-G.Q)<0.6?'bord haut':Math.abs(q[0]-rx1)<0.6||Math.abs(q[0]-rx2)<0.6?'coupe verticale':Math.abs(q[1]-ry1)<0.6||Math.abs(q[1]-ry2)<0.6?'coupe horizontale':'sur l\'arc';
-      [[A,0,'A'],[Bp,c,'B']].forEach(([q,x,lb])=>{const rm=mk.find(m=>Math.hypot(m.X-q[0],m.Y-q[1])<0.6);
-        o.push(`<circle class="gab-ab" data-x="${q[0].toFixed(1)}" data-y="${q[1].toFixed(1)}" cx="${X(x)}" cy="${Y(0)}" r="2.2" fill="#c0392b"/>`);
-        gTx(o,X(x)+(x?-4:4),Y(0)+14,`${lb} : X ${nf(q[0],1)} · Y ${nf(q[1],1)} depuis ● (${edge(q)})`,3.6,x?'end':'start',700,'#c0392b');
-        if(rm)gTx(o,X(x)+(x?-4:4),Y(0)+19.5,`= repère ● ${nf(rm.val,0)} @${nf(rm.v,0)} (${edgeLb[rm.ref]}) de la feuille CP À DÉCOUPER`,3.2,x?'end':'start',400,'#c0392b')});
-      const T=(x,y)=>{const [a,b]=Lq([x,y]);return[X(a),Y(b)]};
-      drawMarks(o,mk,T,w,h-36,0,0,12);
-      return{id:pc.id,title:ttl,kind:'chord',part:part||'',note:`${part?'partie '+part+' de l\'arc — ':''}bande suivant la corde AB (${nf(c,0)} mm, flèche ${nf(fl,1)} mm) : face imprimée visible, A et B posés sur leurs points (cotes depuis le coin ● du panneau), tracer l'arc · ordonnées depuis la corde tous les 100 mm${mkNote(mk)}`,w,h,svg:o.join(''),
-        map:(gx,gy)=>{const a=gx-m,b=mt+fl-gy;return[A[0]+u[0]*a+nv[0]*b,A[1]+u[1]*a+nv[1]*b]},arc:ord,mk}};
-    // repères d'un tronçon d'arc : points situés sur ce tronçon (projection sur la polyligne)
-    const ords=runs.map(r=>r.map(i=>it.poly[i])),mkAll=MK.filter(m=>m.it===it);
-    // pièce entière (option) : tous les arcs sur une page si elle tient
-    if(full){const q=axis([rx1,ry1,rx2,ry2],ords,mkAll,true,`${base} — ${pan}`);if(gabFit(q,mode)){q.sheet=si;q.it=it;L.push(q);return}fb++}
-    ords.forEach((ord,ri)=>{const mk=mkAll.filter(m=>m.run===ri),ab=bbox(ord),arcLb=ords.length>1?` — ARC ${ri+1}/${ords.length}`:'',ttl=`${base}${arcLb} — ${pan}`;
-      const band=[Math.max(rx1,ab[0]-mg),Math.max(ry1,ab[1]-mg),Math.min(rx2,ab[2]+mg),Math.min(ry2,ab[3]+mg)];
-      let q=axis(band,[ord],mk,false,ttl);if(!gabFit(q,mode))q=chord(ord,mk,ttl);
-      if(gabFit(q,mode)){q.sheet=si;q.it=it;L.push(q);return}
-      // arc trop long pour la page : parties successives A → B, B → C… dont les extrémités sont des repères ● de la feuille CP À DÉCOUPER
-      // (déjà tracés sur le panneau) ; à défaut de repère assez proche, point intermédiaire coté depuis le coin ●.
-      const cum=[0];for(let k=1;k<ord.length;k++)cum.push(cum[k-1]+Math.hypot(ord[k][0]-ord[k-1][0],ord[k][1]-ord[k-1][1]));const Lt=cum[cum.length-1];
-      const at=s=>{let k=1;while(k<cum.length-1&&cum[k]<s)k++;const t=(s-cum[k-1])/Math.max(cum[k]-cum[k-1],1e-9);return[ord[k-1][0]+t*(ord[k][0]-ord[k-1][0]),ord[k-1][1]+t*(ord[k][1]-ord[k-1][1])]};
-      const sOf=q=>{let b=1e18,bs=0;for(let k=0;k<ord.length-1;k++){const a=ord[k],c=ord[k+1],dx=c[0]-a[0],dy=c[1]-a[1],L2=dx*dx+dy*dy||1e-9,t=Math.max(0,Math.min(1,((q[0]-a[0])*dx+(q[1]-a[1])*dy)/L2)),dd=Math.hypot(a[0]+t*dx-q[0],a[1]+t*dy-q[1]);if(dd<b){b=dd;bs=cum[k]+t*Math.sqrt(L2)}}return bs};
-      const stops=[{s:0,p:ord[0]}].concat(mk.map(m=>({s:sOf([m.X,m.Y]),p:[m.X,m.Y]})).filter(o=>o.s>1&&o.s<Lt-1).sort((a,b)=>a.s-b.s),[{s:Lt,p:ord[ord.length-1]}]).filter((o,i,A)=>!i||o.s-A[i-1].s>1);
-      const sub=(a,b)=>[a.p].concat(ord.filter((_,k)=>cum[k]>a.s+1e-6&&cum[k]<b.s-1e-6),[b.p]),fits=(a,b)=>gabFit(chord(sub(a,b),[],''),mode);
-      const segs=[];let i0=0,guard=0;
-      while(i0<stops.length-1&&guard++<500){let j=i0+1;while(j+1<stops.length&&fits(stops[i0],stops[j+1]))j++;
-        if(fits(stops[i0],stops[j])){segs.push([stops[i0],stops[j]]);i0=j;continue}
-        // même le repère suivant est trop loin : n parties égales entre les deux
-        const a=stops[i0],b=stops[j];let n=2;while(n<64&&!fits(a,{s:a.s+(b.s-a.s)/n,p:at(a.s+(b.s-a.s)/n)}))n++;
-        let prv=a;for(let k=1;k<=n;k++){const nx=k===n?b:{s:a.s+(b.s-a.s)*k/n,p:at(a.s+(b.s-a.s)*k/n)};segs.push([prv,nx]);prv=nx}i0=j}
-      const n=segs.length;segs.forEach(([a,b],j)=>{const x=chord(sub(a,b),mk.filter(m=>{const s=sOf([m.X,m.Y]);return s>=a.s-0.6&&s<=b.s+0.6}),`${base}${arcLb} — PARTIE ${j+1}/${n} — ${pan}`,`${j+1}/${n}`);x.sheet=si;x.it=it;L.push(x)})})})});
-  if(!L.length)return{msg:'Aucune planche découpée cintrée.'};
-  L.sort((a,b)=>+a.id.slice(1)-+b.id.slice(1));
-  return{title:`PLANCHES DÉCOUPÉES DU PLATELAGE (R ${nf(R)})`,pieces:L,fb};
-}
-// Fenêtre d'impression : une page par pièce
+// Feuilles d'un gabarit : une seule si la pièce tient (pivotée de 90° au besoin), sinon feuilles à assembler avec recouvrement GAB_OV.
+// Tuiles en coordonnées du gabarit (x → droite, y → bas) ; rot = tuile tournée de 90° sur la feuille.
+function gabTiles(pc,mode){const roll=parseFloat(S('iRoll','914'))||914,mg=GAB_MG,extra=GAB_HD+GAB_ST,ov=GAB_OV;
+  const split=(L,A)=>{if(L<=A+1e-6)return[[0,L]];const n=Math.ceil((L-ov)/(A-ov)-1e-9),st=(L-ov)/n,o=[];for(let i=0;i<n;i++)o.push([i*st,i*st+st+ov]);return o};
+  const mk=(rot,A,B)=>{const T=[],sx=split(pc.w,rot?B:A),sy=split(pc.h,rot?A:B);sy.forEach(([y0,y1],r)=>sx.forEach(([x0,x1],c)=>T.push({x0,x1,y0,y1,rot,r,c,nr:sy.length,nc:sx.length})));return T};
+  const opts=[];
+  if(mode==='roll'){const A=roll-2*mg,B=GAB_MAXL-extra-2*mg;[false,true].forEach(rot=>{const T=mk(rot,A,B);opts.push({T,sc:[T.length,T.reduce((s,t)=>s+(rot?t.x1-t.x0:t.y1-t.y0),0)],pw:roll,ph:t=>(t.rot?t.x1-t.x0:t.y1-t.y0)+extra+2*mg})})}
+  else{const P=mode==='A3'?[297,420]:[210,297];for(const [pw,ph] of [[P[0],P[1]],[P[1],P[0]]])for(const rot of [false,true]){const T=mk(rot,pw-2*mg,ph-2*mg-extra);opts.push({T,sc:[T.length,0],pw,ph:()=>ph})}}
+  const b=opts.sort((p,q)=>cmpSc(p.sc,q.sc))[0];return b.T.map(t=>Object.assign(t,{pw:b.pw,ph:b.ph(t)}))}
+// Croix d'assemblage au milieu des bandes de recouvrement (en coordonnées du gabarit : visibles sur les deux feuilles)
+function gabCrosses(pc,T){const o=[],xs=new Set(),ys=new Set();
+  T.forEach(t=>{if(t.c+1<t.nc)xs.add(+(t.x1-GAB_OV/2).toFixed(3));if(t.r+1<t.nr)ys.add(+(t.y1-GAB_OV/2).toFixed(3))});
+  const cr=(x,y)=>o.push(`<path class="gcross" d="M${(x-5).toFixed(2)},${y.toFixed(2)} H${(x+5).toFixed(2)} M${x.toFixed(2)},${(y-5).toFixed(2)} V${(y+5).toFixed(2)}" stroke="#1f5fbf" stroke-width="0.35"/><circle cx="${x.toFixed(2)}" cy="${y.toFixed(2)}" r="2.5" fill="none" stroke="#1f5fbf" stroke-width="0.25"/>`);
+  xs.forEach(x=>{o.push(`<rect x="${(x-GAB_OV/2).toFixed(2)}" y="0" width="${GAB_OV}" height="${pc.h.toFixed(2)}" fill="#1f5fbf" fill-opacity="0.06"/>`);for(let y=15;y<pc.h;y+=120)cr(x,y)});
+  ys.forEach(y=>{o.push(`<rect x="0" y="${(y-GAB_OV/2).toFixed(2)}" width="${pc.w.toFixed(2)}" height="${GAB_OV}" fill="#1f5fbf" fill-opacity="0.06"/>`);for(let x=15;x<pc.w;x+=120)cr(x,y)});
+  return o.join('')}
+// Fenêtre d'impression : une page par feuille
 function gabHtml(d,mode){
   const GP=gabPieces(d,mode);if(GP.msg)return{msg:GP.msg};
-  const mg=GAB_MG,ok=[],big=[];GP.pieces.forEach(pc=>{const F=gabFit(pc,mode);if(F)ok.push(Object.assign({},pc,{F}));else big.push(pc)});
-  const N=ok.length,defs='<defs><pattern id="gj" width="4" height="4" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="4" stroke="#999" stroke-width="0.4"/></pattern></defs>';
-  const head=`${esc(d.ch||'')} ${esc(d.ouv||'')} ${esc(d.ref||'')}${d.ind?' ind. '+esc(d.ind):''}`.trim();
-  const pages=ok.map((pc,k)=>{const {rot,pw,ph}=pc.F,w=rot?pc.h:pc.w,h=rot?pc.w:pc.h,x0=mg+((pw-2*mg)-w)/2,y0=mg+GAB_HD,o=[];
-    gTx(o,mg,mg+5,`GABARIT 1:1 — ${esc(pc.title)} — page ${k+1}/${N}`,4.6,'start',700);gTx(o,mg,mg+10.5,`${esc(head)} · ${esc(pc.note||'')}`.slice(0,240),3.2,'start',400,'#333');
+  const mg=GAB_MG,defs='<defs><pattern id="gj" width="4" height="4" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="4" stroke="#999" stroke-width="0.4"/></pattern></defs>';
+  const head=`${esc(d.ch||'')} ${esc(d.ouv||'')} ${esc(d.ref||'')}${d.ind?' ind. '+esc(d.ind):''}`.trim(),SH=[];
+  GP.pieces.forEach(pc=>{const T=gabTiles(pc,mode),X=T.length>1?gabCrosses(pc,T):'';T.forEach((t,k)=>SH.push({pc,t,k,n:T.length,X}))});
+  const N=SH.length,nAs=GP.pieces.filter(pc=>SH.filter(s=>s.pc===pc).length>1).length;
+  const pages=SH.map(({pc,t,k,n,X},i)=>{const {rot,pw,ph}=t,tw=t.x1-t.x0,th=t.y1-t.y0,w=rot?th:tw,h=rot?tw:th,x0=mg+((pw-2*mg)-w)/2,y0=mg+GAB_HD,o=[];
+    gTx(o,mg,mg+5,`GABARIT 1:1 — ${esc(pc.title)}${n>1?` — feuille ${k+1}/${n} (rangée ${t.r+1}, colonne ${t.c+1})`:''} — page ${i+1}/${N}`,4.6,'start',700);gTx(o,mg,mg+10.5,`${esc(head)} · ${esc(pc.note||'')}`.slice(0,260),3.2,'start',400,'#333');
     const tr=rot?`translate(${(x0+w).toFixed(2)},${y0.toFixed(2)}) rotate(90)`:`translate(${x0.toFixed(2)},${y0.toFixed(2)})`;
     const sy=y0+h+6;o.push(`<rect x="${mg}" y="${sy}" width="20" height="20" fill="none" stroke="#000" stroke-width="0.3"/>`);gTx(o,mg+10,sy+12,'20',3.4,'middle');
     gLn(o,mg+30,sy+18,mg+130,sy+18,0.35);for(let q=0;q<=100;q+=10)gLn(o,mg+30+q,sy+18,mg+30+q,sy+18-(q%50?2.5:5),0.3);gTx(o,mg+30,sy+11,'0',2.8,'middle');gTx(o,mg+130,sy+11,'100 mm',2.8,'middle');
     gTx(o,mg+140,sy+9,'Imprimer à 100 % (taille réelle) — vérifier le carré 20 mm et la règle 100 mm AVANT de tracer.',3.4,'start',700,'#c0392b');
-    gTx(o,mg+140,sy+15,rot?'Pièce pivotée de 90° pour tenir en travers du rouleau.':'Une pièce entière par page : aucun assemblage.',3,'start',400,'#333');
-    const hc=Math.floor(ph*10)/10-0.5; // contenu un peu plus court que la page : jamais de page de débordement
-    return`<div class="pg" style="width:${pw}mm;height:${hc.toFixed(1)}mm"><svg xmlns="http://www.w3.org/2000/svg" width="${pw}mm" height="${hc.toFixed(1)}mm" viewBox="0 0 ${pw} ${hc.toFixed(1)}" data-piece="${esc(pc.id)}" data-rot="${rot?1:0}">${o.join('')}<g transform="${tr}">${pc.svg}</g></svg></div>`});
+    gTx(o,mg+140,sy+15,n>1?`Assemblage : superposer les croix ✚ de la bande bleutée (${GAB_OV} mm) sur celles de la feuille voisine, scotcher, puis tracer.${rot?' Feuille pivotée de 90°.':''}`:(rot?'Pièce pivotée de 90° pour tenir en travers du rouleau.':'Une pièce entière sur la page.'),3,'start',400,'#333');
+    const hc=Math.floor(ph*10)/10-0.5;
+    const body=`<clipPath id="gc${i}"><rect x="0" y="0" width="${tw.toFixed(2)}" height="${th.toFixed(2)}"/></clipPath><g clip-path="url(#gc${i})"><g transform="translate(${(-t.x0).toFixed(2)},${(-t.y0).toFixed(2)})">${pc.svg}${X}</g></g>${n>1?`<rect x="0" y="0" width="${tw.toFixed(2)}" height="${th.toFixed(2)}" fill="none" stroke="#1f5fbf" stroke-width="0.25" stroke-dasharray="2,2"/>`:''}`;
+    return`<div class="pg" style="width:${pw}mm;height:${hc.toFixed(1)}mm"><svg xmlns="http://www.w3.org/2000/svg" width="${pw}mm" height="${hc.toFixed(1)}mm" viewBox="0 0 ${pw} ${hc.toFixed(1)}" data-piece="${esc(pc.id)}" data-rot="${rot?1:0}" data-tile="${k+1}/${n}" data-win="${t.x0.toFixed(2)},${t.y0.toFixed(2)},${t.x1.toFixed(2)},${t.y1.toFixed(2)}">${o.join('')}<g transform="${tr}">${body}</g></svg></div>`});
   const fmt=mode==='roll'?'rouleau '+nf(parseFloat(S('iRoll','914'))||914)+' mm':mode;
-  const bigTxt=big.length?`<br><b style="color:#ff8a7d">⚠ ${big.length} pièce(s) trop grande(s) pour une page ${mode==='roll'?'de ce rouleau':mode} : ${big.map(p=>esc(p.id)).join(', ')}</b>${mode!=='roll'?` <button onclick="opener&&opener.openGab('roll')">Ouvrir au traceur</button>`:' — choisir un rouleau plus large'}`:'';
   const svgAll=`<svg xmlns="http://www.w3.org/2000/svg" width="${Math.max(...GP.pieces.map(p=>p.w))}mm" height="${GP.pieces.reduce((a,p)=>a+p.h+20,0)}mm" viewBox="0 0 ${Math.max(...GP.pieces.map(p=>p.w))} ${GP.pieces.reduce((a,p)=>a+p.h+20,0)}">${defs}${(()=>{let y=0;return GP.pieces.map(p=>{const g=`<g transform="translate(0,${y})">${p.svg}</g>`;y+=p.h+20;return g}).join('')})()}</svg>`;
-  const pw0=ok.length?Math.max(...ok.map(p=>p.F.pw)):210,zoom=Math.min(1,1000/(pw0*3.7795));
+  const pw0=SH.length?Math.max(...SH.map(s=>s.t.pw)):210,zoom=Math.min(1,1000/(pw0*3.7795));
   const html=`<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8"><title>${esc(GP.title)} — 1:1</title><style>
-@page{size:${ok.length?ok[0].F.pw+'mm '+ok[0].F.ph.toFixed(1)+'mm':'210mm 297mm'};margin:0}
-${ok.map((p,k)=>`@page p${k}{size:${p.F.pw}mm ${p.F.ph.toFixed(1)}mm;margin:0}`).join('\n')}
-${ok.map((p,k)=>`.pg:nth-of-type(${k+1}){page:p${k}}`).join('\n')}
+@page{size:${SH.length?SH[0].t.pw+'mm '+SH[0].t.ph.toFixed(1)+'mm':'210mm 297mm'};margin:0}
+${SH.map((s,k)=>`@page p${k}{size:${s.t.pw}mm ${s.t.ph.toFixed(1)}mm;margin:0}`).join('\n')}
+${SH.map((s,k)=>`.pg:nth-of-type(${k+1}){page:p${k}}`).join('\n')}
 html,body{margin:0;background:#8a8f99;font-family:Arial,Helvetica,sans-serif}
 .bar{position:sticky;top:0;background:#1a2035;color:#e8eaf0;padding:10px 16px;font-size:13px;line-height:1.55;z-index:2;border-bottom:3px solid #e8820c}
 .bar b{color:#ffa533}.bar button{margin:6px 8px 0 0;padding:7px 14px;border:0;border-radius:4px;background:#e8820c;color:#fff;font-weight:700;cursor:pointer}
@@ -4366,12 +4270,13 @@ html,body{margin:0;background:#8a8f99;font-family:Arial,Helvetica,sans-serif}
 .wrap{zoom:${zoom.toFixed(4)}}.pg{background:#fff;margin:10mm auto;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.3)}.pg svg{display:block}
 @media print{.bar{display:none}html,body{background:#fff}.wrap{zoom:1!important}.pg{margin:0;box-shadow:none;overflow:visible;break-after:page}.pg:last-child{break-after:auto}}
 </style></head><body><svg width="0" height="0" style="position:absolute" aria-hidden="true">${defs}</svg><div class="bar">
-<b>${esc(GP.title)}</b> — ${N} page(s), une pièce entière par page (${fmt}) — aucun assemblage${GP.fb?` · ${GP.fb} pièce(s) entière(s) trop grande(s) : bande de l'arc à la place`:''}${bigTxt}<br>
+<b>${esc(GP.title)}</b> — ${GP.pieces.length} gabarit(s), ${N} page(s) (${fmt})${nAs?` · ${nAs} gabarit(s) en plusieurs feuilles à assembler (recouvrement ${GAB_OV} mm, croix ✚)`:' — aucun assemblage'}<br>
+Chaque gabarit reprend la pièce de la feuille CP À DÉCOUPER : même repère, même orientation, même position depuis le coin ● du panneau.<br>
 1. <b>Imprimer</b> → ${mode==='roll'?'le traceur (ou « Enregistrer au format PDF » puis imprimer ce PDF depuis le pilote du traceur)':'imprimante de bureau, papier '+mode}. 2. <b>Échelle 100 % (taille réelle)</b> — jamais « Ajuster à la page » · marges : aucune. 3. Vérifier le carré 20 mm et la règle 100 mm de chaque page.<br>
 <button onclick="print()">🖨 Imprimer</button><button class="o" onclick="dl()">💾 Télécharger SVG (mm, toutes les pièces)</button></div>
 <div class="wrap">${pages.join('')}</div>
 <script>const SVG=${JSON.stringify(svgAll)};function dl(){const b=new Blob([SVG],{type:'image/svg+xml'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=${JSON.stringify((GP.title||'gabarit').replace(/[^\w\-]+/g,'_')+'_1-1.svg')};a.click()}<\/script></body></html>`;
-  return{html,GP,ok,big,n:N};
+  return{html,GP,ok:SH,big:[],n:N};
 }
 function openGab(modeIn){
   const d=canon(coll()),mode=modeIn||S('iGabFmt','roll'),r=gabHtml(d,mode);if(r.msg){alert(r.msg);return}
@@ -4976,6 +4881,8 @@ function dxfGroupsPlan(d,R){const N=cpNest(d,R),out=[];
   if(d.forme==='dalle'){const DG=dalGeo(d);if(DG.ok&&DG.sheets.length){const c=cpOf(d,'fi'),[W,H]=cpFmt(c),nb=Math.max(1,d.nb||1),used=new Set();out.forEach(g=>g.sheets.forEach(s=>{if(s.pre)used.add(s.pre.id)}));
     const extra=[];for(let e=0;e<nb;e++)DG.sheets.forEach((sh,i)=>{const id='platelage '+(i+1)+' ('+sh.items.map(it=>it.pc.id).join(' + ')+')'+(nb>1?' · ex. '+(e+1):'');if(!used.has(id))extra.push({items:[],pre:{id,polys:sh.items.map(it=>({poly:it.poly,id:it.pc.id}))}})});
     if(extra.length){const g=out.find(x=>x.name===cpName(c));if(g)g.sheets.push(...extra);else out.push({name:cpName(c),W,H,sheets:extra})}}}
+  // v2.0 : fond de goulotte (segments tête-bêche, même calepinage que la feuille CP À DÉCOUPER et les gabarits)
+  if(d.forme==='goulotte'){const gn=gouNest(d,R);if(gn)out.push({name:cpName(gn.cp)+' — fond de goulotte',W:gn.W,H:gn.H,sheets:gn.sheets.map(s=>({items:s,pre:null}))})}
   return out}
 function dxfGabarits(D,d,ox,oy){const GP=gabPieces(d,'roll');if(!GP||GP.msg||!GP.pieces)return{n:0,y:oy};let x=ox,n=0,hmax=0;
   D.text('CARTOUCHE',ox,oy+120,90,`GABARITS 1:1 — ${GP.title||''} (trait de découpe sur le calque GABARIT_DECOUPE)`,0);
@@ -4995,7 +4902,7 @@ function dxfPlanDoc(d){const g=d.forme==='voile'?voileGeo(d):null;if(limErr(d).l
   const pl=dxfPlan(D,d,R,0,0);st.plan=pl.n;let y=-pl.h-1500;
   const pn=dxfPanels(D,dxfGroupsPlan(d,R),0,y);st.panneaux=pn.np;st.pieces=pn.npc;y=pn.y-800;
   const gb=dxfGabarits(D,d,0,y);st.gabarits=gb.n;y=gb.y;
-  if(d.forme==='goulotte')D.text('CARTOUCHE',0,y+60,40,'Segments de fond de goulotte : contour sur le gabarit 1:1 ci-dessus (calepinage propre, voir feuilles CP).',0);
+  if(d.forme==='goulotte')D.text('CARTOUCHE',0,y+60,40,'Segments de fond de goulotte : panneaux « fond de goulotte » ci-dessus (calque CP_DECOUPE, tête-bêche) et gabarit 1:1.',0);
   const vw=dxfViews(D,d,0,y-300);st.vues=vw.n;
   return{D,st}}
 function dxfPlanFile(d0){let d;try{d=canon(migr(d0))}catch(e){return{err:'DXF : saisie incomplète'}}const r=dxfPlanDoc(d);if(r.err)return r;
