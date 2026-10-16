@@ -3,7 +3,7 @@ Tout passe par l'interface réelle (clavier, souris, téléchargements, horloge 
 import io, json, os, re
 from PIL import Image, ImageChops
 from playwright.sync_api import sync_playwright
-from lib import Suite, APP, OUT, HERE
+from lib import Suite, APP, OUT, HERE, NOFS
 
 SAVE = os.path.join(OUT, 'ux_save.json')
 
@@ -11,6 +11,7 @@ SAVE = os.path.join(OUT, 'ux_save.json')
 def page(pw, scheme='dark', clock=False, w=1400, h=900, ls=None):
     b = pw.chromium.launch()
     ctx = b.new_context(viewport={'width': w, 'height': h}, accept_downloads=True, color_scheme=scheme)
+    ctx.add_init_script(NOFS)  # v2.6 : ces bancs testent l'enregistrement par téléchargement
     pg = ctx.new_page()
     errs, dialogs = [], []
     pg.on('pageerror', lambda e: errs.append(str(e)))
@@ -55,7 +56,7 @@ def t(s):
         s.check(r['lab'] == 'CoffraPlan', 'logo dans la barre supérieure (SVG intégré, libellé accessible)')
         s.check(abs(r['w'] / r['h'] - r['vr']) < 0.01, f"logo non déformé (rapport {r['w'] / r['h']:.3f} = {r['vr']:.3f})")
         s.check(r['hh'] <= 56, f"barre supérieure compacte ({r['hh']:.0f} px ≤ 56)")
-        s.check(r['ver'] == 'v2.5', 'numéro de version affiché', r['ver'])
+        s.check(r['ver'] == 'v2.6', 'numéro de version affiché', r['ver'])
         body = ev("document.body.innerText")
         s.check('Plans Réservation' not in body and 'Plans de Réservation' not in body, 'ancien intitulé « Plans Réservation » retiré de l\'interface')
         ev("()=>{T.mk('rect',{dL:1200,dl:800,dh:300});prev()}")
@@ -151,7 +152,8 @@ def t(s):
             pg.click('#saveRem button:has-text("Sauvegarder")')
         d.value.save_as(SAVE)
         J = json.load(open(SAVE, encoding='utf-8'))
-        s.check(sorted(J) == ['app', 'date', 'modeles', 'plans', 'profils', 'v'] and J['app'] == 'plans-reservation' and J['v'] == 10 and len(J['plans']) == 1,
+        s.check(sorted(J) == ['app', 'date', 'ent', 'modeles', 'plans', 'profils', 'v'] and  # v2.6 : clé « ent » (cartouche entreprise) ajoutée, format v 10 inchangé
+                 J['app'] == 'plans-reservation' and J['v'] == 10 and len(J['plans']) == 1,
                 'sauvegarde depuis le rappel : fichier au format habituel (clés, app, v 10)', str(sorted(J)))
         s.check(d.value.suggested_filename.startswith('coffraplan_') and d.value.suggested_filename.endswith('.json'), 'nom du fichier : coffraplan_AAAA-MM-JJ.json', d.value.suggested_filename)
         s.check(st() == {'dirty': False, 'dot': False, 'rem': False, 'bar': False}, 'après sauvegarde : état « sauvegardé », rappel fermé', str(st()))

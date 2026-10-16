@@ -3,7 +3,7 @@
 Ordre proposé ; chaque étape se termine par des tests verts et une version taguée.
 
 1. **Fondations du dépôt** (fait en octobre 2026) : sources, tests, CLAUDE.md, mode d'emploi généré, CI.
-2. **Crédibilité métier**
+2. **Crédibilité métier** (v2.6 : flèche des boîtes rectangulaires, note d'hypothèses, cartouche, noms retirés — faits)
    - Note d'hypothèses complète (à partir de `hypRows` et des règles du code), relue par un chef coffreur ou un
      bureau d'études.
    - Calculs manquants : flèche du CP entre renforts ; poussée réduite selon DIN 18218 (à acheter légalement) en

@@ -130,7 +130,7 @@ code{font:9pt 'DejaVu Sans Mono',monospace;background:#f1f3f7;padding:0 1mm;bord
 <div class="c">4. Lire les feuilles</div><div>Plan · Débit · traçage · contrôles · Informations · CP à découper · Montage 3D · Fiche atelier · Repères</div>
 <div class="c">5. Gérer les plans</div><div>Liste · Modifier · Dupliquer · Supprimer · Annuler / rétablir</div>
 <div class="c">6. Sauvegarder et charger</div><div>Fichier .json · Rappel · Brouillon</div>
-<div class="c">7. Fonctions avancées</div><div>Profil chantier · Bibliothèque · Série depuis un tableau · Comparer deux indices · Auto-contrôle et corrections · Vue 3D · Gabarits 1:1 · Déplacement à la souris · Récapitulatif chantier · Dossier PDF · Exports DXF / CSV / XLSX · Mode chantier · Impression · Aperçu en attente · Cartes repliables</div>
+<div class="c">7. Fonctions avancées</div><div>Profil chantier · Bibliothèque · Série depuis un tableau · Comparer deux indices · Auto-contrôle et corrections · Vue 3D · Gabarits 1:1 · Déplacement à la souris · Récapitulatif chantier · Dossier PDF · Exports DXF / CSV / XLSX · Mode chantier · Impression · Aperçu en attente · Cartes repliables · Flèche du CP · Note d'hypothèses · Cartouche entreprise</div>
 <div class="c">8. Raccourcis clavier</div>
 <div class="c">9. Bonnes pratiques et dépannage</div>
 <div class="c">Annexe — calques DXF</div>
@@ -186,7 +186,7 @@ code{font:9pt 'DejaVu Sans Mono',monospace;background:#f1f3f7;padding:0 1mm;bord
 <h3>Étape 3 — Dimensions</h3>
 <p>Les champs changent selon la forme. Les petits boutons <b>?</b> expliquent chaque cote (ex. L = cote <b>extérieure</b> de la boîte = vide laissé dans le béton ; h = hauteur <b>hors-tout</b>, fond compris). Saisie souple : <code>1200</code>, <code>1,2 m</code>, <code>2500-2*18</code> (calcul), <code>12,5</code> m pour un Ø de cuve.</p>
 <h3>Étape 4 — Contreplaqué</h3>
-<p>Matériau (CP filmé, CTBX okoumé, cintrable), épaisseur et format de panneau, par famille de pièces (joues / parois, fonds…). Ces choix déterminent le débit et l'imbrication.</p>
+<p>Matériau, épaisseur et format de panneau, par famille de pièces (joues / parois, fonds…). Ces choix déterminent le débit, l'imbrication et le <b>contrôle de flèche</b> (§ 7.16). Par défaut : <b>CP filmé phénolique bouleau 18 mm</b> (EN 636-3, classe 3 — WISA-Form Birch, Riga Form, Metsä Form…). Autres choix : filmé combi (âme bouleau + résineux), filmé peuplier / eucalyptus, CTBX okoumé, cintrable. Choisir l'âme réellement livrée : la rigidité en dépend.</p>
 <h3>Étape 5 — Options</h3>
 <p>Selon la forme : feuillure, goussets d'angle, renforts en croix, fond supérieur, forme concentrique, poteaux, cerces et montants, poutres et poches… Les champs dépendants n'apparaissent que si l'option est cochée.</p>
 <h3>Étape 6 — Contrôles</h3>
@@ -266,7 +266,8 @@ code{font:9pt 'DejaVu Sans Mono',monospace;background:#f1f3f7;padding:0 1mm;bord
 <!-- ======================= 6 ======================= -->
 <h1 class="chap">6. Sauvegarder et charger</h1>
 <h3>Sauvegarder (fichier .json)</h3>
-<p>💾 <b>Sauvegarder</b> (<kbd>Ctrl</kbd>+<kbd>S</kbd>) télécharge <code>coffraplan_AAAA-MM-JJ.json</code> contenant <b>tous</b> les plans, profils de chantier et modèles. Le ranger dans le dossier du chantier (réseau, cloud) : c'est la vraie sauvegarde.</p>
+<p>💾 <b>Sauvegarder</b> (<kbd>Ctrl</kbd>+<kbd>S</kbd>) enregistre <b>tous</b> les plans, profils de chantier, modèles et le cartouche entreprise dans un fichier <code>.json</code>. Le ranger dans le dossier du chantier (réseau, cloud) : c'est la vraie sauvegarde.</p>
+<ul><li><b>Chrome / Edge</b> : au premier enregistrement, choisir le fichier et son dossier ; ensuite <kbd>Ctrl</kbd>+<kbd>S</kbd> <b>réécrit ce même fichier</b>, comme dans un traitement de texte. Un projet ouvert avec 📂 Charger devient le fichier enregistré. <kbd>Ctrl</kbd>+<kbd>Maj</kbd>+<kbd>S</kbd> : enregistrer sous un autre nom. Après un rechargement de la page, le premier enregistrement redemande le fichier.</li><li><b>Autres navigateurs</b> : le fichier <code>coffraplan_AAAA-MM-JJ.json</code> est téléchargé à chaque sauvegarde.</li></ul>
 <h3>Charger</h3>
 <p>📂 <b>Charger</b> (<kbd>Ctrl</kbd>+<kbd>O</kbd>) relit un fichier .json. S'il y a déjà des plans, l'application demande de les <b>remplacer</b> (les profils et modèles du fichier sont ajoutés). Les fichiers des versions précédentes sont convertis automatiquement.</p>
 <h3>Rappel de sauvegarde</h3>
@@ -384,6 +385,25 @@ code{font:9pt 'DejaVu Sans Mono',monospace;background:#f1f3f7;padding:0 1mm;bord
 <div class="row"><div>
 <p>Cliquer sur le titre d'une carte (ou Entrée au clavier) la replie : une ligne résume son contenu. L'état est mémorisé. Une alerte qui mène vers un champ d'une carte repliée la déplie automatiquement.</p></div>
 <div class="fig" style="flex:0 0 36%"><img src="img/06_replie.png"><div class="cap">Cartes Chantier et Type repliées</div></div></div>
+
+<h2>7.16 Flèche du contreplaqué</h2>
+<p>Pour les boîtes rectangulaires (carrées, rectangulaires, avec ou sans fond), l'application calcule la flèche de chaque joue sous la poussée du béton frais et la compare à la flèche admise (<b>portée / 300</b>, critère des fabricants de CP de coffrage ; réglable dans le profil chantier, ex. portée / 200 pour une réservation non vue).</p>
+<table><tr><th style="width:45mm">Élément</th><th>Hypothèse</th></tr>
+<tr><td>Joue</td><td>Plaque appuyée sur les angles, sur les <b>cloisons CP pleine hauteur</b> (renforts en croix) et au pied ; bord haut libre. Les tasseaux et chevrons, appuis ponctuels, ne sont pas comptés.</td></tr>
+<tr><td>Charge</td><td>Poussée hydrostatique 25 kN/m³ × h, nulle en haut, maximale au pied.</td></tr>
+<tr><td>Contreplaqué</td><td>Module moyen en flexion publié par les fabricants (EN 789), dans le sens le plus faible (le sens du fil n'est pas garanti par l'imbrication). Bouleau et combi : Koskisen / UPM ; okoumé : FCBA. Peuplier / eucalyptus et cintrable : pas de valeur retenue → flèche « non vérifiée ».</td></tr>
+<tr><td>Coefficients</td><td>× 1,5 (fluage en ambiance humide, EN 1995-1-1) et déformation d'effort tranchant ; ensemble recalé sur les tableaux de charges Riga Form (écart −6 % à +13 %).</td></tr></table>
+<p>Une flèche trop forte donne une alerte ⚠ avec le conseil (cloisons CP, CP plus épais) ; 🔍 Auto-contrôle propose la correction. Le détail figure dans la case Hypothèses et dans la note d'hypothèses.</p>
+<div class="warn"><b>Calcul indicatif</b>Ce contrôle ne remplace pas une note de calcul : il ne traite pas les autres formes (voiles, cercles, dalles, poutres), le bois massif, les fixations ni l'étaiement.</div>
+
+<h2>7.17 Note d'hypothèses</h2>
+<div class="row"><div>
+<p>📐 <b>Note d'hypothèses</b> (carte Plans) assemble, pour le chantier, une feuille de synthèse (plans concernés, hypothèses générales, limites, sources, visas) puis une feuille par plan : poussée au pied, renfort le plus sollicité, flèche de chaque joue (conforme / non conforme), hypothèses retenues avec leur origine, contrôles restants. 🖨 l'imprime en A4 portrait, pages numérotées. À joindre au dossier remis au bureau d'études ou au client.</p></div>
+<div class="fig" style="flex:0 0 40%"><img src="img/27_note.png"><div class="cap">Note d'hypothèses — feuille d'un plan</div></div></div>
+
+<h2>7.18 Cartouche entreprise</h2>
+<p>Carte Impression → 🏢 <b>Cartouche entreprise…</b> : nom de l'entreprise, ligne libre (adresse, téléphone), dessinateur et logo (PNG ou JPEG, réduit automatiquement). Ils apparaissent dans le cartouche de chaque feuille de plan, avec les cases <b>Vérifié</b> et <b>Visa</b> à remplir à la main et la mention « Non à l'échelle — fabriquer aux cotes ». Le cartouche est gardé dans le navigateur et dans le fichier projet.</p>
+<div class="fig"><img src="img/26_cartouche.png"><div class="cap">Cartouche d'une feuille avec entreprise et logo</div></div>
 
 <!-- ======================= 8 ======================= -->
 <h1 class="chap">8. Raccourcis clavier</h1>

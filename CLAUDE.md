@@ -47,14 +47,19 @@ développement : il progresse vite mais n'est pas développeur senior.
 - Stockage navigateur : clés `resa*` (`resaTheme`, `resaPrint`, `resaFold`, `resaChk`…). Fichier projet :
   `{app:'plans-reservation', v:10, plans, profils, modeles}`. **Ne pas casser la lecture des anciens fichiers** :
   ajouter une migration dans `migr`.
-- Version affichée : élément `#appVer` (« v2.5 »). Le test t_ux vérifie ce numéro.
+- v2.6 : `CPT` (catalogue CP par âme) et `CPMEC` (modules EN 789 + sources) ; `flecheCP` / `plateW` (flèche des joues,
+  boîtes rectangulaires) ; `ENT` / `entBlock` / `openEnt` (cartouche entreprise, clé `ent` du fichier) ; `FH` / `expJ`
+  / `impJ` (enregistrement direct File System Access, repli téléchargement) ; `showNote` (note d'hypothèses, VIEW='note').
+- Version affichée : élément `#appVer` (« v2.6 »). Le test t_ux vérifie ce numéro.
 
 ## Décisions actées (ne pas changer sans l'accord de Kévin)
 - Palette : joues CP `#EBD9B4`, fond inférieur `#B4532A`, fond supérieur `#E8A92E`, goussets `#F26B1D`, cloisons et
   montants CP `#C98BA0`, bois `#6B4423`, tubes carton `#8E8A84`, poches `#D7263D`, PVC `#4F5358`, béton `#C4C4C4`.
   Mêmes couleurs en 2D, en 3D, dans la légende et sur la fiche.
-- Poussée : hydrostatique complète 25 kN/m³ × h (EN 1991-1-1). Flèche du CP **non vérifiée** ; c'est écrit sur les
-  feuilles.
+- Poussée : hydrostatique complète 25 kN/m³ × h (EN 1991-1-1).
+- CP par défaut : filmé phénolique bouleau 18 mm (EN 636-3, classe 3). Flèche des joues calculée pour les boîtes
+  rectangulaires seulement (critère portée / 300, réglable par chantier) ; autres formes : « non vérifiée », c'est écrit.
+  Toute nouvelle valeur de rigidité doit citer sa source (fiche fabricant datée) dans `CPMEC`.
 - Mannequin de voile : au moins un renfort perpendiculaire au plus grand côté (R03 → 1 montant).
 - Cadre de joint 50×50 du parallélépipède : choix de conception, à valider sur chantier.
 - Impression par défaut : « Plan pleine page » ; feuilles annexes décochées ; sommaire « Jamais » (option « Si > 5
@@ -88,8 +93,7 @@ sh tests/syntax.sh                    # syntaxe JS
   `docs/manuel/manuel.html` à chaque fonction visible ajoutée. `{{VERSION}}` et `{{MOIS}}` sont remplacés automatiquement.
 
 ## À faire avant toute diffusion commerciale
-- Retirer les noms de chantiers réels de l'appli, par exemple le texte d'aide « Ex: CHANTIER_DEMO_A ». L'historique git les
-  contient aussi : garder ce dépôt privé.
+- Noms de chantiers réels retirés de l'appli en v2.6 ; l'historique git les contient encore : garder ce dépôt privé.
 - Rédiger la note d'hypothèses complète à partir de `hypRows` et de la revue des règles du code ; la faire relire par
   un chef coffreur ou un bureau d'études.
 - Appli installable (Tauri) avec sauvegarde en fichiers, licence, version Light : voir docs/feuille-de-route.md.

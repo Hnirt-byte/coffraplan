@@ -4,6 +4,7 @@ from playwright.sync_api import sync_playwright
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 APP = os.path.abspath(os.environ.get('APP', os.path.join(HERE, '..', 'app', 'CoffraPlan.html')))
+NOFS = 'window.showSaveFilePicker = undefined; window.showOpenFilePicker = undefined;'  # v2.6 : repli téléchargement
 OUT = os.path.join(HERE, 'out'); os.makedirs(OUT, exist_ok=True)
 
 
@@ -32,6 +33,9 @@ class Suite:
 def open_app(pw, app=None, width=1400, height=1000):
     b = pw.chromium.launch()
     ctx = b.new_context(viewport={'width': width, 'height': height}, accept_downloads=True)
+    # v2.6 : l'appli écrit directement dans un fichier (File System Access) quand le navigateur le permet ; les bancs
+    # existants testent le repli par téléchargement (t_v26 teste l'écriture directe avec un faux fichier)
+    ctx.add_init_script(NOFS)
     pg = ctx.new_page()
     errs = []
     pg.on('pageerror', lambda e: errs.append(str(e)+' @ '+(e.stack or '')[:400]))
