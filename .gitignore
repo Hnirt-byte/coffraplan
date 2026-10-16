@@ -1,0 +1,9 @@
+__pycache__/
+tests/out/
+docs/manuel/img/
+docs/manuel/_rendu.html
+docs/manuel/*.pdf
+.DS_Store
+Thumbs.db
+.vscode/*
+!.vscode/extensions.json

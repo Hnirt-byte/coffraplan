@@ -1,0 +1,5 @@
+playwright==1.56.0
+ezdxf==1.4.4
+shapely==2.2.0
+openpyxl==3.1.5
+pillow==12.3.0

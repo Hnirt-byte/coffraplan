@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="192" height="192" viewBox="0 0 192 192" role="img" aria-label="CoffraPlan favicon">
+<defs>
+ <linearGradient id="outerBack" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#27384e"/><stop offset="1" stop-color="#101a29"/></linearGradient>
+ <linearGradient id="outerLeft" x1="0" y1="0" x2="1" y2=".7"><stop stop-color="#1a2739"/><stop offset="1" stop-color="#334559"/></linearGradient>
+ <linearGradient id="outerFront" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#2f4255"/><stop offset="1" stop-color="#101b2c"/></linearGradient>
+ <linearGradient id="outerCap" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#b7c1c8"/><stop offset="1" stop-color="#4f6272"/></linearGradient>
+ <linearGradient id="orangeFace" x1="0" y1="0" x2=".85" y2=".2"><stop stop-color="#ffb03c"/><stop offset=".49" stop-color="#ff8b19"/><stop offset="1" stop-color="#de5608"/></linearGradient>
+ <linearGradient id="orangeFaceDark" x1="0" y1="0" x2="1" y2=".3"><stop stop-color="#ff7f12"/><stop offset="1" stop-color="#af3807"/></linearGradient>
+ <linearGradient id="concreteTop" x1="0" y1="0" x2="1" y2=".8"><stop stop-color="#ffffff"/><stop offset=".48" stop-color="#b4c4cf"/><stop offset="1" stop-color="#738596"/></linearGradient>
+ </defs>
+<rect width="192" height="192" rx="38" fill="#111b2c"/>
+<polygon points="104.00,20.00 170.10,58.08 170.10,102.08 104.00,64.00" fill="url(#outerBack)" stroke="#172537" stroke-width="1.1" stroke-linejoin="round" />
+<polygon points="104.00,20.00 37.90,58.08 37.90,102.08 104.00,64.00" fill="url(#outerLeft)" stroke="#172537" stroke-width="1.1" stroke-linejoin="round" />
+<polygon points="37.90,58.08 104.00,96.16 104.00,140.16 37.90,102.08" fill="url(#outerFront)" stroke="#172537" stroke-width="1.1" stroke-linejoin="round" />
+<polygon points="170.10,58.08 159.57,64.15 159.57,108.15 170.10,102.08" fill="url(#outerCap)" stroke="#172537" stroke-width="1.1" stroke-linejoin="round" />
+<polygon points="114.53,90.10 104.00,96.16 104.00,140.16 114.53,134.10" fill="url(#outerCap)" stroke="#172537" stroke-width="1.1" stroke-linejoin="round" />
+<polygon points="104.00,32.13 159.57,64.15 159.57,108.15 104.00,76.13" fill="url(#orangeFace)" stroke="#172537" stroke-width="1.1" stroke-linejoin="round" />
+<polygon points="104.00,32.13 58.96,58.08 58.96,102.08 104.00,76.13" fill="url(#orangeFaceDark)" stroke="#172537" stroke-width="1.1" stroke-linejoin="round" />
+<polygon points="58.96,58.08 114.53,90.10 114.53,134.10 58.96,102.08" fill="url(#orangeFace)" stroke="#172537" stroke-width="1.1" stroke-linejoin="round" />
+<polygon points="104.00,20.00 170.10,58.08 159.57,64.15 93.47,26.07" fill="url(#concreteTop)" stroke="#cbd4db" stroke-width="1.1" stroke-linejoin="round" />
+<polygon points="104.00,20.00 114.53,26.07 48.43,64.15 37.90,58.08" fill="url(#concreteTop)" stroke="#cbd4db" stroke-width="1.1" stroke-linejoin="round" />
+<polygon points="48.43,52.02 114.53,90.10 104.00,96.16 37.90,58.08" fill="url(#concreteTop)" stroke="#cbd4db" stroke-width="1.1" stroke-linejoin="round" />
+</svg>
