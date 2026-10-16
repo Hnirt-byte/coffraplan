@@ -35,6 +35,30 @@ body{font-family:'Barlow',sans-serif;background:var(--bg);color:var(--text);min-
 .si .fm{color:var(--muted);font-size:10px;margin-left:4px}
 #pvSt{display:none;position:fixed;top:62px;right:24px;z-index:150;background:var(--surface);color:var(--text);border:1px solid var(--accent);border-radius:6px;padding:6px 12px;font-size:12px;box-shadow:0 4px 16px rgba(0,0,0,.3);cursor:pointer}
 .pv.stale>*{opacity:.5;transition:opacity .2s}
+/* v2.4 — cartes repliables, accueil, série, comparaison, mode chantier */
+.sb .cd>.ct.fold{cursor:pointer;user-select:none;display:flex;align-items:center;gap:6px}.sb .cd>.ct.fold::after{content:'▾';margin-left:auto;color:var(--muted);transition:transform .15s}
+.sb .cd.col>.ct.fold::after{transform:rotate(-90deg)}.sb .cd.col>*:not(.ct):not(.sum){display:none!important}.sb .cd.col>.ct{margin-bottom:4px}
+.sb .cd .sum{display:none;font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.sb .cd.col .sum{display:block}
+.ct.fold:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+#zWel .wb{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px}#zWel ol{margin:4px 0 0 18px;font-size:12px;line-height:1.5}
+#mdBody.wide{width:min(980px,100%)}
+.ser{width:100%;border-collapse:collapse;font-size:12px;margin-top:8px}.ser th,.ser td{padding:3px 6px;border-bottom:1px solid var(--border);text-align:left;vertical-align:top}.ser th{color:var(--muted);font-weight:600}
+.ser .ok{color:var(--okt)}.ser .wn{color:var(--acct)}.ser .er{color:var(--redt)}
+.cmp td,.cmp th{padding:2.5px 5px;border-bottom:.5px solid #ddd;text-align:left;vertical-align:top;font-size:10.5px}.cmp th{color:#777;font-weight:600}.cmp{border-collapse:collapse;width:100%;margin-bottom:6px}
+.cmp tr.chg td{background:#fff3cd}.cmp tr.add td{background:#e3f4e8}.cmp tr.del td{background:#fdecea;color:#999;text-decoration:line-through}.cmp td.nm{font-family:'JetBrains Mono',monospace;white-space:nowrap}
+#chm{display:none;position:fixed;inset:0;z-index:420;background:#2a2f3d;flex-direction:column;color:#fff;font-family:'Barlow',sans-serif}
+#chm .chh{display:flex;align-items:center;gap:8px;padding:8px 10px;background:#1a2035;border-bottom:3px solid #e8820c;flex-wrap:wrap}
+#chm .chh .btn{min-height:44px;min-width:44px;font-size:15px}#chm .chh select{max-width:46vw;min-height:44px;font-size:14px;background:#252f4a;color:#fff;border:1px solid #2e3a56;border-radius:4px;padding:4px 6px}
+#chm .chh .pg{font:600 14px 'JetBrains Mono',monospace;margin:0 4px;white-space:nowrap}
+#chm .chb{flex:1;display:flex;min-height:0}#chm .chs{flex:1;overflow:auto;touch-action:pan-y;padding:10px;position:relative}
+#chm .chs .ps{width:1150px!important;max-width:none!important;margin:0!important;transform-origin:0 0}#chm .chs .ps *{pointer-events:none}
+#chm .no-print,#chm .drg{display:none!important}
+#chm .chk{width:300px;overflow:auto;background:#fff;color:#1a2035;padding:10px;font-size:14px;display:none}#chm.kon .chk{display:block}
+#chm .chk label{display:flex;gap:10px;align-items:flex-start;padding:8px 4px;border-bottom:1px solid #eee;cursor:pointer;line-height:1.3}#chm .chk input{width:22px;height:22px;flex:none}
+#chm .chk label.done{color:#999;text-decoration:line-through}
+#chm .nav{position:absolute;top:50%;transform:translateY(-50%);width:52px;height:90px;border:none;border-radius:8px;background:rgba(26,32,53,.55);color:#fff;font-size:28px;cursor:pointer;z-index:2}
+#chm .nav.l{left:6px}#chm .nav.r{right:6px}#chm .nav:disabled{opacity:.15}
+#chm .chb{position:relative}@media(max-width:800px){#chm .chk{position:absolute;right:0;top:0;bottom:0;width:min(320px,90vw);box-shadow:-6px 0 20px rgba(0,0,0,.4)}}
 .keys td{padding:4px 6px;border-bottom:1px solid var(--border);font-size:12px;vertical-align:top}.keys td:first-child{white-space:nowrap}
 kbd{display:inline-block;min-width:20px;padding:1px 6px;border:1px solid var(--border);border-bottom-width:2px;border-radius:4px;background:var(--surface2);font:600 11px 'JetBrains Mono',monospace;color:var(--text);text-align:center}
 .main{display:grid;grid-template-columns:340px 1fr;min-height:calc(100vh - 50px)}
@@ -105,22 +129,22 @@ body.pm .ps-bd[style*="display:block"]{display:block!important}
 body.pm .ps-top,body.pm .ps-bot,body.pm .ps-side,body.pm .ps-c{min-height:0!important}
 body.pm .ps-c{overflow:hidden!important}body.pm .ps-side .inf{overflow:hidden!important}
 body.pm .ps-c svg{width:100%!important;height:100%!important;min-height:0}
-body.pm .inf{font-size:9.5px;line-height:1.25}body.pm .inf .nt{font-size:.95em}body.pm .inf .sub{font-size:1.1em;margin-top:3px}
-.inf{font-size:11.5px;color:#333;width:100%;text-align:left;line-height:1.4;padding:2px 2px}
+body.pm .inf{font-size:calc(9.5px + 2pt);line-height:1.25}body.pm .inf .nt{font-size:.95em}body.pm .inf .sub{font-size:1.1em;margin-top:3px}
+.inf{font-size:calc(11.5px + 2pt);color:#333;width:100%;text-align:left;line-height:1.4;padding:2px 2px}
 .inf table{border-collapse:collapse;width:100%}
 .inf td{padding:1px 3px;border-bottom:.5px solid #eee;vertical-align:top}
 .inf td:first-child{font-weight:700;color:#1a2035;white-space:nowrap}
 .inf .nm{font-family:'JetBrains Mono',monospace;text-align:right;white-space:nowrap}
 .inf td.tg{font-family:'JetBrains Mono',monospace;color:#e8820c;font-size:.92em}
-.inf .sub{font-family:'Barlow Condensed',sans-serif;font-weight:700;letter-spacing:1px;color:#e8820c;margin:5px 0 1px;font-size:12px;text-transform:uppercase}
+.inf .sub{font-family:'Barlow Condensed',sans-serif;font-weight:700;letter-spacing:1px;color:#e8820c;margin:5px 0 1px;font-size:calc(12px + 2pt);text-transform:uppercase}
 .inf .sub:first-child{margin-top:0}
 .inf .er{color:#c0392b;font-weight:700}.inf .wn{color:#b9770e}
-.inf .nt{color:#777;font-size:10.5px;line-height:1.3}
+.inf .nt{color:#777;font-size:calc(10.5px + 2pt);line-height:1.3}
 .fi.bad{border-color:var(--red)!important;background:rgba(231,76,60,.14)!important}
 .hlp{display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;margin-left:5px;border-radius:50%;border:1px solid var(--muted);background:none;color:var(--muted);font-size:9px;font-weight:700;cursor:pointer;vertical-align:1px;letter-spacing:0;padding:0}
 .hlp:hover{border-color:var(--accent);color:var(--acct)}
 #hlpPop{display:none;position:fixed;z-index:300;width:260px;background:var(--surface);border:1px solid var(--accent);border-radius:8px;padding:10px;font-size:12px;line-height:1.4;color:var(--text);box-shadow:0 8px 30px rgba(0,0,0,.5)}
-#toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:var(--navy2);border:1px solid var(--accent);color:var(--text);padding:8px 16px;border-radius:6px;font-size:12px;opacity:0;transition:opacity .3s;pointer-events:none;z-index:400;max-width:90vw}
+#toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:var(--navy2);border:1px solid var(--accent);color:var(--text);padding:8px 16px;border-radius:6px;font-size:12px;opacity:0;transition:opacity .3s;pointer-events:none;z-index:460;max-width:90vw}
 #md{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:350;align-items:center;justify-content:center;padding:16px}
 #mdBody{width:min(520px,100%);max-height:90vh;overflow:auto;margin:0}
 .si button.dup{color:var(--muted);font-size:13px}.si button.dup:hover{color:var(--acct)}
@@ -148,21 +172,32 @@ body.pm .inf{font-size:9.5px;line-height:1.25}body.pm .inf .nt{font-size:.95em}b
 </head>
 <body>
 <div class="hdr">
-<div class="brand"><svg xmlns="http://www.w3.org/2000/svg" class="logo" viewBox="0 10 362 66" preserveAspectRatio="xMinYMid slice" role="img" aria-label="CoffraPlan"><defs><linearGradient id="cplouterBack" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#27384e"/><stop offset="1" stop-color="#101a29"/></linearGradient><linearGradient id="cplouterLeft" x1="0" y1="0" x2="1" y2=".7"><stop stop-color="#1a2739"/><stop offset="1" stop-color="#334559"/></linearGradient><linearGradient id="cplouterFront" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#2f4255"/><stop offset="1" stop-color="#101b2c"/></linearGradient><linearGradient id="cplouterCap" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#b7c1c8"/><stop offset="1" stop-color="#4f6272"/></linearGradient><linearGradient id="cplorangeFace" x1="0" y1="0" x2=".85" y2=".2"><stop stop-color="#ffb03c"/><stop offset=".49" stop-color="#ff8b19"/><stop offset="1" stop-color="#de5608"/></linearGradient><linearGradient id="cplorangeFaceDark" x1="0" y1="0" x2="1" y2=".3"><stop stop-color="#ff7f12"/><stop offset="1" stop-color="#af3807"/></linearGradient><linearGradient id="cplconcreteTop" x1="0" y1="0" x2="1" y2=".8"><stop stop-color="#ffffff"/><stop offset=".48" stop-color="#b4c4cf"/><stop offset="1" stop-color="#738596"/></linearGradient></defs><g transform="translate(0,1) scale(.52)"><polygon points="104.00,20.00 170.10,58.08 170.10,102.08 104.00,64.00" fill="url(#cplouterBack)" stroke="#172537" stroke-width="1.1" stroke-linejoin="round" /><polygon points="104.00,20.00 37.90,58.08 37.90,102.08 104.00,64.00" fill="url(#cplouterLeft)" stroke="#172537" stroke-width="1.1" stroke-linejoin="round" /><polygon points="37.90,58.08 104.00,96.16 104.00,140.16 37.90,102.08" fill="url(#cplouterFront)" stroke="#172537" stroke-width="1.1" stroke-linejoin="round" /><polygon points="170.10,58.08 159.57,64.15 159.57,108.15 170.10,102.08" fill="url(#cplouterCap)" stroke="#172537" stroke-width="1.1" stroke-linejoin="round" /><polygon points="114.53,90.10 104.00,96.16 104.00,140.16 114.53,134.10" fill="url(#cplouterCap)" stroke="#172537" stroke-width="1.1" stroke-linejoin="round" /><polygon points="104.00,32.13 159.57,64.15 159.57,108.15 104.00,76.13" fill="url(#cplorangeFace)" stroke="#172537" stroke-width="1.1" stroke-linejoin="round" /><polygon points="104.00,32.13 58.96,58.08 58.96,102.08 104.00,76.13" fill="url(#cplorangeFaceDark)" stroke="#172537" stroke-width="1.1" stroke-linejoin="round" /><polygon points="58.96,58.08 114.53,90.10 114.53,134.10 58.96,102.08" fill="url(#cplorangeFace)" stroke="#172537" stroke-width="1.1" stroke-linejoin="round" /><polygon points="104.00,20.00 170.10,58.08 159.57,64.15 93.47,26.07" fill="url(#cplconcreteTop)" stroke="#cbd4db" stroke-width="1.1" stroke-linejoin="round" /><polygon points="104.00,20.00 114.53,26.07 48.43,64.15 37.90,58.08" fill="url(#cplconcreteTop)" stroke="#cbd4db" stroke-width="1.1" stroke-linejoin="round" /><polygon points="48.43,52.02 114.53,90.10 104.00,96.16 37.90,58.08" fill="url(#cplconcreteTop)" stroke="#cbd4db" stroke-width="1.1" stroke-linejoin="round" /></g><text x="107" y="66" fill="var(--logo-t)" font-family="Inter Display,Inter,Arial,sans-serif" font-size="53" font-weight="900" letter-spacing="-3.1" textLength="146" lengthAdjust="spacingAndGlyphs">Coffra</text><text x="257" y="66" fill="#ff8517" font-family="Inter Display,Inter,Arial,sans-serif" font-size="53" font-weight="900" letter-spacing="-3.1" textLength="100" lengthAdjust="spacingAndGlyphs">Plan</text></svg><small id="appVer">v2.3</small></div>
+<div class="brand"><svg xmlns="http://www.w3.org/2000/svg" class="logo" viewBox="0 10 362 66" preserveAspectRatio="xMinYMid slice" role="img" aria-label="CoffraPlan"><defs><linearGradient id="cplouterBack" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#27384e"/><stop offset="1" stop-color="#101a29"/></linearGradient><linearGradient id="cplouterLeft" x1="0" y1="0" x2="1" y2=".7"><stop stop-color="#1a2739"/><stop offset="1" stop-color="#334559"/></linearGradient><linearGradient id="cplouterFront" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#2f4255"/><stop offset="1" stop-color="#101b2c"/></linearGradient><linearGradient id="cplouterCap" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#b7c1c8"/><stop offset="1" stop-color="#4f6272"/></linearGradient><linearGradient id="cplorangeFace" x1="0" y1="0" x2=".85" y2=".2"><stop stop-color="#ffb03c"/><stop offset=".49" stop-color="#ff8b19"/><stop offset="1" stop-color="#de5608"/></linearGradient><linearGradient id="cplorangeFaceDark" x1="0" y1="0" x2="1" y2=".3"><stop stop-color="#ff7f12"/><stop offset="1" stop-color="#af3807"/></linearGradient><linearGradient id="cplconcreteTop" x1="0" y1="0" x2="1" y2=".8"><stop stop-color="#ffffff"/><stop offset=".48" stop-color="#b4c4cf"/><stop offset="1" stop-color="#738596"/></linearGradient></defs><g transform="translate(0,1) scale(.52)"><polygon points="104.00,20.00 170.10,58.08 170.10,102.08 104.00,64.00" fill="url(#cplouterBack)" stroke="#172537" stroke-width="1.1" stroke-linejoin="round" /><polygon points="104.00,20.00 37.90,58.08 37.90,102.08 104.00,64.00" fill="url(#cplouterLeft)" stroke="#172537" stroke-width="1.1" stroke-linejoin="round" /><polygon points="37.90,58.08 104.00,96.16 104.00,140.16 37.90,102.08" fill="url(#cplouterFront)" stroke="#172537" stroke-width="1.1" stroke-linejoin="round" /><polygon points="170.10,58.08 159.57,64.15 159.57,108.15 170.10,102.08" fill="url(#cplouterCap)" stroke="#172537" stroke-width="1.1" stroke-linejoin="round" /><polygon points="114.53,90.10 104.00,96.16 104.00,140.16 114.53,134.10" fill="url(#cplouterCap)" stroke="#172537" stroke-width="1.1" stroke-linejoin="round" /><polygon points="104.00,32.13 159.57,64.15 159.57,108.15 104.00,76.13" fill="url(#cplorangeFace)" stroke="#172537" stroke-width="1.1" stroke-linejoin="round" /><polygon points="104.00,32.13 58.96,58.08 58.96,102.08 104.00,76.13" fill="url(#cplorangeFaceDark)" stroke="#172537" stroke-width="1.1" stroke-linejoin="round" /><polygon points="58.96,58.08 114.53,90.10 114.53,134.10 58.96,102.08" fill="url(#cplorangeFace)" stroke="#172537" stroke-width="1.1" stroke-linejoin="round" /><polygon points="104.00,20.00 170.10,58.08 159.57,64.15 93.47,26.07" fill="url(#cplconcreteTop)" stroke="#cbd4db" stroke-width="1.1" stroke-linejoin="round" /><polygon points="104.00,20.00 114.53,26.07 48.43,64.15 37.90,58.08" fill="url(#cplconcreteTop)" stroke="#cbd4db" stroke-width="1.1" stroke-linejoin="round" /><polygon points="48.43,52.02 114.53,90.10 104.00,96.16 37.90,58.08" fill="url(#cplconcreteTop)" stroke="#cbd4db" stroke-width="1.1" stroke-linejoin="round" /></g><text x="107" y="66" fill="var(--logo-t)" font-family="Inter Display,Inter,Arial,sans-serif" font-size="53" font-weight="900" letter-spacing="-3.1" textLength="146" lengthAdjust="spacingAndGlyphs">Coffra</text><text x="257" y="66" fill="#ff8517" font-family="Inter Display,Inter,Arial,sans-serif" font-size="53" font-weight="900" letter-spacing="-3.1" textLength="100" lengthAdjust="spacingAndGlyphs">Plan</text></svg><small id="appVer">v2.4</small></div>
 <div style="flex:1"></div>
 <button class="btn bs bo no-print" id="bUndo" onclick="undo()" title="Annuler la dernière modification du formulaire (Ctrl+Z)" aria-label="Annuler">↶</button>
 <button class="btn bs bo no-print" id="bRedo" onclick="redo()" title="Rétablir (Ctrl+Y ou Ctrl+Maj+Z)" aria-label="Rétablir">↷</button>
 <button class="btn bs bo no-print" onclick="printAll()" title="Imprimer les plans (Ctrl+P)" aria-label="Imprimer">🖨<span class="lbl"> Imprimer</span></button>
 <button class="btn bs bo no-print" id="bSave" onclick="expJ()" title="Sauvegarder tous les plans, profils et modèles dans un fichier .json (Ctrl+S)" aria-label="Sauvegarder">💾<span class="lbl"> Sauvegarder</span></button>
 <button class="btn bs bo no-print" onclick="impJ()" title="Charger une sauvegarde .json (Ctrl+O)" aria-label="Charger">📂<span class="lbl"> Charger</span></button>
+<button class="btn bs bo no-print" onclick="openChm()" title="Mode chantier : feuilles en plein écran, une à la fois, repères à cocher (tablette)" aria-label="Mode chantier">📱<span class="lbl"> Chantier</span></button>
 <select class="fi thm no-print" id="selTheme" onchange="setTheme(this.value)" title="Thème de l'interface (les plans restent sur fond blanc)" aria-label="Thème de l'interface"><option value="auto">◐ Auto</option><option value="light">☀ Clair</option><option value="dark">☾ Sombre</option></select>
 <button class="btn bs bo no-print" onclick="showKeys()" title="Raccourcis clavier (?)" aria-label="Raccourcis clavier">?</button>
 </div>
+<div id="chm" class="no-print" role="dialog" aria-modal="true" aria-label="Mode chantier"><div class="chh">
+<button class="btn bs bo" style="color:#fff" onclick="closeChm()" aria-label="Fermer le mode chantier" title="Fermer (Échap)">✕</button><select id="chmP" aria-label="Plan" onchange="chmPlan(+this.value)"></select>
+<span class="pg" id="chmPg"></span><span style="flex:1"></span><button class="btn bs bo" style="color:#fff" id="chmK" onclick="el('chm').classList.toggle('kon');chmFit()" title="Repères posés">✓ Repères <span id="chmKn"></span></button></div>
+<div class="chb"><div class="chs" id="chmS"><button class="nav l" id="chmL" onclick="chmGo(-1)" aria-label="Feuille précédente">‹</button><div id="chmV"></div><button class="nav r" id="chmR" onclick="chmGo(1)" aria-label="Feuille suivante">›</button></div><div class="chk" id="chmC"></div></div></div>
 <div id="dlg" class="no-print" role="dialog" aria-modal="true" aria-labelledby="dlgT"><div id="dlgB" class="cd"></div></div>
 <div id="saveRem" class="no-print" role="alertdialog" aria-labelledby="saveRemT"><b id="saveRemT">💾 Modifications non sauvegardées</b><div id="saveRemD"></div>
 <div class="rb"><button class="btn bs bo" onclick="remLater()" title="Rappel dans 15 minutes (Échap)">Plus tard</button><button class="btn bs bp" style="width:auto;padding:6px 14px;font-size:12px;letter-spacing:1px" onclick="expJ()">💾 Sauvegarder</button></div></div>
 <div class="main">
 <div class="sb no-print">
+<div class="cd" id="zWel" style="display:none"><div class="ct">👋 Bienvenue dans CoffraPlan</div>
+<ol><li>Choisir une forme ou un modèle</li><li>Saisir les cotes (les alertes mènent au champ)</li><li>« Ajouter », puis 💾 Sauvegarder (Ctrl+S)</li></ol>
+<div class="wb"><button class="btn bs bo" onclick="libPick('s0')">Trémie 500 × 500</button><button class="btn bs bo" onclick="libPick('s2')">Réservation avec fond</button>
+<button class="btn bs bo" onclick="libPick('s3')">Fourreau Ø 160</button><button class="btn bs bo" onclick="openSeries()">📋 Série (tableau)</button>
+<button class="btn bs bo" onclick="impJ()">📂 Charger un projet</button><button class="btn bs bo" onclick="showKeys()">⌨ Raccourcis</button></div>
+<div style="text-align:right;margin-top:6px"><button class="btn bs bo" onclick="welHide()" title="Ne plus afficher">Masquer</button></div></div>
 <div id="sbF">
 <div class="cd"><div class="ct">🏗 Chantier</div>
 <div class="fd"><label>Nom du chantier</label><div style="display:flex;gap:6px"><input class="fi" id="iCh" list="dlCh" autocomplete="off" placeholder="Ex: CHANTIER_DEMO_A"><button type="button" class="btn bs bo" id="bProf" onclick="openProf()" title="Profil du chantier / de l'ouvrage">⚙</button></div></div>
@@ -207,7 +242,7 @@ body.pm .inf{font-size:9.5px;line-height:1.25}body.pm .inf .nt{font-size:.95em}b
 <div id="zChk"></div>
 <button class="bp" id="bAdd" onclick="addP(false)" style="margin-bottom:8px">➕ AJOUTER</button>
 <div id="zEditSt" style="display:none" role="status"></div>
-<div class="g2" id="zEdit" style="display:none;margin-bottom:8px"><button class="btn bs bo" onclick="addP(true)">➕ Ajouter comme nouveau</button><button class="btn bs bo" onclick="cancelEdit()">✖ Annuler</button></div>
+<div class="g3" id="zEdit" style="display:none;margin-bottom:8px"><button class="btn bs bo" onclick="addP(true)" title="Enregistrer le formulaire comme un nouveau plan">➕ Nouveau</button><button class="btn bs bo" onclick="openCmp()" title="Comparer ce plan avec un autre indice (saisies, débit, contrôles)">⇄ Comparer</button><button class="btn bs bo" onclick="cancelEdit()">✖ Annuler</button></div>
 <div class="g2" style="margin-bottom:8px"><button class="bg btn bs" onclick="prev()">👁 APERÇU</button><button class="btn bs bo" onclick="autoControl(false)" title="Vérifie lisibilité, valeurs, imbrication, surfaces, poches, rechargement">🔍 AUTO-CONTRÔLE</button></div>
 <button class="btn bs bo" id="b3D" onclick="open3D()" style="width:100%;margin-bottom:8px" title="Tourner, zoomer, éclater, masquer par type, cliquer une pièce pour son repère">🧊 VUE 3D INTERACTIVE</button>
 <div class="g2" style="margin-bottom:12px"><button class="btn bs bo" id="bExp" onclick="openExport()" title="DXF (plan, mm), CSV, XLSX ou tout dans un ZIP — plan affiché ou chantier">📤 Exporter</button><button class="btn bs bo" id="bDos" onclick="openDossier()" title="Page de garde, sommaire paginé, tous les plans du chantier, récapitulatif — imprimer en PDF">📘 Dossier PDF</button></div>
@@ -224,6 +259,7 @@ body.pm .inf{font-size:9.5px;line-height:1.25}body.pm .inf .nt{font-size:.95em}b
 <div style="display:flex;gap:6px;margin-bottom:8px"><input class="fi" id="plQ" type="search" placeholder="Rechercher : réf., ouvrage, forme…" aria-label="Rechercher un plan" oninput="this.dataset.fresh=1;event.stopPropagation();rnL()" onchange="event.stopPropagation()">
 <select class="fi" id="plS" style="width:auto" title="Ordre des plans dans chaque ouvrage" aria-label="Trier les plans" onchange="event.stopPropagation();try{localStorage.setItem('resaSort',this.value)}catch(e){}rnL()"><option value="i">Saisie</option><option value="r">Réf.</option><option value="f">Forme</option></select></div>
 <div id="sl" style="max-height:260px;overflow-y:auto"></div>
+<button class="btn bs bo" onclick="openSeries()" style="width:100%;margin-top:8px" title="Créer plusieurs plans d'un coup depuis un tableau copié d'Excel">📋 Série de plans depuis un tableau</button>
 <button class="btn bs bo" onclick="showChantier()" style="width:100%;margin-top:8px" title="Débit consolidé, bon de commande, débit des barres de bois">🧾 Récapitulatif chantier · commande</button>
 <button class="btn bs" onclick="clearAll()" style="width:100%;margin-top:8px;background:rgba(231,76,60,.1);color:var(--red);border:1px solid rgba(231,76,60,.3)">🗑 Tout supprimer</button>
 </div>
@@ -306,7 +342,9 @@ function readCP(){const r={};['j','fi','fs'].forEach(k=>{const t=el('cp_'+k+'_t'
 // ====== STOCKAGE (clé conservée pour retrouver les plans v3) ======
 let P=ldP(),EI=-1;
 function ldP(){try{const r=JSON.parse(localStorage.getItem('resa3'));return Array.isArray(r)?r.map(migr):[]}catch(e){return[]}}
-function svP(){try{localStorage.setItem('resa3',JSON.stringify(P))}catch(e){}try{markDirty()}catch(e){}}
+// v2.4 — écriture refusée par le navigateur (stockage plein, navigation privée stricte) : prévenir une fois par session
+let _lsWarned=false;function lsFail(){if(_lsWarned)return;_lsWarned=true;setTimeout(()=>uiAlert('Le navigateur refuse d\'enregistrer les plans (stockage plein ou bloqué). Les dernières modifications ne sont pas gardées dans ce navigateur : sauvegarder le fichier maintenant (Ctrl+S).','Stockage du navigateur'),0)}
+function svP(){try{localStorage.setItem('resa3',JSON.stringify(P))}catch(e){lsFail()}try{markDirty()}catch(e){}}
 // Migration des plans v3 → v4
 function migr(d){
   const o=migr11(d);if(!o||typeof o!=='object'||(o.v||0)>=12)return o;
@@ -416,12 +454,14 @@ function manGeo(d,g){
   const ep=d.ep||0,eF=d.epF||ep,eS=d.epS||ep,h=d.h,app=d.appui!==false;
   const hp=h-eS-(app?eF:0);                           // hauteur des joues (entre linteau et appui)
   const tC=d.cS&&d.cS!=='cp'&&d.cT>0?d.cT:eF;          // épaisseur d'un niveau de cerce (CP ou traverses bois)
-  const eC=d.eC||0,nC=eC>0?Math.max(0,Math.ceil((hp-eC)/(eC+tC))):0;
-  const gap=(hp-nC*tC)/(nC+1);                        // vide entre niveaux
-  const zb=app?eF:0,levels=[];for(let i=1;i<=nC;i++)levels.push(zb+i*gap+(i-1)*tC); // z sous-face de chaque cerce
   const Rm=(g.Ri+g.Re)/2;
   const Lin=g.rad?2*Rm*Math.sin(g.al)-2*ep:g.L-2*ep; // largeur entre joues (mi-épaisseur)
-  const eM=d.eM||0,nM=eM>0&&d.bM>0?Math.max(0,Math.ceil(Lin/eM)-1):0;
+  const eC=d.eC||0,eM=d.eM||0;let nC=eC>0?Math.max(0,Math.ceil((hp-eC)/(eC+tC))):0,nM=eM>0&&d.bM>0?Math.max(0,Math.ceil(Lin/eM)-1):0;
+  // v2.4 : au moins un renfort perpendiculaire au plus grand côté (entraxe 0 = aucun, choix respecté) :
+  // largeur > hauteur → 1 montant au milieu (portée de l'appui / du linteau) ; hauteur > largeur → 1 cerce à mi-hauteur (joues)
+  if(Lin>hp&&nM===0&&eM>0&&d.bM>0)nM=1;else if(hp>Lin&&nC===0&&eC>0)nC=1;
+  const gap=(hp-nC*tC)/(nC+1);                        // vide entre niveaux
+  const zb=app?eF:0,levels=[];for(let i=1;i<=nC;i++)levels.push(zb+i*gap+(i-1)*tC); // z sous-face de chaque cerce
   const xs=[];for(let i=1;i<=nM;i++)xs.push(-Lin/2+i*Lin/(nM+1));
   let jw,jwI,bevE=0,bevI=0;
   if(g.rad){jw=jwI=g.l}
@@ -719,7 +759,7 @@ ${num('oNiv','Départ depuis le dessus de la base (mm)',0,' min="0"')}</div>`+
       chk('oPot','Poteaux circulaires',false)+`<div id="zPot" style="display:none">
 <div class="g3"><div id="zPN">${num('oPN','Nombre',3,' min="1"')}</div>${num('oPD','Ø poteau',200)}${num('oPH','h depuis le dessous (vide = auto)','',' placeholder="auto"')}</div>
 ${num('oPJ','Perçage des fonds : Ø poteau + (mm)',10,' min="0"')}
-<div class="g2">${num('oPR','Axe centre → axe poteau (mm)',300)}${num('oPA','Angle départ (°)',0,' step="1"')}</div>
+<div class="g2">${num('oPR','Axe centre → axe poteau (mm)',200)}${num('oPA','Angle départ (°)',0,' step="1"')}</div>
 ${sel('oPDisp','Disposition',[['equi','Équidistant (360°/n)'],['custom','Angles personnalisés']],' onchange="syncVis()"')}
 <div class="fd" id="zPAngles" style="display:none"><label>Angles séparés par virgule (°)</label><input class="fi" id="oPAngles" placeholder="0, 120, 240"></div>
 <div class="nt" style="font-size:10px;color:var(--muted)">0° = axe horizontal vers la droite, sens horaire (vue de dessus). Les poteaux traversent la base et le fond sup. (perçages) : du dessous de la boîte jusqu'au dessus du fond sup. (ou en tête) en automatique.</div></div>`+
@@ -1518,7 +1558,11 @@ function segBest(r1,r2,th,F,kerf){
   const A=segPerSheet(r1,r2,th,F[0],F[1],kerf),B=segPerSheet(r1,r2,th,F[1],F[0],kerf);
   return B.per>A.per?B:A;
 }
-function gouGeo(d){
+// v2.4 — gouGeo appelé ~11 fois par recalcul de goulotte (≈ 55 ms chacun) : résultat mis en cache par entrée identique.
+// Le résultat n'est modifié par aucun appelant (vérifié : t_avap identique, objet gelé dans t_v24).
+const _gouC=new Map();
+function gouGeo(d){const k=JSON.stringify(d);let r=_gouC.get(k);if(!r){r=gouGeo0(d);_gouC.set(k,r);if(_gouC.size>8)_gouC.delete(_gouC.keys().next().value)}return r}
+function gouGeo0(d){
   const ep=d.ep||0,eF=d.epF||ep,jE=!!d.gJE,jI=!!d.gJI;
   const Rin=(d.gD||0)*1000/2,R0=d.gDref==='bois'?Rin-(jE?ep:0):Rin,b=d.gB||0,R1=R0-b;
   // Fond entre les joues : plaque de R1 (nu béton int.) à R0 (nu béton ext.) ; joues fixées contre le chant du fond
@@ -2698,7 +2742,7 @@ function formSnap(){const d=coll();delete d.date;return JSON.stringify(d)}
 function editDirty(){if(EI<0||!P[EI])return false;const k=JSON.stringify(P[EI]);
   if(k!==_eKey){const cur=formSnap(),ho=_hisOff;_hisOff=true;try{setForm(P[EI]);_eBase=formSnap();if(_eBase!==cur)setForm(JSON.parse(cur))}finally{_hisOff=ho}_eKey=k}
   return formSnap()!==_eBase}
-function updBtn(){const dirty=editDirty(),b=el('bAdd'),s=el('zEditSt'),ref=EI>=0&&P[EI]?(P[EI].ref||'Plan '+(EI+1)):'';
+function updBtn(){welUpd();foldSums();const dirty=editDirty(),b=el('bAdd'),s=el('zEditSt'),ref=EI>=0&&P[EI]?(P[EI].ref||'Plan '+(EI+1)):'';
   b.textContent=EI>=0?'✔ METTRE À JOUR '+ref:'➕ AJOUTER';b.classList.toggle('dirty',dirty);b.title=dirty?ref+' : modifications non enregistrées dans le plan':'';
   el('zEdit').style.display=EI>=0?'':'none';s.style.display=EI>=0?'':'none';s.classList.toggle('dirty',dirty);
   s.textContent=dirty?`● ${ref} modifié — non enregistré dans le plan (« Mettre à jour »)`:`${ref} affiché — aucune modification`}
@@ -2889,7 +2933,7 @@ function markFields(d){
 // resaProf = {CHANTIER:{cp, mont, kerf, ent, bois:[…], fmt:'A4'|'A3', ouv:{Ouvrage:{Dc (m), ev, pp}}}}
 const PROF_DEF={cp:null,mont:'',kerf:4,ent:500,bois:[4000,5000,6000],fmt:'A3',ouv:{}};
 let PROF=(()=>{try{const r=JSON.parse(localStorage.getItem('resaProf'));return r&&typeof r==='object'&&!Array.isArray(r)?r:{}}catch(e){return{}}})();
-function svProf(){try{localStorage.setItem('resaProf',JSON.stringify(PROF))}catch(e){}try{markDirty()}catch(e){}}
+function svProf(){try{localStorage.setItem('resaProf',JSON.stringify(PROF))}catch(e){lsFail()}try{markDirty()}catch(e){}}
 const chKey=s=>String(s||'').trim().toUpperCase(),ouKey=s=>String(s||'').trim();
 function profCh(ch){const k=chKey(ch);if(!k)return null;return PROF[k]?Object.assign({},PROF_DEF,PROF[k],{ouv:PROF[k].ouv||{}}):null}
 function profOu(ch,ou){const c=profCh(ch);if(!c)return null;const k=Object.keys(c.ouv).find(x=>x.toLowerCase()===ouKey(ou).toLowerCase());return k?c.ouv[k]:null}
@@ -3006,7 +3050,7 @@ const LIB_STD=[
  ['Baie voile cintré 900 × 2100 · voile 250 · Ø 12 m','voile',{L:900,l:250,h:2100,DcuveM:12}],
 ];
 let LIBU=(()=>{try{const r=JSON.parse(localStorage.getItem('resaLib'));return Array.isArray(r)?r:[]}catch(e){return[]}})();
-function svLib(){try{localStorage.setItem('resaLib',JSON.stringify(LIBU))}catch(e){}try{markDirty()}catch(e){}}
+function svLib(){try{localStorage.setItem('resaLib',JSON.stringify(LIBU))}catch(e){lsFail()}try{markDirty()}catch(e){}}
 function libUI(){const z=el('selLib');if(!z)return;
   z.innerHTML=`<option value="">📚 Bibliothèque — choisir un modèle…</option><optgroup label="Modèles courants">${LIB_STD.map((m,i)=>`<option value="s${i}">${esc(m[0])}</option>`).join('')}</optgroup>`+
   (LIBU.length?`<optgroup label="Mes modèles">${LIBU.map((m,i)=>`<option value="u${i}">${esc(m.name)}</option>`).join('')}</optgroup>`:'')}
@@ -3076,6 +3120,7 @@ document.addEventListener('keydown',e=>{if(dlgOpen()){if(e.key==='Escape'){e.pre
     if(a&&(a.tagName==='TEXTAREA'||a.tagName==='INPUT'&&/^(text|search|)$/.test(a.type)&&a.dataset.fresh))return; // annulation native de la saisie en cours
     if(k==='z'&&!e.shiftKey){e.preventDefault();undo()}else{e.preventDefault();redo()}return}
   if(typeof V3D!=='undefined'&&V3D.on)return;                 // la vue 3D gère ses touches (Échap la ferme)
+  if(chmOn()){if(e.key==='Escape')closeChm();else if(e.key==='ArrowRight'||e.key==='PageDown')chmGo(1);else if(e.key==='ArrowLeft'||e.key==='PageUp')chmGo(-1);else return;e.preventDefault();return}
   if(e.key==='Escape'){const h=el('hlpPop');
     if(h&&h.style.display==='block')h.style.display='none';else if(el('md').style.display==='flex')closeModal();else if(remShown())remLater();else if(typing)a.blur();return}
   if(e.key==='?'&&!typing&&!mod&&!e.altKey){e.preventDefault();showKeys()}});
@@ -3119,17 +3164,158 @@ const CHKF=[[/saisir au moins un angle/,'oPAngles'],[/^Poteaux? \d/,'oPR'],[/con
 function fieldEl(id){if(!id)return null;const m=/^bm(\d+)([bho])?$/.exec(id);if(m){const r=document.querySelectorAll('#zDlBm [data-bm]')[+m[1]];return r?(m[2]&&r.querySelector(`[data-k="${m[2]}"]`))||r:null}return el(id)}
 function chkField(m){const r=CHKF.find(x=>x[0].test(m));if(!r)return '';return r[1].split(' ').find(id=>{const e=fieldEl(id);return e&&e.offsetParent!==null})||''}
 function chkRow(cls,ic,m,id){return `<div class="${cls}"${id?` data-f="${id}" tabindex="0" role="button" title="Aller au champ concerné"`:''}>${ic} ${esc(m)}</div>`}
-function goField(id){const e=fieldEl(id);if(!e)return;e.scrollIntoView({block:'center',behavior:'smooth'});const f=e.matches('input,select,textarea')?e:e.querySelector('input,select,textarea');
+function goField(id){const e=fieldEl(id);if(!e)return;const cc=e.closest('.cd.col');if(cc)foldSet(cc,false);e.scrollIntoView({block:'center',behavior:'smooth'});const f=e.matches('input,select,textarea')?e:e.querySelector('input,select,textarea');
   if(f){f.focus({preventScroll:true});f.classList.add('flash');setTimeout(()=>f.classList.remove('flash'),1600)}}
 el('zChk').addEventListener('click',e=>{const t=e.target.closest('[data-f]');if(t)goField(t.dataset.f)});
 el('zChk').addEventListener('keydown',e=>{const t=e.target.closest('[data-f]');if(t&&(e.key==='Enter'||e.key===' ')){e.preventDefault();goField(t.dataset.f)}});
+
+// ---------- v2.4 — Cartes repliables du panneau (résumé d'une ligne, état mémorisé) ----------
+function foldKey(c){return (c.querySelector('.ct')||{}).textContent.replace(/\(.*?\)|[^\p{L}\p{N} ·—-]/gu,'').trim()}
+function foldSet(c,col){c.classList.toggle('col',col);const t=c.querySelector('.ct');if(t)t.setAttribute('aria-expanded',String(!col));
+  try{const k=foldKey(c),s=new Set(JSON.parse(localStorage.getItem('resaFold')||'[]'));col?s.add(k):s.delete(k);localStorage.setItem('resaFold',JSON.stringify([...s]))}catch(e){}foldSums()}
+function foldInit(){let s=new Set();try{s=new Set(JSON.parse(localStorage.getItem('resaFold')||'[]'))}catch(e){}
+  document.querySelectorAll('.sb>.cd:not(#zWel),#sbF>.cd').forEach(c=>{const t=c.querySelector(':scope>.ct');if(!t||t.classList.contains('fold'))return;
+    t.classList.add('fold');t.tabIndex=0;t.setAttribute('role','button');t.title='Replier / déplier';t.insertAdjacentHTML('afterend','<div class="sum"></div>');
+    t.addEventListener('click',()=>foldSet(c,!c.classList.contains('col')));t.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();foldSet(c,!c.classList.contains('col'))}});
+    c.classList.toggle('col',s.has(foldKey(c)));t.setAttribute('aria-expanded',String(!c.classList.contains('col')))});foldSums()}
+function fvis(e,stop){for(let x=e;x&&x!==stop;x=x.parentElement)if(x.style&&x.style.display==='none')return false;return true}
+function fieldLabel(e){if(e.type==='checkbox'){const l=e.closest('label');return l?l.textContent.trim():e.id}
+  const fd=e.closest('.fd'),lb=fd&&fd.querySelector('label');let t=lb?lb.textContent.replace(/\?$/,'').trim():(e.title||e.placeholder||e.dataset.k||e.id||'');
+  const m=/^cp_\w+_(t|e|f)$/.exec(e.id||'');if(m)t+=' · '+{t:'matériau',e:'épaisseur',f:'format'}[m[1]];
+  const bm=e.closest('[data-bm]');if(bm)t='Poutre '+([...bm.parentNode.querySelectorAll('[data-bm]')].indexOf(bm)+1)+' · '+t;
+  const po=e.closest('[data-po]');if(po)t='Poteau '+([...po.parentNode.querySelectorAll('[data-po]')].indexOf(po)+1)+' · '+t;return t}
+function fieldText(e){return e.type==='checkbox'?(e.checked?'oui':'non'):e.tagName==='SELECT'?((e.selectedOptions[0]||{}).text||''):String(e.value)}
+function foldSums(){document.querySelectorAll('.sb .cd.col').forEach(c=>{const s=c.querySelector(':scope>.sum');if(!s)return;
+  if(c.querySelector('#sl')){s.textContent=el('pc').textContent+' plan(s)';return}
+  s.textContent=[...c.querySelectorAll('input,select')].filter(e=>e.id!=='selLib'&&e.type!=='search'&&fvis(e,c)&&(e.type==='checkbox'?e.checked:String(e.value).trim()!==''))
+    .map(e=>e.type==='checkbox'?fieldLabel(e).replace(/\s*\(.*$/,''):fieldLabel(e).replace(/\s*\(.*$/,'').replace(/\s*·.*$/,'').slice(0,22)+' '+fieldText(e)).join(' · ')||'—'})}
+// ---------- v2.4 — Accueil (liste vide) ----------
+function welUpd(){const w=el('zWel');if(!w)return;let off=false;try{off=localStorage.getItem('resaWelcome')==='0'}catch(e){}w.style.display=!P.length&&!off?'':'none'}
+function welHide(){try{localStorage.setItem('resaWelcome','0')}catch(e){}welUpd()}
+
+// ---------- v2.4 — Série de plans depuis un tableau collé (Excel, tabulations / point-virgule) ----------
+// Colonnes reconnues (en-tête facultatif) : Réf · Forme · L · l · h · Ø · Nombre · Ouvrage · Indice · Désignation.
+// Sans en-tête : Réf, Forme, L, l, h, Nombre. Les autres réglages (chantier, CP, options) viennent du plan affiché ;
+// pour une autre forme : valeurs par défaut de cette forme + profil du chantier.
+const SER_H=[[/^(ref|reference|repere|rep)\b/,'ref'],[/^(forme|type)\b/,'forme'],[/^(o|ø|d|diam|diametre)\b/,'D'],[/^(nb|nombre|qte|quantite)\b/,'nb'],
+  [/^(ouvrage|ouv)\b/,'ouv'],[/^(indice|ind)\b/,'ind'],[/^(designation|desc|libelle)\b/,'desc'],[/^(longueur)\b/,'L'],[/^(largeur)\b/,'l'],[/^(hauteur|h)\b/,'h']];
+const SER_F=[[/fourreau|rond|circ/,'circ'],[/puisard|carre.*fond/,'carre_fond'],[/fond/,'rect_fond'],[/carre/,'carre'],[/rect|tremie/,'rect'],[/massif/,'massif'],[/voile/,'voile'],[/special/,'special'],[/goulotte/,'goulotte'],[/dalle/,'dalle'],[/poutre/,'poutre']];
+function serCol(raw){const t=String(raw).trim(),n=nrm(t).replace(/[^a-z0-9ø ]/g,' ').trim();if(/^L\b/.test(t)&&!/^l/.test(t))return 'L';if(/^l\b/.test(t))return 'l';
+  if(/^Ø/.test(t))return 'D';const h=SER_H.find(x=>x[0].test(n));return h?h[1]:null}
+function serForme(v){const n=nrm(v).trim();if(!n)return null;const O=[...el('iForme').options];
+  const o=O.find(o=>o.value===n)||O.find(o=>nrm(o.text)===n)||O.find(o=>nrm(o.text).startsWith(n));if(o)return o.value;const f=SER_F.find(x=>x[0].test(n));return f&&O.some(o=>o.value===f[1])?f[1]:null}
+function serParse(txt){const L=String(txt||'').split(/\r?\n/).map(l=>l.replace(/\s+$/,'')).filter(l=>l.trim());if(!L.length)return{cols:[],rows:[]};
+  const sep=L[0].includes('\t')?'\t':L[0].includes(';')?';':',',cells=L.map(l=>l.split(sep).map(c=>c.trim()));
+  const hd=cells[0].map(serCol),isH=hd.filter(Boolean).length>=2&&!cells[0].some(c=>/^-?\d+([.,]\d+)?$/.test(c));
+  const cols=isH?hd:['ref','forme','L','l','h','nb'];return{cols,head:isH,rows:(isH?cells.slice(1):cells).map(r=>{const o={};cols.forEach((k,i)=>{if(k&&r[i]!=null&&r[i]!=='')o[k]=r[i]});return o})}}
+let SER=null;
+function serAnalyse(){const txt=el('serT').value,S0=serParse(txt),tpl=coll(),tplS=formSnap(),ei=EI,ho=_hisOff,out=[];delete tpl.date;
+  if(!tpl.ch&&S0.rows.length){SER=null;el('serR').innerHTML='<div class="hint" style="margin:8px 0 0;border-left-color:var(--red)">⛔ Saisir d\'abord le nom du chantier dans le formulaire (les plans de la série y seront rattachés).</div>';el('serGo').disabled=true;return}
+  _hisOff=true;try{S0.rows.forEach((r,ix)=>{const msg=[];let f=r.forme?serForme(r.forme):null;
+    if(r.forme&&!f){out.push({ix,r,st:'er',msg:['forme « '+r.forme+' » inconnue']});return}
+    if(!f)f=r.D?'circ':r.L&&r.l&&parseCote(r.L)!==parseCote(r.l)?'rect':r.L?'carre':tpl.forme;
+    const dims={};for(const k of ['L','l','h','D']){if(r[k]==null)continue;const v=parseCote(r[k],'mm');if(v==null||!isFinite(v)){msg.push(k+' illisible « '+r[k]+' »')}else dims[k]=v}
+    if(msg.length){out.push({ix,r,f,st:'er',msg});return}
+    let d;if(f===tpl.forme)d=JSON.parse(JSON.stringify(tpl));else{_loading=true;try{el('iForme').value=f;updF()}finally{_loading=false}applyProf(true);d=coll()}
+    const nb=r.nb!=null?parseInt(r.nb,10):1;if(!(nb>=1)){out.push({ix,r,f,st:'er',msg:['nombre illisible « '+r.nb+' »']});return}
+    Object.assign(d,dims,{ch:tpl.ch,ouv:r.ouv!=null?r.ouv:tpl.ouv,ind:r.ind!=null?r.ind:tpl.ind,ref:r.ref?String(r.ref).toUpperCase():'',nb});if(r.desc!=null)d.desc=r.desc;
+    if(f==='carre'&&dims.L!=null&&dims.l==null)d.l=dims.L;
+    setForm(d);syncVis();const e=coll();delete e.date;
+    Object.keys(dims).forEach(k=>{if(e[k]!==dims[k])msg.push(k+' sans objet pour cette forme')});
+    const c=canon(e),g=c.forme==='voile'?voileGeo(c):null,LE=limErr(c),W=checks(c,g);
+    LE.forEach(x=>msg.push(x.msg));W.filter(x=>x[0]!=='warn').forEach(x=>msg.push(x[1]));const wn=W.filter(x=>x[0]==='warn').map(x=>x[1]);
+    if(e.ref&&P.some(p=>chKey(p.ch)===chKey(e.ch)&&ouKey(p.ouv).toLowerCase()===ouKey(e.ouv).toLowerCase()&&String(p.ref||'').toUpperCase()===e.ref))wn.unshift('référence '+e.ref+' déjà utilisée');
+    out.push({ix,r,f,d:e,st:LE.length||badDims(W)||msg.length?'er':wn.length?'wn':'ok',msg:msg.length?msg:wn})})}
+  finally{_loading=true;try{setForm(JSON.parse(tplS))}finally{_loading=false}EI=ei;_hisOff=ho;syncVis()}
+  SER={cols:S0.cols,head:S0.head,rows:out};serRender()}
+function serRender(){const z=el('serR');if(!z||!SER)return;const ok=SER.rows.filter(x=>x.st!=='er').length;
+  el('serGo').disabled=!ok;el('serGo').textContent=`Créer ${ok} plan(s)`;
+  z.innerHTML=!SER.rows.length?'':`<div class="hint" style="margin:8px 0 0">Colonnes ${SER.head?'lues dans l\'en-tête':'par défaut (pas d\'en-tête)'} : ${SER.cols.map(c=>c||'—').join(' · ')}</div>
+  <table class="ser"><tr><th>#</th><th>Réf.</th><th>Forme</th><th>Cotes</th><th>Nb</th><th>État</th></tr>${SER.rows.map(x=>{const d=x.d||{},cot=['L','l','h','D'].filter(k=>x.r[k]!=null).map(k=>(k==='D'?'Ø':k)+' '+x.r[k]).join(' · ');
+    return `<tr><td>${x.ix+1}</td><td>${esc(d.ref||x.r.ref||'auto')}</td><td>${esc(x.f?fmLb(x.f):x.r.forme||'?')}</td><td>${esc(cot)}</td><td>${esc(String(d.nb||x.r.nb||1))}</td>
+    <td class="${x.st}">${x.st==='ok'?'✓ prêt':x.st==='wn'?'⚠ ':'⛔ non créé — '}${esc(x.msg.join(' · '))}</td></tr>`}).join('')}</table>`}
+function openSeries(){SER=null;modal(`<div class="cd" style="margin:0"><div class="ct">📋 Série de plans depuis un tableau</div>
+  <div class="hint">Copier les lignes dans Excel puis coller ici. Colonnes reconnues : <b>Réf · Forme · L · l · h · Ø · Nombre · Ouvrage · Indice · Désignation</b>
+  (en-tête facultatif ; sans en-tête : Réf, Forme, L, l, h, Nombre). Chantier, contreplaqué et options : repris du plan affiché.</div>
+  <textarea class="fi" id="serT" rows="7" style="font-family:'JetBrains Mono',monospace;font-size:12px" placeholder="Réf&#9;Forme&#9;L&#9;l&#9;h&#9;Nombre&#10;T1&#9;Rectangulaire&#9;1000&#9;600&#9;250&#9;2&#10;F1&#9;Fourreau&#9;&#9;&#9;200&#9;4"></textarea>
+  <div id="serR"></div><div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px"><button class="btn bs bo" onclick="closeModal()">Fermer</button><button class="btn bs bpr" id="serGo" disabled onclick="serCreate()">Créer 0 plan(s)</button></div></div>`,true);
+  const t=el('serT');t.addEventListener('input',()=>{clearTimeout(t._h);t._h=setTimeout(serAnalyse,250)});t.focus()}
+function serCreate(){if(!SER)return;const L=SER.rows.filter(x=>x.st!=='er'),uids=[];
+  L.forEach(x=>{const d=JSON.parse(JSON.stringify(x.d));if(!d.ref)d.ref=nextRef(d.ch,d.ouv);d.date=new Date().toISOString().slice(0,10);uids.push(planUid(d));P.push(d)});
+  svP();profFromPlans(P.slice(-L.length));profLists();rnL();updBtn();closeModal();
+  toast(`${L.length} plan(s) créé(s)`,'Annuler',()=>{P=P.filter(p=>!uids.includes(p.uid));EI=-1;svP();rnL();updBtn();toast('Série annulée')})}
+
+// ---------- v2.4 — Comparer deux indices d'un plan (feuille imprimable) ----------
+function formView(d){setForm(d);syncVis();const out=new Map();
+  document.querySelectorAll('#sbF>.cd').forEach(c=>{if(c.style.display==='none')return;const sec=foldKey(c);
+    c.querySelectorAll('input,select').forEach((e,k)=>{if(e.id==='selLib'||e.type==='search'||e.id==='iCh'||!fvis(e,c))return;let id=e.id;
+      if(!id){const r=e.closest('[data-bm],[data-po]');id=(r?(r.dataset.bm!=null?'bm':'po')+[...r.parentNode.children].indexOf(r):'x')+'_'+(e.dataset.k||k)}
+      out.set(id,{sec,lb:fieldLabel(e),v:fieldText(e)})})});return out}
+function cmpData(A,B){const cur=JSON.parse(formSnap()),ei=EI,ho=_hisOff;let FA,FB;_hisOff=true;
+  try{FA=formView(A);FB=formView(B)}finally{_loading=true;try{setForm(cur)}finally{_loading=false}EI=ei;_hisOff=ho;syncVis()}
+  const ids=[...new Set([...FA.keys(),...FB.keys()])],fields=ids.map(id=>{const a=FA.get(id),b=FB.get(id),x=b||a;return{sec:x.sec,lb:x.lb,a:a?a.v:'—',b:b?b.v:'—'}}).filter(f=>f.a!==f.b);
+  const deb=d=>{const c=canon(migr(d)),g=c.forme==='voile'?voileGeo(c):null,W=checks(c,g);if(badDims(W)||limErr(c).length)return{W,L:new Map(),bad:true};const R=debit(c,g),L=new Map();
+    R.forEach(r=>L.set('cp '+String(r.ftag).replace(/^.*-/,''),{t:String(r.ftag).replace(/^.*-/,''),n:r.n,q:r.q,dim:r.a!=null?nf(r.a,1)+' × '+nf(r.b,1):(r.txt||'')}));
+    (R.bois||[]).forEach(b=>L.set('bois '+String(b.ftag).replace(/^.*-/,''),{t:String(b.ftag).replace(/^.*-/,''),n:b.n,q:b.q,dim:'L '+nf(b.L,0)}));return{W,L}};
+  const DA=deb(A),DB=deb(B),keys=[...new Set([...DA.L.keys(),...DB.L.keys()])],lines=keys.map(k=>{const a=DA.L.get(k),b=DB.L.get(k);
+    return{a,b,st:!a?'add':!b?'del':a.n!==b.n||a.q!==b.q||a.dim!==b.dim?'chg':''}});
+  const wa=new Set(DA.W.map(x=>x[1])),wb=new Set(DB.W.map(x=>x[1]));
+  return{fields,lines,bad:DA.bad||DB.bad,wAdd:[...wb].filter(m=>!wa.has(m)),wDel:[...wa].filter(m=>!wb.has(m))}}
+function cmpLabel(p){return (p.ref||'?')+(p.ind?' ind. '+p.ind:'')}
+function openCmp(){if(EI<0||!P[EI]){toast('Afficher d\'abord un plan enregistré');return}const B=P[EI],key=p=>chKey(p.ch)+'|'+ouKey(p.ouv).toLowerCase()+'|'+String(p.ref||'').toUpperCase();
+  const cand=P.map((p,i)=>i).filter(i=>i!==EI),same=cand.filter(i=>key(P[i])===key(B));if(!cand.length){toast('Un seul plan enregistré : rien à comparer');return}
+  const def=same.length?same[same.length-1]:cand[cand.length-1];
+  modal(`<div class="cd" style="margin:0"><div class="ct">⇄ Comparer ${esc(cmpLabel(B))}</div><div class="fd"><label>Avec (version de référence)</label><select class="fi" id="cmpA">${cand.map(i=>`<option value="${i}"${i===def?' selected':''}>${esc(cmpLabel(P[i]))} — ${esc(fmLb(P[i].forme))}${P[i].ouv?' · '+esc(P[i].ouv):''}${same.includes(i)?' (même repère)':''}</option>`).join('')}</select></div>
+  <div class="hint">Feuille imprimable : saisies, lignes de débit et contrôles qui diffèrent entre les deux plans.</div>
+  <div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn bs bo" onclick="closeModal()">Annuler</button><button class="btn bs bpr" onclick="const a=+el('cmpA').value;closeModal();showCmp(a,${EI})">Comparer</button></div></div>`)}
+function showCmp(ia,ib){const A=P[ia],B=P[ib];if(!A||!B)return;const C=cmpData(A,B),dt=new Date().toLocaleDateString('fr-FR');VIEW='cmp';
+  const tr=(st,c)=>`<tr class="${st}">${c.map(x=>`<td${x[1]?' class="nm"':''}>${esc(x[0])}</td>`).join('')}</tr>`;
+  const sec=C.fields.length?`<table class="cmp"><tr><th>Rubrique</th><th>Donnée</th><th>${esc(cmpLabel(A))}</th><th>${esc(cmpLabel(B))}</th></tr>${C.fields.map(f=>tr('chg',[[f.sec],[f.lb],[f.a,1],[f.b,1]])).join('')}</table>`:'<div class="nt">Aucune saisie différente.</div>';
+  const chg=C.lines.filter(l=>l.st),deb=C.bad?'<div class="nt">Un des plans est incohérent : débit non comparé.</div>':chg.length?`<table class="cmp"><tr><th>Repère</th><th>Désignation</th><th>${esc(cmpLabel(A))}</th><th>${esc(cmpLabel(B))}</th><th></th></tr>${chg.map(l=>{const x=l.b||l.a;
+    return tr(l.st,[[x.t,1],[x.n],[l.a?l.a.q+' × '+l.a.dim:'—',1],[l.b?l.b.q+' × '+l.b.dim:'—',1],[l.st==='add'?'ajouté':l.st==='del'?'supprimé':'modifié']])}).join('')}</table>`:'<div class="nt">Débit identique.</div>';
+  const W=C.wAdd.length||C.wDel.length?`<table class="cmp">${C.wAdd.map(m=>tr('add',[['nouveau'],[m]])).join('')}${C.wDel.map(m=>tr('del',[['levé'],[m]])).join('')}</table>`:'<div class="nt">Contrôles identiques.</div>';
+  el('pvA').innerHTML=`<div class="no-print" style="max-width:820px;margin:0 auto 12px;display:flex;gap:8px;justify-content:flex-end"><button class="btn bs bo" style="background:#fff" onclick="VIEW='plan';prev()">✖ Retour au plan</button><button class="btn bs bpr" onclick="printAll()">🖨 Imprimer la comparaison</button></div>
+  <div class="ps portrait"><div class="ps-h"><div><div class="ps-ch">CHANTIER : ${esc(String(B.ch||'').toUpperCase())}${B.ouv?' · OUVRAGE : '+esc(String(B.ouv).toUpperCase()):''}</div><div class="ps-rf">COMPARAISON ${esc(cmpLabel(A))} → ${esc(cmpLabel(B))}</div></div><div class="ps-ind">${dt}</div></div>
+  <div class="fa"><div class="sub">Synthèse</div><div>${C.fields.length} saisie(s) modifiée(s) · ${chg.length} ligne(s) de débit modifiée(s), ajoutée(s) ou supprimée(s) · ${C.wAdd.length} contrôle(s) nouveau(x), ${C.wDel.length} levé(s)</div>
+  <div class="sub">Saisies</div>${sec}<div class="sub">Débit (CP et bois)</div>${deb}<div class="sub">Contrôles</div>${W}
+  <div class="nt" style="margin-top:8px">Surligné : jaune = modifié · vert = ajouté / nouveau · rouge barré = supprimé / levé. Repères comparés sans le préfixe du plan.</div></div>
+  <div class="ps-foot"><span>Visa : ______________________</span><span>Conçu par Kévin TRINH · Conducteur de travaux · CoffraPlan</span></div></div>`;
+  el('pvA').scrollTop=0}
+
+// ---------- v2.4 — Mode chantier (tablette) : une feuille à la fois, plein écran, repères à cocher ----------
+const CHM={i:0,k:0,n:0};
+function chmOn(){return el('chm').style.display==='flex'}
+function chmList(){return P.length?P:[coll()]}
+function openChm(){const L=chmList();el('chmP').innerHTML=L.map((p,i)=>`<option value="${i}">${esc(cmpLabel(p))} · ${esc(fmLb(p.forme))}</option>`).join('');
+  el('chm').style.display='flex';document.body.classList.add('v3open');chmPlan(P.length&&EI>=0?EI:0);
+  if(innerWidth<innerHeight&&innerWidth<900)toast('Astuce : tablette à l\'horizontale pour une feuille plus lisible')}
+function closeChm(){el('chm').style.display='none';document.body.classList.remove('v3open')}
+function chmChk(){try{return JSON.parse(localStorage.getItem('resaChk')||'{}')}catch(e){return{}}}
+function chmPlan(i){const L=chmList(),d=L[i];if(!d)return;CHM.i=i;CHM.k=0;el('chmP').value=i;
+  el('chmV').innerHTML=gen(d);CHM.n=el('chmV').querySelectorAll('.ps').length;
+  const c=canon(migr(d)),g=c.forme==='voile'?voileGeo(c):null,ok=!badDims(checks(c,g))&&!limErr(c).length,R=ok?debit(c,g):[],u=P.length?planUid(d):'_',K=chmChk()[u]||{};
+  const rows=R.map(r=>[r.ftag,`${r.q}× ${r.n}`,r.a!=null?nf(r.a,1)+' × '+nf(r.b,1):'']).concat((R.bois||[]).map(b=>[b.ftag,`${b.q}× ${b.n}`,'L '+nf(b.L,0)]));
+  el('chmC').innerHTML=!rows.length?'<div style="color:#777">Plan incohérent : pas de débit.</div>':`<div style="font-weight:800;margin-bottom:6px">Repères posés</div>`+rows.map(r=>`<label class="${K[r[0]]?'done':''}"><input type="checkbox" data-t="${esc(r[0])}" ${K[r[0]]?'checked':''}><span><b>${esc(r[0])}</b> · ${esc(r[1])}<br><small>${esc(r[2])}</small></span></label>`).join('')+
+    `<button class="btn bs bo" style="margin-top:10px;color:#1a2035" onclick="chmReset()">Tout décocher</button>`;
+  el('chmC').onchange=e=>{const t=e.target.dataset.t;if(!t)return;const A=chmChk(),m=A[u]||{};if(e.target.checked)m[t]=1;else delete m[t];A[u]=m;try{localStorage.setItem('resaChk',JSON.stringify(A))}catch(er){}e.target.closest('label').classList.toggle('done',e.target.checked);chmCount()};
+  chmCount();chmShow()}
+function chmReset(){const L=chmList(),u=P.length?planUid(L[CHM.i]):'_',A=chmChk();delete A[u];try{localStorage.setItem('resaChk',JSON.stringify(A))}catch(e){}chmPlan(CHM.i)}
+function chmCount(){const b=el('chmC').querySelectorAll('input[data-t]'),n=[...b].filter(x=>x.checked).length;el('chmKn').textContent=b.length?n+' / '+b.length:''}
+function chmShow(){el('chmV').querySelectorAll('.ps').forEach((s,j)=>s.style.display=j===CHM.k?'':'none');el('chmPg').textContent=`Feuille ${CHM.k+1} / ${CHM.n}`;
+  el('chmL').disabled=CHM.k<=0;el('chmR').disabled=CHM.k>=CHM.n-1;el('chmS').scrollTop=0;chmFit()}
+function chmGo(k){const j=CHM.k+k;if(j<0||j>=CHM.n)return;CHM.k=j;chmShow()}
+function chmFit(){const s=el('chmV').querySelectorAll('.ps')[CHM.k],box=el('chmS');if(!s)return;const W=box.clientWidth-20,sc=Math.min(1.6,W/1150);
+  s.style.transform=`scale(${sc})`;el('chmV').style.height=(s.offsetHeight*sc)+'px'}
+window.addEventListener('resize',()=>{if(chmOn())chmFit()});
+(()=>{let x0=null,y0=0;const s=el('chmS');s.addEventListener('pointerdown',e=>{if(e.target.closest('.nav'))return;x0=e.clientX;y0=e.clientY});
+  s.addEventListener('pointerup',e=>{if(x0==null)return;const dx=e.clientX-x0,dy=e.clientY-y0;x0=null;if(Math.abs(dx)>60&&Math.abs(dx)>1.5*Math.abs(dy))chmGo(dx<0?1:-1)})})();
 
 // ---------- v2.2 — Aide des raccourcis ----------
 const IS_MAC=/Mac|iPhone|iPad/.test(navigator.platform||navigator.userAgent||'');
 function showKeys(){const c=IS_MAC?'⌘':'Ctrl',k=(...a)=>a.map(x=>`<kbd>${x}</kbd>`).join(' + '),R=[
   [k(c,'S'),'Sauvegarder le projet (fichier .json)'],[k(c,'O'),'Charger un projet'],[k(c,'P'),'Imprimer les plans (mise en page de l\'application)'],
   [k(c,'Z'),'Annuler la dernière modification du formulaire'],[k(c,'Y')+' ou '+k(c,'Maj','Z'),'Rétablir'],
-  [k('Échap'),'Fermer la question, la fenêtre ou l\'aide ouverte, « Plus tard » sur le rappel, quitter le champ en cours'],[k('?'),'Afficher cette aide (hors saisie)'],
+  [k('←'),'Mode chantier : feuille précédente (→ suivante, balayage au doigt)'],[k('Échap'),'Fermer la question, la fenêtre, le mode chantier ou l\'aide ouverte, « Plus tard » sur le rappel, quitter le champ en cours'],[k('?'),'Afficher cette aide (hors saisie)'],
   [k('Entrée'),'Sur une alerte sélectionnée : aller au champ concerné']];
   modal(`<div class="cd" style="margin:0"><div class="ct">⌨ Raccourcis clavier</div><table class="keys" style="width:100%;border-collapse:collapse">${R.map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td></tr>`).join('')}</table>
   <div class="hint" style="margin:10px 0 0">Dans un champ en cours de saisie, ${k(c,'Z')} annule d'abord la frappe (comportement du navigateur). L'annulation porte sur le formulaire et le choix du plan affiché ; un plan supprimé se rétablit avec « Annuler » dans le message affiché 10 s. Les alertes ⚠ / ⛔ marquées d'un clic amènent au champ concerné, sans rien modifier. Vue 3D : flèches, + / −, Échap.</div>
@@ -3151,7 +3337,7 @@ el('dlgB').addEventListener('click',e=>{const b=e.target.closest('[data-r]');if(
 function uiAlert(m,t){uiDlg({t,m,cancel:false})}
 function uiConfirm(m,cb,o){uiDlg(Object.assign({m},o||{}),cb)}
 function uiPrompt(m,def,cb,o){uiDlg(Object.assign({m,input:def||''},o||{}),v=>{v=String(v||'').trim();if(v)cb(v)})}
-function modal(h){el('mdBody').innerHTML=h;el('md').style.display='flex'}
+function modal(h,wide){el('mdBody').innerHTML=h;el('mdBody').classList.toggle('wide',!!wide);el('md').style.display='flex'}
 function closeModal(){el('md').style.display='none'}
 
 el('sbF').addEventListener('input',e=>{if(e.target&&e.target.dataset)e.target.dataset.fresh='1'});document.addEventListener('focusout',e=>{if(e.target&&e.target.dataset)delete e.target.dataset.fresh});
@@ -3189,17 +3375,6 @@ function jouePieces(a,b,q,W,H,lock,role,refs){
   return{n:c.n,split:true,Lm:c.Lm,Bm:c.Bm,sc:c.sc,dJ,dF,copies,joints:copies.map(x=>jointsOf(x.lens).map(Math.round)),refJ:[J0,jointsOf(L1)],
     nJ:copies.reduce((s,x)=>s+(x.lens.length-1)*x.bands.length,0),nH:copies.reduce((s,x)=>s+(x.bands.length-1),0)};
 }
-function jouePiecesSelfTest(){
-  const W=2500,H=1250;let ok=true;
-  [[5200,600,2],[7300,1100,2],[4000,2000,2],[2400,600,2],[2600,900,4],[12000,500,2],[3100,1200,1],[5400,500,2],[1800,1300,2],[3000,1500,2]].forEach(([a,b,q])=>{
-    const r=jouePieces(a,b,q,W,H,false,'j'),f=jouePieces(a,b,1,W,H,false,'f');
-    [r,f].forEach(x=>x.copies.forEach(c=>{ok=ok&&Math.abs(c.lens.reduce((s,y)=>s+y,0)-a)<0.01&&Math.abs(c.bands.reduce((s,y)=>s+y,0)-b)<0.01;
-      c.lens.forEach(L=>c.bands.forEach(B=>{ok=ok&&(L<=W&&B<=H||L<=H&&B<=W)}));if(c.lens.length>1)ok=ok&&c.lens.every(L=>L>=PCMIN-1e-6)}));
-    if(r.split&&q>=2&&r.copies[0].lens.length>1){const j0=jointsOf(r.copies[0].lens),j1=jointsOf(r.copies[1].lens),jf=jointsOf(f.copies[0].lens);
-      ok=ok&&Math.abs(jDist(j0,j1)-r.dJ)<1e-6&&(r.dJ>=PCMIN||r.copies[0].lens.length>=4)&&(f.copies[0].lens.length===1||jf.length>0)}
-  });
-  return ok;
-}
 
 // v18 : grille de découpe d'une pièce w × h plus grande que le panneau W × H (commune à l'imbrication et aux tasseaux de joint)
 function gridCells(w,h,W,H){
@@ -3220,8 +3395,6 @@ function platePolyRaw(g,inner,faces,w){
     for(let i=n;i>=0;i--){const x=-X2+2*X2*i/n;P.push([x,Math.sqrt(Math.max(Ri*Ri-x*x,0))])}}
   return P;
 }
-function platePoly(g,inner,faces){return normPoly(platePolyRaw(g,inner,faces))}
-function normPoly(P){const x0=Math.min(...P.map(p=>p[0])),y0=Math.min(...P.map(p=>p[1]));return P.map(([x,y])=>[x-x0,y-y0])}
 // v2.0 : nombre de côtés tel que la flèche entre deux sommets reste ≤ 0,05 mm (72 côtés fixes en v19 : jusqu'à 1,4 mm d'écart sur un fond Ø 3 m, repris par la feuille de débit et le DXF)
 function circPoly(D,n){n=n||Math.max(72,Math.ceil(Math.PI/Math.acos(1-0.05/Math.max(D/2,1))));const r=D/2,P=[];for(let i=0;i<n;i++){const t=2*Math.PI*i/n;P.push([r+r*Math.cos(t),r+r*Math.sin(t)])}return P}
 const bbox=P=>{let a=1e18,b=1e18,c=-1e18,e=-1e18;P.forEach(([x,y])=>{if(x<a)a=x;if(y<b)b=y;if(x>c)c=x;if(y>e)e=y});return[a,b,c,e]};
@@ -3443,7 +3616,6 @@ function nestCountRef(d,R,n){if(!n||n.tooMany||(n.fail&&n.fail.length))return nu
       if(!N2||N2.tooMany||(N2.fail&&N2.fail.length))return;const n2=N2.count!=null?N2.count:N2.approx,a2=n2*N2.W*N2.H;if(a2<cur*0.9&&(!best||a2<best.a))best={f,n:n2,a:a2,W:N2.W,H:N2.H}});
     if(best)r.alt=`format ${best.W} × ${best.H} : ${best.n} panneau(x), ${nf((cur-best.a)/1e6,1)} m² de moins à acheter`}catch(e){}
   return r}
-function nestCount(d,R,k){return nestCountRef(d,R,nestOf(cpNest(d,R),k))}
 // Récapitulatif « Panneaux CP » du débit (une ligne par référence)
 function cpSummaryHtml(d,R){const N=cpNest(d,R),rows=[];
   Object.values(N).forEach(n=>{const c=nestCountRef(d,R,n),lb=compLabels(d,n.comps);
@@ -3468,30 +3640,9 @@ function debitCSV(list){
   list.forEach(d=>debitRows(d).forEach(r=>L.push([d.ch,d.ouv,d.ref,r.tag,r.des,r.q,r.nb,r.qt,r.L,r.l,r.mat,r.m2].map(csvCell).join(';'))));
   return'﻿'+L.join('\r\n');
 }
-function debitCSVSelfTest(){
-  const d={v:10,ch:'T',ouv:'O',ref:'R09',nb:3,mont:'VIS',forme:'rect_fond',cp:{j:CPDEF,fi:CPDEF},ep:18,L:600,l:400,h:300};
-  const csv=debitCSV(d).replace(/^﻿/,''),lines=csv.split('\r\n'),hd=lines[0].split(';');
-  if(hd.length!==12)return false;const rows=lines.slice(1).map(l=>l.split(';'));
-  if(!rows.length||rows.some(r=>r.length!==12))return false;
-  const m2=rows.reduce((s,r)=>s+(r[11]?parseFloat(r[11].replace(',','.')):0),0);
-  const dd=canon(d),R=debit(dd,null),ref=R.reduce((s,r)=>s+r.m2,0)*3;
-  return Math.abs(m2-ref)<1e-3&&rows.every(r=>/^R09-[JFSB]\d+/.test(r[3]))&&new Set(rows.map(r=>r[3])).size===rows.length&&!/\d\.\d/.test(rows.map(r=>r[8]+r[9]+r[11]).join(''));
-}
 // XLSX minimal (zip « store » + CRC32)
 const CRC_T=(()=>{const t=new Uint32Array(256);for(let n=0;n<256;n++){let c=n;for(let k=0;k<8;k++)c=c&1?0xEDB88320^(c>>>1):c>>>1;t[n]=c>>>0}return t})();
 function crc32(u){let c=0xFFFFFFFF;for(let i=0;i<u.length;i++)c=CRC_T[(c^u[i])&0xFF]^(c>>>8);return(c^0xFFFFFFFF)>>>0}
-function zipStore(files,mime){
-  const enc=new TextEncoder(),parts=[],cen=[];let off=0;
-  const u16=v=>[v&255,(v>>8)&255],u32=v=>[v&255,(v>>8)&255,(v>>16)&255,(v>>>24)&255];
-  files.forEach(([name,txt])=>{const nm=enc.encode(name),data=txt instanceof Uint8Array?txt:enc.encode(txt),crc=crc32(data);
-    const lh=new Uint8Array([0x50,0x4b,3,4,...u16(20),...u16(0x0800),...u16(0),...u16(0),...u16(0x21),...u32(crc),...u32(data.length),...u32(data.length),...u16(nm.length),...u16(0)]);
-    parts.push(lh,nm,data);
-    cen.push(new Uint8Array([0x50,0x4b,1,2,...u16(20),...u16(20),...u16(0x0800),...u16(0),...u16(0),...u16(0x21),...u32(crc),...u32(data.length),...u32(data.length),...u16(nm.length),...u16(0),...u16(0),...u16(0),...u16(0),...u32(0),...u32(off)]),nm);
-    off+=lh.length+nm.length+data.length});
-  const cs=cen.reduce((s,a)=>s+a.length,0);
-  const end=new Uint8Array([0x50,0x4b,5,6,...u16(0),...u16(0),...u16(files.length),...u16(files.length),...u32(cs),...u32(off),...u16(0)]);
-  return new Blob([...parts,...cen,end],{type:mime||'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
-}
 function dlBlob(b,name){const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),1500)}
 function fileStem(list){const d=list[0]||{};return('debit_'+[d.ch,list.length===1?d.ref:''].filter(Boolean).join('_')+'_'+new Date().toISOString().slice(0,10)).replace(/[^\w\-]+/g,'_')}
 function expList(scope){return scope==='all'?(P.length?chantierPlans(S('iCh','')):[coll()]):[EI>=0?P[EI]:coll()]}
@@ -3585,7 +3736,6 @@ function genExtra(d,R,V,ctx){
   return out;
 }
 // Liste des repères d'un plan (lignes de débit CP + bois)
-function pieceTags(d){const dd=canon(migr(d)),g=dd.forme==='voile'?voileGeo(dd):null;if(limErr(dd).length||badDims(checks(dd,g)))return[];const R=debit(dd,g);return R.map(r=>r.ftag).concat((R.bois||[]).map(b=>b.ftag))}
 
 // ====== v15 — LOT 4 : DÉBIT CONSOLIDÉ DU CHANTIER, BON DE COMMANDE, OPTIMISATION DES BARRES DE BOIS ======
 
@@ -3694,23 +3844,17 @@ let VIEW='plan';
 function showChantier(){const ch=S('iCh','');const list=chantierPlans(ch);if(!list.length){toast('Aucun plan enregistré pour ce chantier');return}
   VIEW='chantier';const r=chantierPages(list);el('pvA').innerHTML=`<div class="no-print" style="max-width:1150px;margin:0 auto 12px;display:flex;gap:8px;justify-content:flex-end"><button class="btn bs bo" style="background:#fff" onclick="VIEW='plan';prev()">✖ Retour au plan</button><button class="btn bs" style="background:var(--accent);color:#fff" onclick="window.print()">🖨 Imprimer le récapitulatif</button><button class="btn bs bo" onclick="expDebit('xlsx','all')">📊 XLSX</button></div>`+r.html}
 // Feuilles XLSX du récapitulatif
-function chantierSheets(list){const C=chantierData(list),cmd=[['Type','Référence','Quantité','Unité','Détail']];
-  Object.values(C.cp).forEach(o=>cmd.push(['Contreplaqué',cpName(o.cp),o.nP,'panneau(x)',`${Math.round(o.m2*100)/100} m² utiles · rendement ${Math.round(100*o.rate)} %`]));
-  Object.values(C.bois).forEach(o=>Object.keys(o.byL).forEach(L=>cmd.push(['Bois massif',o.sec+' — '+(L/1000)+' m',o.byL[L],'barre(s)',`${Math.round(o.ml*10)/10} ml utiles`])));
-  const bars=[['Section','Barre n°','Longueur barre (mm)','Coupes (mm)','Repères','Chute (mm)']];
-  Object.values(C.bois).forEach(o=>o.cut.bars.forEach((b,i)=>bars.push([o.sec,i+1,b.L,b.cuts.map(c=>String(c).replace('.',',')).join(' + '),b.tags.join(' · '),Math.round(b.waste)])));
-  return[['Commande',cmd],['Barres bois',bars]]}
 
 // ====== v15 — LOTS 5 / 6 : LISIBILITÉ (légende, impression A4 / A3, sommaire, fiche atelier, montage 3D) ======
 
 // ---------- Réglages d'impression ----------
-const PRT_DEF={fmt:'',cp:true,mt:true,fa:true,som:true,nb:false};
+const PRT_DEF={fmt:'',cp:false,mt:false,fa:false,som:false,nb:false}; // v2.4 : feuilles annexes décochées, sommaire « Jamais » par défaut
 let PRT=(()=>{try{return Object.assign({},PRT_DEF,JSON.parse(localStorage.getItem('resaPrint'))||{})}catch(e){return Object.assign({},PRT_DEF)}})();
 function svPrt(){try{localStorage.setItem('resaPrint',JSON.stringify(PRT))}catch(e){}}
 function prtFmt(){if(PRT.fmt)return PRT.fmt;const c=profCh(S('iCh',''));return c&&c.fmt==='A4'?'A4':'A3'}
 function prtUI(){const z=el('zPrt');if(!z)return;const f=prtFmt();
   z.innerHTML=`<div class="g2"><div class="fd"><label>Format${helpBtn('prtFmt')}</label><select class="fi" id="prFmtSel" onchange="PRT.fmt=this.value;svPrt();applyPage();prtUI()"><option value="">Profil chantier (${f})</option><option value="A3"${PRT.fmt==='A3'?' selected':''}>A3 paysage</option><option value="A4"${PRT.fmt==='A4'?' selected':''}>A4 paysage</option></select></div>
-<div class="fd"><label>Sommaire</label><select class="fi" onchange="PRT.som=this.value==='1';svPrt()"><option value="1"${PRT.som?' selected':''}>Si &gt; 3 feuilles</option><option value="0"${PRT.som?'':' selected'}>Jamais</option></select></div></div>
+<div class="fd"><label>Sommaire</label><select class="fi" onchange="PRT.som=this.value==='1';svPrt()"><option value="1"${PRT.som?' selected':''}>Si &gt; 5 feuilles</option><option value="0"${PRT.som?'':' selected'}>Jamais</option></select></div></div>
 <div class="fd"><label class="ck"><input type="checkbox" ${PRT.cp?'checked':''} onchange="PRT.cp=this.checked;svPrt();prev()"> Feuilles CP à découper</label></div>
 <div class="fd"><label class="ck"><input type="checkbox" ${PRT.mt?'checked':''} onchange="PRT.mt=this.checked;svPrt();prev()"> Montage 3D + contrôles</label></div>
 <div class="fd"><label class="ck"><input type="checkbox" ${PRT.fa?'checked':''} onchange="PRT.fa=this.checked;svPrt();prev()"> Fiche atelier (A4 portrait)</label></div>
@@ -3759,7 +3903,7 @@ window.addEventListener('afterprint',()=>unfitPrint());
 // ---------- Sommaire + numérotation des feuilles (impression de tous les plans) ----------
 function printPack(list){
   const parts=list.map(d=>{const h=gen(d),n=(h.match(/<div class="ps[ "]/g)||[]).length;return{d,h,n}});
-  const tot=parts.reduce((s,p)=>s+p.n,0),som=PRT.som&&tot>3;let k=som?1:0;
+  const tot=parts.reduce((s,p)=>s+p.n,0),som=PRT.som&&tot>5;let k=som?1:0;
   const rows=parts.map(p=>{const a=k+1;k+=p.n;return`<tr><td>${esc(p.d.ref||'—')}</td><td>${esc(p.d.ouv||'')}</td><td>${esc(p.d.desc||TM[p.d.forme]||p.d.forme)}</td><td class="nm">× ${p.d.nb||1}</td><td class="nm">${a===k?a:a+' → '+k}</td></tr>`}).join('');
   const chs=[...new Set(list.map(d=>d.ch).filter(Boolean))];
   const S=som?`<div class="ps">${`<div class="ps-h"><div><div class="ps-ch">CHANTIER : ${esc(chs.join(' · '))||'—'}</div><div class="ps-rf">SOMMAIRE <span class="ps-sub">· ${list.length} plan(s) · ${tot+1} feuilles</span></div></div><div style="text-align:right;color:#8892a8;font-size:11px">${new Date().toLocaleDateString('fr-FR')}</div></div>`}
@@ -3769,7 +3913,7 @@ function printPack(list){
 }
 function numberPages(){const ps=[...document.querySelectorAll('#pvA .ps')],n=ps.length;ps.forEach((p,i)=>{const f=p.querySelector('.ps-foot');if(f&&!f.querySelector('.pno'))f.insertAdjacentHTML('beforeend',`<span class="pno">p. ${i+1} / ${n}</span>`)})}
 function printAll(){
-  clearTimeout(_tm);if(VIEW==='chantier'){fitPrint();window.print();return}
+  clearTimeout(_tm);if(VIEW==='chantier'||VIEW==='cmp'){fitPrint();window.print();return}
   el('pvA').innerHTML=P.length?printPack(P):gen(coll());if(typeof declutter==='function')declutter(el('pvA'));if(typeof bwApply==='function')bwApply(el('pvA'));const bad=fitPrint();numberPages();
   if(bad.length)toast(`Feuille(s) ${bad.join(', ')} : texte resserré au minimum, voir aussi la fiche atelier`);
   setTimeout(()=>window.print(),250)}
@@ -3974,7 +4118,6 @@ function explode3(sc,t,cam,X){t=t==null?1:t;const {S,V}=X||exVec3(sc,cam),hide=s
   return{solids:S.map((s,i)=>mv(s,V[i]))};
 }
 // point dans polygone (pair-impair)
-function pip2(P,x,y){let ins=false;for(let i=0,j=P.length-1;i<P.length;j=i++){const a=P[i],b=P[j];if((a[1]>y)!==(b[1]>y)&&x<(b[0]-a[0])*(y-a[1])/(b[1]-a[1])+a[0])ins=!ins}return ins}
 // Rendu peintre. o (optionnel, v17) : cam (caméra), view {k,ox,oy} (échelle / origine imposées), hide (couleurs masquées), sel (id sélectionné),
 // ids (attributs data-i / data-k), fast (tri en profondeur seul, sans étiquettes)
 function render3(sc3,vw,vh,pad,o){o=o||{};
@@ -4371,14 +4514,6 @@ function gabPieces(d,mode){
   return{title:Dl.pieces.length?Dl.title:Ns.title,pieces:P};
 }
 // Zone imprimable (mm) et orientation retenue pour une pièce de w × h ; null si elle ne tient pas entière
-function gabFit(pc,mode){const roll=parseFloat(S('iRoll','914'))||914,mg=GAB_MG,extra=GAB_HD+GAB_ST;
-  if(mode==='roll'){const A=roll-2*mg,o=[];
-    if(pc.w<=A&&pc.h+extra<=GAB_MAXL)o.push({rot:false,pw:roll,ph:pc.h+extra+2*mg});
-    if(pc.h<=A&&pc.w+extra<=GAB_MAXL)o.push({rot:true,pw:roll,ph:pc.w+extra+2*mg});
-    return o.sort((a,b)=>a.ph-b.ph)[0]||null}
-  const P=mode==='A3'?[297,420]:[210,297];
-  for(const [pw,ph] of [[P[0],P[1]],[P[1],P[0]]])for(const rot of [false,true]){const w=rot?pc.h:pc.w,h=rot?pc.w:pc.h;if(w<=pw-2*mg&&h<=ph-2*mg-extra)return{rot,pw,ph}}
-  return null}
 // Feuilles d'un gabarit : une seule si la pièce tient (pivotée de 90° au besoin), sinon feuilles à assembler avec recouvrement GAB_OV.
 // Tuiles en coordonnées du gabarit (x → droite, y → bas) ; rot = tuile tournée de 90° sur la feuille.
 function gabTiles(pc,mode){const roll=parseFloat(S('iRoll','914'))||914,mg=GAB_MG,extra=GAB_HD+GAB_ST,ov=GAB_OV;
@@ -4583,7 +4718,6 @@ function travPos(d,g){const ep=d.ep||0,cr=d.cR||50,al=g.al||0;
   const mk=(y1,y2)=>({y1,y2,yc:(y1+y2)/2,L:2*Math.max(xl(y1),xl(y2)),Lmin:2*Math.min(xl(y1),xl(y2)),bev:g.rad?al*180/Math.PI:0,poly:[[-xl(y1),y1],[xl(y1),y1],[xl(y2),y2],[-xl(y2),y2]]});
   return{ext:mk(Yo-cr,Yo),int:mk(g.Ri,g.Ri+cr),gap:(Yo-cr)-(g.Ri+cr),cr,retrait:g.Re-Yo};
 }
-function travLen(d,g,y){const ep=d.ep||0;if(!g.rad)return g.L-2*ep;return 2*y*Math.tan(g.al)-2*ep/Math.cos(g.al)}
 // Bois du mannequin : montants (sauf CP) + traverses de cerce
 function voileBois(d,g,R,BX){
   const M=manGeo(d,g);
@@ -4688,7 +4822,7 @@ function fixAll(){const L=fixList().filter(x=>!x.f.none);if(!L.length)return;con
 function fixUndo(){undo();closeModal();autoControl(false,'Correction annulée (retour à la saisie précédente)')}
 function fixHtml(){let L;try{L=fixList()}catch(e){return''}if(!L.length)return'';const ok=L.filter(x=>!x.f.none);
   return`<div class="sub" style="margin-top:12px">🛠 Corrections automatiques (plan affiché)</div>`+L.map((x,i)=>`<div style="display:flex;gap:8px;align-items:center;font-size:12px;line-height:1.4;margin:4px 0">
-<span style="flex:1;color:${x.m[0]==='err'?'#ff8a7d':'#ffc46b'}">${x.m[0]==='err'?'⛔':'⚠'} ${esc(x.m[1])}<br><span style="color:var(--muted)">→ ${esc(x.f.lb)}${x.f.none?' : aucune valeur ne convient, à reprendre à la main':''}</span></span>
+<span style="flex:1;color:${x.m[0]==='err'?'var(--redt)':'var(--acct)'}">${x.m[0]==='err'?'⛔':'⚠'} ${esc(x.m[1])}<br><span style="color:var(--muted)">→ ${esc(x.f.lb)}${x.f.none?' : aucune valeur ne convient, à reprendre à la main':''}</span></span>
 ${x.f.none?'':`<button class="btn bs bo" style="flex:0 0 auto;padding:4px 10px" data-fix="${i}" onclick="fixOne(${i})">Corriger</button>`}</div>`).join('')+
   (ok.length>1?`<button class="btn bs" style="margin-top:6px" id="fixAllBtn" onclick="fixAll()">Tout corriger (${ok.length})</button>`:'');
 }
@@ -4928,7 +5062,7 @@ function DXF(){const E=[],B=[1e18,1e18,-1e18,-1e18],used=new Set();
       P.forEach(([x,y])=>{g(0,'VERTEX');g(8,L);g(10,n(x));g(20,n(y));g(30,0);g(70,0);bb(x,y)});g(0,'SEQEND');g(8,L)},
     circle(L,x,y,r){used.add(L);g(0,'CIRCLE');g(8,L);g(10,n(x));g(20,n(y));g(30,0);g(40,n(r));bb(x-r,y-r);bb(x+r,y+r)},
     // texte : h = hauteur (mm), al = 0 gauche / 1 centre / 2 droite, rot en degrés
-    text(L,x,y,h,t,al,rot){t=String(t==null?'':t).replace(/[\r\n]+/g,' ').trim();if(!t)return;used.add(L);g(0,'TEXT');g(8,L);g(10,n(x));g(20,n(y));g(30,0);g(40,n(h));g(1,t);if(rot)g(50,n(rot));
+    text(L,x,y,h,t,al,rot){t=dxfTxt(String(t==null?'':t).replace(/[\r\n]+/g,' ')).trim();if(!t)return;used.add(L);g(0,'TEXT');g(8,L);g(10,n(x));g(20,n(y));g(30,0);g(40,n(h));g(1,t);if(rot)g(50,n(rot));
       if(al){g(72,al);g(11,n(x));g(21,n(y));g(31,0)}bb(x,y);bb(x+(al===2?-1:al===1?-0.5:1)*h*0.6*t.length*(al===1?1:1),y+h)},
     out(){const H=[],h=(c,v)=>H.push(String(c),String(v)),b=B[0]<B[2]?B:[0,0,1,1];
       h(0,'SECTION');h(2,'HEADER');h(9,'$ACADVER');h(1,'AC1009');h(9,'$DWGCODEPAGE');h(3,'ANSI_1252');h(9,'$INSBASE');h(10,0);h(20,0);h(30,0);
@@ -4941,6 +5075,14 @@ function DXF(){const E=[],B=[1e18,1e18,-1e18,-1e18],used=new Set();
       h(0,'TABLE');h(2,'STYLE');h(70,1);h(0,'STYLE');h(2,'STANDARD');h(70,0);h(40,0);h(41,1);h(50,0);h(71,0);h(42,2.5);h(3,'txt');h(4,'');h(0,'ENDTAB');
       h(0,'ENDSEC');h(0,'SECTION');h(2,'ENTITIES');
       return H.concat(E,['0','ENDSEC','0','EOF']).join('\r\n')+'\r\n'}}}
+// v2.4 — textes DXF : la police par défaut d'AutoCAD (txt.shx, style STANDARD) n'a pas les glyphes — × · → ≈ « » ’… : ils
+// s'affichaient « ? ». Remplacés par des équivalents simples ; Ø ° ± en codes AutoCAD (%%c %%d %%p, compris aussi par ezdxf / LibreCAD).
+const DXF_TR={'—':'-','–':'-','−':'-','×':'x','·':'-','•':'-','●':'o','○':'o','→':'->','←':'<-','↑':'^','↓':'v','⇄':'<->','≈':'~','≤':'<=','≥':'>=','≠':'<>',
+  '«':'"','»':'"','“':'"','”':'"','„':'"','‘':"'",'’':"'",'…':'...','²':'2','³':'3','½':'1/2','Ø':'%%c','ø':'%%c','⌀':'%%c','°':'%%d','±':'%%p','\u00a0':' ','\u202f':' ','\u2009':' ','⚠':'!','✓':'OK','✗':'X'};
+function dxfTxt(s){return s.replace(/[—–−×·•●○→←↑↓⇄≈≤≥≠«»“”„‘’…²³½Øø⌀°±\u00a0\u202f\u2009⚠✓✗]/g,c=>DXF_TR[c]).replace(/[\u{1F000}-\u{1FFFF}\u2600-\u27BF\uFE0F]/gu,'').replace(/ {2,}/g,' ')}
+// titre de section : même hauteur pour tout le fichier (D.th, fixée d'après la largeur des panneaux), sinon d'après la largeur du contenu ;
+// titre court + sous-titre à mi-hauteur (les anciens titres d'une ligne débordaient largement du dessin)
+function dxfTitle(D,x,y,w,main,sub){const th=D.th||Math.max(20,Math.min(90,(w||0)/25));D.text('CARTOUCHE',x,y+th*(sub?1.9:0.6),th,main,0);if(sub)D.text('CARTOUCHE',x,y+th*0.6,th*0.5,sub,0);return th}
 // Encodage Windows-1252 ; caractères hors table → séquence \U+XXXX (comprise par AutoCAD et ezdxf)
 const CP1252={8364:128,8218:130,402:131,8222:132,8230:133,8224:134,8225:135,710:136,8240:137,352:138,8249:139,338:140,381:142,8216:145,8217:146,8220:147,8221:148,8226:149,8211:150,8212:151,732:152,8482:153,353:154,8250:155,339:156,382:158,376:159};
 function dxfBytes(s){const out=[];for(const ch of s){const c=ch.codePointAt(0);
@@ -5017,11 +5159,12 @@ function dxfPlan(D,d,R,ox,oy){
     if(o.ci){const c=pr([o.ci.cx,o.ci.cy,0]),k=L+'|c|'+Math.round(c[0])+','+Math.round(c[1])+','+Math.round(o.ci.r);if(seen.has(k))return;seen.add(k);D.circle(L,tx(c[0]),ty(c[1]),o.ci.r);n++;return}
     let pts;if(o.pm&&!o.pm.inv)pts=o.pm.poly.map(([x,y])=>pr([x,y,0]));else pts=hull(o.F.flat().map(pr));
     if(!pts||pts.length<3)return;const k=key(L,pts);if(seen.has(k))return;seen.add(k);D.poly(L,pts.map(([x,y])=>[tx(x),ty(y)]),true);n++});
-  D.text('CARTOUCHE',ox,oy+120,90,`VUE EN PLAN — ${(d.ref||'')} ${TM[d.forme]||d.forme} — cotes en mm, même orientation que la feuille du plan`,0);
-  return{n,w:B[2]-B[0],h:B[3]-B[1]}}
+  if(D.th)D.th=Math.max(D.th,Math.min(250,(B[2]-B[0])/40)); // grandes dalles : titres à l'échelle du plan
+  const th=dxfTitle(D,ox,oy,B[2]-B[0],`VUE EN PLAN — ${(d.ref||'')}`,`${TM[d.forme]||d.forme} — cotes en mm, même orientation que la feuille du plan`);
+  return{n,w:B[2]-B[0],h:B[3]-B[1],th}}
 // panneaux à découper : [{name, W, H, sheets:[{items, pre}]}]
 function dxfPanels(D,groups,ox,oy){let y=oy,np=0,npc=0;const gap=300,perRow=4;
-  groups.forEach(G=>{D.text('CARTOUCHE',ox,y+120,90,`CP À DÉCOUPER — ${G.name} — ${G.sheets.length} panneau(x) ${nf(G.W)} × ${nf(G.H)} mm`,0);
+  groups.forEach(G=>{dxfTitle(D,ox,y+80,Math.min(perRow,G.sheets.length)*(G.W+gap),`CP À DÉCOUPER — ${G.name}`,`${G.sheets.length} panneau(x) ${nf(G.W)} × ${nf(G.H)} mm`);
     G.sheets.forEach((sh,i)=>{const cx=ox+(i%perRow)*(G.W+gap),cy=y-Math.floor(i/perRow)*(G.H+gap+200)-G.H,T=([px,py])=>[cx+px,cy+py];
       D.poly('CP_PANNEAUX',[[cx,cy],[cx+G.W,cy],[cx+G.W,cy+G.H],[cx,cy+G.H]],true);D.text('CP_TEXTES',cx,cy+G.H+30,45,`PANNEAU ${i+1}/${G.sheets.length}${sh.pre?' — '+sh.pre.id:''}`,0);np++;
       (sh.pre&&sh.pre.polys||[]).forEach(q=>{D.poly('CP_PLATELAGE',q.poly.map(T),true);const b=bbox(q.poly);D.text('CP_PLATELAGE',cx+(b[0]+b[2])/2,cy+(b[1]+b[3])/2,40,q.id,1)});
@@ -5040,12 +5183,13 @@ function dxfGroupsPlan(d,R){const N=cpNest(d,R),out=[];
   if(d.forme==='goulotte'){const gn=gouNest(d,R);if(gn)out.push({name:cpName(gn.cp)+' — fond de goulotte',W:gn.W,H:gn.H,sheets:gn.sheets.map(s=>({items:s,pre:null}))})}
   return out}
 function dxfGabarits(D,d,ox,oy){const GP=gabPieces(d,'roll');if(!GP||GP.msg||!GP.pieces)return{n:0,y:oy};let x=ox,n=0,hmax=0;
-  D.text('CARTOUCHE',ox,oy+120,90,`GABARITS 1:1 — ${GP.title||''} (trait de découpe sur le calque GABARIT_DECOUPE)`,0);
+  const th=dxfTitle(D,ox,oy+60,GP.pieces.reduce((s,pc)=>s+pc.w+300,0),'GABARITS 1:1',`${GP.title||''} — trait de découpe sur le calque GABARIT_DECOUPE`);
   const LY={line:(st,w)=>w>=0.8?'GABARIT_DECOUPE':'GABARIT_REPERES',text:'GABARIT_TEXTES'};
   GP.pieces.forEach(pc=>{D.text('GABARIT_TEXTES',x,oy+30,25,pc.id+' — '+(pc.title||''),0);const r=svgToDxf(D,`<svg viewBox="0 0 ${pc.w} ${pc.h}" xmlns="http://www.w3.org/2000/svg">${pc.svg}</svg>`,x,oy,1,LY);n+=r.cnt;x+=pc.w+300;hmax=Math.max(hmax,pc.h)});
-  return{n,y:oy-hmax-600}}
+  return{n,y:oy-hmax-Math.max(400,5*th)}}
 function dxfViews(D,d,ox,oy){const box=document.createElement('div');box.innerHTML=gen(d);let y=oy,n=0;const k=2; // 1 unité de dessin = 2 mm (vues non cotées en vraie grandeur)
-  D.text('CARTOUCHE',ox,y+120,90,'VUES DES FEUILLES (échelle du dessin — utiliser les cotes inscrites, pas la mesure)',0);
+  const w0=[...box.querySelectorAll('.ps')].slice(0,1).flatMap(ps=>[...ps.querySelectorAll('.ps-c > svg')]).reduce((s,sv)=>s+((sv.getAttribute('viewBox')||'0 0 0 0').split(/[\s,]+/).map(Number)[2]||0)*k+200,0);
+  dxfTitle(D,ox,y+60,w0,'VUES DES FEUILLES','échelle du dessin — utiliser les cotes inscrites, pas la mesure');
   const LY={line:st=>st&&DXF_RED.test(st)?'VUES_COTES':'VUES_TRAITS',text:'VUES_TEXTES'};
   box.querySelectorAll('.ps').forEach(ps=>{const rf=(ps.querySelector('.ps-rf')||{textContent:''}).textContent;if(/CP À DÉCOUPER|MONTAGE|FICHE ATELIER|SOMMAIRE/.test(rf))return;let x=ox,hm=0;
     ps.querySelectorAll('.ps-c > svg').forEach(sv=>{const vb=(sv.getAttribute('viewBox')||'0 0 0 0').split(/[\s,]+/).map(Number),cl=sv.parentNode.querySelector('.ps-cl');
@@ -5053,9 +5197,10 @@ function dxfViews(D,d,ox,oy){const box=document.createElement('div');box.innerHT
     if(hm)y-=hm+400});
   return{n,y}}
 function dxfPlanDoc(d){const g=d.forme==='voile'?voileGeo(d):null;if(limErr(d).length||badDims(checks(d,g)))return{err:'Plan incohérent : corriger d\'abord la saisie (voir contrôles).'};
-  const R=debit(d,g),D=DXF(),st={};
-  const pl=dxfPlan(D,d,R,0,0);st.plan=pl.n;let y=-pl.h-1500;
-  const pn=dxfPanels(D,dxfGroupsPlan(d,R),0,y);st.panneaux=pn.np;st.pieces=pn.npc;y=pn.y-800;
+  const R=debit(d,g),D=DXF(),st={},GR=dxfGroupsPlan(d,R);
+  D.th=Math.max(30,Math.min(90,Math.max(0,...GR.map(G=>Math.min(4,G.sheets.length)*(G.W+300)))/30||60));
+  const pl=dxfPlan(D,d,R,0,0);st.plan=pl.n;let y=-pl.h-Math.max(600,8*pl.th);
+  const pn=dxfPanels(D,GR,0,y);st.panneaux=pn.np;st.pieces=pn.npc;y=pn.y+400-Math.max(300,3*D.th);
   const gb=dxfGabarits(D,d,0,y);st.gabarits=gb.n;y=gb.y;
   if(d.forme==='goulotte')D.text('CARTOUCHE',0,y+60,40,'Segments de fond de goulotte : panneaux « fond de goulotte » ci-dessus (calque CP_DECOUPE, tête-bêche) et gabarit 1:1.',0);
   const vw=dxfViews(D,d,0,y-300);st.vues=vw.n;
@@ -5206,7 +5351,6 @@ function xlsxBook(sheets){
   return files;
 }
 // Compatibilité : ancienne signature [[nom, lignes]] → classeur simple (en-tête en première ligne)
-function xlsxBlob(sheets){return zipStore(xlsxBook(sheets.map(([name,rows])=>({name,cols:rows[0]?rows[0].map(()=>16):[],freeze:1,printRow:1,rows:rows.map((r,i)=>i?r:r.map(v=>({v,s:XS.head})))}))))}
 // Données de débit d'un plan (lignes CP + bois, avec remarques)
 function debitData(d0){const d=canon(migr(d0)),g=d.forme==='voile'?voileGeo(d):null,nb=d.nb||1;
   if(limErr(d).length||badDims(checks(d,g)))return{d,nb,err:true,cp:[],bois:[]};const R=debit(d,g),clean=s=>String(s||'').replace(/<[^>]+>/g,'').trim();
@@ -5282,7 +5426,7 @@ function openExport(){const cur=EI>=0&&P[EI]?P[EI]:coll(),list=P.length?chantier
 
 applyPage();prtUI();updF();if(draftRestore())setTimeout(()=>toast('Brouillon restauré'),300);profFromPlans(P);profLists();libUI();rnL();updBtn();prev();_ready=true;hisPush();
 try{if(localStorage.getItem('resaSavedH')==null&&localStorage.getItem('resaDirty')==='0'&&localStorage.getItem('resaExpAt'))localStorage.setItem('resaSavedH',projHash());localStorage.removeItem('resaDirty')}catch(e){}
-themeApply();try{const so=localStorage.getItem('resaSort');if(so&&el('plS').querySelector(`option[value="${so}"]`)){el('plS').value=so;rnL()}}catch(e){}updBtn();updExp();
+foldInit();themeApply();try{const so=localStorage.getItem('resaSort');if(so&&el('plS').querySelector(`option[value="${so}"]`)){el('plS').value=so;rnL()}}catch(e){}updBtn();updExp();
 el('iCh').addEventListener('change',()=>{profLists();if(EI<0)applyProf()});el('iOuv').addEventListener('change',()=>{profLists();if(EI<0)applyProf()});
 </script>
 </body>
