@@ -25,6 +25,16 @@ body{font-family:'Barlow',sans-serif;background:var(--bg);color:var(--text);min-
 #bSave.dirty::after{content:'';position:absolute;top:-4px;right:-4px;width:9px;height:9px;border-radius:50%;background:var(--accent);border:2px solid var(--navy)}
 #saveRem{display:none;position:fixed;right:18px;bottom:18px;z-index:380;width:min(340px,calc(100vw - 32px));background:var(--surface);color:var(--text);border:1px solid var(--accent);border-left:4px solid var(--accent);border-radius:8px;padding:12px 14px;font-size:13px;line-height:1.4;box-shadow:0 8px 30px rgba(0,0,0,.35)}
 #saveRem .rb{display:flex;gap:8px;justify-content:flex-end;margin-top:10px}
+#bAdd{position:relative}#bAdd.dirty::after{content:'';position:absolute;top:-5px;right:-5px;width:12px;height:12px;border-radius:50%;background:var(--red);border:2px solid var(--navy)}
+#zEditSt{font-size:11px;line-height:1.35;margin:-2px 0 8px;padding:4px 8px;border-radius:4px;border-left:3px solid var(--border);color:var(--muted)}#zEditSt.dirty{border-left-color:var(--red);color:var(--redt);background:rgba(231,76,60,.08);font-weight:600}
+#dlg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:450;align-items:center;justify-content:center;padding:16px}#dlgB{width:min(440px,100%);margin:0}
+#dlgB .dlgm{font-size:13px;line-height:1.45;white-space:pre-line;margin-bottom:10px}#dlgB .fi{margin-bottom:10px}#dlgB .rb{display:flex;gap:8px;justify-content:flex-end}
+.bpr{background:var(--accent);color:#fff}.bpr:hover{background:var(--accent2)}.bdg{background:var(--red);color:#fff}
+#toast.act{pointer-events:auto}#toast button{margin-left:10px;border-color:var(--accent);color:var(--acct)}
+.plg{font:700 10px 'Barlow',sans-serif;letter-spacing:1.5px;text-transform:uppercase;color:var(--acct);margin:8px 0 4px;display:flex;justify-content:space-between}.plg:first-child{margin-top:0}.plg span{color:var(--muted)}
+.si .fm{color:var(--muted);font-size:10px;margin-left:4px}
+#pvSt{display:none;position:fixed;top:62px;right:24px;z-index:150;background:var(--surface);color:var(--text);border:1px solid var(--accent);border-radius:6px;padding:6px 12px;font-size:12px;box-shadow:0 4px 16px rgba(0,0,0,.3);cursor:pointer}
+.pv.stale>*{opacity:.5;transition:opacity .2s}
 .keys td{padding:4px 6px;border-bottom:1px solid var(--border);font-size:12px;vertical-align:top}.keys td:first-child{white-space:nowrap}
 kbd{display:inline-block;min-width:20px;padding:1px 6px;border:1px solid var(--border);border-bottom-width:2px;border-radius:4px;background:var(--surface2);font:600 11px 'JetBrains Mono',monospace;color:var(--text);text-align:center}
 .main{display:grid;grid-template-columns:340px 1fr;min-height:calc(100vh - 50px)}
@@ -138,7 +148,7 @@ body.pm .inf{font-size:9.5px;line-height:1.25}body.pm .inf .nt{font-size:.95em}b
 </head>
 <body>
 <div class="hdr">
-<div class="brand"><svg xmlns="http://www.w3.org/2000/svg" class="logo" viewBox="0 10 362 66" preserveAspectRatio="xMinYMid slice" role="img" aria-label="CoffraPlan"><defs><linearGradient id="cplouterBack" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#27384e"/><stop offset="1" stop-color="#101a29"/></linearGradient><linearGradient id="cplouterLeft" x1="0" y1="0" x2="1" y2=".7"><stop stop-color="#1a2739"/><stop offset="1" stop-color="#334559"/></linearGradient><linearGradient id="cplouterFront" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#2f4255"/><stop offset="1" stop-color="#101b2c"/></linearGradient><linearGradient id="cplouterCap" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#b7c1c8"/><stop offset="1" stop-color="#4f6272"/></linearGradient><linearGradient id="cplorangeFace" x1="0" y1="0" x2=".85" y2=".2"><stop stop-color="#ffb03c"/><stop offset=".49" stop-color="#ff8b19"/><stop offset="1" stop-color="#de5608"/></linearGradient><linearGradient id="cplorangeFaceDark" x1="0" y1="0" x2="1" y2=".3"><stop stop-color="#ff7f12"/><stop offset="1" stop-color="#af3807"/></linearGradient><linearGradient id="cplconcreteTop" x1="0" y1="0" x2="1" y2=".8"><stop stop-color="#ffffff"/><stop offset=".48" stop-color="#b4c4cf"/><stop offset="1" stop-color="#738596"/></linearGradient></defs><g transform="translate(0,1) scale(.52)"><polygon points="104.00,20.00 170.10,58.08 170.10,102.08 104.00,64.00" fill="url(#cplouterBack)" stroke="#172537" stroke-width="1.1" stroke-linejoin="round" /><polygon points="104.00,20.00 37.90,58.08 37.90,102.08 104.00,64.00" fill="url(#cplouterLeft)" stroke="#172537" stroke-width="1.1" stroke-linejoin="round" /><polygon points="37.90,58.08 104.00,96.16 104.00,140.16 37.90,102.08" fill="url(#cplouterFront)" stroke="#172537" stroke-width="1.1" stroke-linejoin="round" /><polygon points="170.10,58.08 159.57,64.15 159.57,108.15 170.10,102.08" fill="url(#cplouterCap)" stroke="#172537" stroke-width="1.1" stroke-linejoin="round" /><polygon points="114.53,90.10 104.00,96.16 104.00,140.16 114.53,134.10" fill="url(#cplouterCap)" stroke="#172537" stroke-width="1.1" stroke-linejoin="round" /><polygon points="104.00,32.13 159.57,64.15 159.57,108.15 104.00,76.13" fill="url(#cplorangeFace)" stroke="#172537" stroke-width="1.1" stroke-linejoin="round" /><polygon points="104.00,32.13 58.96,58.08 58.96,102.08 104.00,76.13" fill="url(#cplorangeFaceDark)" stroke="#172537" stroke-width="1.1" stroke-linejoin="round" /><polygon points="58.96,58.08 114.53,90.10 114.53,134.10 58.96,102.08" fill="url(#cplorangeFace)" stroke="#172537" stroke-width="1.1" stroke-linejoin="round" /><polygon points="104.00,20.00 170.10,58.08 159.57,64.15 93.47,26.07" fill="url(#cplconcreteTop)" stroke="#cbd4db" stroke-width="1.1" stroke-linejoin="round" /><polygon points="104.00,20.00 114.53,26.07 48.43,64.15 37.90,58.08" fill="url(#cplconcreteTop)" stroke="#cbd4db" stroke-width="1.1" stroke-linejoin="round" /><polygon points="48.43,52.02 114.53,90.10 104.00,96.16 37.90,58.08" fill="url(#cplconcreteTop)" stroke="#cbd4db" stroke-width="1.1" stroke-linejoin="round" /></g><text x="107" y="66" fill="var(--logo-t)" font-family="Inter Display,Inter,Arial,sans-serif" font-size="53" font-weight="900" letter-spacing="-3.1" textLength="146" lengthAdjust="spacingAndGlyphs">Coffra</text><text x="257" y="66" fill="#ff8517" font-family="Inter Display,Inter,Arial,sans-serif" font-size="53" font-weight="900" letter-spacing="-3.1" textLength="100" lengthAdjust="spacingAndGlyphs">Plan</text></svg><small id="appVer">v2.2</small></div>
+<div class="brand"><svg xmlns="http://www.w3.org/2000/svg" class="logo" viewBox="0 10 362 66" preserveAspectRatio="xMinYMid slice" role="img" aria-label="CoffraPlan"><defs><linearGradient id="cplouterBack" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#27384e"/><stop offset="1" stop-color="#101a29"/></linearGradient><linearGradient id="cplouterLeft" x1="0" y1="0" x2="1" y2=".7"><stop stop-color="#1a2739"/><stop offset="1" stop-color="#334559"/></linearGradient><linearGradient id="cplouterFront" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#2f4255"/><stop offset="1" stop-color="#101b2c"/></linearGradient><linearGradient id="cplouterCap" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#b7c1c8"/><stop offset="1" stop-color="#4f6272"/></linearGradient><linearGradient id="cplorangeFace" x1="0" y1="0" x2=".85" y2=".2"><stop stop-color="#ffb03c"/><stop offset=".49" stop-color="#ff8b19"/><stop offset="1" stop-color="#de5608"/></linearGradient><linearGradient id="cplorangeFaceDark" x1="0" y1="0" x2="1" y2=".3"><stop stop-color="#ff7f12"/><stop offset="1" stop-color="#af3807"/></linearGradient><linearGradient id="cplconcreteTop" x1="0" y1="0" x2="1" y2=".8"><stop stop-color="#ffffff"/><stop offset=".48" stop-color="#b4c4cf"/><stop offset="1" stop-color="#738596"/></linearGradient></defs><g transform="translate(0,1) scale(.52)"><polygon points="104.00,20.00 170.10,58.08 170.10,102.08 104.00,64.00" fill="url(#cplouterBack)" stroke="#172537" stroke-width="1.1" stroke-linejoin="round" /><polygon points="104.00,20.00 37.90,58.08 37.90,102.08 104.00,64.00" fill="url(#cplouterLeft)" stroke="#172537" stroke-width="1.1" stroke-linejoin="round" /><polygon points="37.90,58.08 104.00,96.16 104.00,140.16 37.90,102.08" fill="url(#cplouterFront)" stroke="#172537" stroke-width="1.1" stroke-linejoin="round" /><polygon points="170.10,58.08 159.57,64.15 159.57,108.15 170.10,102.08" fill="url(#cplouterCap)" stroke="#172537" stroke-width="1.1" stroke-linejoin="round" /><polygon points="114.53,90.10 104.00,96.16 104.00,140.16 114.53,134.10" fill="url(#cplouterCap)" stroke="#172537" stroke-width="1.1" stroke-linejoin="round" /><polygon points="104.00,32.13 159.57,64.15 159.57,108.15 104.00,76.13" fill="url(#cplorangeFace)" stroke="#172537" stroke-width="1.1" stroke-linejoin="round" /><polygon points="104.00,32.13 58.96,58.08 58.96,102.08 104.00,76.13" fill="url(#cplorangeFaceDark)" stroke="#172537" stroke-width="1.1" stroke-linejoin="round" /><polygon points="58.96,58.08 114.53,90.10 114.53,134.10 58.96,102.08" fill="url(#cplorangeFace)" stroke="#172537" stroke-width="1.1" stroke-linejoin="round" /><polygon points="104.00,20.00 170.10,58.08 159.57,64.15 93.47,26.07" fill="url(#cplconcreteTop)" stroke="#cbd4db" stroke-width="1.1" stroke-linejoin="round" /><polygon points="104.00,20.00 114.53,26.07 48.43,64.15 37.90,58.08" fill="url(#cplconcreteTop)" stroke="#cbd4db" stroke-width="1.1" stroke-linejoin="round" /><polygon points="48.43,52.02 114.53,90.10 104.00,96.16 37.90,58.08" fill="url(#cplconcreteTop)" stroke="#cbd4db" stroke-width="1.1" stroke-linejoin="round" /></g><text x="107" y="66" fill="var(--logo-t)" font-family="Inter Display,Inter,Arial,sans-serif" font-size="53" font-weight="900" letter-spacing="-3.1" textLength="146" lengthAdjust="spacingAndGlyphs">Coffra</text><text x="257" y="66" fill="#ff8517" font-family="Inter Display,Inter,Arial,sans-serif" font-size="53" font-weight="900" letter-spacing="-3.1" textLength="100" lengthAdjust="spacingAndGlyphs">Plan</text></svg><small id="appVer">v2.3</small></div>
 <div style="flex:1"></div>
 <button class="btn bs bo no-print" id="bUndo" onclick="undo()" title="Annuler la dernière modification du formulaire (Ctrl+Z)" aria-label="Annuler">↶</button>
 <button class="btn bs bo no-print" id="bRedo" onclick="redo()" title="Rétablir (Ctrl+Y ou Ctrl+Maj+Z)" aria-label="Rétablir">↷</button>
@@ -148,6 +158,7 @@ body.pm .inf{font-size:9.5px;line-height:1.25}body.pm .inf .nt{font-size:.95em}b
 <select class="fi thm no-print" id="selTheme" onchange="setTheme(this.value)" title="Thème de l'interface (les plans restent sur fond blanc)" aria-label="Thème de l'interface"><option value="auto">◐ Auto</option><option value="light">☀ Clair</option><option value="dark">☾ Sombre</option></select>
 <button class="btn bs bo no-print" onclick="showKeys()" title="Raccourcis clavier (?)" aria-label="Raccourcis clavier">?</button>
 </div>
+<div id="dlg" class="no-print" role="dialog" aria-modal="true" aria-labelledby="dlgT"><div id="dlgB" class="cd"></div></div>
 <div id="saveRem" class="no-print" role="alertdialog" aria-labelledby="saveRemT"><b id="saveRemT">💾 Modifications non sauvegardées</b><div id="saveRemD"></div>
 <div class="rb"><button class="btn bs bo" onclick="remLater()" title="Rappel dans 15 minutes (Échap)">Plus tard</button><button class="btn bs bp" style="width:auto;padding:6px 14px;font-size:12px;letter-spacing:1px" onclick="expJ()">💾 Sauvegarder</button></div></div>
 <div class="main">
@@ -195,6 +206,7 @@ body.pm .inf{font-size:9.5px;line-height:1.25}body.pm .inf .nt{font-size:.95em}b
 </div>
 <div id="zChk"></div>
 <button class="bp" id="bAdd" onclick="addP(false)" style="margin-bottom:8px">➕ AJOUTER</button>
+<div id="zEditSt" style="display:none" role="status"></div>
 <div class="g2" id="zEdit" style="display:none;margin-bottom:8px"><button class="btn bs bo" onclick="addP(true)">➕ Ajouter comme nouveau</button><button class="btn bs bo" onclick="cancelEdit()">✖ Annuler</button></div>
 <div class="g2" style="margin-bottom:8px"><button class="bg btn bs" onclick="prev()">👁 APERÇU</button><button class="btn bs bo" onclick="autoControl(false)" title="Vérifie lisibilité, valeurs, imbrication, surfaces, poches, rechargement">🔍 AUTO-CONTRÔLE</button></div>
 <button class="btn bs bo" id="b3D" onclick="open3D()" style="width:100%;margin-bottom:8px" title="Tourner, zoomer, éclater, masquer par type, cliquer une pièce pour son repère">🧊 VUE 3D INTERACTIVE</button>
@@ -208,12 +220,16 @@ body.pm .inf{font-size:9.5px;line-height:1.25}body.pm .inf .nt{font-size:.95em}b
 <div class="hint" style="margin:8px 0 0">Un gabarit par pièce cintrée de la feuille CP À DÉCOUPER : même repère, même orientation, même position depuis le coin ● du panneau. Pièces à coupes droites : cotes du plan, pas de gabarit. Pièce plus grande que la feuille : feuilles à assembler (recouvrement 20 mm, croix ✚).</div></div>
 <div class="sep"></div>
 <div id="zExp" class="hint" style="display:none;border-left-color:var(--red);margin:0 0 10px"></div>
-<div class="cd"><div class="ct">📑 Plans (<span id="pc">0</span>)</div><div id="sl" style="max-height:220px;overflow-y:auto"></div>
+<div class="cd"><div class="ct">📑 Plans (<span id="pc">0</span>)</div>
+<div style="display:flex;gap:6px;margin-bottom:8px"><input class="fi" id="plQ" type="search" placeholder="Rechercher : réf., ouvrage, forme…" aria-label="Rechercher un plan" oninput="this.dataset.fresh=1;event.stopPropagation();rnL()" onchange="event.stopPropagation()">
+<select class="fi" id="plS" style="width:auto" title="Ordre des plans dans chaque ouvrage" aria-label="Trier les plans" onchange="event.stopPropagation();try{localStorage.setItem('resaSort',this.value)}catch(e){}rnL()"><option value="i">Saisie</option><option value="r">Réf.</option><option value="f">Forme</option></select></div>
+<div id="sl" style="max-height:260px;overflow-y:auto"></div>
 <button class="btn bs bo" onclick="showChantier()" style="width:100%;margin-top:8px" title="Débit consolidé, bon de commande, débit des barres de bois">🧾 Récapitulatif chantier · commande</button>
 <button class="btn bs" onclick="clearAll()" style="width:100%;margin-top:8px;background:rgba(231,76,60,.1);color:var(--red);border:1px solid rgba(231,76,60,.3)">🗑 Tout supprimer</button>
 </div>
 </div>
 <div class="pv" id="pvA"></div>
+<div id="pvSt" class="no-print" role="status" onclick="onEdit()" title="Recalculer maintenant"></div>
 </div>
 <div id="toast" class="no-print"></div><div id="dragTip" class="no-print"></div>
 <div id="hlpPop" class="no-print"></div>
@@ -2662,44 +2678,81 @@ function liveCalc(){
   el('zChk').innerHTML=checks(d,g).map(([l,m])=>chkRow(l==='warn'?'warn':'err',l==='warn'?'⚠':'⛔',m,chkField(m))).join('');
 }
 let _tm;
-function onEdit(){clearTimeout(_tm);_tm=setTimeout(()=>{syncVis();liveCalc();prev();hisPush()},150)}
+// v2.3 — si le dernier recalcul (contrôles + aperçu) a pris plus de CALC_LAZY ms, la frappe dans un champ texte ne relance
+// plus le calcul : aperçu marqué « en attente », recalcul à Entrée, à la sortie du champ (change) ou au clic sur le bandeau.
+const CALC_LAZY=300;let _calcMs=0;
+function pvState(s){const b=el('pvSt');if(!b)return;el('pvA').classList.toggle('stale',s==='stale');b.style.display=s?'block':'none';
+  b.textContent=s==='stale'?'✎ Aperçu en attente — Entrée ou Tab pour recalculer (ou cliquer ici)':s==='busy'?'⏳ Calcul de l\'aperçu…':''}
+function onEdit(e){clearTimeout(_tm);
+  if(_calcMs>CALC_LAZY&&e&&e.type==='input'&&e.target&&e.target.matches&&e.target.matches('input[type=text],input:not([type])')){pvState('stale');_tm=setTimeout(()=>{hisPush();updBtn()},150);return}
+  if(_calcMs>CALC_LAZY)pvState('busy');
+  _tm=setTimeout(()=>{const t=performance.now();syncVis();liveCalc();prev();_calcMs=performance.now()-t;pvState('');hisPush();updBtn()},150)}
 el('sbF').addEventListener('input',onEdit);el('sbF').addEventListener('change',onEdit);
+el('sbF').addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.matches&&e.target.matches('input[type=text],input:not([type])')&&el('pvA').classList.contains('stale'))onEdit()});
 
 // ====== LISTE / ACTIONS ======
 function prev(){VIEW='plan';el('pvA').innerHTML=gen(coll())}
-function updBtn(){el('bAdd').textContent=EI>=0?'💾 METTRE À JOUR':'➕ AJOUTER';el('zEdit').style.display=EI>=0?'':'none'}
-function addP(asNew){
-  const d=coll();if(!d.ch){alert('Nom du chantier');return}
-  const bf=badFields();if(bf.length){alert('Saisie illisible :\n'+bf.map(x=>x.msg).join('\n'));return}
+// v2.3 — plan affiché modifié mais pas mis à jour : référence = formulaire tel que chargé depuis le plan (setForm → coll)
+let _eBase=null,_eKey=null;
+function formSnap(){const d=coll();delete d.date;return JSON.stringify(d)}
+function editDirty(){if(EI<0||!P[EI])return false;const k=JSON.stringify(P[EI]);
+  if(k!==_eKey){const cur=formSnap(),ho=_hisOff;_hisOff=true;try{setForm(P[EI]);_eBase=formSnap();if(_eBase!==cur)setForm(JSON.parse(cur))}finally{_hisOff=ho}_eKey=k}
+  return formSnap()!==_eBase}
+function updBtn(){const dirty=editDirty(),b=el('bAdd'),s=el('zEditSt'),ref=EI>=0&&P[EI]?(P[EI].ref||'Plan '+(EI+1)):'';
+  b.textContent=EI>=0?'✔ METTRE À JOUR '+ref:'➕ AJOUTER';b.classList.toggle('dirty',dirty);b.title=dirty?ref+' : modifications non enregistrées dans le plan':'';
+  el('zEdit').style.display=EI>=0?'':'none';s.style.display=EI>=0?'':'none';s.classList.toggle('dirty',dirty);
+  s.textContent=dirty?`● ${ref} modifié — non enregistré dans le plan (« Mettre à jour »)`:`${ref} affiché — aucune modification`}
+function addP(asNew,ok){ok=ok||0;   // ok : étapes déjà confirmées (1 = référence en double, 2 = incohérences)
+  const d=coll();if(!d.ch){toast('⛔ Saisir le nom du chantier');goField('iCh');return}
+  const bf=badFields();if(bf.length){toast('⛔ '+bf[0].msg+(bf.length>1?' (+ '+(bf.length-1)+' autre'+(bf.length>2?'s':'')+')':''));goField(bf[0].id);return}
   const upd=EI>=0&&!asNew;
   if(!d.ref){d.ref=nextRef(d.ch,d.ouv,upd?EI:-1);el('iRef').value=d.ref}
-  else if(P.some((p,i)=>(!upd||i!==EI)&&chKey(p.ch)===d.ch&&ouKey(p.ouv).toLowerCase()===ouKey(d.ouv).toLowerCase()&&String(p.ref||'').toUpperCase()===d.ref)&&!confirm(`La référence ${d.ref} existe déjà pour cet ouvrage. Enregistrer quand même ?`))return;
+  else if(P.some((p,i)=>(!upd||i!==EI)&&chKey(p.ch)===d.ch&&ouKey(p.ouv).toLowerCase()===ouKey(d.ouv).toLowerCase()&&String(p.ref||'').toUpperCase()===d.ref)&&ok<1)return uiConfirm(`La référence ${d.ref} existe déjà pour cet ouvrage.`,()=>addP(asNew,1),{t:'Référence en double',ok:'Enregistrer quand même'});
   const g=d.forme==='voile'?voileGeo(d):null;
-  if(badDims(checks(canon(d),g))&&!confirm('Incohérences détectées (voir contrôles). Enregistrer quand même ?'))return;
+  if(ok<2&&badDims(checks(canon(d),g)))return uiConfirm('Le plan contient des incohérences (alertes ⛔ du panneau).',()=>addP(asNew,2),{t:'Plan incohérent',ok:'Enregistrer quand même'});
   if(upd){d.uid=planUid(P[EI]);P[EI]=d}else{planUid(d);P.push(d)}
   EI=-1;svP();profFromPlans([d]);markDirty();rnL();updBtn();prev();
   if(!upd){el('iRef').value=nextRef(d.ch,d.ouv);if((d.nb||1)>1){el('iNb').value=1}toast(d.ref+' ajouté'+((d.nb||1)>1?' (× '+d.nb+')':'')+' — référence suivante : '+el('iRef').value+((d.nb||1)>1?' · nombre remis à 1':''))}else toast(d.ref+' mis à jour');
   profLists();hisPush();
 }
 function cancelEdit(){EI=-1;rnL();updBtn()}
+// v2.3 — liste : recherche (tous les mots, sans accents), regroupement chantier · ouvrage, tri dans chaque ouvrage
+const nrm=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+let _fmLb=null;function fmLb(f){if(!_fmLb)_fmLb=Object.fromEntries([...el('iForme').options].map(o=>[o.value,o.text]));return _fmLb[f]||f}
+const _cmp=new Intl.Collator('fr',{numeric:true,sensitivity:'base'}).compare;
 function rnL(){
-  el('pc').textContent=P.length;
-  el('sl').innerHTML=P.map((p,i)=>`<div class="si${i===EI?' on':''}" onclick="shP(${i})" title="Cliquer pour afficher / modifier"><span class="n">${esc(p.ch)}${p.ouv?' · '+esc(p.ouv):''} — ${esc(p.ref||p.desc||'Plan '+(i+1))}${p.ind?' ['+esc(p.ind)+']':''}</span><span class="b">×${p.nb}</span><button class="dup" onclick="event.stopPropagation();dupP(${i})" title="Dupliquer" aria-label="Dupliquer">⧉</button><button onclick="event.stopPropagation();dlP(${i})" aria-label="Supprimer">×</button></div>`).join('');
+  const q=nrm(el('plQ')?el('plQ').value:'').split(/\s+/).filter(Boolean),so=el('plS')?el('plS').value:'i';
+  const idx=P.map((p,i)=>i).filter(i=>{const p=P[i],t=nrm([p.ch,p.ouv,p.ref,p.desc,p.ind,fmLb(p.forme)].join(' '));return q.every(w=>t.includes(w))});
+  const G=new Map();idx.forEach(i=>{const p=P[i],k=chKey(p.ch)+' · '+(p.ouv||'');if(!G.has(k))G.set(k,{ch:p.ch,ouv:p.ouv,L:[]});G.get(k).L.push(i)});
+  const gs=[...G.values()].sort((a,b)=>_cmp(a.ch||'',b.ch||'')||_cmp(a.ouv||'',b.ouv||''));
+  const key=i=>so==='r'?P[i].ref||'':so==='f'?fmLb(P[i].forme)+' '+(P[i].ref||''):null;
+  gs.forEach(g=>{if(so!=='i')g.L.sort((a,b)=>_cmp(key(a),key(b))||a-b)});
+  el('pc').textContent=q.length?idx.length+' / '+P.length:P.length;
+  const row=i=>{const p=P[i];return `<div class="si${i===EI?' on':''}" onclick="shP(${i})" onkeydown="if(event.key==='Enter'&&event.target===this)shP(${i})" tabindex="0" role="button" title="Afficher / modifier ${esc(p.ref||'')}"><span class="n">${esc(p.ref||p.desc||'Plan '+(i+1))}${p.ind?' ['+esc(p.ind)+']':''}<span class="fm">${esc(fmLb(p.forme))}</span></span><span class="b">×${p.nb}</span><button class="dup" onclick="event.stopPropagation();dupP(${i})" title="Dupliquer" aria-label="Dupliquer ${esc(p.ref||'')}">⧉</button><button onclick="event.stopPropagation();dlP(${i})" title="Supprimer (annulable)" aria-label="Supprimer ${esc(p.ref||'')}">×</button></div>`};
+  el('sl').innerHTML=!P.length?'<div class="hint" style="margin:0">Aucun plan : remplir le formulaire puis « Ajouter ».</div>':!idx.length?'<div class="hint" style="margin:0">Aucun plan ne correspond à la recherche.</div>'
+    :gs.map(g=>`<div class="plg">${esc(g.ch||'—')}${g.ouv?' · '+esc(g.ouv):''}<span>${g.L.length}</span></div>`+g.L.map(row).join('')).join('');
 }
-function shP(i){EI=i;setForm(P[i]);el('pvA').innerHTML=gen(P[i]);rnL();updBtn()}
-function dlP(i){if(!confirm('Supprimer ?'))return;P.splice(i,1);if(EI===i)EI=-1;else if(EI>i)EI--;svP();markDirty();rnL();updBtn()}
-function clearAll(){if(!confirm('Supprimer TOUS les plans enregistrés ?'))return;P=[];EI=-1;svP();markDirty();rnL();updBtn()}
+function shP(i){if(i===EI&&editDirty())return;   // déjà affiché : ne pas écraser la saisie en cours
+  const lost=editDirty()?{u:planUid(P[EI]),ref:P[EI].ref||'',d:JSON.parse(formSnap())}:null;
+  EI=i;setForm(P[i]);el('pvA').innerHTML=gen(P[i]);rnL();updBtn();
+  if(lost)toast(`${lost.ref} : modifications non enregistrées laissées de côté`,'Revenir',()=>{const j=P.findIndex(p=>p.uid===lost.u);if(j<0)return;EI=j;setForm(lost.d);rnL();updBtn();prev();hisPush()})}
+// v2.3 — suppression immédiate, annulable 10 s (plus de question préalable)
+function dlP(i){const p=P[i];if(!p)return;P.splice(i,1);if(EI===i)EI=-1;else if(EI>i)EI--;svP();markDirty();rnL();updBtn();
+  toast(`Plan ${p.ref||''} supprimé`,'Annuler',()=>{const j=Math.min(i,P.length);P.splice(j,0,p);if(EI>=j)EI++;svP();rnL();updBtn();toast(`Plan ${p.ref||''} rétabli`)})}
+function clearAll(){if(!P.length)return;uiConfirm(`Supprimer les ${P.length} plan(s) enregistrés ?`,()=>{const old=P;P=[];EI=-1;svP();markDirty();rnL();updBtn();
+  toast(`${old.length} plan(s) supprimé(s)`,'Annuler',()=>{P=old.concat(P);svP();rnL();updBtn();toast(`${old.length} plan(s) rétabli(s)`)})},{t:'Tout supprimer',ok:'Tout supprimer',danger:true})}
 function expJ(){let a;try{const b=new Blob([JSON.stringify({app:'plans-reservation',v:10,date:new Date().toISOString(),plans:P,profils:PROF,modeles:LIBU},null,2)],{type:'application/json'});
   a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='coffraplan_'+new Date().toISOString().slice(0,10)+'.json';a.click()}catch(e){toast('⛔ Sauvegarde impossible : '+(e&&e.message||e));return}
   /* le navigateur ne signale pas la fin du téléchargement : sauvegarde = fichier généré et remis au navigateur sans erreur */
-  markSaved();toast('💾 Sauvegarde enregistrée ('+P.length+' plan'+(P.length>1?'s':'')+')');setTimeout(()=>URL.revokeObjectURL(a.href),1000)}
+  markSaved();toast('💾 Sauvegarde enregistrée ('+P.length+' plan'+(P.length>1?'s':'')+')'+(editDirty()?' — ⚠ '+(P[EI].ref||'plan affiché')+' : modifications du formulaire non mises à jour, non incluses':''),null,null,editDirty()?6000:0);setTimeout(()=>URL.revokeObjectURL(a.href),1000)}
 function impJ(){const i=document.createElement('input');i.type='file';i.accept='.json';i.onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();
-  r.onload=ev=>{try{const o=JSON.parse(ev.target.result),arr=Array.isArray(o)?o:o&&Array.isArray(o.plans)?o.plans:null;if(!arr)throw new Error('format');
-    if(P.length&&!confirm(`Remplacer les ${P.length} plan(s) actuels par les ${arr.length} du fichier ?`))return;
+  r.onload=ev=>{let o,arr;try{o=JSON.parse(ev.target.result);arr=Array.isArray(o)?o:o&&Array.isArray(o.plans)?o.plans:null;if(!arr)throw new Error('format')}catch(er){uiAlert(`« ${f.name} » n'est pas une sauvegarde CoffraPlan lisible.`,'Fichier invalide');return}
+    const apply=()=>{try{
     P=arr.filter(x=>x&&typeof x==='object'&&x.forme).map(migr);EI=-1;
     if(o.profils&&typeof o.profils==='object')Object.keys(o.profils).forEach(k=>{PROF[k]=Object.assign({},PROF[k]||{},o.profils[k],{ouv:Object.assign({},(PROF[k]||{}).ouv,o.profils[k].ouv)})});
     if(Array.isArray(o.modeles))o.modeles.forEach(m=>{if(m&&m.d&&!LIBU.some(x=>x.name===m.name))LIBU.push(m)});svLib();libUI();
-    profFromPlans(P);svProf();svP();rnL();updBtn();profLists();markSaved();alert('✓ '+P.length+' plan(s) chargé(s)')}catch(er){alert('Fichier invalide')}};r.readAsText(f)};i.click()}
+    profFromPlans(P);svProf();svP();rnL();updBtn();profLists();markSaved();toast('✓ '+P.length+' plan(s) chargé(s)')}catch(er){uiAlert(`« ${f.name} » n'a pas pu être chargé : ${er.message||er}`,'Fichier invalide')}};
+    if(P.length)uiConfirm(`Remplacer les ${P.length} plan(s) actuels par les ${arr.filter(x=>x&&typeof x==='object'&&x.forme).length} du fichier « ${f.name} » ?`,apply,{t:'Charger un projet',ok:'Remplacer'});else apply()};r.readAsText(f)};i.click()}
 
 try{const r=localStorage.getItem('resaRoll');if(r)el('iRoll').value=r;const g=localStorage.getItem('resaGabFmt');if(g)el('iGabFmt').value=g}catch(e){}
 // ====== v15 — LOT 1 : SAISIE (cotes avec unités, bornes, profils, bibliothèque, aide, annuler / rétablir) ======
@@ -2885,7 +2938,7 @@ function profLists(){
 }
 // Fenêtre d'édition du profil
 function openProf(){
-  const ch=chKey(S('iCh',''));if(!ch){alert('Saisir d\'abord le nom du chantier');return}
+  const ch=chKey(S('iCh',''));if(!ch){toast('⛔ Saisir d\'abord le nom du chantier');goField('iCh');return}
   const c=profCh(ch)||Object.assign(JSON.parse(JSON.stringify(PROF_DEF)),planChVals(coll()));const ou=ouKey(S('iOuv',''));
   const o=(ou&&profOu(ch,ou))||(ou?planOuvVals(coll()):{});
   const cp=c.cp||CPDEF;
@@ -2921,8 +2974,8 @@ function saveProf(){
   // Plans héritant des anciennes valeurs de l'ouvrage : proposition de mise à jour
   if(ou&&oldO){const nw=c.ouv[Object.keys(c.ouv).find(x=>x.toLowerCase()===ou.toLowerCase())];
     const idx=P.map((p,i)=>[p,i]).filter(([p])=>chKey(p.ch)===ch&&ouKey(p.ouv).toLowerCase()===ou.toLowerCase()).filter(([p])=>{const v=planOuvVals(p);return Object.keys(v).some(k=>oldO[k]!=null&&v[k]===oldO[k]&&nw[k]!=null&&nw[k]!==oldO[k])}).map(x=>x[1]);
-    if(idx.length&&confirm(`${idx.length} plan(s) de l'ouvrage « ${ou} » utilisaient les anciennes valeurs. Les mettre à jour ?`)){
-      idx.forEach(i=>{P[i]=profPatch(P[i],oldO,nw)});svP();rnL();toast(idx.length+' plan(s) mis à jour')}}
+    if(idx.length)uiConfirm(`${idx.length} plan(s) de l'ouvrage « ${ou} » utilisaient les anciennes valeurs.`,()=>{
+      idx.forEach(i=>{P[i]=profPatch(P[i],oldO,nw)});svP();rnL();toast(idx.length+' plan(s) mis à jour')},{t:'Profil modifié',ok:'Mettre ces plans à jour',no:'Les laisser'})}
   applyProf();profLists();onEdit();
 }
 // Remplace dans un plan les valeurs héritées (égales à l'ancien profil) par les nouvelles
@@ -2963,9 +3016,9 @@ function libPick(v){if(!v)return;const cur=coll();let d;
   Object.assign(d,{ch:cur.ch,ouv:cur.ouv,ind:cur.ind,ref:nextRef(cur.ch,cur.ouv),nb:1});
   EI=-1;_loading=true;try{setForm(d)}finally{_loading=false}if(v[0]==='s')applyProf(true);
   el('selLib').value='';updBtn();rnL();onEdit();toast('Modèle chargé — vérifier les cotes puis AJOUTER')}
-function libSave(){const d=coll(),nm=prompt('Nom du modèle :',(d.desc||TM[d.forme]||'Modèle')+' '+(d.ref||''));if(!nm)return;
-  const c=JSON.parse(JSON.stringify(d));['ch','ouv','ind','ref','date'].forEach(k=>delete c[k]);LIBU.push({name:nm.trim(),d:c});svLib();libUI();toast('Modèle « '+nm.trim()+' » enregistré')}
-function libManage(){if(!LIBU.length){alert('Aucun modèle personnel.');return}
+function libSave(){const d=coll();uiPrompt('Nom du modèle :',(d.desc||TM[d.forme]||'Modèle')+' '+(d.ref||''),nm=>{
+  const c=JSON.parse(JSON.stringify(d));['ch','ouv','ind','ref','date'].forEach(k=>delete c[k]);LIBU.push({name:nm,d:c});svLib();libUI();toast('Modèle « '+nm+' » enregistré')},{t:'Enregistrer comme modèle',ok:'Enregistrer'})}
+function libManage(){if(!LIBU.length){toast('Aucun modèle personnel : « + » enregistre le plan affiché comme modèle');return}
   modal(`<div class="ct">📚 Mes modèles</div>${LIBU.map((m,i)=>`<div class="si"><span class="n">${esc(m.name)} <span style="color:var(--muted)">· ${esc(TM[m.d.forme]||m.d.forme)}</span></span><button onclick="LIBU.splice(${i},1);svLib();libUI();libManage()" aria-label="Supprimer">×</button></div>`).join('')}<button class="btn bs bo" style="width:100%;margin-top:8px" onclick="closeModal()">Fermer</button>`)}
 
 // ---------- B5 : aide contextuelle (pictogrammes) ----------
@@ -3010,7 +3063,10 @@ function hisGo(k){const j=HI+k;if(j<0||j>=HIS.length)return;HI=j;const o=JSON.pa
 function undo(){hisGo(-1)}function redo(){hisGo(1)}
 function updUR(){const u=el('bUndo'),r=el('bRedo');if(u)u.disabled=HI<=0;if(r)r.disabled=HI>=HIS.length-1}
 // v2.2 — raccourcis : Ctrl (⌘ sur Mac) + S / O / P / Z / Y / Maj+Z, Échap, ?
-document.addEventListener('keydown',e=>{const a=document.activeElement,k=(e.key||'').toLowerCase(),mod=e.ctrlKey||e.metaKey,
+document.addEventListener('keydown',e=>{if(dlgOpen()){if(e.key==='Escape'){e.preventDefault();dlgEnd(false)}else if(e.key==='Enter'&&e.target&&e.target.id==='dlgIn'){e.preventDefault();dlgEnd(true)}
+    else if(e.key==='Tab'){e.preventDefault();const F=[...el('dlgB').querySelectorAll('input,button')],i=F.indexOf(document.activeElement);F[(i+(e.shiftKey?-1:1)+F.length)%F.length].focus()}   // focus gardé dans la question
+    else if(e.ctrlKey||e.metaKey)e.preventDefault();return}
+  const a=document.activeElement,k=(e.key||'').toLowerCase(),mod=e.ctrlKey||e.metaKey,
   typing=!!a&&(a.tagName==='TEXTAREA'||a.tagName==='SELECT'||a.isContentEditable||a.tagName==='INPUT'&&!/^(checkbox|radio|button|submit|range|file|color)$/.test(a.type));
   if(mod&&!e.altKey){
     if(k==='s'){e.preventDefault();expJ();return}            // commandes globales : actives aussi pendant une saisie
@@ -3073,14 +3129,28 @@ const IS_MAC=/Mac|iPhone|iPad/.test(navigator.platform||navigator.userAgent||'')
 function showKeys(){const c=IS_MAC?'⌘':'Ctrl',k=(...a)=>a.map(x=>`<kbd>${x}</kbd>`).join(' + '),R=[
   [k(c,'S'),'Sauvegarder le projet (fichier .json)'],[k(c,'O'),'Charger un projet'],[k(c,'P'),'Imprimer les plans (mise en page de l\'application)'],
   [k(c,'Z'),'Annuler la dernière modification du formulaire'],[k(c,'Y')+' ou '+k(c,'Maj','Z'),'Rétablir'],
-  [k('Échap'),'Fermer la fenêtre ou l\'aide ouverte, « Plus tard » sur le rappel, quitter le champ en cours'],[k('?'),'Afficher cette aide (hors saisie)'],
+  [k('Échap'),'Fermer la question, la fenêtre ou l\'aide ouverte, « Plus tard » sur le rappel, quitter le champ en cours'],[k('?'),'Afficher cette aide (hors saisie)'],
   [k('Entrée'),'Sur une alerte sélectionnée : aller au champ concerné']];
   modal(`<div class="cd" style="margin:0"><div class="ct">⌨ Raccourcis clavier</div><table class="keys" style="width:100%;border-collapse:collapse">${R.map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td></tr>`).join('')}</table>
-  <div class="hint" style="margin:10px 0 0">Dans un champ en cours de saisie, ${k(c,'Z')} annule d'abord la frappe (comportement du navigateur). L'annulation porte sur le formulaire et le choix du plan affiché ; la suppression d'un plan n'est pas annulable (confirmation demandée). Les alertes ⚠ / ⛔ marquées d'un clic amènent au champ concerné, sans rien modifier. Vue 3D : flèches, + / −, Échap.</div>
+  <div class="hint" style="margin:10px 0 0">Dans un champ en cours de saisie, ${k(c,'Z')} annule d'abord la frappe (comportement du navigateur). L'annulation porte sur le formulaire et le choix du plan affiché ; un plan supprimé se rétablit avec « Annuler » dans le message affiché 10 s. Les alertes ⚠ / ⛔ marquées d'un clic amènent au champ concerné, sans rien modifier. Vue 3D : flèches, + / −, Échap.</div>
   <div style="text-align:right;margin-top:10px"><button class="btn bs bo" onclick="closeModal()">Fermer</button></div></div>`)}
 
 // ---------- Petits outils d'interface ----------
-function toast(m){let t=el('toast');t.textContent=m;t.style.opacity='1';clearTimeout(t._h);t._h=setTimeout(()=>t.style.opacity='0',2600)}
+function toast(m,act,fn,ms){let t=el('toast');t.textContent=m;t.classList.toggle('act',!!act);
+  if(act){const b=document.createElement('button');b.className='btn bs bo';b.textContent=act;b.onclick=()=>{t.style.opacity='0';t.classList.remove('act');fn()};t.appendChild(b)}
+  t.style.opacity='1';clearTimeout(t._h);t._h=setTimeout(()=>{t.style.opacity='0';t.classList.remove('act')},ms||(act?10000:2600))}
+// v2.3 — question / message dans la fenêtre de l'appli (remplace alert / confirm / prompt du navigateur, bloquants)
+let _dlgCb=null;
+function dlgOpen(){return el('dlg').style.display==='flex'}
+function uiDlg(o,cb){const b=el('dlgB');
+  b.innerHTML=`<div class="ct" id="dlgT">${esc(o.t||'CoffraPlan')}</div><div class="dlgm">${esc(o.m||'')}</div>${o.input!=null?`<input class="fi" id="dlgIn" type="text" value="${esc(o.input)}" aria-labelledby="dlgT">`:''}
+  <div class="rb">${o.cancel===false?'':`<button class="btn bs bo" data-r="0">${esc(o.no||'Annuler')}</button>`}<button class="btn bs ${o.danger?'bdg':'bpr'}" data-r="1">${esc(o.ok||'OK')}</button></div>`;
+  _dlgCb=cb||null;el('dlg').style.display='flex';const f=el('dlgIn')||b.querySelector('[data-r="1"]');f.focus();if(f.select)f.select()}
+function dlgEnd(r){const v=r&&el('dlgIn')?el('dlgIn').value:r;el('dlg').style.display='none';const f=_dlgCb;_dlgCb=null;if(r&&f)f(v)}
+el('dlgB').addEventListener('click',e=>{const b=e.target.closest('[data-r]');if(b)dlgEnd(b.dataset.r==='1')});
+function uiAlert(m,t){uiDlg({t,m,cancel:false})}
+function uiConfirm(m,cb,o){uiDlg(Object.assign({m},o||{}),cb)}
+function uiPrompt(m,def,cb,o){uiDlg(Object.assign({m,input:def||''},o||{}),v=>{v=String(v||'').trim();if(v)cb(v)})}
 function modal(h){el('mdBody').innerHTML=h;el('md').style.display='flex'}
 function closeModal(){el('md').style.display='none'}
 
@@ -3621,7 +3691,7 @@ ${C.warn.length?`<div class="sub">À revoir</div>${C.warn.map(w=>`<div class="er
   return{html:pages.join(''),C};
 }
 let VIEW='plan';
-function showChantier(){const ch=S('iCh','');const list=chantierPlans(ch);if(!list.length){alert('Aucun plan enregistré.');return}
+function showChantier(){const ch=S('iCh','');const list=chantierPlans(ch);if(!list.length){toast('Aucun plan enregistré pour ce chantier');return}
   VIEW='chantier';const r=chantierPages(list);el('pvA').innerHTML=`<div class="no-print" style="max-width:1150px;margin:0 auto 12px;display:flex;gap:8px;justify-content:flex-end"><button class="btn bs bo" style="background:#fff" onclick="VIEW='plan';prev()">✖ Retour au plan</button><button class="btn bs" style="background:var(--accent);color:#fff" onclick="window.print()">🖨 Imprimer le récapitulatif</button><button class="btn bs bo" onclick="expDebit('xlsx','all')">📊 XLSX</button></div>`+r.html}
 // Feuilles XLSX du récapitulatif
 function chantierSheets(list){const C=chantierData(list),cmd=[['Type','Référence','Quantité','Unité','Détail']];
@@ -4365,8 +4435,8 @@ Chaque gabarit reprend la pièce de la feuille CP À DÉCOUPER : même repère, 
   return{html,GP,ok:SH,big:[],n:N};
 }
 function openGab(modeIn){
-  const d=canon(coll()),mode=modeIn||S('iGabFmt','roll'),r=gabHtml(d,mode);if(r.msg){alert(r.msg);return}
-  const w=window.open('','_blank');if(!w){alert('Fenêtre bloquée : autoriser les pop-ups pour ce fichier.');return}
+  const d=canon(coll()),mode=modeIn||S('iGabFmt','roll'),r=gabHtml(d,mode);if(r.msg){uiAlert(r.msg,'Gabarits 1:1');return}
+  const w=window.open('','_blank');if(!w){uiAlert('Le navigateur a bloqué la fenêtre des gabarits : autoriser les fenêtres pop-up pour ce fichier, puis recommencer.','Fenêtre bloquée');return}
   w.document.open();w.document.write(r.html);w.document.close();
 }
 
@@ -4474,7 +4544,7 @@ function acPlan(d0,live){
 }
 function autoControl(all,note){
   const list=all?P.map((p,i)=>[p.ref||'Plan '+(i+1),p,false]):[[S('iRef','')||'plan affiché',coll(),true]];
-  if(!list.length){alert('Aucun plan enregistré.');return}
+  if(!list.length){toast('Aucun plan enregistré pour ce chantier');return}
   const t0=performance.now(),rows=[];let nk=0,nt=0;
   let liveRows=[],fixPlans=0;
   list.forEach(([nm,p,live])=>{const r=acPlan(p,live);nt+=r.length;nk+=r.filter(x=>!x[0]).length;if(live)liveRows=r;
@@ -4701,7 +4771,7 @@ ${F?`<button class="btn bs bo" style="flex:0 0 auto;padding:4px 10px" data-acfix
 
 // ---------- Corriger tous les plans enregistrés ----------
 let _acAllUndo=null;
-function fixAllPlans(){if(!P.length)return;if(!confirm('Appliquer les corrections automatiques à tous les plans enregistrés ? (annulable)'))return;
+function fixAllPlans(go){if(!P.length)return;if(!go)return uiConfirm(`Appliquer les corrections automatiques aux ${P.length} plan(s) enregistrés ? (annulable)`,()=>fixAllPlans(1),{t:'Corrections automatiques',ok:'Appliquer'});
   _acAllUndo=JSON.stringify(P);const cur=coll();delete cur.date;const curEI=EI;let n=0,np=0;_hisOff=true;
   try{P.forEach((p,i)=>{setForm(p);try{syncVis()}catch(e){}const L=fixList().filter(x=>!x.f.none);if(!L.length)return;let d=coll();delete d.date;
       L.forEach(x=>{const M=fixMsgs(d);if(!M.some(m=>m[1]===x.m[1]))return;const f=fixFind(d,x.m[1],M);if(f&&!f.none){d=f.d1;n++}});
@@ -5086,7 +5156,7 @@ function acChantier(){
   const nps=box.querySelectorAll('.ps').length;box.remove();
   nc?ko('Lisibilité (textes qui se chevauchent)',nc+' cas : '+ex.join(', ')):ok('Lisibilité (textes qui se chevauchent)',nps+' feuille(s) contrôlée(s)');
   return out}
-function acChantierShow(){const r=acChantier();if(!r){alert('Aucun plan enregistré.');return}const nk=r.filter(x=>!x[0]).length;
+function acChantierShow(){const r=acChantier();if(!r){toast('Aucun plan enregistré pour ce chantier');return}const nk=r.filter(x=>!x[0]).length;
   modal(`<div class="ct">🔍 Auto-contrôle du récapitulatif chantier</div>${r.map(([o,tx,m])=>`<div style="font-size:12px;line-height:1.5;color:${o?'var(--okt)':'var(--redt)'}">${o?'✓':'✗'} ${esc(tx)}${m?` <span style="color:var(--muted)">— ${esc(m)}</span>`:''}</div>`).join('')}
 <div class="hint" style="margin-top:8px">${nk?`${nk} point(s) à revoir. Plans incohérents : les ouvrir et lancer l'auto-contrôle du plan (corrections automatiques).`:'Récapitulatif conforme.'}</div>
 <div class="g2" style="margin-top:12px"><button class="btn bs bo" onclick="closeModal()">Fermer</button><button class="btn bs bo" onclick="closeModal();autoControl(true)">Auto-contrôle de tous les plans</button></div>`);return{nk,n:r.length}}
@@ -5212,7 +5282,7 @@ function openExport(){const cur=EI>=0&&P[EI]?P[EI]:coll(),list=P.length?chantier
 
 applyPage();prtUI();updF();if(draftRestore())setTimeout(()=>toast('Brouillon restauré'),300);profFromPlans(P);profLists();libUI();rnL();updBtn();prev();_ready=true;hisPush();
 try{if(localStorage.getItem('resaSavedH')==null&&localStorage.getItem('resaDirty')==='0'&&localStorage.getItem('resaExpAt'))localStorage.setItem('resaSavedH',projHash());localStorage.removeItem('resaDirty')}catch(e){}
-themeApply();updExp();
+themeApply();try{const so=localStorage.getItem('resaSort');if(so&&el('plS').querySelector(`option[value="${so}"]`)){el('plS').value=so;rnL()}}catch(e){}updBtn();updExp();
 el('iCh').addEventListener('change',()=>{profLists();if(EI<0)applyProf()});el('iOuv').addEventListener('change',()=>{profLists();if(EI<0)applyProf()});
 </script>
 </body>
