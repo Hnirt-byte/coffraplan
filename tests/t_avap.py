@@ -3,6 +3,7 @@ repères, positions — et non plus sur le balisage, la mise en page ayant chang
 app/CoffraPlan.html reçoivent les mêmes entrées ; sorties métier comparées à l'identique. Écart voulu → l'expliquer ici.
 Plans : 36 scénarios SCN + 13 formes × N plans aléatoires (générateur de t_audit, graine fixe).
 Comparé : contrôles, débit (CP + bois), feuilles de plan (HTML), feuilles CP À DÉCOUPER, gabarits 1:1, DXF, CSV.
+v2.10 : écarts voulus — perçage des fonds Ø poteau + 0 mm par défaut, platelage de dalle soulevé en vue éclatée.
 Différences neutralisées : le nom de l'application dans le pied des feuilles (« Plans Réservation Coffrage » → « CoffraPlan ») et le n° d'enregistrement 3D du bouton « Ouvrir en 3D » (compteur de session, dépend du nombre de plans déjà générés)."""
 import os, json, hashlib, subprocess
 from playwright.sync_api import sync_playwright
@@ -81,6 +82,8 @@ if __name__ == '__main__':
         dk = sorted(x for x in set(ia) | set(ib) if ia.get(x) != ib.get(x))
         if dk == ['pR'] and ia.get('pR') == 300 and ib.get('pR') == 200:
             why = 'défaut axe des poteaux 300 → 200'
+        if dk == ['pJ'] and ia.get('pJ') == 10 and ib.get('pJ') == 0:  # v2.10 : demande de Kévin
+            why = 'v2.10 : perçage des fonds Ø poteau + 0 mm par défaut (au lieu de + 10 mm)'
         ma, mb = a0.get('_man'), b0.get('_man')
         if ma and mb and ma != mb:
             if ma[1] == 0 and mb[1] == 1 and ma[2] and ma[0] == mb[0]: why = 'mannequin : 1 montant ajouté (largeur > hauteur)'
@@ -101,6 +104,10 @@ if __name__ == '__main__':
                 lost = collections.Counter(a.split('|')) - collections.Counter(b.split('|'))
                 if not lost:  # v2.9 : rien de perdu, étiquettes en plus
                     vol.setdefault('v2.9 : panneaux dessinés plus grands (2 par feuille) → étiquettes supplémentaires, aucune perdue', set()).add(k); continue
+                note = [x for x in lost if x.endswith('— platelage masqué')]
+                if f == 'gen' and ia.get('forme') == 'dalle' and a0.get('R') == b0.get('R') and a0.get('W') == b0.get('W') and len(note) == 1 and sum(lost.values()) <= 5 and all(len(x) <= 12 for x in lost if x not in note):
+                    # v2.10 : en vue éclatée, le platelage s'élève au lieu d'être masqué → note retirée, repères du platelage ajoutés, ≤ 4 étiquettes déplacées
+                    vol.setdefault('v2.10 : dalle — platelage soulevé en vue éclatée (note « platelage masqué » retirée, repères du platelage ajoutés)', set()).add(k); continue
                 if a0.get('R') == b0.get('R') and a0.get('W') == b0.get('W') and sum(lost.values()) <= 4 and all(len(x) <= 3 for x in lost):
                     # même débit, mêmes contrôles ; seules quelques étiquettes courtes (repère, numéro) déplacées par le placement automatique
                     vol.setdefault('v2.9 : placement des étiquettes revu sur les dessins agrandis (≤ 4 étiquettes courtes déplacées, débit identique)', set()).add(k + ' ' + f + ' −' + ','.join(lost)); continue

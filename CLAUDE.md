@@ -62,7 +62,14 @@ développement : il progresse vite mais n'est pas développeur senior.
   éclaté : `EX_SPREAD` (écartement depuis le centre), `EX_JOINT` (pièces rattachées décollées de leur paroi), `sep3`
   (séparation résiduelle, groupes = coques) ; 3D : fonds percés (`ExtrudeGeometry` avec trous, `v3GLHole` pour les coques),
   textures (`v3GLTex`), survol (`v3GLHover`), transitions (`v3Preset`).
-- Version affichée : élément `#appVer` (« v2.9 »). Le test t_ux vérifie ce numéro.
+- v2.10 : échelle normalisée à l'impression — `ESC(t,s)` repère une vue à échelle unique (`data-k` = unités / mm, `data-vk` =
+  plan + rang) ; `scaleSvgs` (dans `fitPrint`) régénère le plan via `gen` avec `ESCX.m` (facteur < 1) pour tomber sur une échelle
+  de `ECH`, textes inchangés, puis fixe la taille en px ; `unscaleSvgs` rétablit. Réglage `PRT.ech` = `norm` | `fit`. Vues à
+  plusieurs échelles, découpes, 3D, courbure amplifiée : sans `ESC`. Feuilles MONTAGE : `glSheets` remplace la vue vectorielle
+  (`data-glk`) par une image WebGL (`glSnap`, `glWith` permute `V3D`/`GL3` le temps d'un rendu synchrone, `v3GLFrame` partagé
+  avec la vue interactive) ; `glPrint` attend les images avant `window.print`. Règles « écran étroit » en `@media screen`
+  (sinon Chrome peut les appliquer à l'impression A4). Dalle : le platelage s'élève en éclaté (plus d'`exMode`).
+- Version affichée : élément `#appVer` (« v2.10 »). Le test t_ux vérifie ce numéro.
 
 ## Décisions actées (ne pas changer sans l'accord de Kévin)
 - Palette : joues CP `#EBD9B4`, fond inférieur `#B4532A`, fond supérieur `#E8A92E`, goussets `#F26B1D`, cloisons et

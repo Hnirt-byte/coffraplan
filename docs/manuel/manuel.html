@@ -210,7 +210,7 @@ code{font:9pt 'DejaVu Sans Mono',monospace;background:#f1f3f7;padding:0 1mm;bord
 <tr><td><b>Circulaire (PVC / polystyrène)</b></td><td>Fourreau / réservation ronde.</td></tr>
 <tr><td><b>Concentrique circulaire avec / sans fond</b></td><td>Anneau entre deux parois circulaires (parois cintrées en CP).</td></tr>
 <tr><td><b>Massif</b></td><td>Coffrage d'un massif béton (cote = béton), renforts et fond en option.</td></tr>
-<tr><td><b>Spéciale</b></td><td>Boîte rectangulaire ou circulaire composite : forme concentrique intérieure, poteaux circulaires (tubes carton) qui traversent la base et le fond supérieur, fonds percés automatiquement (Ø poteau + jeu).</td></tr>
+<tr><td><b>Spéciale</b></td><td>Boîte rectangulaire ou circulaire composite : forme concentrique intérieure, poteaux circulaires (tubes carton) qui traversent la base et le fond supérieur, fonds percés automatiquement (Ø poteau + jeu, 0 mm par défaut).</td></tr>
 <tr><td><b>Goulotte cintrée</b></td><td>Goulotte de coffrage béton sur un rayon : fond en segments, joues extérieure / intérieure, optimisation de la découpe.</td></tr>
 <tr><td><b>Dalle de couverture (platelage)</b></td><td>Platelage d'une dalle circulaire ou rectangulaire : calepinage des panneaux et planches D, poutres avec poches dans le voile, rive de dalle.</td></tr>
 <tr><td><b>Poutre</b></td><td>Coffrage de poutre (joues, fond, poches dans les voiles d'appui), poteaux intermédiaires.</td></tr></table>
@@ -236,9 +236,9 @@ code{font:9pt 'DejaVu Sans Mono',monospace;background:#f1f3f7;padding:0 1mm;bord
 <div class="fig"><img src="img/09_feuille_montage.png"><div class="cap">Montage 3D + contrôles : vue éclatée, étapes, cases à cocher</div></div></div>
 <div class="row"><div class="fig"><img src="img/10_fiche_atelier.png"><div class="cap">Fiche atelier A4 portrait : pièces à débiter, montage, contrôles, visa</div></div>
 <div><h3>Feuille CP à découper</h3><p><b>Deux panneaux au plus par feuille</b>, l'un sous l'autre, dessinés en grand pour que les cotes restent lisibles. Plan de découpe de chaque panneau à commander (trait de scie compris) : pièces tournées si besoin, perçages, cotes de position depuis le coin <b>●</b> du panneau ; tableau des pièces. Les pièces cintrées ont un gabarit 1:1 (§ 7.7).</p>
-<h3>Montage 3D + contrôles</h3><p>Vue en perspective éclatée, ordre de montage et points à contrôler avant coulage.</p>
+<h3>Montage 3D + contrôles</h3><p>Vue en perspective (assemblée puis éclatée), ordre de montage et points à contrôler avant coulage. La vue est rendue par le même moteur que la vue 3D interactive (grain du bois, plis du CP, ombres) ; sans WebGL, une vue vectorielle la remplace.</p>
 <h3>Fiche atelier</h3><p>Version A4 portrait à remettre à l'atelier, avec cases à cocher et signature.</p></div></div>
-<div class="warn"><b>Cotes</b>Fabriquer avec les cotes inscrites. Les vues ne sont pas à l'échelle exacte sur le papier (et la courbure des voiles cintrés est volontairement amplifiée pour la lisibilité, ce qui est indiqué sur la vue).</div>
+<div class="warn"><b>Cotes et échelle</b>Fabriquer avec les cotes inscrites. À l'impression, les vues cotées sont à une échelle normalisée (voir 7.19), indiquée sous chaque vue avec une barre d'échelle. Restent sans échelle : les vues à plusieurs échelles (poutres, poches, goulotte, parallélépipède), les plans de découpe, la 3D et les voiles dont la courbure est amplifiée pour la lisibilité (indiqué sur la vue).</div>
 
 <!-- ======================= 5 ======================= -->
 <h1 class="chap">5. Gérer les plans</h1>
@@ -372,6 +372,7 @@ code{font:9pt 'DejaVu Sans Mono',monospace;background:#f1f3f7;padding:0 1mm;bord
 <tr><td>Format</td><td>Profil du chantier, A3 paysage ou A4 paysage</td><td>Profil chantier</td></tr>
 <tr><td>Mise en page des feuilles</td><td><b>Plan pleine page</b> : feuille 1 = vues seules, feuille 1b = débit, informations, hypothèses · <b>Compacte</b> : vues, débit et informations sur la feuille 1 (mise en page des versions précédentes) · <b>Vues uniquement</b> : vues seules, sans feuille 1b</td><td>Plan pleine page</td></tr>
 <tr><td>Sommaire</td><td>Page de sommaire en tête si plus de 5 feuilles</td><td>Jamais</td></tr>
+<tr><td>Échelle des vues</td><td><b>Normalisée</b> : vues cotées à 1/1, 1/2, 1/5, 1/10, 1/20, 1/25, 1/50, 1/75, 1/100, 1/125 ou 1/200 · <b>Agrandie à la case</b> : vues aussi grandes que possible, sans échelle</td><td>Normalisée</td></tr>
 <tr><td>Feuilles CP à découper</td><td>Ajoute les plans de découpe des panneaux</td><td>Décoché</td></tr>
 <tr><td>Montage 3D + contrôles</td><td>Ajoute la feuille de montage</td><td>Décoché</td></tr>
 <tr><td>Fiche atelier (A4 portrait)</td><td>Ajoute la fiche atelier</td><td>Décoché</td></tr>
@@ -405,6 +406,11 @@ code{font:9pt 'DejaVu Sans Mono',monospace;background:#f1f3f7;padding:0 1mm;bord
 <h2>7.18 Cartouche entreprise</h2>
 <p>Carte Impression → 🏢 <b>Cartouche entreprise…</b> : nom de l'entreprise, ligne libre (adresse, téléphone), dessinateur et logo (PNG ou JPEG, réduit automatiquement). Ils apparaissent dans le cartouche de chaque feuille de plan, avec les cases <b>Vérifié</b> et <b>Visa</b> à remplir à la main et la mention « Non à l'échelle — fabriquer aux cotes ». Le cartouche est gardé dans le navigateur et dans le fichier projet.</p>
 <div class="fig"><img src="img/26_cartouche.png"><div class="cap">Cartouche d'une feuille avec entreprise et logo</div></div>
+
+<h2>7.19 Vues à l'échelle</h2>
+<p>À l'impression (bouton 🖨 ou <kbd>Ctrl</kbd>+<kbd>P</kbd>), chaque vue cotée est réduite à l'échelle normalisée immédiatement inférieure à la place disponible : la géométrie est redessinée plus petite, les cotes et les textes gardent leur taille. L'échelle est écrite après le titre de la vue (« Éch. 1/10 »), une barre d'échelle graduée est placée en bas à droite de la case et le cartouche liste les échelles de la feuille.</p>
+<div class="warn"><b>Imprimer à 100 %</b>Dans la boîte d'impression, garder « Mise à l'échelle : par défaut » (ou 100 %) et le même format de papier que celui de la carte Impression. Si le papier ou le réglage diffère, le navigateur réduit la feuille : l'échelle écrite devient fausse, la barre d'échelle reste juste (mesurer la barre pour contrôler).</div>
+<p>L'aperçu à l'écran n'est pas à l'échelle ; l'échelle s'applique à l'aperçu avant impression et au papier. Pour des vues plus grandes sans échelle, choisir « Agrandie à la case ».</p>
 
 <!-- ======================= 8 ======================= -->
 <h1 class="chap">8. Raccourcis clavier</h1>

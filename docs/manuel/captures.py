@@ -52,6 +52,7 @@ with sync_playwright() as p:
     pg.click('#sbF .cd:nth-of-type(1) > .ct'); pg.click('#sbF .cd:nth-of-type(2) > .ct')
     # feuilles du plan
     ev("()=>{PRT.cp=PRT.mt=PRT.fa=true;shP(1);prev()}"); pg.wait_for_timeout(600)
+    ev("async()=>{await glSheets(el('pvA'))}"); pg.wait_for_timeout(200)  # v2.10 : vues 3D des feuilles en WebGL
     ev("document.querySelector('.hdr').style.visibility='hidden';el('toast').style.visibility='hidden'")
     S = pg.locator('#pvA .ps')
     T = ev("[...document.querySelectorAll('#pvA .ps')].map(s=>(s.querySelector('.ps-rf')||{}).textContent||'')")
