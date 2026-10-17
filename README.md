@@ -9,6 +9,7 @@ dossier PDF, mode chantier. **Un seul fichier HTML**, hors connexion, sans insta
 - Règles du projet et carte du code (lues par Claude Code à chaque session) : [CLAUDE.md](CLAUDE.md)
 
 © Kévin TRINH. Tous droits réservés. Dépôt privé.
+Bibliothèque tierce intégrée : [three.js](https://threejs.org) r170 (licence MIT, mention conservée dans le fichier).
 
 ## Travailler sur le projet
 

@@ -97,7 +97,7 @@ with sync_playwright() as p:
     ev("showKeys()"); pg.wait_for_timeout(150)
     bx = pg.locator('#mdBody').bounding_box(); shot('19_raccourcis', clip={'x': bx['x'] - 6, 'y': bx['y'] - 6, 'width': bx['width'] + 12, 'height': bx['height'] + 12}); ev("closeModal()")
     # 3D
-    ev("()=>{shP(0);open3D()}"); pg.wait_for_timeout(800); ev("()=>{v3Preset('iso')}"); pg.wait_for_timeout(300)
+    ev("()=>{shP(0);open3D()}"); pg.wait_for_function("V3D.gl===true", timeout=20000); ev("()=>{v3Preset('iso')}"); pg.wait_for_timeout(300)
     shot('20_3d'); ev("close3D()")
     # récap chantier
     ev("showChantier()"); pg.wait_for_timeout(500)

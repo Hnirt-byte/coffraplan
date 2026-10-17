@@ -323,6 +323,7 @@ code{font:9pt 'DejaVu Sans Mono',monospace;background:#f1f3f7;padding:0 1mm;bord
 
 <h2>7.6 Vue 3D interactive</h2>
 <p><b>🧊 Vue 3D interactive</b> : tourner (glisser), zoomer (molette, + / −), vues prédéfinies (ISO, dessus = plan, face, côté, dessous), <b>éclaté</b> (curseur), repères affichés, masquer le CP ou un type de pièce, cliquer une pièce pour afficher son repère. Clavier : flèches, + / −, <kbd>Échap</kbd> pour fermer. Les perçages, tubes et renforts sont modélisés ; l'application vérifie qu'aucune pièce n'en traverse une autre.</p>
+<p>Le rendu utilise la carte graphique (WebGL, bibliothèque three.js intégrée au fichier, hors connexion) : éclairage, ombres portées, parois courbes lisses. La légende compte des <b>pièces</b> (une paroi circulaire = 1 pièce). Sur un ordinateur sans accélération graphique, la vue s'affiche en rendu vectoriel, avec les mêmes fonctions.</p>
 <div class="fig"><img src="img/20_3d.png" style="max-width:85%"><div class="cap">Vue 3D (forme spéciale circulaire)</div></div>
 
 <h2>7.7 Gabarits 1:1 des pièces cintrées</h2>

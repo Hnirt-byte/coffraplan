@@ -30,7 +30,7 @@ JS = r'''([kind,a,b])=>{
     .replace(/CP filmé bouleau/g,'CP filmé').replace(/CP FILMÉ BOULEAU/g,'CP FILMÉ').replace(/<div class="ps-ent">[\s\S]*?fabriquer aux cotes<\/div><\/div><\/div>/g,''); // v2.6 : désignation du CP filmé, bloc entreprise du cartouche // v2.5 : ligne d'hypothèses ajoutée au cartouche // compteur de session de la vue 3D
   const o={W:W.filter(x=>!/^Flèche du CP/.test(x[1])).map(x=>H(x.join(':'))),_fl:W.filter(x=>/^Flèche du CP/.test(x[1])).length,gen:H(gen(d))},inp=Object.assign({},d);delete inp.date;o._inp=inp;
   if(c.forme==='voile'&&c.constr!=='caisson'&&!bad){const M=manGeo(c,voileGeo(c));o._man=[M.nC,M.nM,M.Lin>M.hp,M.hp>M.Lin]} // explication des écarts voulus (v2.4)
-  if(!bad){const R=debit(c,g);try{o._np=model3(c,R).solids.filter(x=>x.nm==='poche').length}catch(e){} // v2.7 : poches en caisson CP (1 → 4 solides)
+  if(!bad){const R=debit(c,g);try{const M3=model3(c,R);o._np=M3.solids.filter(x=>x.nm==='poche').length;o._nt=new Set(M3.solids.map(x=>x.tag).filter(Boolean)).size}catch(e){} // v2.7 : poches en caisson CP (1 → 4 solides)
 o.R=H(JSON.stringify(R)+JSON.stringify(R.bois||[]));
     try{o.cut=H(cpCutPages(c,R).map(p=>p.join('|')).join('#'))}catch(e){o.cut='ERR '+e.message}
     try{o.gab=H(gabHtml(c,'roll'))}catch(e){o.gab='ERR '+e.message}
@@ -84,9 +84,11 @@ if __name__ == '__main__':
             elif ma[0] == 0 and mb[0] == 1 and ma[3] and ma[1] == mb[1]: why = 'mannequin : 1 cerce ajoutée (hauteur > largeur)'
         if a0.get('_np') != b0.get('_np') and b0.get('_np') == 4 * (a0.get('_np') or 0):
             why = why or 'v2.7 : poches en caisson CP en 3D (feuille de montage, vue 3D du DXF)'
+        if (b0.get('_nt') or 0) > (a0.get('_nt') or 0):  # v2.8 : repères 3D complétés → étiquettes de la feuille de montage
+            why = why or 'v2.8 : repères complétés en 3D (étiquettes de la feuille de montage)'
         if (b0.get('_fl') or 0) > (a0.get('_fl') or 0):  # v2.6 : nouveau contrôle de flèche des joues (voulu)
             why = why or 'v2.6 : alerte de flèche du CP (nouveau contrôle, reprise dans les contrôles des feuilles)'
-        for f in sorted((set(a0) | set(b0)) - {'_inp', '_man', '_fl', '_np'}):
+        for f in sorted((set(a0) | set(b0)) - {'_inp', '_man', '_fl', '_np', '_nt'}):
             a, b = a0.get(f), b0.get(f)
             nk += 1
             if a != b and f == 'dxf' and a0.get('dxfGeo') == b0.get('dxfGeo') and not why:

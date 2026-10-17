@@ -25,8 +25,10 @@ développement : il progresse vite mais n'est pas développeur senior.
   Firefox / Safari, tablette réelle, Excel. Seul Chromium est testé automatiquement.
 
 ## Architecture
-- **`app/CoffraPlan.html` est la seule source** : HTML, CSS et JS vanilla, sans dépendance ni étape de construction ;
-  environ 600 Ko et 5 500 lignes.
+- **`app/CoffraPlan.html` est la seule source** : HTML, CSS et JS vanilla, sans étape de construction ; environ 1,3 Mo.
+  Seule dépendance : **three.js r170** (licence MIT), intégrée telle quelle en fin de fichier dans
+  `<script type="text/plain" id="three-src">`, chargée à la première ouverture de la vue 3D (`v3Three`). Ne pas la modifier ;
+  pour la mettre à jour, remplacer ce bloc par `build/three.module.min.js` d'une version publiée.
   - Un `<script id="thm">` dans le `<head>` applique le thème avant l'affichage. Un seul `<script>` principal suit.
   - Certaines fonctions sont **redéfinies plus loin** par enveloppe (`{const _f=f;f=function(){…}}`), par exemple
     `gen` et `printAll`. Avant de modifier une fonction, chercher toutes ses définitions (`grep -n "function nom("`).
@@ -52,7 +54,10 @@ développement : il progresse vite mais n'est pas développeur senior.
   / `impJ` (enregistrement direct File System Access, repli téléchargement) ; `showNote` (note d'hypothèses, VIEW='note').
 - v2.7 : poches des poutres en caisson CP dans `beam3`. Banc `tests/t_coh.py` (cohérence croisée) : à garder vert à chaque
   modification du moteur ou de la 3D.
-- Version affichée : élément `#appVer` (« v2.7 »). Le test t_ux vérifie ce numéro.
+- v2.8 : vue 3D WebGL (`v3GLInit`, `v3GLBuild`, `v3DrawGL`, `v3GLLabels`, `v3GLPick`) sur le même modèle `model3`, même caméra
+  (`cam3`, `v3View`) ; repli vectoriel `render3` sans WebGL (`window.V3_NOGL` pour le forcer). `render3` reste utilisé pour les
+  feuilles imprimées et le DXF. `plate3` / `gk3` / `n3` : cotes d'une plaque, repère de groupe, compte des pièces.
+- Version affichée : élément `#appVer` (« v2.8 »). Le test t_ux vérifie ce numéro.
 
 ## Décisions actées (ne pas changer sans l'accord de Kévin)
 - Palette : joues CP `#EBD9B4`, fond inférieur `#B4532A`, fond supérieur `#E8A92E`, goussets `#F26B1D`, cloisons et
