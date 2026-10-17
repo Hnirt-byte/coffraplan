@@ -3,6 +3,38 @@
 Détail complet de chaque version (demandes, écarts voulus, tests, non validé) : `docs/historique/HANDOFF_<version>.md`.
 Chaque version est un tag git (`git diff v2.4 v2.5 -- app/` pour voir les changements).
 
+## v2.10 — échelle réelle, 3D des feuilles, correctifs A4
+**Demandes (Kévin, 18/10/2026)** : v2.10 cotes et échelle réelles, plus : 1. impression A4 : vues et informations
+masquées ; 2. vue 3D des feuilles encore à l'ancienne qualité, toutes formes ; 3. dalle, 3D éclatée à 100 % : le platelage
+disparaît au lieu de s'élever ; 4. perçage des fonds : Ø poteau + 0 mm par défaut.
+
+**Fait**
+- **Vues à l'échelle normalisée** à l'impression : chaque vue cotée à échelle unique est redessinée avec un facteur (géométrie
+  réduite, cotes et textes à leur taille) pour tomber sur l'échelle normalisée immédiatement inférieure à la place disponible
+  (1/1, 1/2, 1/5, 1/10, 1/20, 1/25, 1/50, 1/75, 1/100, 1/125, 1/200). Échelle écrite après le titre de la vue, barre d'échelle
+  graduée, échelles de la feuille au cartouche avec « impr. 100 % A3/A4 — fabriquer aux cotes ». Réglage « Échelle des vues » :
+  Normalisée (défaut) ou Agrandie à la case (comportement v2.9). Sans échelle : vues à plusieurs échelles (poutres, poches,
+  goulotte, parallélépipède), plans de découpe, 3D, courbure de voile amplifiée.
+- **Impression A4** : les règles d'affichage « écran étroit » (< 800 px) ne s'appliquent plus qu'à l'écran ; Chrome pouvait
+  les appliquer à la page A4 imprimée (grille à une colonne → colonne Informations écrasée, vues superposées). Dimensions
+  longues (« · extrémités coupées en biais… ») repliées sous la cote : la colonne Débit du voile ne part plus en « suite ».
+- **3D des feuilles MONTAGE** rendue en WebGL (même moteur que la vue interactive : grain, plis, ombres), image JPEG 2500 px,
+  repères, légende et rose d'orientation par-dessus ; cadrage sur l'emprise. L'impression attend les images (15 s au plus).
+  Sans WebGL ou en noir et blanc : vue vectorielle.
+- **Dalle en éclaté** : le platelage s'élève au-dessus des coffrages (comme un fond supérieur) au lieu de s'effacer.
+- **Perçage des fonds** : jeu par défaut 0 mm (Ø poteau exact) ; les anciens fichiers sans valeur prennent 0 mm.
+
+**Écarts voulus** (t_avap) : spéciale avec poteaux, perçages Ø poteau + 0 au lieu de + 10 (débit, CSV, découpe, feuilles) ;
+dalle, feuille de montage éclatée : note « platelage masqué » retirée, repères du platelage ajoutés. t_v25 : contrôle
+« Ø poteau + 10 mm » passé à « + 0 mm » (changement demandé). t_3d : la dalle passe désormais par le contrôle commun de
+l'éclaté (plus de mode « masqué »), sans modification du test.
+
+**Tests** : t_v210 (nouveau) 109 OK ; 21/21 suites OK (t_avap 1 076, t_coh 156, t_audit 1 635, t_gab_dalle 119 753).
+
+**Non validé** : impression papier réelle — l'échelle n'est juste que si la boîte d'impression reste à 100 % sur le même
+format (la barre d'échelle permet de le contrôler) ; carte graphique réelle et tablette ; navigateurs autres que Chromium.
+Cotes d'implantation (repères d'axes) non traitées.
+
 ## v2.9 — retours terrain
 **Demandes (retour de Kévin du 17/10/2026)** : 1. éclaté de la dalle : joues de poutre et poutrelles en contact, vérifier
 toutes les formes ; 2. spéciale circulaire avec poteaux : trous absents des fonds en 3D ; 3. impression : vues écrasées

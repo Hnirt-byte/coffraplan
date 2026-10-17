@@ -79,7 +79,7 @@ def t(s):
         r = H('voile', {'dL': 670, 'dl': 150, 'dh': 270, 'dDcuve': 10})
         s.check(any(x[0] == 'Renfort minimal du mannequin' for x in r) and any('1 montant' in x[1] for x in r if x[0] == 'Cerces / montants'), 'voile : renfort minimal du mannequin et 1 montant (R03)', str(r))
         r = H('special', {'dBase': 'circ', 'oPot': True, 'oFondSup': True})
-        s.check(any(x[0].startswith('Poteaux') and '+ 10 mm' in x[1] for x in r) and any(x[0] == 'Cintrage du CP' for x in r), 'spéciale : perçage Ø poteau + 10 mm, cintrage à vérifier')
+        s.check(any(x[0].startswith('Poteaux') and '+ 0 mm' in x[1] for x in r) and any(x[0] == 'Cintrage du CP' for x in r), 'spéciale : perçage Ø poteau + 0 mm (défaut v2.10), cintrage à vérifier')
         r = H('dalle', {'dlPt': True})
         s.check(any(x[0] == 'Raidisseurs des joues de poutre' for x in r) and any(x[0] == 'Platelage' for x in r), 'dalle avec poutres : raidisseurs (à valider) et platelage')
 

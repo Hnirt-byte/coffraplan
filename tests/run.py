@@ -8,7 +8,7 @@ import os, subprocess, sys, time
 from concurrent.futures import ThreadPoolExecutor
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-RAPIDE = ['t_coh', 't_v29', 't_v28', 't_v26', 't_v25', 't_v24', 't_ux', 't_v23', 't_ui', 't_regress', 't_special', 't_3d', 't_renforts', 't_poutre', 't_export', 't_forme']
+RAPIDE = ['t_coh', 't_v210', 't_v29', 't_v28', 't_v26', 't_v25', 't_v24', 't_ux', 't_v23', 't_ui', 't_regress', 't_special', 't_3d', 't_renforts', 't_poutre', 't_export', 't_forme']
 LONG = ['t_avap', 't_audit', 't_gab_ident', 't_gab_dalle']
 
 
