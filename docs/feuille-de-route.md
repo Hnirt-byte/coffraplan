@@ -14,7 +14,8 @@ Ordre proposé ; chaque étape se termine par des tests verts et une version tag
    - v2.7 cohérence : revue croisée débit / découpe / 3D / CSV / DXF (fait) ;
    - v2.8 3D avec three.js : rendu (lumière, ombres, arêtes), cylindres lisses, toutes les pièces repérées au clic,
      compteurs en pièces, éclaté propre, tubes et poteaux lisibles ;
-   - v2.9 cotes et échelle réelles : vues à une échelle normalisée (1/5, 1/10, 1/20…) indiquée au cartouche, cotes
+   - v2.9 retours terrain de Kévin (éclaté, perçages en 3D, mise en page des feuilles, rendu 3D) (fait) ;
+   - v2.10 cotes et échelle réelles : vues à une échelle normalisée (1/5, 1/10, 1/20…) indiquée au cartouche, cotes
      d'implantation ;
    - v3.0 export glTF puis IFC, gel, mode d'emploi à jour, début de la bêta.
    Tout le reste : après la bêta.
