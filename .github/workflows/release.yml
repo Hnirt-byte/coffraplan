@@ -40,4 +40,11 @@ jobs:
           V=${GITHUB_REF_NAME#v}
           cp app/CoffraPlan.html "CoffraPlan_v$V.html"
           awk -v v="## $GITHUB_REF_NAME" '$0 ~ "^"v {f=1; next} /^## / && f {exit} f' CHANGELOG.md > notes.md
-          gh release create "$GITHUB_REF_NAME" "CoffraPlan_v$V.html" docs/manuel/CoffraPlan_v${V}_Mode_emploi.pdf --title "CoffraPlan $GITHUB_REF_NAME" --notes-file notes.md
+          F=("CoffraPlan_v$V.html" "docs/manuel/CoffraPlan_v${V}_Mode_emploi.pdf")
+          # Release déjà créée à la main (tag créé depuis le site GitHub, par ex. sur téléphone) : on la complète
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" "${F[@]}" --clobber
+            gh release edit "$GITHUB_REF_NAME" --title "CoffraPlan $GITHUB_REF_NAME" --notes-file notes.md
+          else
+            gh release create "$GITHUB_REF_NAME" "${F[@]}" --title "CoffraPlan $GITHUB_REF_NAME" --notes-file notes.md
+          fi
