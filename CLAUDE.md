@@ -57,7 +57,12 @@ développement : il progresse vite mais n'est pas développeur senior.
 - v2.8 : vue 3D WebGL (`v3GLInit`, `v3GLBuild`, `v3DrawGL`, `v3GLLabels`, `v3GLPick`) sur le même modèle `model3`, même caméra
   (`cam3`, `v3View`) ; repli vectoriel `render3` sans WebGL (`window.V3_NOGL` pour le forcer). `render3` reste utilisé pour les
   feuilles imprimées et le DXF. `plate3` / `gk3` / `n3` : cotes d'une plaque, repère de groupe, compte des pièces.
-- Version affichée : élément `#appVer` (« v2.8 »). Le test t_ux vérifie ce numéro.
+- v2.9 : pied de feuille hors de la grille (`</div>${ft}</div>`), colonnes `minmax(0,…)` (vue 72 % / tableau 28 % avec `.ps-w2`),
+  `fitSvgs` (vues recadrées sur leur dessin), `CUT_PER=2` panneaux par feuille de découpe (aussi `dalCutPages`, récapitulatif) ;
+  éclaté : `EX_SPREAD` (écartement depuis le centre), `EX_JOINT` (pièces rattachées décollées de leur paroi), `sep3`
+  (séparation résiduelle, groupes = coques) ; 3D : fonds percés (`ExtrudeGeometry` avec trous, `v3GLHole` pour les coques),
+  textures (`v3GLTex`), survol (`v3GLHover`), transitions (`v3Preset`).
+- Version affichée : élément `#appVer` (« v2.9 »). Le test t_ux vérifie ce numéro.
 
 ## Décisions actées (ne pas changer sans l'accord de Kévin)
 - Palette : joues CP `#EBD9B4`, fond inférieur `#B4532A`, fond supérieur `#E8A92E`, goussets `#F26B1D`, cloisons et

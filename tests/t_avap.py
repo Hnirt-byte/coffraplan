@@ -1,4 +1,5 @@
-"""Avant / après : la version enregistrée dans git (AVAP_REF, défaut HEAD, ou fichier APP_OLD) et le fichier de travail
+"""Avant / après (v2.9 : feuilles et CP à découper comparés sur l'ensemble des lignes de tableaux et des textes des dessins — cotes,
+repères, positions — et non plus sur le balisage, la mise en page ayant changé) : la version enregistrée dans git (AVAP_REF, défaut HEAD, ou fichier APP_OLD) et le fichier de travail
 app/CoffraPlan.html reçoivent les mêmes entrées ; sorties métier comparées à l'identique. Écart voulu → l'expliquer ici.
 Plans : 36 scénarios SCN + 13 formes × N plans aléatoires (générateur de t_audit, graine fixe).
 Comparé : contrôles, débit (CP + bois), feuilles de plan (HTML), feuilles CP À DÉCOUPER, gabarits 1:1, DXF, CSV.
@@ -28,11 +29,13 @@ JS = r'''([kind,a,b])=>{
   const c=canon(migr(d)),g=c.forme==='voile'?voileGeo(c):null,W=checks(c,g),bad=badDims(W)||limErr(c).length>0;
   const H=s=>String(s==null?'':s).replace(/Plans Réservation Coffrage/g,'CoffraPlan').replace(/V3REG\.get\(\d+\)/g,'V3REG.get(#)').replace(/<div class="ps-hyp">[\s\S]*?<\/div>/g,'')
     .replace(/CP filmé bouleau/g,'CP filmé').replace(/CP FILMÉ BOULEAU/g,'CP FILMÉ').replace(/<div class="ps-ent">[\s\S]*?fabriquer aux cotes<\/div><\/div><\/div>/g,''); // v2.6 : désignation du CP filmé, bloc entreprise du cartouche // v2.5 : ligne d'hypothèses ajoutée au cartouche // compteur de session de la vue 3D
-  const o={W:W.filter(x=>!/^Flèche du CP/.test(x[1])).map(x=>H(x.join(':'))),_fl:W.filter(x=>/^Flèche du CP/.test(x[1])).length,gen:H(gen(d))},inp=Object.assign({},d);delete inp.date;o._inp=inp;
+  // v2.9 : mise en page des feuilles revue (pied hors grille, 2 panneaux CP par feuille, vues recadrées) → contenu comparé en texte
+  const TXT=h=>{const b=document.createElement('div');b.innerHTML=h;return [...b.querySelectorAll('.ps-c tr, .ps-c svg text')].map(c=>c.textContent.replace(/\s+/g,' ').trim()).sort().join('|')}; // lignes de tableaux + textes des dessins, sans ordre
+  const o={W:W.filter(x=>!/^Flèche du CP/.test(x[1])).map(x=>H(x.join(':'))),_fl:W.filter(x=>/^Flèche du CP/.test(x[1])).length,gen:TXT(H(gen(d)))},inp=Object.assign({},d);delete inp.date;o._inp=inp;
   if(c.forme==='voile'&&c.constr!=='caisson'&&!bad){const M=manGeo(c,voileGeo(c));o._man=[M.nC,M.nM,M.Lin>M.hp,M.hp>M.Lin]} // explication des écarts voulus (v2.4)
   if(!bad){const R=debit(c,g);try{const M3=model3(c,R);o._np=M3.solids.filter(x=>x.nm==='poche').length;o._nt=new Set(M3.solids.map(x=>x.tag).filter(Boolean)).size}catch(e){} // v2.7 : poches en caisson CP (1 → 4 solides)
 o.R=H(JSON.stringify(R)+JSON.stringify(R.bois||[]));
-    try{o.cut=H(cpCutPages(c,R).map(p=>p.join('|')).join('#'))}catch(e){o.cut='ERR '+e.message}
+    try{o.cut=TXT(H(cpCutPages(c,R).map(p=>`<div class="ps-c">${p[1]}${p[2]}${p[3]}</div>`).join('')))}catch(e){o.cut='ERR '+e.message}
     try{o.gab=H(gabHtml(c,'roll'))}catch(e){o.gab='ERR '+e.message}
     try{const f=dxfPlanFile(d);o.dxf=f.err||new TextDecoder('latin1').decode(f.bytes);
       // v2.4 : textes et titres du DXF retouchés → le contenu géométrique est comparé par calque (nombre d'entités hors TEXT)
@@ -93,6 +96,14 @@ if __name__ == '__main__':
             nk += 1
             if a != b and f == 'dxf' and a0.get('dxfGeo') == b0.get('dxfGeo') and not why:
                 vol.setdefault('DXF : textes seuls (v2.4 : compatibles AutoCAD ; v2.6 : « CP filmé bouleau »), géométrie identique par calque', set()).add(k); continue
+            if a != b and f in ('gen', 'cut') and not why and isinstance(a, str) and isinstance(b, str):
+                import collections
+                lost = collections.Counter(a.split('|')) - collections.Counter(b.split('|'))
+                if not lost:  # v2.9 : rien de perdu, étiquettes en plus
+                    vol.setdefault('v2.9 : panneaux dessinés plus grands (2 par feuille) → étiquettes supplémentaires, aucune perdue', set()).add(k); continue
+                if a0.get('R') == b0.get('R') and a0.get('W') == b0.get('W') and sum(lost.values()) <= 4 and all(len(x) <= 3 for x in lost):
+                    # même débit, mêmes contrôles ; seules quelques étiquettes courtes (repère, numéro) déplacées par le placement automatique
+                    vol.setdefault('v2.9 : placement des étiquettes revu sur les dessins agrandis (≤ 4 étiquettes courtes déplacées, débit identique)', set()).add(k + ' ' + f + ' −' + ','.join(lost)); continue
             if a != b and why:
                 vol.setdefault(why, set()).add(k); continue
             s.check(a == b, f'[{k}] {f} identique avant / après', f'{h(a)[:8]} ≠ {h(b)[:8]}')

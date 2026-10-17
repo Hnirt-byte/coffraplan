@@ -235,7 +235,7 @@ code{font:9pt 'DejaVu Sans Mono',monospace;background:#f1f3f7;padding:0 1mm;bord
 <div class="row"><div class="fig"><img src="img/08_feuille_cp.png"><div class="cap">CP à découper : imbrication sur panneaux, positions depuis le coin ●</div></div>
 <div class="fig"><img src="img/09_feuille_montage.png"><div class="cap">Montage 3D + contrôles : vue éclatée, étapes, cases à cocher</div></div></div>
 <div class="row"><div class="fig"><img src="img/10_fiche_atelier.png"><div class="cap">Fiche atelier A4 portrait : pièces à débiter, montage, contrôles, visa</div></div>
-<div><h3>Feuille CP à découper</h3><p>Plan de découpe de chaque panneau à commander (trait de scie compris) : pièces tournées si besoin, perçages, cotes de position depuis le coin <b>●</b> du panneau ; tableau des pièces. Les pièces cintrées ont un gabarit 1:1 (§ 7.7).</p>
+<div><h3>Feuille CP à découper</h3><p><b>Deux panneaux au plus par feuille</b>, l'un sous l'autre, dessinés en grand pour que les cotes restent lisibles. Plan de découpe de chaque panneau à commander (trait de scie compris) : pièces tournées si besoin, perçages, cotes de position depuis le coin <b>●</b> du panneau ; tableau des pièces. Les pièces cintrées ont un gabarit 1:1 (§ 7.7).</p>
 <h3>Montage 3D + contrôles</h3><p>Vue en perspective éclatée, ordre de montage et points à contrôler avant coulage.</p>
 <h3>Fiche atelier</h3><p>Version A4 portrait à remettre à l'atelier, avec cases à cocher et signature.</p></div></div>
 <div class="warn"><b>Cotes</b>Fabriquer avec les cotes inscrites. Les vues ne sont pas à l'échelle exacte sur le papier (et la courbure des voiles cintrés est volontairement amplifiée pour la lisibilité, ce qui est indiqué sur la vue).</div>
@@ -323,7 +323,7 @@ code{font:9pt 'DejaVu Sans Mono',monospace;background:#f1f3f7;padding:0 1mm;bord
 
 <h2>7.6 Vue 3D interactive</h2>
 <p><b>🧊 Vue 3D interactive</b> : tourner (glisser), zoomer (molette, + / −), vues prédéfinies (ISO, dessus = plan, face, côté, dessous), <b>éclaté</b> (curseur), repères affichés, masquer le CP ou un type de pièce, cliquer une pièce pour afficher son repère. Clavier : flèches, + / −, <kbd>Échap</kbd> pour fermer. Les perçages, tubes et renforts sont modélisés ; l'application vérifie qu'aucune pièce n'en traverse une autre.</p>
-<p>Le rendu utilise la carte graphique (WebGL, bibliothèque three.js intégrée au fichier, hors connexion) : éclairage, ombres portées, parois courbes lisses. La légende compte des <b>pièces</b> (une paroi circulaire = 1 pièce). Sur un ordinateur sans accélération graphique, la vue s'affiche en rendu vectoriel, avec les mêmes fonctions.</p>
+<p>Le rendu utilise la carte graphique (WebGL, bibliothèque three.js intégrée au fichier, hors connexion) : éclairage, ombres portées, parois courbes lisses. Les contreplaqués et les bois portent un grain de bois discret, les chants de CP montrent leurs plis ; un quadrillage de 500 mm au sol aide à juger les dimensions. Les vues prédéfinies s'enchaînent en douceur, la pièce survolée par la souris est mise en évidence. Les fonds percés pour les poteaux montrent leurs trous. En vue éclatée, <b>chaque pièce est séparée de ses voisines</b> (joues et raidisseurs, couvre-joints, poutrelles…). La légende compte des <b>pièces</b> (une paroi circulaire = 1 pièce). Sur un ordinateur sans accélération graphique, la vue s'affiche en rendu vectoriel, avec les mêmes fonctions.</p>
 <div class="fig"><img src="img/20_3d.png" style="max-width:85%"><div class="cap">Vue 3D (forme spéciale circulaire)</div></div>
 
 <h2>7.7 Gabarits 1:1 des pièces cintrées</h2>
@@ -376,7 +376,7 @@ code{font:9pt 'DejaVu Sans Mono',monospace;background:#f1f3f7;padding:0 1mm;bord
 <tr><td>Montage 3D + contrôles</td><td>Ajoute la feuille de montage</td><td>Décoché</td></tr>
 <tr><td>Fiche atelier (A4 portrait)</td><td>Ajoute la fiche atelier</td><td>Décoché</td></tr>
 <tr><td>Noir et blanc</td><td>Couleurs remplacées par des motifs (photocopie)</td><td>Décoché</td></tr></table>
-<p>Si un texte est trop long pour sa case, la police est réduite automatiquement ; au-delà, une feuille « suite » est ajoutée et un message l'indique.</p>
+<p>Les vues occupent l'essentiel de chaque feuille : chaque dessin est recadré sur son contenu, et sur les feuilles « vue + tableau » le tableau est limité à 30 % de la largeur. En « Plan pleine page », la feuille INFORMATIONS des dalles et poutres ne reprend plus la vignette du plan : elle aligne Informations, Hypothèses et Débit sur trois colonnes. Si un texte est trop long pour sa case, la police est réduite automatiquement ; au-delà, une feuille « suite » est ajoutée et un message l'indique.</p>
 <div class="note"><b>Recto-verso</b>En « Plan pleine page », la feuille 1b tombe au dos du plan quand le plan commence sur une page recto. Avec plusieurs plans et un nombre impair de feuilles annexes, un plan peut commencer sur un verso : aucune page blanche n'est ajoutée.</div>
 
 <h2>7.14 Aperçu en attente (formes lourdes)</h2>

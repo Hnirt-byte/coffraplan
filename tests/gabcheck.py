@@ -109,9 +109,14 @@ def check_layout(s, g):
 
 
 # ---------------------------------------------------------------- feuille CP À DÉCOUPER
-def quadrant(E, k):
-    ox, oy = (k % 2) * 500, 4 + (k // 2) * 236
-    inb = lambda x, y: ox <= x <= ox + 500 and oy <= y <= oy + 248
+# v2.9 (changement voulu de l'application) : 2 panneaux par feuille, l'un sous l'autre, cellule 640 de large
+PER, CW = 2, 640
+
+
+def quadrant(E, k, P, Q):
+    ch = round((CW - 118) * Q / P + 88)
+    ox, oy = 0, 4 + k * ch
+    inb = lambda x, y: ox <= x <= ox + CW and oy <= y <= oy + ch + 12
     return {
         'rect': [e for e in E['rect'] if inb(e['x'] + e['w'] / 2, e['y'] + e['h'] / 2)],
         'path': [e for e in E['path'] if path_polys(e['d']) and inb(*path_polys(e['d'])[0][0])],
@@ -126,10 +131,10 @@ def check_cut_sheets(s, g):
     r, N = g.r, len(g.r['items'])
     marks = {}
     sheets = r['items']
-    s.check(len(r['cut']) == (N + 3) // 4, f"feuilles CP À DÉCOUPER : {len(r['cut'])} page(s) pour {N} panneau(x)")
+    s.check(len(r['cut']) == (N + PER - 1) // PER, f"feuilles CP À DÉCOUPER : {len(r['cut'])} page(s) pour {N} panneau(x)")
     for si, sheet in enumerate(sheets):
-        E = r['cut'][si // 4]
-        q, (ox, oy) = quadrant(E, si % 4)
+        E = r['cut'][si // PER]
+        q, (ox, oy) = quadrant(E, si % PER, g.P, g.Q)
         pr = [e for e in q['rect'] if e['fill'] == '#fbf7ee']
         if not s.check(len(pr) == 1, f"panneau {si+1} : cadre du panneau dessiné"):
             continue
