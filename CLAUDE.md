@@ -50,7 +50,9 @@ développement : il progresse vite mais n'est pas développeur senior.
 - v2.6 : `CPT` (catalogue CP par âme) et `CPMEC` (modules EN 789 + sources) ; `flecheCP` / `plateW` (flèche des joues,
   boîtes rectangulaires) ; `ENT` / `entBlock` / `openEnt` (cartouche entreprise, clé `ent` du fichier) ; `FH` / `expJ`
   / `impJ` (enregistrement direct File System Access, repli téléchargement) ; `showNote` (note d'hypothèses, VIEW='note').
-- Version affichée : élément `#appVer` (« v2.6 »). Le test t_ux vérifie ce numéro.
+- v2.7 : poches des poutres en caisson CP dans `beam3`. Banc `tests/t_coh.py` (cohérence croisée) : à garder vert à chaque
+  modification du moteur ou de la 3D.
+- Version affichée : élément `#appVer` (« v2.7 »). Le test t_ux vérifie ce numéro.
 
 ## Décisions actées (ne pas changer sans l'accord de Kévin)
 - Palette : joues CP `#EBD9B4`, fond inférieur `#B4532A`, fond supérieur `#E8A92E`, goussets `#F26B1D`, cloisons et

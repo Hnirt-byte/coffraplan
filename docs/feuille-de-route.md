@@ -10,9 +10,17 @@ Ordre proposé ; chaque étape se termine par des tests verts et une version tag
      option.
    - Conventions de dessin : échelle indiquée, cartouche d'entreprise, indices et visa, cotes d'implantation.
    - Noms de chantiers réels retirés.
-3. **Application installable** (Tauri) : fichiers projet sur disque à la place du stockage navigateur,
+3. **Version 3.0 — gel avant bêta** (liste fermée, décidée le 17/10/2026) :
+   - v2.7 cohérence : revue croisée débit / découpe / 3D / CSV / DXF (fait) ;
+   - v2.8 3D avec three.js : rendu (lumière, ombres, arêtes), cylindres lisses, toutes les pièces repérées au clic,
+     compteurs en pièces, éclaté propre, tubes et poteaux lisibles ;
+   - v2.9 cotes et échelle réelles : vues à une échelle normalisée (1/5, 1/10, 1/20…) indiquée au cartouche, cotes
+     d'implantation ;
+   - v3.0 export glTF puis IFC, gel, mode d'emploi à jour, début de la bêta.
+   Tout le reste : après la bêta.
+4. **Application installable** (Tauri) : fichiers projet sur disque à la place du stockage navigateur,
    installeurs Windows et macOS, mises à jour signées. La clé de signature reste chez Kévin, sauvegardée deux fois.
-4. **Bêta** chez 3 à 5 entreprises : retours, corrections, mode d'emploi relu.
-5. **Commercialisation** : licence hors ligne signée (période de grâce, lecture seule à expiration), version Light,
+5. **Bêta** chez 3 à 5 entreprises : retours, corrections, mode d'emploi relu.
+6. **Commercialisation** : licence hors ligne signée (période de grâce, lecture seule à expiration), version Light,
    site vitrine, paiement par un revendeur (Paddle ou Lemon Squeezy), canal de mises à jour bêta / stable.
-6. Plus tard : 3D three.js et export IFC.
+7. Plus tard : quantitatifs et coûts, flèche des autres formes.
