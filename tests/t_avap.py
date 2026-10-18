@@ -4,8 +4,9 @@ app/CoffraPlan.html reçoivent les mêmes entrées ; sorties métier comparées 
 Plans : 36 scénarios SCN + 13 formes × N plans aléatoires (générateur de t_audit, graine fixe).
 Comparé : contrôles, débit (CP + bois), feuilles de plan (HTML), feuilles CP À DÉCOUPER, gabarits 1:1, DXF, CSV.
 v2.10 : écarts voulus — perçage des fonds Ø poteau + 0 mm par défaut, platelage de dalle soulevé en vue éclatée.
+v3.0 : écart voulu — cotes d'implantation sur les vues en plan (axes X / Y, cotes signées, poteaux), feuilles et DXF ; débit, CSV, découpe, gabarits inchangés.
 Différences neutralisées : le nom de l'application dans le pied des feuilles (« Plans Réservation Coffrage » → « CoffraPlan ») et le n° d'enregistrement 3D du bouton « Ouvrir en 3D » (compteur de session, dépend du nombre de plans déjà générés)."""
-import os, json, hashlib, subprocess
+import os, json, hashlib, re, subprocess
 from playwright.sync_api import sync_playwright
 from lib import Suite, open_app, HERE, OUT, APP
 
@@ -43,6 +44,22 @@ o.R=H(JSON.stringify(R)+JSON.stringify(R.bois||[]));
       const L=o.dxf.split('\r\n'),st={};for(let i=0;i<L.length-3;i+=2){if(L[i].trim()==='0'&&/^(LINE|POLYLINE|CIRCLE|ARC|VERTEX)$/.test(L[i+1])&&L[i+2].trim()==='8'){const k=L[i+1]+'@'+L[i+3];st[k]=(st[k]||0)+1}}o.dxfGeo=JSON.stringify(Object.entries(st).sort())}catch(e){o.dxf='ERR '+e.message}
     try{o.csv=H(debitCSV([d]))}catch(e){o.csv='ERR '+e.message}}
   return o}'''
+
+
+IMPL = re.compile(r'^([+−-]\d[\d ,.]*|0|[XY]|Implantation des poteaux \(axes X / Y\)|P\d+ +x \S+ +y \S+)$')
+
+
+def impl_only(a0, b0):
+    """v3.0 : seules les cotes d'implantation diffèrent (vue en plan : L/2 et l/2 remplacées, axes X / Y, cotes signées, poteaux)"""
+    import collections
+    ga, gb = collections.Counter(a0['gen'].split('|')), collections.Counter(b0['gen'].split('|'))
+    if not all(re.match(r'^[lL]/2: ', x) for x in ga - gb) or not all(IMPL.match(x) for x in gb - ga):
+        return False
+    try:
+        da, db = dict(map(tuple, json.loads(a0['dxfGeo']))), dict(map(tuple, json.loads(b0['dxfGeo'])))
+    except Exception:
+        return a0.get('dxfGeo') == b0.get('dxfGeo')
+    return all(db.get(x, 0) >= da.get(x, 0) and (db.get(x, 0) == da.get(x, 0) or x.split('@')[-1].startswith('VUES_')) for x in set(da) | set(db))
 
 
 def h(v):
@@ -97,6 +114,8 @@ if __name__ == '__main__':
         for f in sorted((set(a0) | set(b0)) - {'_inp', '_man', '_fl', '_np', '_nt'}):
             a, b = a0.get(f), b0.get(f)
             nk += 1
+            if a != b and f in ('gen', 'dxf', 'dxfGeo') and not why and all(a0.get(x) == b0.get(x) for x in ('R', 'W', 'csv', 'cut', 'gab')) and impl_only(a0, b0):
+                vol.setdefault('v3.0 : cotes d\'implantation sur la vue en plan (L/2, l/2 → cotes signées depuis les axes, bulles X / Y, tableau des poteaux ; DXF : mêmes traits et textes en plus)', set()).add(k); continue
             if a != b and f == 'dxf' and a0.get('dxfGeo') == b0.get('dxfGeo') and not why:
                 vol.setdefault('DXF : textes seuls (v2.4 : compatibles AutoCAD ; v2.6 : « CP filmé bouleau »), géométrie identique par calque', set()).add(k); continue
             if a != b and f in ('gen', 'cut') and not why and isinstance(a, str) and isinstance(b, str):

@@ -292,7 +292,7 @@ function isImpl(lb){return/^(L\/2|l\/2|axe|décalage|[+−-]\d)/.test(String(lb|
 // v3.0 : axes de l'ouvrage (vue en plan) en bleu, repérés X (horizontal, bulle à gauche) et Y (vertical, bulle en haut) ; cotes signées depuis ces axes (+ vers la droite / le haut de la feuille)
 function axImpl(t,cx,cy,xa,xb,ya,yb){const B=(x,y,s)=>{t.C(x,y,6.5,'#fff',IC,0.8);t.T(x,y+3.2,s,7,IC,'middle',700,'Barlow Condensed,sans-serif')};
   t.L(xa,cy,xb,cy,IC,0.5,'10,3,2,3');t.L(cx,ya,cx,yb,IC,0.5,'10,3,2,3');B(xa-7,cy,'X');B(cx,ya-7,'Y')}
-const sgn=v=>(v<-0.05?'−':'+')+nf(Math.abs(v));
+const sgn=v=>Math.abs(v)<0.05?'0':(v<0?'−':'+')+nf(Math.abs(v));
 const RECT=['carre','carre_fond','rect','rect_fond','massif'];
 const FOND=['carre_fond','rect_fond'];
 const TM={carre:'RESERVATION CARREE',carre_fond:'RESERVATION CARREE AVEC FOND',rect:'RESERVATION RECTANGULAIRE',rect_fond:'RESERVATION DALLE AVEC FOND',circ:'RESERVATION CIRCULAIRE',circ_fond:'RESERVATION PUISARD CIRCULAIRE AVEC FOND',circ_sf:'RESERVATION CONCENTRIQUE CIRCULAIRE SANS FOND',voile:'RESERVATION VOILE CINTRE',massif:'COFFRAGE POUR MASSIF',special:'RESERVATION SPECIALE',goulotte:'COFFRAGE GOULOTTE CINTREE',dalle:'COFFRAGE DALLE DE COUVERTURE',poutre:'POUTRE',para:'RESERVATION PARALLELEPIPEDE OBLIQUE'};
