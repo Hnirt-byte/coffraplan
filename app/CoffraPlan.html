@@ -4617,12 +4617,14 @@ function glSnap(j){const W=1000,d=j.d,s0=model3(d,j.R);if(!s0.solids.length)retu
     const url=GL3.r.domElement.toDataURL('image/jpeg',0.9),t=SB(W,H);t.a(`<image href="${url}" x="0" y="0" width="${W}" height="${H}" preserveAspectRatio="none"/>`);
     const lg=legend3(t,used,6,6);gizmo3(t,cam,S.P,W-95,H-75);place3Labels(t,lbl,W,H,[[6,H-28,560,24],lg,[W-180,H-120,178,92]]);t.T(12,H-12,mtNote(j.ex,s0)+' — rendu 3D',7,'#777','start',500,'Barlow,sans-serif');
     return t.out().replace('<svg ','<svg data-fit="1" data-glimg="1" ')}finally{v3GLClear()}})}
-function glSheets(root){if(window.V3_NOGL||PRT.nb||!root)return Promise.resolve(0);
+function glSheets(root,auto){if(window.V3_NOGL||PRT.nb||!root||(auto&&GLS.G.soft))return Promise.resolve(0);
   const put=()=>{let n=0;root.querySelectorAll('svg[data-glk]').forEach(sv=>{const u=GLS.img.get(sv.dataset.glk);if(u){sv.outerHTML=u;n++}});return n};
   const todo=()=>[...root.querySelectorAll('svg[data-glk]')].filter(sv=>!GLS.img.has(sv.dataset.glk));if(!todo().length)return Promise.resolve(put());
   return GLS.P=(GLS.P||Promise.resolve()).then(()=>v3Three()).then(T=>{const G=GLS.G;
     if(!G.r){const cv=document.createElement('canvas'),ctx=cv.getContext('webgl2',{antialias:true,preserveDrawingBuffer:true});if(!ctx)throw new Error('WebGL indisponible');
-      G.T=T;G.r=new T.WebGLRenderer({canvas:cv,context:ctx,antialias:true,preserveDrawingBuffer:true});G.r.shadowMap.enabled=true;G.r.shadowMap.type=T.PCFSoftShadowMap;G.r.setClearColor(0xffffff,1)}
+      G.T=T;G.r=new T.WebGLRenderer({canvas:cv,context:ctx,antialias:true,preserveDrawingBuffer:true});G.r.shadowMap.enabled=true;G.r.shadowMap.type=T.PCFSoftShadowMap;G.r.setClearColor(0xffffff,1);
+      const ext=ctx.getExtension('WEBGL_debug_renderer_info');G.soft=/swiftshader|llvmpipe|software|basic render/i.test(ext?ctx.getParameter(ext.UNMASKED_RENDERER_WEBGL):'')}
+    if(auto&&G.soft)return put(); // rendu logiciel (sans carte graphique) : trop lent pour l'aperçu, images faites à l'impression seulement
     todo().forEach(sv=>{const k=sv.dataset.glk,j=GLS.q.get(k);if(!j||GLS.img.has(k))return;let u='';try{u=glSnap(j)||''}catch(e){console.warn('Feuille : vue 3D WebGL —',e&&e.message)}
       GLS.img.set(k,u);if(GLS.img.size>40)GLS.img.delete(GLS.img.keys().next().value)});return put()})
     .catch(e=>{console.warn('Feuilles : rendu WebGL indisponible, vues vectorielles conservées —',e&&e.message);return 0})}
@@ -5196,7 +5198,7 @@ function bwApply(root){if(!root)return 0;let n=0;const body=document.body;body.c
   root.querySelectorAll('.lg i').forEach(e=>{const bg=(e.style.background||'');const m=bg.match(/rgb\((\d+), (\d+), (\d+)\)/);if(!m)return;const hx='#'+m.slice(1).map(x=>(+x).toString(16).padStart(2,'0')).join('');const k=M[hx];if(k)e.style.background=`url("data:image/svg+xml,${encodeURIComponent('<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"14\" height=\"9\"><defs>'+BW_DEFS+'</defs><rect width=\"14\" height=\"9\" fill=\"url(%23bw-'+k+')\"/></svg>').replace(/%2523/g,'%23')}")`});
   return n}
 {const st=document.createElement('style');st.textContent='body.bw .pv svg,body.bw #pvA svg{filter:grayscale(1)}body.bw #pvA .lg{filter:grayscale(1)}';document.head.appendChild(st)}
-{const _prev=prev;prev=function(){_prev.apply(this,arguments);try{bwApply(el('pvA'))}catch(e){}glSheets(el('pvA'))}}
+{const _prev=prev;prev=function(){_prev.apply(this,arguments);try{bwApply(el('pvA'))}catch(e){}clearTimeout(GLS.t);GLS.t=setTimeout(()=>glSheets(el('pvA'),true),1200)}} // aperçu : après 1,2 s sans saisie
 {const _shP=shP;shP=function(){_shP.apply(this,arguments);try{bwApply(el('pvA'))}catch(e){}}}
 
 // ====== v17 — LOT 5 : VUE 3D INTERACTIVE ======
