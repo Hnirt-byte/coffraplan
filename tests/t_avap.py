@@ -4,7 +4,7 @@ app/CoffraPlan.html reçoivent les mêmes entrées ; sorties métier comparées 
 Plans : 36 scénarios SCN + 13 formes × N plans aléatoires (générateur de t_audit, graine fixe).
 Comparé : contrôles, débit (CP + bois), feuilles de plan (HTML), feuilles CP À DÉCOUPER, gabarits 1:1, DXF, CSV.
 v2.10 : écarts voulus — perçage des fonds Ø poteau + 0 mm par défaut, platelage de dalle soulevé en vue éclatée.
-v3.0 : écart voulu — cotes d'implantation sur les vues en plan (axes X / Y, cotes signées, poteaux), feuilles et DXF ; débit, CSV, découpe, gabarits inchangés.
+v3.0 : écart voulu — cotes d'implantation sur les vues en plan de toutes les formes (axes X / Y, cotes signées, poteaux), feuilles et DXF ; débit, CSV, découpe, gabarits inchangés.
 Différences neutralisées : le nom de l'application dans le pied des feuilles (« Plans Réservation Coffrage » → « CoffraPlan ») et le n° d'enregistrement 3D du bouton « Ouvrir en 3D » (compteur de session, dépend du nombre de plans déjà générés)."""
 import os, json, hashlib, re, subprocess
 from playwright.sync_api import sync_playwright
@@ -53,13 +53,15 @@ def impl_only(a0, b0):
     """v3.0 : seules les cotes d'implantation diffèrent (vue en plan : L/2 et l/2 remplacées, axes X / Y, cotes signées, poteaux)"""
     import collections
     ga, gb = collections.Counter(a0['gen'].split('|')), collections.Counter(b0['gen'].split('|'))
-    if not all(re.match(r'^[lL]/2: ', x) for x in ga - gb) or not all(IMPL.match(x) for x in gb - ga):
+    # gel v3.0 : joues radiales du voile, « L ext (corde) » regroupée avec « L int (corde) » sous le plan (place des cotes signées)
+    if not all(re.match(r'^([lL]/2: |L (ext|int) \(corde\): )', x) for x in ga - gb) or not all(IMPL.match(x) or re.match(r'^L int \(corde\): .* · L ext \(corde\): ', x) for x in gb - ga):
         return False
     try:
         da, db = dict(map(tuple, json.loads(a0['dxfGeo']))), dict(map(tuple, json.loads(b0['dxfGeo'])))
     except Exception:
         return a0.get('dxfGeo') == b0.get('dxfGeo')
-    return all(db.get(x, 0) >= da.get(x, 0) and (db.get(x, 0) == da.get(x, 0) or x.split('@')[-1].startswith('VUES_')) for x in set(da) | set(db))
+    # calques des vues (VUES_*) : traits des axes et cotes réorganisées (gel v3.0 : axes pointillés et cotes du voile radial, de la goulotte) ; autres calques identiques
+    return all(db.get(x, 0) == da.get(x, 0) or x.split('@')[-1].startswith('VUES_') for x in set(da) | set(db))
 
 
 def h(v):

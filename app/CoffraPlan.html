@@ -1264,20 +1264,21 @@ function genRect(d,ep){
   rxPlan(t,x=>cx+x*s,y=>cy+y*s,s,RX);
   if(G&&G.a>0)gsPlan(t,x0+eP,y0+eP,LP-2*eP,lP-2*eP,G.a*s);
   planLegend(t,[G&&G.a>0&&[gsLegend(G),WS],RX&&[rxLegend(RX),'#7a5a20']]);
-  if(mas){t.AX(cx,y0-10,cx,y0+lP+10);t.AX(x0-10,cy,x0+LP+10,cy)}else axImpl(t,cx,cy,x0-10,x0+LP+10,y0-xs-28,y0+lP+10);
+  axImpl(t,cx,cy,x0-xs-10,x0+LP+xs+10,y0-xs-(mas?eP+26:28),y0+lP+xs+10);
   t.TH(cx+4,cy-4,mas?'Massif béton':'Vide',8,'#999','start',400);
   if(mas){
-    t.D(x0+eP,y0+eP,x0+LP-eP,y0+eP,'L massif: '+nf(L)+' mm',xs+eP+20,'top');
-    t.D(x0,y0+lP,x0+LP,y0+lP,'L ext: '+nf(LX)+' mm',xs+16);
-    t.D(x0+LP-eP,y0+eP,x0+LP-eP,y0+lP-eP,'l massif: '+nf(l)+' mm',xs+eP+16);
-    t.D(x0+LP,y0,x0+LP,y0+lP,'l ext: '+nf(lX)+' mm',xs+120);
+    t.D(x0+eP,y0+eP,cx,y0+eP,sgn(-L/2),xs+eP+14,'top');t.D(cx,y0+eP,x0+LP-eP,y0+eP,sgn(L/2),xs+eP+14,'top');
+    t.D(x0,y0+lP,x0+LP,y0+lP,'L ext: '+nf(LX)+' mm',xs+16);t.D(x0+eP,y0+lP-eP,x0+LP-eP,y0+lP-eP,'L massif: '+nf(L)+' mm',xs+eP+36);
+    t.D(x0+LP-eP,y0+eP,x0+LP-eP,cy,sgn(l/2),xs+eP+16);t.D(x0+LP-eP,cy,x0+LP-eP,y0+lP-eP,sgn(-l/2),xs+eP+16);
+    t.D(x0+LP-eP,y0+eP,x0+LP-eP,y0+lP-eP,'l massif: '+nf(l)+' mm',xs+eP+60);
+    t.D(x0+LP,y0,x0+LP,y0+lP,'l ext: '+nf(lX)+' mm',xs+170);
   } else {
     t.D(x0,y0,cx,y0,sgn(-L/2),xs+20,'top');t.D(cx,y0,x0+LP,y0,sgn(L/2),xs+20,'top');
     t.D(x0,y0+lP,x0+LP,y0+lP,'L: '+nf(L)+' mm',xs+16);
     t.D(x0+LP,y0,x0+LP,cy,sgn(l/2),xs+16);t.D(x0+LP,cy,x0+LP,y0+lP,sgn(-l/2),xs+16);
     t.D(x0+LP,y0,x0+LP,y0+lP,'l: '+nf(l)+' mm',xs+80);
   }
-  arrA(t,cx,y0+lP+xs+16+10+30);arrB(t,x0-xs-40,cy);
+  arrA(t,cx,y0+lP+xs+16+10+30+(mas?20:0));arrB(t,x0-xs-40,cy);
   const base={ep,epF:d.epF,epS:d.epS,h:d.h,fond,fe,ren,mas,gs:G&&G.a>0?G:null,rx:RX};
   return{top:t.out(),
     a:secRect(Object.assign({W:L,isA:true,lb:(mas?'L ext: '+nf(LX):'L: '+nf(L))+' mm',lbIn:mas?'L massif: '+nf(L):null},base)),
@@ -1334,11 +1335,12 @@ function genVoile(d,g,ep){
   {const dx=12;t.DL(x0+dx,Y(Ri),x0+dx,Y(Re),'l axe '+nf(l),x0+dx+4,Y((Ri+Re)/2)-6,'start')} // v17 : écarté de la croix du caisson
   // Cotes
   const up=(Re-oR[1])*s;
+  // v3.0 : axes de l'ouvrage (Y = axe radial de la réservation, X = corde à mi-épaisseur) et cotes signées des angles ext.
+  const ym=(Ri+Re)/2,uT=up+18;axImpl(t,x0,Y(ym),X(-oR[0])-12,X(oR[0])+12,Y(oR[1])-uT-14,Y(ybot)+10);
+  t.D(X(-oR[0]),Y(oR[1]),X(0),Y(oR[1]),sgn(-oR[0]),up+18,'top');t.D(X(0),Y(oR[1]),X(oR[0]),Y(oR[1]),sgn(oR[0]),up+18,'top');
   if(rad){
-    t.D(X(-oR[0]),Y(oR[1]),X(oR[0]),Y(oR[1]),'L ext (corde): '+nf(L)+' mm',up+18,'top');
-    t.D(X(-iR[0]),Y(ybot),X(iR[0]),Y(ybot),'L int (corde): '+nf(g.cInt,1)+' mm',18);
+    t.D(X(-iR[0]),Y(ybot),X(iR[0]),Y(ybot),'L int (corde): '+nf(g.cInt,1)+' mm · L ext (corde): '+nf(L)+' mm',18);
   } else {
-    t.D(X(-L2),Y(oR[1]),X(0),Y(oR[1]),'L/2: '+nf(L2)+' mm',up+18,'top');
     t.D(X(-L2),Y(ybot),X(L2),Y(ybot),'L (corde): '+nf(L)+' mm',18);
     t.D(X(L2),Y(oR[1]),X(L2),Y(iR[1]),'l angle: '+nf(g.lCoin,1),22);
   }
@@ -1354,8 +1356,8 @@ function genVoile(d,g,ep){
 
 // ====== CIRCULAIRE PVC ======
 function genCirc(d){
-  const Di=d.D,h=d.h,t=SB(800,340),cx=400,cy=145,s=ESC(t,fit(Di,Di,520,225)),r=Di/2*s;
-  t.C(cx,cy,r,CONC,LC,1.2);t.AX(cx,cy-r-10,cx,cy+r+10);t.AX(cx-r-10,cy,cx+r+10,cy);
+  const Di=d.D,h=d.h,t=SB(800,340),cx=400,cy=155,s=ESC(t,fit(Di,Di,520,200)),r=Di/2*s;
+  t.C(cx,cy,r,CONC,LC,1.2);axImpl(t,cx,cy,cx-r-10,cx+r+10,cy-r-30,cy+r+10);t.D(cx-r,cy-r,cx,cy-r,sgn(-Di/2),22,'top');t.D(cx,cy-r,cx+r,cy-r,sgn(Di/2),22,'top');
   t.D(cx-r,cy+r,cx+r,cy+r,'Ø: '+nf(Di)+' mm',18);
   t.T(cx,cy-r-8,'Ø extérieur tube = Ø vide',8,LC,'middle',600,'Barlow,sans-serif');
   if(d.mat)t.TH(cx,cy+14,esc(d.mat),7,'#888','middle',400);
@@ -1531,11 +1533,12 @@ function genMannequin(d,g,ep){
   t.DL(x0+10,Y(Ri),x0+10,Y(Re),'l '+nf(l),x0+14,Y((Ri+Re)/2)+3,'start');
   // Cotes
   const up=(Re-oR[1])*s+18,dn=(iR[1]-ybot)*s+18;
+  // v3.0 : axes de l'ouvrage (Y = axe radial de la baie, X = corde à mi-épaisseur) et cotes signées des angles ext.
+  const uT=up;axImpl(t,x0,Y(Rm),X(-xE)-28,X(xE)+4,Y(oR[1])-uT-14,Y(ybot)+10);
+  t.D(X(-oR[0]),Y(oR[1]),X(0),Y(oR[1]),sgn(-oR[0]),up,'top');t.D(X(0),Y(oR[1]),X(oR[0]),Y(oR[1]),sgn(oR[0]),up,'top');
   if(rad){
-    t.D(X(-oR[0]),Y(oR[1]),X(oR[0]),Y(oR[1]),'L ext (corde): '+nf(L)+' mm',up,'top');
-    t.D(X(-iR[0]),Y(iR[1]),X(iR[0]),Y(iR[1]),'L int (corde): '+nf(g.cInt,1)+' mm',dn);
+    t.D(X(-iR[0]),Y(iR[1]),X(iR[0]),Y(iR[1]),'L int (corde): '+nf(g.cInt,1)+' mm · L ext (corde): '+nf(L)+' mm',dn);
   } else {
-    t.D(X(-L2),Y(oR[1]),X(0),Y(oR[1]),'L/2: '+nf(L2)+' mm',up,'top');
     t.D(X(-L2),Y(iR[1]),X(L2),Y(iR[1]),'L (corde): '+nf(L)+' mm',dn);
     t.D(X(-L2),Y(oR[1]),X(-L2),Y(iR[1]),'joue '+nf(M.jw,1),(xE-L2)*s+12,'left');
   }
@@ -1673,7 +1676,7 @@ function genGoulotte(d,ep){
   if(G.full)pts.push([-G.rO,-G.rO],[G.rO,G.rO]);
   else for(let i=0;i<=64;i++){const a=a0+i*G.Th/64;pts.push([G.rO*Math.sin(a),G.rO*Math.cos(a)],[G.rI*Math.sin(a),G.rI*Math.cos(a)])}
   const xs=pts.map(p=>p[0]),ys=pts.map(p=>p[1]),mnx=Math.min(...xs),mxx=Math.max(...xs),mny=Math.min(...ys),mxy=Math.max(...ys);
-  const s=fit(mxx-mnx,mxy-mny,330,205),cx=205,cy=135,mx=(mnx+mxx)/2,my=(mny+mxy)/2;
+  const s=fit(mxx-mnx,mxy-mny,330,190),cx=205,cy=140,mx=(mnx+mxx)/2,my=(mny+mxy)/2;
   const X=x=>cx+(x-mx)*s,Y=y=>cy-(y-my)*s,P=(r,a)=>`${X(r*Math.sin(a)).toFixed(2)},${Y(r*Math.cos(a)).toFixed(2)}`;
   const ring=(ra,rb,fl,st,sw)=>{
     if(G.full){t.a(`<path d="M${X(-rb)},${Y(0)} A${rb*s},${rb*s} 0 1,1 ${X(rb)},${Y(0)} A${rb*s},${rb*s} 0 1,1 ${X(-rb)},${Y(0)} Z M${X(-ra)},${Y(0)} A${ra*s},${ra*s} 0 1,0 ${X(ra)},${Y(0)} A${ra*s},${ra*s} 0 1,0 ${X(-ra)},${Y(0)} Z" fill="${fl}" fill-rule="evenodd" stroke="${st}" stroke-width="${sw}"/>`);return}
@@ -1688,11 +1691,15 @@ function genGoulotte(d,ep){
   {const a=a0+G.th/2,ri=G.rI-24/s,ro=G.rO+28/s;t.L(X(ri*Math.sin(a)),Y(ri*Math.cos(a)),X(ro*Math.sin(a)),Y(ro*Math.cos(a)),LC,0.6,'6,2,1,2');
    t.T(X((ri-8/s)*Math.sin(a)),Y((ri-8/s)*Math.cos(a))+4,'A',9,LC,'middle',900,'Barlow Condensed,sans-serif')}
   t.C(X(0),Y(0),2,LC,LC,0.5);
-  if(G.full){t.AX(X(-G.rO)-8,Y(0),X(G.rO)+8,Y(0));t.AX(X(0),Y(G.rO)-8,X(0),Y(-G.rO)+8);
-    t.D(X(-G.R0),Y(-G.rO),X(G.R0),Y(-G.rO),'Ø béton ext. '+nf(G.R0*2/1000,3)+' m',22)}
-  else{const e1=[G.R0*Math.sin(a0),G.R0*Math.cos(a0)],e2=[-e1[0],e1[1]];
-    t.D(X(e1[0]),Y(Math.max(e1[1],mny)),X(e2[0]),Y(Math.max(e1[1],mny)),'corde béton ext. '+nf(2*G.R0*Math.sin(G.Th/2))+' mm',(Y(mny)-Y(e1[1]))+16);
-    t.T(X(0),Y(mny)+40,'Θ = '+nf(G.Th*180/Math.PI,1)+'° · arc béton ext. '+nf(G.Th*G.R0/1000,3)+' m',7.5,DC,'middle',700)}
+  // v3.0 : axes de l'ouvrage X / Y (bulles) ; cotes signées du béton ext. depuis l'axe Y (anneau : centre ; arc : axe de symétrie)
+  if(G.full){axImpl(t,X(0),Y(0),X(-G.rO)-8,X(G.rO)+8,Y(G.rO)-8,Y(-G.rO)+8);
+    t.D(X(-G.R0),Y(-G.rO),X(0),Y(-G.rO),sgn(-G.R0),22);t.D(X(0),Y(-G.rO),X(G.R0),Y(-G.rO),sgn(G.R0),22);
+    t.D(X(-G.R0),Y(-G.rO),X(G.R0),Y(-G.rO),'Ø béton ext. '+nf(G.R0*2/1000,3)+' m',40)}
+  else{const e1=[G.R0*Math.sin(a0),G.R0*Math.cos(a0)],e2=[-e1[0],e1[1]],yb=Y(Math.max(e1[1],mny)),oc=(Y(mny)-Y(e1[1]))+16;
+    axImpl(t,X(0),Y(my),X(mnx)-8,X(mxx)+8,Y(mxy)-8,Y(mny)+8);
+    t.D(X(e1[0]),yb,X(0),yb,sgn(e1[0]),oc);t.D(X(0),yb,X(e2[0]),yb,sgn(e2[0]),oc);
+    t.D(X(e1[0]),yb,X(e2[0]),yb,'corde béton ext. '+nf(2*G.R0*Math.sin(G.Th/2))+' mm',oc+18);
+    t.T(X(0),Y(mny)+58,'Θ = '+nf(G.Th*180/Math.PI,1)+'° · arc béton ext. '+nf(G.Th*G.R0/1000,3)+' m',7.5,DC,'middle',700)}
   t.T(205,12,G.n+' SEGMENTS DE FOND — n° de pose',7.5,DC,'middle',700,'Barlow Condensed,sans-serif');
   // ---------- À droite : un segment de fond coté ----------
   t.L(400,22,400,318,'#ddd',0.6);
@@ -1950,9 +1957,11 @@ function dalPlanSvg(d,G,vw,vh,big){
   pLab.forEach(q=>t.T(q.x,q.y,q.p.id,q.sz,q.p.full?WS:DC,'middle',800,'Barlow Condensed,sans-serif'));
   t.C(X(0),Y(0),big?2.5:1.5,LC,LC,0.5);
   if(big){
-    t.AX(X(-A/2)-14,Y(0),X(A/2)+14,Y(0));t.AX(X(0),Y(B/2)+14,X(0),Y(-B/2)-14);
+    // v3.0 : axes de l'ouvrage X / Y (bulles) et cotes signées des nus intérieurs depuis les axes
+    const a2=sh.t==='circ'?sh.R:A/2,b2=sh.t==='circ'?sh.R:B/2,up=20+pk*s;axImpl(t,X(0),Y(0),X(-a2)-pk*s-14,X(a2)+pk*s+14,Y(b2)-up-14,Y(-b2)+14);
+    t.D(X(-a2),Y(b2),X(0),Y(b2),sgn(-a2),up,'top');t.D(X(0),Y(b2),X(a2),Y(b2),sgn(a2),up,'top');
     if(sh.t==='circ')t.D(X(-sh.R),Y(-sh.R),X(sh.R),Y(-sh.R),'Ø '+nf(2*sh.R)+' mm (nu intérieur)',34+pk*s);
-    else{t.D(X(-A/2),Y(-B/2),X(A/2),Y(-B/2),'L : '+nf(A)+' mm',34+pk*s);t.D(X(A/2),Y(B/2),X(A/2),Y(-B/2),'l : '+nf(B)+' mm',30+pk*s)}
+    else{t.D(X(-A/2),Y(-B/2),X(A/2),Y(-B/2),'L : '+nf(A)+' mm',34+pk*s);t.D(X(A/2),Y(B/2),X(A/2),Y(0),sgn(B/2),30+pk*s);t.D(X(A/2),Y(0),X(A/2),Y(-B/2),sgn(-B/2),30+pk*s);t.D(X(A/2),Y(B/2),X(A/2),Y(-B/2),'l : '+nf(B)+' mm',66+pk*s)}
     if(BG)BG.beams.forEach((bm,i)=>{if(Math.abs(bm.o)<1)return;
       const p1=TP(-(G.shL.t==='circ'?G.shL.R:G.shL.A/2)-pk-(26+i*18)/s,0),p2=TP(-(G.shL.t==='circ'?G.shL.R:G.shL.A/2)-pk-(26+i*18)/s,bm.o);
       t.DL(X(p1[0]),Y(p1[1]),X(p2[0]),Y(p2[1]),(bm.o>0?'+':'')+nf(bm.o),(X(p1[0])+X(p2[0]))/2-(G.rot?0:4),(Y(p1[1])+Y(p2[1]))/2+(G.rot?-5:3),G.rot?'middle':'end')});
@@ -2440,8 +2449,8 @@ function ptOverSvg(d,G,vw,vh,big){
   const t=SB(vw,vh),bm=G.bm,P=G.P,b=bm.b,h=bm.h,W=b,ev=P.ev;
   const ends=[bm.sL,bm.sR],ext=S=>S.t==='voile'?[Math.min(...[-W,0,W].map(v=>S.at(ev,v))),Math.max(...[-W,0,W].map(v=>S.at(ev,v)))]:[S.s-S.D/2,S.s+S.D/2];
   const uA=ext(bm.sL)[0]-80,uZ=ext(bm.sR)[1]+80;
-  const mx=big?60:12,s=ESC(t,fit(uZ-uA,big?(W+600)+(h+700):W+h+900,vw-2*mx,vh-(big?120:30))),X=u=>mx+(u-uA)*s+((vw-2*mx)-(uZ-uA)*s)/2;
-  const vR=W/2+250,py0=big?70:12,PY=v=>py0+(vR-v)*s,ez0=py0+2*vR*s+(big?70:30)+(h+250)*s,EZ=z=>ez0-z*s;
+  const mx=big?60:12,s=ESC(t,fit(uZ-uA,big?(W+600)+(h+700):W+h+900,vw-2*mx,vh-(big?140:30))),X=u=>mx+(u-uA)*s+((vw-2*mx)-(uZ-uA)*s)/2;
+  const vR=W/2+250,py0=big?90:12,PY=v=>py0+(vR-v)*s,ez0=py0+2*vR*s+(big?70:30)+(h+250)*s,EZ=z=>ez0-z*s;
   if(big){t.T(mx,16,'VUE EN PLAN',8,LC,'start',800,'Barlow,sans-serif');t.T(mx,PY(-vR)+34,'ÉLÉVATION (dessus de poutre = tête de voile)',8,LC,'start',800,'Barlow,sans-serif')}
   // --- plan
   ends.forEach(S=>{if(S.t==='voile'){const vs=Array.from({length:25},(_,i)=>-vR+2*vR*i/24);
@@ -2465,6 +2474,11 @@ function ptOverSvg(d,G,vw,vh,big){
     const fa=S=>S.t==='voile'?S.at(0,0):S===bm.sL?S.s+S.D/2:S.s-S.D/2,pts=[fa(bm.sL)].concat(bm.pots.map(p=>p.s),[fa(bm.sR)]);
     for(let i=0;i<pts.length-1;i++)t.D(X(pts[i]),PY(vR),X(pts[i+1]),PY(vR),nf(pts[i+1]-pts[i],0),14,'top');
     if(pts.length>2)t.D(X(pts[0]),PY(vR),X(pts[pts.length-1]),PY(vR),'L '+nf(pts[pts.length-1]-pts[0],0)+' (nu à nu)',30,'top');
+    // v3.0 : axes de l'ouvrage — X = axe de la poutre, Y = milieu de la portée nu à nu ; cotes signées des nus et des poteaux depuis Y
+    {const p0=pts[0],p1=pts[pts.length-1],uM=(p0+p1)/2,up=pts.length>2?46:30;axImpl(t,X(uM),PY(0),X(uA),X(uZ),PY(vR)-up-14,PY(-vR)+6);
+      t.D(X(p0),PY(vR),X(uM),PY(vR),sgn(p0-uM),up,'top');t.D(X(uM),PY(vR),X(p1),PY(vR),sgn(p1-uM),up,'top');
+      if(bm.pots.length){t.T(vw-14,16,'Implantation des poteaux (axes X / Y)',7.5,IC,'end',700,'Barlow Condensed,sans-serif');
+        bm.pots.forEach((p,i)=>t.T(vw-14,28+i*11,'P'+(i+1)+'  x '+sgn(p.s-uM)+'  y 0',7,IC,'end',600))}}
     t.D(X(uZ)-20,PY(b/2),X(uZ)-20,PY(-b/2),'b '+nf(b),10);
     bm.segs.forEach((sg,i)=>{const a=Math.min(sg.j1[0],sg.j2[0]),z=Math.max(sg.j1[1],sg.j2[1]);t.D(X(a),EZ(-250),X(z),EZ(-250),bmSegId(bm,i,'')+' '+nf(z-a,0),14+(i%2)*14)});
     t.D(X(uZ)-20,EZ(h),X(uZ)-20,EZ(0),'h '+nf(h),10);
@@ -2512,7 +2526,7 @@ function genPara(d,ep){
   const g=paraGeo(d);if(!g.ok)return{top:errSvg(800,340,'Géométrie impossible'),a:errSvg(320,220,'—'),b:errSvg(320,220,'—')};
   const t=SB(800,340),e=g.e,lb=mkLbl(t,[2,2,798,338]);
   // ---- vue en plan (projection x, y) : voile horizontal, parement int. en haut
-  const ys=g.corners.map(p=>p[1]),y1=Math.min(...ys)-150,y2=Math.max(...ys)+150,s=fit(y2-y1,e+260,400,220),X=y=>30+(y-y1)*s,Y=x=>80+x*s;
+  const ys=g.corners.map(p=>p[1]),y1=Math.min(...ys)-150,y2=Math.max(...ys)+150,s=fit(y2-y1,e+260,400,220),X=y=>30+(y-y1)*s,Y=x=>100+x*s;
   t.T(30,20,'VUE EN PLAN — coupe horizontale',8,LC,'start',800,'Barlow,sans-serif');
   t.R(X(y1),Y(0),(y2-y1)*s,e*s,'url(#hb)','#888',0.6);
   const hull2=pts=>hull(pts.map(p=>[p[1],p[0]]));
@@ -2521,7 +2535,11 @@ function genPara(d,ep){
   const axp=X0=>[(X0-e/2)/g.u[0]*g.u[1],X0],a1=axp(-60),a2=axp(e+60);t.AX(X(a1[0]),Y(a1[1]),X(a2[0]),Y(a2[1]));
   t.T(X(y1)+4,Y(0)-4,'parement intérieur',6.5,'#555','start',600,'Barlow,sans-serif');t.T(X(y1)+4,Y(e)+10,'parement extérieur',6.5,'#555','start',600,'Barlow,sans-serif');
   const yo=[Math.min(...g.corners.filter(p=>Math.abs(p[0])<1).map(p=>p[1])),Math.max(...g.corners.filter(p=>Math.abs(p[0])<1).map(p=>p[1]))];
-  t.D(X(yo[0]),Y(0),X(yo[1]),Y(0),'ouverture '+nf(yo[1]-yo[0],0),18,'top');
+  t.D(X(yo[0]),Y(0),X(yo[1]),Y(0),'ouverture '+nf(yo[1]-yo[0],0),30,'top');
+  // v3.0 : axes de l'ouvrage — X = axe du voile (mi-épaisseur), Y = normale au voile au centre de la réservation ; cotes signées des bords de l'ouverture sur chaque parement
+  {const ye=g.corners.filter(p=>Math.abs(p[0]-e)<1).map(p=>p[1]),y3=Math.min(...ye),y4=Math.max(...ye);axImpl(t,X(0),Y(e/2),X(y1),X(y2),Y(0)-44,Y(e)+44);
+    t.D(X(yo[0]),Y(0),X(0),Y(0),sgn(yo[0]),14,'top');t.D(X(0),Y(0),X(yo[1]),Y(0),sgn(yo[1]),14,'top');
+    t.D(X(y3),Y(e),X(0),Y(e),sgn(y3),36);t.D(X(0),Y(e),X(y4),Y(e),sgn(y4),36)}
   t.D(X(y2)-10,Y(0),X(y2)-10,Y(e),'voile '+nf(e),8);
   // biais α : arc entre la normale au voile et l'axe, au parement intérieur
   {const a0=axp(0),cx=X(a0[0]),cy=Y(0),r=Math.min(46,e*s*0.75);t.L(cx,cy,cx,cy+r+10,'#555',0.5,'3,2');
