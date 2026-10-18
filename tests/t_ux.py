@@ -215,7 +215,7 @@ def t(s):
         with pg.expect_download() as d:
             pg.keyboard.press('Meta+s')
         s.check(True, '⌘+S (Mac) : sauvegarde')
-        pg.keyboard.press('Control+p'); pg.wait_for_timeout(400)
+        pg.keyboard.press('Control+p'); pg.wait_for_function("window._np===1", timeout=20000)  # v2.10 : l'impression attend les images 3D des feuilles
         s.check(ev("window._np") == 1 and ev("!!document.querySelector('#pvA .ps')"), 'Ctrl+P : impression avec la mise en page de l\'application')
         with pg.expect_file_chooser():
             pg.keyboard.press('Control+o')

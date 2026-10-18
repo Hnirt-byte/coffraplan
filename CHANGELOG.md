@@ -21,13 +21,16 @@ disparaît au lieu de s'élever ; 4. perçage des fonds : Ø poteau + 0 mm par d
 - **3D des feuilles MONTAGE** rendue en WebGL (même moteur que la vue interactive : grain, plis, ombres), image JPEG 2500 px,
   repères, légende et rose d'orientation par-dessus ; cadrage sur l'emprise. L'impression attend les images (15 s au plus).
   Sans WebGL ou en noir et blanc : vue vectorielle.
+  En aperçu, images faites 1,2 s après la dernière saisie, et pas du tout en rendu 3D logiciel (PC sans carte
+  graphique : trop lent, l'aperçu garde la vue vectorielle ; l'impression fait les images).
 - **Dalle en éclaté** : le platelage s'élève au-dessus des coffrages (comme un fond supérieur) au lieu de s'effacer.
 - **Perçage des fonds** : jeu par défaut 0 mm (Ø poteau exact) ; les anciens fichiers sans valeur prennent 0 mm.
 
 **Écarts voulus** (t_avap) : spéciale avec poteaux, perçages Ø poteau + 0 au lieu de + 10 (débit, CSV, découpe, feuilles) ;
 dalle, feuille de montage éclatée : note « platelage masqué » retirée, repères du platelage ajoutés. t_v25 : contrôle
 « Ø poteau + 10 mm » passé à « + 0 mm » (changement demandé). t_3d : la dalle passe désormais par le contrôle commun de
-l'éclaté (plus de mode « masqué »), sans modification du test.
+l'éclaté (plus de mode « masqué »), sans modification du test. t_ux : Ctrl+P attend l'ouverture de l'impression jusqu'à 20 s
+(au lieu de 400 ms), l'impression attendant désormais les images 3D des feuilles.
 
 **Tests** : t_v210 (nouveau) 109 OK ; 21/21 suites OK (t_avap 1 076, t_coh 156, t_audit 1 635, t_gab_dalle 119 753).
 
