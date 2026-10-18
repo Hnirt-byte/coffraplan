@@ -3,6 +3,16 @@
 Détail complet de chaque version (demandes, écarts voulus, tests, non validé) : `docs/historique/HANDOFF_<version>.md`.
 Chaque version est un tag git (`git diff v2.4 v2.5 -- app/` pour voir les changements).
 
+## Non publié — module d'import de plans (fondation)
+**Demande (Kévin, 18/10/2026)** : préparer l'architecture d'un module d'import de plans (lecteur, détecteur de
+réservations, adaptateur CoffraPlan), sans écrire l'import DXF / IFC / PDF et sans toucher aux fonctions existantes.
+
+**Fait** : `modules/import/` (hors appli) : `lecteur.js`, `detecteur.js`, `adaptateur.js`, contrat et cartographie
+(`README.md`). Banc `tests/t_import.py` (ajouté aux suites rapides) ; `tests/syntax.sh` contrôle aussi ces fichiers.
+`app/CoffraPlan.html` inchangé : aucun écart de calcul, de feuilles ni d'export ; format de sauvegarde inchangé.
+
+**Non validé** : aucun vrai fichier DXF / IFC / PDF lu ; le contrat du lecteur sera éprouvé par le premier décodeur (DXF).
+
 ## v3.0 — exports 3D / BIM, cotes d'implantation, gel avant bêta
 **Demandes (Kévin, 18/10/2026)** : 1. export glTF (.glb) depuis la vue 3D et la carte Export (même modèle, m, Y vers le haut,
 une pièce = un nœud nommé par son repère, un nœud par ouvrage, couleurs de la palette, assemblé ou éclaté) ; 2. export IFC4
