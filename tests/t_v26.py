@@ -1,8 +1,12 @@
 """v2.6 — crédibilité : catalogue CP (filmé phénolique par âme), flèche des joues, note d'hypothèses, cartouche entreprise,
 enregistrement direct dans un fichier (File System Access), noms de chantiers réels retirés."""
-import json, os, re
+import hashlib, json, os, re, subprocess
 from playwright.sync_api import sync_playwright
 from lib import Suite, open_app, APP
+
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+# empreintes SHA-256 (majuscules) des noms de chantiers réels retirés ; liste des noms hors dépôt
+NOMS_REELS = {'07696a04bdf01d924cb4a6c3ca2d1e215330b3818dee3c5b9e0b9cfb9ecd1604', '9c5931539de2fb50e8f2192f7a15fa6975b85322b53a45440e77ffefa03d88d4'}
 
 # Riga Wood, Concrete formwork (03/2026) — Riga Form, 3 travées égales : portée → [(q kN/m², u mm)] pour 9…24 mm
 RIGA_T = [9, 12, 15, 18, 21, 24]
@@ -20,7 +24,14 @@ def t(s):
         ev = pg.evaluate
         src = open(APP, encoding='utf-8').read()
         s.check(ev("el('appVer').textContent").startswith(('v2.', 'v3.')), 'version affichée (v2.6 ou suivante)')  # v3.0 : numéro majeur 3 admis  # v2.7 : numéro vérifié par t_ux
-        s.check('CHANTIER_DEMO_A' not in src and 'CHANTIER_DEMO_B' not in src, 'aucun nom de chantier réel dans l\'application')
+        # noms de chantiers réels : empreintes SHA-256 des mots (majuscules), jamais les noms eux-mêmes ; tout le dépôt suivi
+        mots = set()
+        for f in subprocess.run(['git', 'ls-files'], cwd=ROOT, capture_output=True, text=True).stdout.split():
+            try:
+                mots |= set(re.findall(r'[A-Z]{3,}', open(os.path.join(ROOT, f), encoding='utf-8').read().upper()))
+            except (UnicodeDecodeError, OSError):
+                pass
+        s.check(not {hashlib.sha256(m.encode()).hexdigest() for m in mots} & NOMS_REELS, 'aucun nom de chantier réel dans les fichiers suivis')
 
         # ---- catalogue CP ----
         cat = ev("Object.keys(CPT).map(k=>[k,CPT[k].n])")
