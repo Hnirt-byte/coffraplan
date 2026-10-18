@@ -3,6 +3,17 @@
 Détail complet de chaque version (demandes, écarts voulus, tests, non validé) : `docs/historique/HANDOFF_<version>.md`.
 Chaque version est un tag git (`git diff v2.4 v2.5 -- app/` pour voir les changements).
 
+## Non publié — nettoyage des noms de chantiers réels
+**Demande (Kévin, 18/10/2026)** : retirer des fichiers suivis les références à des chantiers réels, remplacées par des noms
+fictifs (`CHANTIER_DEMO_A`).
+
+**Fait** : t_v23 (liste des plans : groupes, tri, recherche) avec un chantier fictif, mêmes contrôles ; t_v26 : le garde-fou
+vérifie tous les fichiers suivis et compare des empreintes SHA-256 au lieu d'écrire les noms ; `tests/ref/v18.html` : seul le
+texte d'exemple du champ « Nom du chantier » change (référence figée, géométrie intacte) ; exemple d'en-tête du kit et capture
+`kit/references/visuel-valide-original.png` retouchés ; ligne v2.6 de ce journal reformulée. `app/CoffraPlan.html` inchangé.
+
+**Non traité** : l'historique git (commits antérieurs) contient encore ces noms ; voir le diagnostic du fil de projet.
+
 ## Non publié — module d'import de plans (fondation)
 **Demande (Kévin, 18/10/2026)** : préparer l'architecture d'un module d'import de plans (lecteur, détecteur de
 réservations, adaptateur CoffraPlan), sans écrire l'import DXF / IFC / PDF et sans toucher aux fonctions existantes.
@@ -198,7 +209,7 @@ classe 3 (EN 636-3), 18 mm.
   fichier projet (clé `ent`, format v 10 inchangé ; les versions précédentes ignorent cette clé).
 - **Enregistrement direct** (Chrome / Edge, File System Access) : Ctrl+S réécrit le fichier choisi ou ouvert ;
   Ctrl+Maj+S = enregistrer sous ; autres navigateurs : téléchargement comme avant.
-- Exemple « STEP SCEY » remplacé par un nom fictif.
+- Exemple de nom de chantier réel remplacé par un nom fictif.
 
 **Écarts voulus** (t_avap 148 plans : tous expliqués) : désignation « CP filmé bouleau » (feuilles, débit, CSV, DXF) ;
 nouvelle alerte de flèche sur 35 plans du banc (boîtes sans cloisons ou hautes) ; bloc entreprise du cartouche.

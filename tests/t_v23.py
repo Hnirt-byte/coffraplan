@@ -158,21 +158,21 @@ def t(s):
         # ===================== (c) liste des plans =====================
         b, pg, errs, dlg = page(pw)
         ev = pg.evaluate
-        for ch, ouv, f, ref in [('STEP SCEY', 'Clarificateur', 'rect', 'R10'), ('STEP SCEY', 'Clarificateur', 'special', 'R2'), ('STEP SCEY', 'Poste de relevage', 'carre', 'R1'),
-                                ('STEP SCEY', 'Clarificateur', 'carre', 'R1'), ('Bassin Est', '', 'voile', 'V1')]:
+        for ch, ouv, f, ref in [('CHANTIER_DEMO_A', 'Clarificateur', 'rect', 'R10'), ('CHANTIER_DEMO_A', 'Clarificateur', 'special', 'R2'), ('CHANTIER_DEMO_A', 'Poste de relevage', 'carre', 'R1'),
+                                ('CHANTIER_DEMO_A', 'Clarificateur', 'carre', 'R1'), ('Bassin Est', '', 'voile', 'V1')]:
             add(pg, f, {'dL': 1200, 'dl': 800, 'dh': 300} if f == 'rect' else {}, ouv, ch, ref)
         L = lambda: ev("[...el('sl').children].map(e=>e.classList.contains('plg')?'#'+e.textContent:e.querySelector('.n').firstChild.textContent)")
-        s.check(L() == ['#BASSIN EST1', 'V1', '#STEP SCEY · Clarificateur3', 'R10', 'R2', 'R1', '#STEP SCEY · Poste de relevage1', 'R1'],
+        s.check(L() == ['#BASSIN EST1', 'V1', '#CHANTIER_DEMO_A · Clarificateur3', 'R10', 'R2', 'R1', '#CHANTIER_DEMO_A · Poste de relevage1', 'R1'],
                 'regroupement chantier · ouvrage (ordre alphabétique, effectifs), ordre de saisie dans l\'ouvrage', str(L()))
         pg.select_option('#plS', 'r')
-        s.check(L()[2:6] == ['#STEP SCEY · Clarificateur3', 'R1', 'R2', 'R10'], 'tri par référence (R2 avant R10)', str(L()))
+        s.check(L()[2:6] == ['#CHANTIER_DEMO_A · Clarificateur3', 'R1', 'R2', 'R10'], 'tri par référence (R2 avant R10)', str(L()))
         pg.select_option('#plS', 'f')
         s.check(L()[3] == 'R1' and ev("el('sl').children[3].textContent").find('Carré') >= 0, 'tri par forme', str(L()))
         g0 = ev("()=>{window._ng=0;const g=window.gen;window.gen=d=>{window._ng++;return g(d)};return HIS.length}")
         pg.fill('#plQ', 'relevage')
-        s.check(L() == ['#STEP SCEY · Poste de relevage1', 'R1'] and ev("el('pc').textContent") == '1 / 5', 'recherche « relevage » : 1 / 5', str(L()))
+        s.check(L() == ['#CHANTIER_DEMO_A · Poste de relevage1', 'R1'] and ev("el('pc').textContent") == '1 / 5', 'recherche « relevage » : 1 / 5', str(L()))
         pg.fill('#plQ', 'speciale clar')
-        s.check(L() == ['#STEP SCEY · Clarificateur1', 'R2'], 'recherche sans accents et à plusieurs mots (« speciale clar »)', str(L()))
+        s.check(L() == ['#CHANTIER_DEMO_A · Clarificateur1', 'R2'], 'recherche sans accents et à plusieurs mots (« speciale clar »)', str(L()))
         pg.fill('#plQ', 'zzz')
         s.check('Aucun plan ne correspond' in ev("el('sl').textContent"), 'recherche sans résultat : message')
         pg.wait_for_timeout(400)
