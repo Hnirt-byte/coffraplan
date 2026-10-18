@@ -137,12 +137,19 @@ def t(s):
         s.check(dl.value.suggested_filename == 'TEST_R01.glb', 'vue 3D : bouton glTF', dl.value.suggested_filename)
         ev("close3D()")
         # ---- 4. cotes d'implantation (axes de l'ouvrage) ----
-        for f, ov in (('rect_fond', {'dL': 1500, 'dl': 1100}), ('special', {'dBase': 'circ', 'oPot': True}), ('circ_fond', {})):
-            r = ev("""([f,ov])=>{T.mk(f,ov);const t=document.createElement('template');t.innerHTML=gen(coll());const sv=[...t.content.querySelectorAll('svg')][0],tx=[...sv.querySelectorAll('text')];
+        # v3.0 (gel) : généralisé à toutes les formes (décision de Kévin, 18/10/2026) ; vue en plan = première feuille qui porte les bulles
+        for f, ov in (('rect_fond', {'dL': 1500, 'dl': 1100}), ('special', {'dBase': 'circ', 'oPot': True}), ('circ_fond', {}),
+                      ('carre', {}), ('rect', {'dL': 1200, 'dl': 800}), ('circ_sf', {'dDint': 300}), ('special', {'dL': 3000, 'dl': 1400}),
+                      ('massif', {'dL': 1000, 'dl': 800, 'oRen': True}), ('massif', {'oRen': False}), ('circ', {}),
+                      ('voile', {}), ('voile', {'dJoues': 'rad'}), ('voile', {'oConstr': 'caisson'}), ('voile', {'oConstr': 'caisson', 'dJoues': 'rad'}),
+                      ('goulotte', {}), ('goulotte', {'gEt': 'angle', 'gAng': 120}), ('dalle', {}), ('dalle', {'dlF': 'rect', 'dlPt': True}),
+                      ('poutre', {}), ('poutre', {'ptEL': 'po', 'ptER': 'vc', 'ptL': 9000}), ('para', {}), ('para', {'ppA': 0})):
+            r = ev("""([f,ov])=>{T.mk(f,ov);const t=document.createElement('template');t.innerHTML=gen(coll());const all=[...t.content.querySelectorAll('svg')],
+              sv=all.find(s=>[...s.querySelectorAll('text')].some(x=>x.textContent==='Y'&&x.getAttribute('fill')==='#1f5fbf'))||all[0],tx=[...sv.querySelectorAll('text')];
               return {bul:tx.filter(x=>/^[XY]$/.test(x.textContent)&&x.getAttribute('fill')==='#1f5fbf').map(x=>x.textContent).sort().join(''),ax:sv.querySelectorAll('line[stroke="#1f5fbf"][stroke-dasharray]').length,
                 cot:tx.filter(x=>/^[+−]\\d/.test(x.textContent)&&x.getAttribute('fill')==='#1f5fbf').map(x=>x.textContent)}}""", [f, ov])
-            s.check(r['bul'] == 'XY' and r['ax'] >= 2, f'[{f}] vue en plan : axes X / Y de l\'ouvrage en bleu, repérés', str(r))
-            s.check(len(r['cot']) >= 2 and any(c.startswith('+') for c in r['cot']) and any(c.startswith('−') for c in r['cot']), f'[{f}] cotes signées depuis les axes (bleu)', str(r['cot']))
+            s.check(r['bul'] == 'XY' and r['ax'] >= 2, f'[{f} {ov}] vue en plan : axes X / Y de l\'ouvrage en bleu, repérés', str(r))
+            s.check(len(r['cot']) >= 2 and any(c.startswith('+') for c in r['cot']) and any(c.startswith('−') for c in r['cot']), f'[{f} {ov}] cotes signées depuis les axes (bleu)', str(r['cot']))
         s.check(ev("document.getElementById('appVer').textContent") == 'v3.0', 'version affichée v3.0')
         s.check(not [e for e in errs if 'net::' not in e], 'aucune erreur JS', str(errs[:3]))
         b.close()

@@ -33,17 +33,25 @@ IfcBuildingElementProxy, un IfcElementAssembly par ouvrage, extrusions ou facett
   (IfcConstructionProductResource) sans placement ni géométrie. Classes retenues : celles demandées.
 - **Cotes d'implantation** (vues en plan) : axes de l'ouvrage en bleu (trait mixte) repérés X (bulle à gauche) et Y (bulle en
   haut), cotes signées depuis les axes (+ vers la droite / le haut de la feuille) ; forme spéciale avec poteaux : tableau
-  d'implantation des poteaux (x, y). Formes traitées : voir « Écarts voulus ».
+  d'implantation des poteaux (x, y). **Toutes les formes** (généralisation décidée par Kévin le 18/10/2026 après essai sur 3 formes).
+  Origine : centre de l'ouvrage, sauf voile cintré (Y = axe radial, X = corde à mi-épaisseur), poutre (X = axe de la poutre,
+  Y = milieu de la portée nu à nu, tableau des poteaux intermédiaires), parallélépipède (X = axe du voile, Y = normale au voile
+  au centre ; bords de l'ouverture cotés sur les deux parements), goulotte en arc (Y = axe de symétrie, X = milieu de l'emprise).
+  Voile à joues radiales : « L ext (corde) » écrite avec « L int (corde) » sous le plan, pour laisser la place aux cotes signées.
 - Version v3.0 ; mode d'emploi : § 7.20 Exports 3D / BIM, § 7.21 Cotes d'implantation, captures.
 
-**Écarts voulus** (t_avap) : vues en plan — cote « L/2 » et « l/2 » remplacées par des cotes signées ±L/2, ±l/2 depuis les axes,
-bulles X / Y, tableau des poteaux. t_v210 : contrôle du numéro de version retiré (porté par t_ux et t_v30) ; t_v26, t_v28 : « v2.x ou suivante » admet aussi v3.x ; t_ux : version v3.0.
+**Écarts voulus** (t_avap, contre v2.10) : vues en plan de toutes les formes — cote « L/2 » et « l/2 » remplacées par des cotes
+signées ±L/2, ±l/2 depuis les axes, bulles X / Y, tableaux des poteaux ; voile radial : cotes de corde regroupées ; DXF : calques
+VUES_* modifiés (axes, cotes), autres calques identiques. Débit, CSV, découpe et gabarits identiques. t_v210 : contrôle du numéro de version retiré (porté par t_ux et t_v30) ; t_v26, t_v28 : « v2.x ou suivante » admet aussi v3.x ; t_ux : version v3.0.
 `tests/requirements.txt` : ifcopenshell 0.9.0.post1 (tests seulement).
 
 **Tests** : t_v30 (nouveau) : 36 scénarios + 10 plans aléatoires par forme — IFC relu par ifcopenshell sans erreur de schéma,
 une pièce IFC par pièce du débit (repère et nombre), volumes CP et bois = débit (± 1 %), volume géométrique = quantité
-déclarée ; GLB assemblé et éclaté (en-tête, nœuds, noms, couleurs, unités, volumes) ; boutons ; cotes d'implantation.
+déclarée ; GLB assemblé et éclaté (en-tête, nœuds, noms, couleurs, unités, volumes) ; boutons ; cotes d'implantation sur 22 cas (toutes les formes et variantes).
 Validateur Khronos glTF (npm `gltf-validator`, hors banc) : 72 fichiers, 0 erreur, 0 avertissement.
+Campagne complète (`run.py complet -j 4`, t_avap contre v2.10) : 22/22 suites OK — t_v30 5 560, t_avap 694, t_audit 1 635,
+t_gab_ident 8 878, t_gab_dalle 119 753. t_v29 (transition de la vue 3D) a échoué une fois sous charge sur une série rapide,
+vert seul puis dans la campagne : sensible au temps, pas lié aux cotes.
 
 **Limites connues (bêta)**
 - glTF et IFC **non ouverts dans un vrai logiciel** (Revit, ArchiCAD, BIMcollab, Solibri, visionneuse glTF) : seuls ifcopenshell
@@ -53,7 +61,8 @@ Validateur Khronos glTF (npm `gltf-validator`, hors banc) : 72 fichiers, 0 erreu
   écart de volume de CP de 1,3 % entre la 3D et le débit (préexistant, poutre).
 - Poutrelles de la dalle, tubes carton et tube PVC : exportés mais hors débit (nommés « R01-poutrelle », « R01-tube carton »).
 - Béton existant (contexte transparent de la vue 3D) non exporté.
-- Cotes d'implantation : voir « Écarts voulus » pour les formes traitées.
+- Cotes d'implantation de la poutre : pas de cotes signées ±b/2 (largeur cotée, X = axe de la poutre). Dalle avec poutres :
+  axes des poutres cotés depuis le centre comme en v2.10. Lisibilité vérifiée sur captures de cas types seulement.
 - Toujours non validé : impression papier réelle, DXF dans AutoCAD, Firefox / Safari, tablette réelle, Excel, carte graphique
   réelle ; règles « à valider » de `hypRows` en attente de relecture professionnelle.
 
