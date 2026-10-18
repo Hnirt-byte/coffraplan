@@ -33,6 +33,8 @@ def main(args):
                 ko.append(name); print('\n'.join('    ' + l for l in out.splitlines()[-25:]))
                 if os.environ.get('GITHUB_ACTIONS'):  # annotation visible sur GitHub (onglet Actions, résumé du run)
                     msg = ' | '.join(l.strip() for l in out.splitlines() if l.strip().startswith('✗'))[:900] or out.splitlines()[-1][:900]
+                    if 'Traceback' in out:  # exception : fin de la pile d'appels (les journaux complets ne sont pas toujours lisibles)
+                        msg = (msg[:300] + ' ⏎ ' + ' ⏎ '.join(l.strip() for l in out.splitlines()[-14:] if l.strip()))[:1800]
                     print(f'::error title={name}::{msg}')
     print(f'\n{len(names) - len(ko)}/{len(names)} suites OK' + (f' — en échec : {", ".join(ko)}' if ko else ''))
     return not ko

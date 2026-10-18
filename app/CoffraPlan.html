@@ -4625,8 +4625,10 @@ function glSheets(root,auto){if(window.V3_NOGL||PRT.nb||!root||(auto&&GLS.G.soft
       G.T=T;G.r=new T.WebGLRenderer({canvas:cv,context:ctx,antialias:true,preserveDrawingBuffer:true});G.r.shadowMap.enabled=true;G.r.shadowMap.type=T.PCFSoftShadowMap;G.r.setClearColor(0xffffff,1);
       const ext=ctx.getExtension('WEBGL_debug_renderer_info');G.soft=/swiftshader|llvmpipe|software|basic render/i.test(ext?ctx.getParameter(ext.UNMASKED_RENDERER_WEBGL):'')}
     if(auto&&G.soft)return put(); // rendu logiciel (sans carte graphique) : trop lent pour l'aperçu, images faites à l'impression seulement
-    todo().forEach(sv=>{const k=sv.dataset.glk,j=GLS.q.get(k);if(!j||GLS.img.has(k))return;let u='';try{u=glSnap(j)||''}catch(e){console.warn('Feuille : vue 3D WebGL —',e&&e.message)}
-      GLS.img.set(k,u);if(GLS.img.size>40)GLS.img.delete(GLS.img.keys().next().value)});return put()})
+    // une image par tâche (la page reste réactive, le délai d'impression de glPrint peut s'appliquer) ; arrêt à l'échéance
+    const t1=performance.now()+(auto?60000:14000),step=()=>{const sv=todo().find(x=>GLS.q.has(x.dataset.glk));if(!sv||performance.now()>t1)return put();const k=sv.dataset.glk;let u='';
+      try{u=glSnap(GLS.q.get(k))||''}catch(e){console.warn('Feuille : vue 3D WebGL —',e&&e.message)}GLS.img.set(k,u);if(GLS.img.size>40)GLS.img.delete(GLS.img.keys().next().value);put();return new Promise(r=>setTimeout(r,0)).then(step)};
+    return step()})
     .catch(e=>{console.warn('Feuilles : rendu WebGL indisponible, vues vectorielles conservées —',e&&e.message);return 0})}
 // impression : attendre les images 3D (15 s au plus) avant d'ouvrir la boîte d'impression
 function glPrint(){Promise.race([glSheets(el('pvA')),new Promise(r=>setTimeout(r,15000))]).then(()=>setTimeout(()=>window.print(),250))}
