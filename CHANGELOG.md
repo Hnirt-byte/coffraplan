@@ -3,6 +3,18 @@
 Détail complet de chaque version (demandes, écarts voulus, tests, non validé) : `docs/historique/HANDOFF_<version>.md`.
 Chaque version est un tag git (`git diff v2.4 v2.5 -- app/` pour voir les changements).
 
+## Non publié — lecteur DXF du module d'import
+**Demande (Kévin, 18/10/2026)** : premier vrai lecteur DXF dans `modules/import/` (unités, calques, identifiants, polylignes
+fermées droites, cercles, provenance), géométries ambiguës gardées en « non pris en charge », unité absente jamais devinée.
+
+**Fait** : `modules/import/dxf.js` (DXF ASCII R12 à R2018 : LWPOLYLINE, POLYLINE + VERTEX, CIRCLE, `$INSUNITS`, table
+LAYER, handles ; arcs, blocs, 3D et autres types → « autre » avec leur nature ; fichiers vides, binaires, tronqués ou non
+DXF refusés). Détecteur : angle droit exigé (un quadrilatère croisé passait pour un rectangle), remarque « carré
+potentiel ». README du module : table du décodeur, décisions de Kévin, protocole de validation sur un vrai plan. Banc
+`tests/t_dxf.py` (fichiers écrits par ezdxf, chantier fictif ; ajouté aux suites rapides). `app/CoffraPlan.html` inchangé.
+
+**Non validé** : aucun DXF réel ni exporté par AutoCAD lu ; pas d'interface d'import.
+
 ## Non publié — nettoyage des noms de chantiers réels
 **Demande (Kévin, 18/10/2026)** : retirer des fichiers suivis les références à des chantiers réels, remplacées par des noms
 fictifs (`CHANTIER_DEMO_A`).
@@ -12,7 +24,8 @@ vérifie tous les fichiers suivis et compare des empreintes SHA-256 au lieu d'é
 texte d'exemple du champ « Nom du chantier » change (référence figée, géométrie intacte) ; exemple d'en-tête du kit et capture
 `kit/references/visuel-valide-original.png` retouchés ; ligne v2.6 de ce journal reformulée. `app/CoffraPlan.html` inchangé.
 
-**Non traité** : l'historique git (commits antérieurs) contient encore ces noms ; voir le diagnostic du fil de projet.
+**Historique** : réécrit le 18/10/2026 (git-filter-repo, branches poussées en force) ; tous les SHA ont changé. Tags v2.10 /
+v3.0 et Releases à recréer à la main ; copies clonées ou en cache non effaçables.
 
 ## Non publié — module d'import de plans (fondation)
 **Demande (Kévin, 18/10/2026)** : préparer l'architecture d'un module d'import de plans (lecteur, détecteur de
