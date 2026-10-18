@@ -131,6 +131,11 @@ with sync_playwright() as p:
     ev("document.querySelector('.hdr').style.visibility='hidden'")
     pg.locator('#pvA .ps').nth(2).screenshot(path=D + '27_note.png')
     ev("document.querySelector('.hdr').style.visibility='';VIEW='plan';ENT={}")
+    # v3.0 : cotes d'implantation (vue de dessus de la forme spéciale avec poteaux)
+    ev("()=>{shP(0);VIEW='plan';prev()}"); pg.wait_for_timeout(400)
+    ev("document.querySelector('.hdr').style.visibility='hidden'")
+    pg.locator('#pvA .ps').first.locator('.ps-c').first.screenshot(path=D + '28_implantation.png')
+    ev("document.querySelector('.hdr').style.visibility=''")
     errs = [e for e in errs if 'net::' not in e]
     assert not errs, errs
     b.close()

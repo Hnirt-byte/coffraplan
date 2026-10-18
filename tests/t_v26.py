@@ -19,7 +19,7 @@ def t(s):
         b, pg, errs = open_app(pw)
         ev = pg.evaluate
         src = open(APP, encoding='utf-8').read()
-        s.check(ev("el('appVer').textContent").startswith('v2.'), 'version affichée (v2.6 ou suivante)')  # v2.7 : numéro vérifié par t_ux
+        s.check(ev("el('appVer').textContent").startswith(('v2.', 'v3.')), 'version affichée (v2.6 ou suivante)')  # v3.0 : numéro majeur 3 admis  # v2.7 : numéro vérifié par t_ux
         s.check('CHANTIER_DEMO_A' not in src and 'CHANTIER_DEMO_B' not in src, 'aucun nom de chantier réel dans l\'application')
 
         # ---- catalogue CP ----

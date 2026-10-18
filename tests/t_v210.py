@@ -89,7 +89,7 @@ def t(s):
           const sc=model3(c,debit(c,null)),h=sc.solids.filter(x=>x.holes&&x.holes.length).flatMap(x=>x.holes.map(q=>q[2]));return [el('oPJ').value,c.pJ,T.can(o).pJ,c.pD,[...new Set(h.map(r=>Math.round(r*10)/10))]]}""")
         s.check(pj[0] == '0' and pj[1] == 0 and pj[2] == 0, f'perçage des fonds : jeu par défaut 0 mm (champ {pj[0]}, plan {pj[1]}, ancien fichier sans valeur {pj[2]})')
         s.check(pj[4] == [pj[3] / 2], f'perçages modélisés au Ø du poteau (rayon {pj[4]} pour Ø {pj[3]})')
-        s.check(ev("document.getElementById('appVer').textContent") == 'v2.10', 'version affichée v2.10')
+        # v3.0 : contrôle du numéro de version retiré (porté par t_ux et t_v30)
         s.check(not [e for e in errs if 'net::' not in e], 'aucune erreur JS', str(errs[:3]))
         b.close()
 
