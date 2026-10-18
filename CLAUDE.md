@@ -74,6 +74,9 @@ développement : il progresse vite mais n'est pas développeur senior.
   `bimTags` (repères), `bimGeo` / `bimVol` / `bimQty` / `bimInfo` ; `glbFile` (glTF binaire, m, Y vers le haut), `ifcFile`
   (IFC4 STEP, mm, GlobalId déterministes `ifcGuid`), `expBim` (carte Export, vue 3D). Cotes d'implantation : `axImpl` (axes X / Y
   en bleu) et `sgn` (cotes signées). Banc `tests/t_v30.py` (ifcopenshell).
+- Module d'import de plans (fondation, **hors appli**) : `modules/import/` — lecteur (A), détecteur (B), adaptateur (C),
+  contrat et cartographie dans `modules/import/README.md`. Espace de noms `CPI`. A et B sans DOM ni moteur ; C reçoit
+  `migr` / `canon` / `limErr` / `checks` / `badDims` en paramètre. Banc `tests/t_import.py`. Pas encore inclus dans le HTML.
 - Version affichée : élément `#appVer` (« v3.0 »). Les tests t_ux et t_v30 vérifient ce numéro.
 
 ## Décisions actées (ne pas changer sans l'accord de Kévin)
