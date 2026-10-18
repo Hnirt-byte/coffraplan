@@ -130,7 +130,7 @@ code{font:9pt 'DejaVu Sans Mono',monospace;background:#f1f3f7;padding:0 1mm;bord
 <div class="c">4. Lire les feuilles</div><div>Plan · Débit · traçage · contrôles · Informations · CP à découper · Montage 3D · Fiche atelier · Repères</div>
 <div class="c">5. Gérer les plans</div><div>Liste · Modifier · Dupliquer · Supprimer · Annuler / rétablir</div>
 <div class="c">6. Sauvegarder et charger</div><div>Fichier .json · Rappel · Brouillon</div>
-<div class="c">7. Fonctions avancées</div><div>Profil chantier · Bibliothèque · Série depuis un tableau · Comparer deux indices · Auto-contrôle et corrections · Vue 3D · Gabarits 1:1 · Déplacement à la souris · Récapitulatif chantier · Dossier PDF · Exports DXF / CSV / XLSX · Mode chantier · Impression · Aperçu en attente · Cartes repliables · Flèche du CP · Note d'hypothèses · Cartouche entreprise</div>
+<div class="c">7. Fonctions avancées</div><div>Profil chantier · Bibliothèque · Série depuis un tableau · Comparer deux indices · Auto-contrôle et corrections · Vue 3D · Gabarits 1:1 · Déplacement à la souris · Récapitulatif chantier · Dossier PDF · Exports DXF / CSV / XLSX · Mode chantier · Impression · Aperçu en attente · Cartes repliables · Flèche du CP · Note d'hypothèses · Cartouche entreprise · Exports 3D / BIM (glTF, IFC4) · Cotes d'implantation</div>
 <div class="c">8. Raccourcis clavier</div>
 <div class="c">9. Bonnes pratiques et dépannage</div>
 <div class="c">Annexe — calques DXF</div>
@@ -322,7 +322,7 @@ code{font:9pt 'DejaVu Sans Mono',monospace;background:#f1f3f7;padding:0 1mm;bord
 <div class="fig" style="flex:0 0 46%"><img src="img/17_autocontrole.png"><div class="cap">Auto-contrôle et corrections</div></div></div>
 
 <h2>7.6 Vue 3D interactive</h2>
-<p><b>🧊 Vue 3D interactive</b> : tourner (glisser), zoomer (molette, + / −), vues prédéfinies (ISO, dessus = plan, face, côté, dessous), <b>éclaté</b> (curseur), repères affichés, masquer le CP ou un type de pièce, cliquer une pièce pour afficher son repère. Clavier : flèches, + / −, <kbd>Échap</kbd> pour fermer. Les perçages, tubes et renforts sont modélisés ; l'application vérifie qu'aucune pièce n'en traverse une autre.</p>
+<p><b>🧊 Vue 3D interactive</b> : tourner (glisser), zoomer (molette, + / −), vues prédéfinies (ISO, dessus = plan, face, côté, dessous), <b>éclaté</b> (curseur), repères affichés, masquer le CP ou un type de pièce, cliquer une pièce pour afficher son repère, <b>⬇ glTF</b> pour enregistrer la maquette (case « éclaté » : vue éclatée, voir 7.20). Clavier : flèches, + / −, <kbd>Échap</kbd> pour fermer. Les perçages, tubes et renforts sont modélisés ; l'application vérifie qu'aucune pièce n'en traverse une autre.</p>
 <p>Le rendu utilise la carte graphique (WebGL, bibliothèque three.js intégrée au fichier, hors connexion) : éclairage, ombres portées, parois courbes lisses. Les contreplaqués et les bois portent un grain de bois discret, les chants de CP montrent leurs plis ; un quadrillage de 500 mm au sol aide à juger les dimensions. Les vues prédéfinies s'enchaînent en douceur, la pièce survolée par la souris est mise en évidence. Les fonds percés pour les poteaux montrent leurs trous. En vue éclatée, <b>chaque pièce est séparée de ses voisines</b> (joues et raidisseurs, couvre-joints, poutrelles…). La légende compte des <b>pièces</b> (une paroi circulaire = 1 pièce). Sur un ordinateur sans accélération graphique, la vue s'affiche en rendu vectoriel, avec les mêmes fonctions.</p>
 <div class="fig"><img src="img/20_3d.png" style="max-width:85%"><div class="cap">Vue 3D (forme spéciale circulaire)</div></div>
 
@@ -353,7 +353,8 @@ code{font:9pt 'DejaVu Sans Mono',monospace;background:#f1f3f7;padding:0 1mm;bord
 <ul><li><b>DXF</b> (R12, millimètres, par calques — annexe) : vue en plan à l'échelle 1, panneaux CP à découper, gabarits 1:1 et vues des feuilles ; pour le chantier : calepinage CP consolidé (+ un DXF par plan dans le ZIP).</li>
 <li><b>CSV</b> : débit à plat, pour un tableur ou un logiciel de découpe.</li>
 <li><b>XLSX</b> : synthèse à commander, débit CP et bois par plan avec sous-totaux, débit des barres.</li>
-<li><b>ZIP</b> : tout à la fois.</li></ul></div>
+<li><b>ZIP</b> : DXF, CSV et XLSX à la fois.</li>
+<li><b>glTF</b> et <b>IFC4</b> : maquettes 3D et BIM, voir 7.20.</li></ul></div>
 <div class="fig" style="flex:0 0 42%"><img src="img/18_export.png"><div class="cap">Fenêtre Exporter</div></div></div>
 <div class="note"><b>Ouvrir le DXF dans AutoCAD</b>Régler les unités d'insertion en <b>millimètres</b>. Les textes utilisent la police standard (txt.shx) : les caractères spéciaux sont remplacés (Ø écrit avec le code AutoCAD <code>%%c</code>, ° avec <code>%%d</code>). Le <b>DWG</b> n'est pas généré (format propriétaire) : ouvrir le DXF puis « Enregistrer sous… DWG ». Les vues des feuilles ne sont pas à l'échelle : utiliser les cotes inscrites.</div>
 
@@ -411,6 +412,22 @@ code{font:9pt 'DejaVu Sans Mono',monospace;background:#f1f3f7;padding:0 1mm;bord
 <p>À l'impression (bouton 🖨 ou <kbd>Ctrl</kbd>+<kbd>P</kbd>), chaque vue cotée est réduite à l'échelle normalisée immédiatement inférieure à la place disponible : la géométrie est redessinée plus petite, les cotes et les textes gardent leur taille. L'échelle est écrite après le titre de la vue (« Éch. 1/10 »), une barre d'échelle graduée est placée en bas à droite de la case et le cartouche liste les échelles de la feuille.</p>
 <div class="warn"><b>Imprimer à 100 %</b>Dans la boîte d'impression, garder « Mise à l'échelle : par défaut » (ou 100 %) et le même format de papier que celui de la carte Impression. Si le papier ou le réglage diffère, le navigateur réduit la feuille : l'échelle écrite devient fausse, la barre d'échelle reste juste (mesurer la barre pour contrôler).</div>
 <p>L'aperçu à l'écran n'est pas à l'échelle ; l'échelle s'applique à l'aperçu avant impression et au papier. Pour des vues plus grandes sans échelle, choisir « Agrandie à la case ».</p>
+
+<h2>7.20 Exports 3D / BIM : glTF et IFC4</h2>
+<p>Carte <b>📤 Exporter</b> → <b>🧊 glTF (.glb)</b> ou <b>🏗 IFC4 (.ifc)</b>, pour le plan affiché ou tous les plans du chantier (un fichier par ouvrage, réunis dans un ZIP). Le glTF s'exporte aussi depuis la vue 3D (bouton <b>⬇ glTF</b>).</p>
+<ul><li><b>Même modèle que la vue 3D</b>, une pièce par pièce du débit : chaque objet est nommé par son <b>repère</b> (R01-J1, R01-B2…). Les parois plus grandes que le panneau sont découpées aux mêmes joints qu'au débit (R01-J1a, R01-J1b…). Les pièces hors débit gardent le nom de l'ouvrage suivi de leur nature (R01-poutrelle, R01-tube carton).</li>
+<li><b>Un objet parent par ouvrage</b>, nommé par sa référence ; couleurs de la légende (joues, fonds, goussets, bois, tubes…).</li>
+<li><b>glTF</b> (.glb, glTF 2.0 binaire) : en mètres, axe vertical Y (convention glTF). <b>Assemblé</b> par défaut ; case « glTF éclaté » : même éclaté que la vue 3D à 100 %. Chaque objet porte en données complémentaires (« extras ») son repère, sa désignation, ses dimensions, son épaisseur et son matériau.</li>
+<li><b>IFC4</b> (.ifc) : toujours <b>assemblé</b>, en millimètres. Projet → site → bâtiment → niveau 0 → un <b>assemblage</b> (IfcElementAssembly) par ouvrage. Contreplaqué = <b>IfcPlate</b>, bois = <b>IfcMember</b>, tubes carton, tube PVC et poches = <b>IfcBuildingElementProxy</b>. Pièces prismatiques extrudées, autres pièces en facettes. Chaque pièce porte le jeu de propriétés <b>« CoffraPlan »</b> (repère, désignation, dimensions, épaisseur, matériau, chantier, référence du plan) et les quantités standard (surface, volume, longueur des bois).</li></ul>
+<div class="warn"><b>Pas de géoréférencement</b>L'origine du fichier est le croisement des axes X / Y de l'ouvrage (voir 7.21), au niveau bas du coffrage. Dans Revit (« Insérer → Lier IFC » ou « Ouvrir → IFC »), comme dans les autres logiciels, l'ouvrage arrive à l'<b>origine du projet</b> : le déplacer ensuite à sa place à partir de ses axes et de son niveau.</div>
+<div class="note"><b>Ce qui a été contrôlé, et ce qui ne l'a pas été</b>Les fichiers IFC sont relus par la bibliothèque ifcopenshell (conformité au schéma IFC4, volumes et nombre de pièces comparés au débit) et les fichiers glTF par le validateur officiel Khronos, sur l'ensemble des formes. Ils n'ont pas encore été ouverts dans Revit, ArchiCAD, BIMcollab, Solibri ni dans une visionneuse glTF du commerce : faire un essai sur votre logiciel avant de s'en servir pour une synthèse.</div>
+<p>Il n'existe pas en IFC4 de classe d'élément « coffrage » : le schéma ne prévoit qu'une <i>ressource</i> de coffrage (IfcConstructionProductResource, type FORMWORK), sans géométrie. Les pièces sont donc des plaques, des barres et des éléments génériques, regroupés par ouvrage.</p>
+
+<h2>7.21 Cotes d'implantation</h2>
+<div class="row"><div>
+<p>Sur la vue de dessus, les <b>axes de l'ouvrage</b> sont tracés en <b>bleu</b> (trait mixte) et repérés <b>X</b> (horizontal, repère à gauche) et <b>Y</b> (vertical, repère en haut). Les <b>cotes d'implantation</b>, en bleu, partent de ces axes : valeurs signées, <b>+</b> vers la droite et vers le haut de la feuille, <b>−</b> vers la gauche et vers le bas. Les cotes de fabrication restent en rouge.</p>
+<p>Forme spéciale avec poteaux : un tableau donne la position de chaque poteau (x, y) depuis les axes. Les files du bâtiment ne sont pas reportées : implanter les axes de l'ouvrage depuis le plan du bureau d'études.</p></div>
+<div class="fig" style="flex:0 0 52%"><img src="img/28_implantation.png"><div class="cap">Axes X / Y et cotes d'implantation (forme spéciale avec poteaux)</div></div></div>
 
 <!-- ======================= 8 ======================= -->
 <h1 class="chap">8. Raccourcis clavier</h1>

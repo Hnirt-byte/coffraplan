@@ -3,6 +3,60 @@
 Détail complet de chaque version (demandes, écarts voulus, tests, non validé) : `docs/historique/HANDOFF_<version>.md`.
 Chaque version est un tag git (`git diff v2.4 v2.5 -- app/` pour voir les changements).
 
+## v3.0 — exports 3D / BIM, cotes d'implantation, gel avant bêta
+**Demandes (Kévin, 18/10/2026)** : 1. export glTF (.glb) depuis la vue 3D et la carte Export (même modèle, m, Y vers le haut,
+une pièce = un nœud nommé par son repère, un nœud par ouvrage, couleurs de la palette, assemblé ou éclaté) ; 2. export IFC4
+assemblé (projet / site / bâtiment / niveau, mm, origine locale, CP = IfcPlate, bois = IfcMember, tubes et poches =
+IfcBuildingElementProxy, un IfcElementAssembly par ouvrage, extrusions ou facettes, Pset « CoffraPlan » et quantités) ;
+3. cotes d'implantation (axes de l'ouvrage, cotes depuis les axes, en bleu) ; 4. gel et préparation de la bêta.
+
+**Fait**
+- **glTF 2.0 binaire** (`glbFile`) : écrit sans bibliothèque (JSON + bloc binaire) ; triangulation par three.js r170 (déjà
+  intégré, non modifié). Un nœud racine par ouvrage (référence du plan), un nœud par pièce nommé par son repère, matériaux PBR
+  (métal 0, rugosité 0,85) aux couleurs de la palette, « extras » : repère, désignation, dimensions, épaisseur, matériau.
+  Mètres, Y vers le haut. Case « éclaté » : éclaté de la vue 3D à 100 %. Boutons : carte Export (🧊 glTF) et vue 3D (⬇ glTF).
+- **IFC4** (`ifcFile`, texte STEP) : IfcProject / IfcSite / IfcBuilding / IfcBuildingStorey, unités mm / m² / m³, sans
+  géoréférencement ; un IfcElementAssembly par ouvrage nommé par sa référence, placé pour que le croisement de ses axes X / Y
+  soit à l'origine ; pièces IfcPlate (SHEET), IfcMember (MEMBER), IfcBuildingElementProxy (USERDEFINED : Tube carton, Tube PVC,
+  Poche) ; prismes extrudés (IfcExtrudedAreaSolid, profils polygonaux, cercles, couronnes, perçages des poteaux en vides),
+  autres pièces en facettes (IfcFacetedBrep) ; couleurs (IfcSurfaceStyle), matériaux (IfcMaterial), Pset « CoffraPlan »
+  (Repère, Désignation, Dimensions, Épaisseur, Matériau, Chantier, Référence du plan), quantités Qto_PlateBaseQuantities /
+  Qto_MemberBaseQuantities / Qto_BuildingElementProxyQuantities. GlobalId déterministes (même plan → mêmes identifiants).
+  Chantier : un fichier par ouvrage, réunis dans un ZIP.
+- **Pièces exportées = pièces du débit** (`bimModel`, `bimSplit`, `bimTags`) : les parois plus grandes que le panneau sont
+  découpées aux joints du débit (J1a, J1b… ; phase des joints des parois cintrées reprise de `jointGeo`, nouvelle clé `R.ja`),
+  le fond de goulotte en n secteurs, les pièces identiques prennent le repère de leur jumelle, les autres sont rapprochées d'une
+  ligne du débit par leurs cotes, leur surface ou leur famille (planches découpées de la dalle). Les cerces évidées des caissons
+  de voile (4 morceaux en 3D) forment une seule pièce, comme au débit.
+- **Classe IFC « coffrage »** : vérifié dans les schémas IFC4 et IFC4X3_ADD2 fournis avec ifcopenshell — aucune classe
+  d'élément physique de coffrage ; seul `IfcConstructionProductResourceTypeEnum.FORMWORK` existe, pour une *ressource*
+  (IfcConstructionProductResource) sans placement ni géométrie. Classes retenues : celles demandées.
+- **Cotes d'implantation** (vues en plan) : axes de l'ouvrage en bleu (trait mixte) repérés X (bulle à gauche) et Y (bulle en
+  haut), cotes signées depuis les axes (+ vers la droite / le haut de la feuille) ; forme spéciale avec poteaux : tableau
+  d'implantation des poteaux (x, y). Formes traitées : voir « Écarts voulus ».
+- Version v3.0 ; mode d'emploi : § 7.20 Exports 3D / BIM, § 7.21 Cotes d'implantation, captures.
+
+**Écarts voulus** (t_avap) : vues en plan — cote « L/2 » et « l/2 » remplacées par des cotes signées ±L/2, ±l/2 depuis les axes,
+bulles X / Y, tableau des poteaux. t_v210 : contrôle du numéro de version retiré (porté par t_ux et t_v30) ; t_v26, t_v28 : « v2.x ou suivante » admet aussi v3.x ; t_ux : version v3.0.
+`tests/requirements.txt` : ifcopenshell 0.9.0.post1 (tests seulement).
+
+**Tests** : t_v30 (nouveau) : 36 scénarios + 10 plans aléatoires par forme — IFC relu par ifcopenshell sans erreur de schéma,
+une pièce IFC par pièce du débit (repère et nombre), volumes CP et bois = débit (± 1 %), volume géométrique = quantité
+déclarée ; GLB assemblé et éclaté (en-tête, nœuds, noms, couleurs, unités, volumes) ; boutons ; cotes d'implantation.
+Validateur Khronos glTF (npm `gltf-validator`, hors banc) : 72 fichiers, 0 erreur, 0 avertissement.
+
+**Limites connues (bêta)**
+- glTF et IFC **non ouverts dans un vrai logiciel** (Revit, ArchiCAD, BIMcollab, Solibri, visionneuse glTF) : seuls ifcopenshell
+  et le validateur Khronos les ont lus.
+- Pas de géoréférencement ni de files du bâtiment : l'ouvrage arrive à l'origine du projet, à déplacer à la main.
+- Plans aléatoires extrêmes (3 sur 386 essayés) : un couvre-joint ou un cadre d'about non rapproché de sa ligne du débit, un
+  écart de volume de CP de 1,3 % entre la 3D et le débit (préexistant, poutre).
+- Poutrelles de la dalle, tubes carton et tube PVC : exportés mais hors débit (nommés « R01-poutrelle », « R01-tube carton »).
+- Béton existant (contexte transparent de la vue 3D) non exporté.
+- Cotes d'implantation : voir « Écarts voulus » pour les formes traitées.
+- Toujours non validé : impression papier réelle, DXF dans AutoCAD, Firefox / Safari, tablette réelle, Excel, carte graphique
+  réelle ; règles « à valider » de `hypRows` en attente de relecture professionnelle.
+
 ## v2.10 — échelle réelle, 3D des feuilles, correctifs A4
 **Demandes (Kévin, 18/10/2026)** : v2.10 cotes et échelle réelles, plus : 1. impression A4 : vues et informations
 masquées ; 2. vue 3D des feuilles encore à l'ancienne qualité, toutes formes ; 3. dalle, 3D éclatée à 100 % : le platelage

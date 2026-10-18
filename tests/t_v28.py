@@ -17,7 +17,7 @@ def t(s):
         pg.add_script_tag(path=os.path.join(HERE, 'auditx.js'))
         src = open(APP, encoding='utf-8').read()
         s.check('id="three-src"' in src and 'Copyright 2010-2024 Three.js Authors' in src and 'SPDX-License-Identifier: MIT' in src, 'three.js r170 intégré au fichier avec sa licence MIT (aucun accès réseau)')
-        s.check(ev("el('appVer').textContent").startswith('v2.'), 'application chargée')
+        s.check(ev("el('appVer').textContent").startswith(('v2.', 'v3.')), 'application chargée')  # v3.0 : numéro majeur 3 admis
 
         ev(OPEN, 'special_circ')
         pg.wait_for_function("V3D.gl===true", timeout=20000); pg.wait_for_timeout(200)

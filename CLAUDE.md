@@ -69,7 +69,12 @@ développement : il progresse vite mais n'est pas développeur senior.
   (`data-glk`) par une image WebGL (`glSnap`, `glWith` permute `V3D`/`GL3` le temps d'un rendu synchrone, `v3GLFrame` partagé
   avec la vue interactive) ; `glPrint` attend les images avant `window.print`. Règles « écran étroit » en `@media screen`
   (sinon Chrome peut les appliquer à l'impression A4). Dalle : le platelage s'élève en éclaté (plus d'`exMode`).
-- Version affichée : élément `#appVer` (« v2.10 »). Le test t_ux vérifie ce numéro.
+- v3.0 : exports BIM — `bimModel` (pièces de `model3` regroupées par coque `rg` ou pièce en morceaux `pg`, origine = centre de
+  l'emprise), `bimSplit` (tronçons du débit : faces enregistrées `s.jw`, phase des joints cintrés `R.ja` de `jointGeo`),
+  `bimTags` (repères), `bimGeo` / `bimVol` / `bimQty` / `bimInfo` ; `glbFile` (glTF binaire, m, Y vers le haut), `ifcFile`
+  (IFC4 STEP, mm, GlobalId déterministes `ifcGuid`), `expBim` (carte Export, vue 3D). Cotes d'implantation : `axImpl` (axes X / Y
+  en bleu) et `sgn` (cotes signées). Banc `tests/t_v30.py` (ifcopenshell).
+- Version affichée : élément `#appVer` (« v3.0 »). Les tests t_ux et t_v30 vérifient ce numéro.
 
 ## Décisions actées (ne pas changer sans l'accord de Kévin)
 - Palette : joues CP `#EBD9B4`, fond inférieur `#B4532A`, fond supérieur `#E8A92E`, goussets `#F26B1D`, cloisons et
