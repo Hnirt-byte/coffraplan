@@ -1,8 +1,8 @@
 # Module d'import de plans
 
 État : **intégré à l'appli** (fenêtre unique « Importer un plan » : DXF et PDF). Lecteur DXF ASCII (`dxf.js`), détecteur, adaptateur et
-fenêtre sont des sources séparées (plus `nomenclatures.js`), assemblées dans `app/CoffraPlan.html` (bloc `<script id="cpi-src">`, § 3). Pas de
-décodeur IFC ni PDF. Bancs : `tests/t_import.py` (contrat), `tests/t_dxf.py` (vrais DXF écrits par ezdxf),
+fenêtre sont des sources séparées (plus `nomenclatures.js`), assemblées dans `app/CoffraPlan.html` (bloc `<script id="cpi-src">`, § 3). PDF à texte
+extractible pris en charge (`pdf.js`, § Import PDF) ; pas de décodeur IFC. Bancs : `tests/t_import.py` (contrat), `tests/t_dxf.py` (vrais DXF écrits par ezdxf),
 `tests/t_dxf_ui.py` (interface réelle : lecture, aperçu, confirmation, création, provenance, annulation, hors connexion).
 
 | Fichier | Composant | Dépend de |
@@ -14,7 +14,7 @@ décodeur IFC ni PDF. Bancs : `tests/t_import.py` (contrat), `tests/t_dxf.py` (v
 | `nomenclatures.js` | B'. Nomenclatures de réservations : textes et traits du DXF → tableaux, lignes, rapprochement avec les candidats de B (§ 5) | rien |
 | `adaptateur.js` | C. Adaptateur : réservation **confirmée** → plan CoffraPlan contrôlé par le moteur | moteur reçu en paramètre |
 | `fenetre.js` | D. Fenêtre « Importer un plan » (DXF, PDF) : fichier → A → B → choix de l'utilisateur → C → ajout des plans | l'appli (appelée au clic, jamais au chargement) |
-| `assembler.py` | Assemblage des 5 sources dans le HTML ; `--check` : échoue si le HTML diffère | Python, bibliothèque standard |
+| `assembler.py` | Assemblage des 7 sources JavaScript dans le HTML ; `--check` : échoue si le HTML diffère | Python, bibliothèque standard |
 
 A, B et C sont du JS vanilla (ES2017), sans DOM ni stockage, et s'enregistre dans un seul espace de noms global
 `CPI` (`CPI.lecteur`, `CPI.detecteur`, `CPI.adaptateur`). A et B tournent dans une page vide (vérifié par t_import).
