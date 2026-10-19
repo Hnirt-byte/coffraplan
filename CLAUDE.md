@@ -25,7 +25,7 @@ développement : il progresse vite mais n'est pas développeur senior.
   Firefox / Safari, tablette réelle, Excel. Seul Chromium est testé automatiquement.
 
 ## Architecture
-- **`app/CoffraPlan.html` est la seule source** : HTML, CSS et JS vanilla, sans étape de construction ; environ 1,3 Mo.
+- **`app/CoffraPlan.html` est la seule source** : HTML, CSS et JS vanilla, sans étape de construction ; environ 6 Mo (dont PDF.js ≈ 1,8 Mo et OCR ≈ 2,65 Mo).
   Seule dépendance : **three.js r170** (licence MIT), intégrée telle quelle en fin de fichier dans
   `<script type="text/plain" id="three-src">`, chargée à la première ouverture de la vue 3D (`v3Three`). Ne pas la modifier ;
   pour la mettre à jour, remplacer ce bloc par `build/three.module.min.js` d'une version publiée.
@@ -90,6 +90,12 @@ développement : il progresse vite mais n'est pas développeur senior.
   `id="pdfjs-worker-src"` (empreintes SHA-256 vérifiées ; ne pas éditer ces blocs). Une page PDF = un espace, coordonnées en
   points ; aucune cote tirée du dessin. Fenêtre unique « 📥 Importer un plan » (DXF + PDF) ; PDF : aperçu, zone, saisie
   assistée (`dxp*`). Banc `t_pdf.py` (PDF fictifs de `tests/pdf_fictifs.py`).
+  OCR des nomenclatures en tracés ou numérisées : `ocr.js` (`CPI.ocr.lireZone` / `grille` / `versNomenclature`) sur
+  **Tesseract.js 7.0.0** (cœur simd-lstm, modèle fra best_int ; Apache-2.0) copié dans `modules/import/vendor/tesseract/`
+  (README : empreintes, mise à jour) et recopié par `assembler.py` dans les blocs `tess-*` (ne pas les éditer) ; worker blob,
+  aucune requête réseau. Rendu de zone par `CPI.pdf.rendreZone`, tableau par `nomenclatures.analyser` (pas de 2e moteur),
+  grille de vérification `dxo*`, `origineImport.type = 'ocr'` + clé `ocr` (brut, confiance, corrigé). Banc `t_ocr.py`
+  (PDF fictifs de `tests/pdf_ocr_fictifs.py` : textes en contours, scan ; fontTools + police Liberation / DejaVu).
 - Version affichée : élément `#appVer` (« v3.0 »). Les tests t_ux et t_v30 vérifient ce numéro.
 
 ## Décisions actées (ne pas changer sans l'accord de Kévin)

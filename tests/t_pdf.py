@@ -183,7 +183,7 @@ def t(s):
         pg.click('#bDxi'); pg.set_input_files('#dxiF', F['PDF_4_GRAPHIQUE.pdf'])
         pg.wait_for_function('el("dxpPg")&&el("dxpPg").textContent.includes("Page 1 / 2")')
         n = pg.inner_text('#dxiN')
-        s.check('aucune nomenclature lisible automatiquement : saisie assistée' in n and pg.is_visible('#dxiPP'), 'PDF graphique : rapport « saisie assistée », aperçu ouvert', n)
+        s.check('aucune nomenclature lisible automatiquement : OCR ou saisie assistée' in n and pg.is_visible('#dxiPP'), 'PDF graphique : rapport « saisie assistée », aperçu ouvert', n)
         s.check('Aucune nomenclature de réservations exploitable' in J('el("dxiPN").textContent') and J('DXI.NL.length') == 0, 'aucune ligne proposée (rien d\'inventé)')
         pg.click('#dxiPP button[aria-label="Page suivante"]')
         pg.wait_for_function('el("dxpPg").textContent.includes("Page 2 / 2")'); pg.wait_for_timeout(500)

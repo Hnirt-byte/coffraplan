@@ -95,8 +95,16 @@ async function rendre(pdf,n,canvas,echelle){const pg=await pdf.getPage(n),vp=pg.
   const t=pg.render({canvas,canvasContext:canvas.getContext('2d'),viewport:vp,transform:r!==1?[r,0,0,r,0,0]:null});
   return t}
 
+// Rendu d'une zone de page (points PDF, Y vers le haut, page affichée : rotation comprise) dans un canvas neuf, fond blanc,
+// à k pixels par point (OCR) ; le PDF n'est pas modifié
+async function rendreZone(pdf,n,z,k){const pg=await pdf.getPage(n),vp=pg.getViewport({scale:k}),H=vp.height/k,cv=root.document.createElement('canvas');
+  cv.width=Math.max(1,Math.ceil((z.x1-z.x0)*k));cv.height=Math.max(1,Math.ceil((z.y1-z.y0)*k));const g=cv.getContext('2d',{willReadFrequently:true});
+  g.fillStyle='#fff';g.fillRect(0,0,cv.width,cv.height);
+  await pg.render({canvas:cv,canvasContext:g,viewport:vp,transform:[1,0,0,1,-z.x0*k,-(H-z.y1)*k],background:'#fff'}).promise;
+  return cv}
+
 // Libère un document lu (le worker partagé reste ouvert pour le PDF suivant)
 function fermer(pdf){try{const t=pdf&&pdf.loadingTask;if(t)t.destroy().catch(()=>{})}catch(e){}}
 
-root.CPI=Object.assign(root.CPI||{},{pdf:{charger,lire,rendre,fermer,nature,LIB_NAT}});
+root.CPI=Object.assign(root.CPI||{},{pdf:{charger,lire,rendre,rendreZone,fermer,nature,LIB_NAT}});
 })(typeof globalThis!=='undefined'?globalThis:this);
