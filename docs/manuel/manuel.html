@@ -130,7 +130,7 @@ code{font:9pt 'DejaVu Sans Mono',monospace;background:#f1f3f7;padding:0 1mm;bord
 <div class="c">4. Lire les feuilles</div><div>Plan · Débit · traçage · contrôles · Informations · CP à découper · Montage 3D · Fiche atelier · Repères</div>
 <div class="c">5. Gérer les plans</div><div>Liste · Modifier · Dupliquer · Supprimer · Annuler / rétablir</div>
 <div class="c">6. Sauvegarder et charger</div><div>Fichier .json · Rappel · Brouillon</div>
-<div class="c">7. Fonctions avancées</div><div>Profil chantier · Bibliothèque · Série depuis un tableau · Comparer deux indices · Auto-contrôle et corrections · Vue 3D · Gabarits 1:1 · Déplacement à la souris · Récapitulatif chantier · Dossier PDF · Exports DXF / CSV / XLSX · Mode chantier · Impression · Aperçu en attente · Cartes repliables · Flèche du CP · Note d'hypothèses · Cartouche entreprise · Exports 3D / BIM (glTF, IFC4) · Cotes d'implantation</div>
+<div class="c">7. Fonctions avancées</div><div>Profil chantier · Bibliothèque · Série depuis un tableau · Comparer deux indices · Auto-contrôle et corrections · Vue 3D · Gabarits 1:1 · Déplacement à la souris · Récapitulatif chantier · Dossier PDF · Exports DXF / CSV / XLSX · Mode chantier · Impression · Aperçu en attente · Cartes repliables · Flèche du CP · Note d'hypothèses · Cartouche entreprise · Exports 3D / BIM (glTF, IFC4) · Cotes d'implantation · Import d'un plan DXF</div>
 <div class="c">8. Raccourcis clavier</div>
 <div class="c">9. Bonnes pratiques et dépannage</div>
 <div class="c">Annexe — calques DXF</div>
@@ -429,6 +429,17 @@ code{font:9pt 'DejaVu Sans Mono',monospace;background:#f1f3f7;padding:0 1mm;bord
 <p>Toutes les formes ont leurs axes. Le croisement des axes est le centre de l'ouvrage, sauf : <b>voile cintré</b> (Y = axe radial de la réservation, X = corde à mi-épaisseur), <b>poutre</b> (X = axe de la poutre, Y = milieu de la portée nu à nu), <b>parallélépipède oblique</b> (X = axe du voile, Y = normale au voile au centre de la réservation ; bords de l'ouverture cotés sur chaque parement), <b>goulotte en arc</b> (Y = axe de symétrie, X = milieu de l'emprise).</p>
 <p>Forme spéciale et poutre avec poteaux : un tableau donne la position de chaque poteau (x, y) depuis les axes. Les files du bâtiment ne sont pas reportées : implanter les axes de l'ouvrage depuis le plan du bureau d'études.</p></div>
 <div class="fig" style="flex:0 0 52%"><img src="img/28_implantation.png"><div class="cap">Axes X / Y et cotes d'implantation (forme spéciale avec poteaux)</div></div></div>
+
+<h2>7.22 Importer un plan DXF</h2>
+<p>Pour créer les réservations dessinées sur un plan DXF (plan de réservations du bureau d'études) : <b>📥 Importer DXF</b> (barre du haut) ou <b>📥 Importer un plan DXF</b> (carte Plans ou accueil). Le chargement des projets (.json) n'est pas concerné.</p>
+<ol><li><b>Choisir un fichier .dxf</b> (DXF ASCII, R12 à R2018). Le nom du fichier et son unité s'affichent. <b>Unité absente</b> (toujours le cas en R12) : la choisir (mm, cm ou m) ; elle n'est jamais devinée.</li>
+<li>Vérifier le <b>chantier</b> et l'<b>ouvrage</b> (repris du formulaire), l'<b>indice du plan source</b> et, si les réservations ont la même hauteur, la <b>hauteur commune</b> ; une hauteur saisie sur une ligne la remplace pour cette ligne.</li>
+<li>Cocher les <b>calques analysés</b>. Le bilan compte les réservations potentielles et les géométries non prises en charge (lignes séparées, arcs, blocs, textes… : listées avec la raison, jamais créées).</li>
+<li>Contrôler chaque ligne : identifiant de l'entité DXF, calque, <b>forme</b> (rectangle → rectangulaire, carré → carré, cercle → circulaire ; « avec fond » seulement si on le choisit), cotes converties en mm, hauteur, référence (vide = numérotation automatique), statut. Une référence déjà utilisée dans l'ouvrage est signalée et la ligne n'est pas créée.</li>
+<li>Le <b>schéma</b> place les réservations reconnues à leur position et leur orientation dans le DXF ; un clic sur une réservation la retrouve dans la liste, et inversement. Ce n'est pas un rendu complet du fichier.</li>
+<li>Cocher <b>Créer</b> sur les lignes voulues (ou <b>Confirmer les lignes prêtes</b>), puis <b>Créer les ouvrages sélectionnés (N)</b>. Rien n'est créé avant ce clic ; les plans existants ne sont jamais remplacés. « Annuler » dans le message retire tout l'import.</li></ol>
+<p class="small">Les cotes du contour dessiné sont l'encombrement extérieur de la boîte ou du fourreau : aucune épaisseur de contreplaqué n'est ajoutée. Contreplaqué et options sont repris du formulaire ou du profil du chantier (rappelés sous la liste avant création) ; les références automatiques ne reprennent jamais une référence déjà prise ou saisie dans l'import. Chaque plan importé garde son origine (fichier, calque, entité, unité, centre, orientation, cotes initiales, indice), conservée après modification et dans la sauvegarde ; un duplicata ne la reçoit pas.</p>
+<div class="fig"><img src="img/29_import_dxf.png" style="max-width:96%"><div class="cap">Import d'un plan DXF : schéma, liste des réservations, confirmation</div></div>
 
 <!-- ======================= 8 ======================= -->
 <h1 class="chap">8. Raccourcis clavier</h1>

@@ -1,8 +1,9 @@
-# Module d'import de plans (fondation, hors appli)
+# Module d'import de plans
 
-État : contrat + **lecteur DXF ASCII** (`dxf.js`). Pas de décodeur IFC ni PDF, pas d'interface. Le module n'est **pas** inclus dans
-`app/CoffraPlan.html` : l'appli, ses résultats et son format de sauvegarde sont inchangés. Bancs : `tests/t_import.py`
-(contrat), `tests/t_dxf.py` (vrais DXF écrits par ezdxf).
+État : **intégré à l'appli** (fenêtre « Importer un plan DXF »). Lecteur DXF ASCII (`dxf.js`), détecteur, adaptateur et
+fenêtre sont des sources séparées, assemblées dans `app/CoffraPlan.html` (bloc `<script id="cpi-src">`, § 3). Pas de
+décodeur IFC ni PDF. Bancs : `tests/t_import.py` (contrat), `tests/t_dxf.py` (vrais DXF écrits par ezdxf),
+`tests/t_dxf_ui.py` (interface réelle : lecture, aperçu, confirmation, création, provenance, annulation, hors connexion).
 
 | Fichier | Composant | Dépend de |
 |---|---|---|
@@ -10,8 +11,10 @@
 | `dxf.js` | Décodeur DXF ASCII, inscrit dans `CPI.lecteur.DECODEURS.dxf` (charger après `lecteur.js`) | `lecteur.js` |
 | `detecteur.js` | B. Détecteur : document normalisé → réservations **potentielles** | rien |
 | `adaptateur.js` | C. Adaptateur : réservation **confirmée** → plan CoffraPlan contrôlé par le moteur | moteur reçu en paramètre |
+| `fenetre.js` | D. Fenêtre « Importer un plan DXF » : fichier → A → B → choix de l'utilisateur → C → ajout des plans | l'appli (appelée au clic, jamais au chargement) |
+| `assembler.py` | Assemblage des 5 sources dans le HTML ; `--check` : échoue si le HTML diffère | Python, bibliothèque standard |
 
-Chaque fichier est du JS vanilla (ES2017), sans DOM ni stockage, et s'enregistre dans un seul espace de noms global
+A, B et C sont du JS vanilla (ES2017), sans DOM ni stockage, et s'enregistre dans un seul espace de noms global
 `CPI` (`CPI.lecteur`, `CPI.detecteur`, `CPI.adaptateur`). A et B tournent dans une page vide (vérifié par t_import).
 
 ## 1. Cartographie utile à l'intégration (lue dans `app/CoffraPlan.html`, v3.0)
@@ -95,6 +98,8 @@ Encodage : le texte est reçu déjà décodé ; l'interface devra lire les R12 e
 - Provenance hors du plan pour l'instant ; elle devra devenir **persistante** avant l'intégration fonctionnelle : fichier
   source, calque, identifiant, coordonnées, orientation et indice (l'indice n'existe pas en DXF : il viendra de la saisie).
   À vérifier ensuite : provenance conservée après modification du plan via `coll()`.
+- 19/10/2026 (demande d'intégration) : provenance **dans le plan**, clé optionnelle `origineImport`, enveloppe JSON inchangée ;
+  hauteur commune facultative, modifiable par ligne ; formes avec fond seulement sur choix explicite.
 - Pas de refactorisation supplémentaire du moteur existant.
 
 ### B → candidats (`CPI.detecteur.detecter(doc, {tol})`)
@@ -133,26 +138,42 @@ sommet (écarte le quadrilatère croisé), à `tol` près (0,5 % de la diagonale
 `provenance = {fichier, format, calque, id, candidat, unite_source, unite, centre, dims_source, h_saisie}`. C ne modifie ni
 `P`, ni le stockage, ni le modèle : il renvoie un nouvel objet ; l'enregistrement reste une action de l'utilisateur.
 
-## 3. Fichiers séparés et HTML autonome (étude, rien de mis en place)
+## 3. Fichiers séparés et HTML autonome (en place)
 
-Constat : l'appli n'a pas d'étape de construction et doit rester un seul fichier hors connexion. Le module vit à part pour
-être testé seul. Quand il entrera dans l'appli, proposition d'assemblage local déterministe, sans dépendance :
-- un script Python (bibliothèque standard) remplace un bloc balisé dans `app/CoffraPlan.html`, par exemple
-  `<script id="cpi-src">…</script>` placé avant le `<script>` principal, par la concaténation de `lecteur.js`,
-  `detecteur.js`, `adaptateur.js` dans cet ordre ;
-- mode `--check` (en CI) : échoue si le bloc du HTML diffère des sources ; le HTML reste la seule chose livrée ;
-- `app/CoffraPlan.html` reste éditable à la main, seul ce bloc est généré.
-Comparé à un bundler (esbuild, Rollup) : inutile pour 3 fichiers sans import, et ajouterait des dépendances npm à maintenir.
+- `python modules/import/assembler.py` remplace le bloc `<script id="cpi-src">…</script>` de `app/CoffraPlan.html` (placé
+  avant le `<script>` principal) par `lecteur.js`, `dxf.js`, `detecteur.js`, `adaptateur.js`, `fenetre.js`, dans cet ordre,
+  chacun précédé de son nom. Résultat déterministe (fins de ligne normalisées), bibliothèque standard Python seulement.
+- `--check` échoue si le bloc diffère des sources : lancé par `tests/syntax.sh` (étape « Syntaxe » de la CI) et par t_dxf_ui.
+  Une source modifiée sans réassemblage fait donc échouer la CI.
+- Le reste du HTML s'édite toujours à la main ; l'appli reste un fichier unique, hors connexion, sans CDN ni serveur.
+
+## Intégration dans l'appli (fenêtre D)
+- Accès : bouton `#bDxi` « 📥 Importer DXF » (barre du haut), « 📥 Importer un plan DXF » (carte Plans, accueil). `impJ`
+  (chargement d'un projet .json) n'est pas touché.
+- Lecture du fichier : UTF-8 strict, sinon CP-1252 (R12 à R2004). Unité absente → choix mm / cm / m exigé avant toute création.
+- Modèles de plan par forme : `coll()` après changement de forme et `applyProf(true)`, avec le chantier et l'ouvrage de la
+  fenêtre, puis formulaire, plan affiché (`EI`) et historique rétablis (méthode de `serAnalyse`).
+- Chaque ligne passe par `versPlan` (contrôles `limErr` / `checks` / `badDims`) ; statuts : ✓ prêt, ⚠ prêt avec alertes,
+  « à compléter » (unité, hauteur, chantier), ⛔ refusé (moteur, référence déjà utilisée dans l'ouvrage ou en double dans le
+  lot), non pris en charge (liste à part, jamais créé).
+- Création (chemin de `serCreate`) : seulement les lignes cochées « Créer », prêtes et sur un calque coché ; `P.push` (aucun
+  plan remplacé), références vides attribuées par `nextRef` en sautant celles du projet et celles saisies dans le lot (`dxiRefs`, contrôle
+  final : un doublon annule la création), `planUid`, `svP`, profils, liste ; « Annuler » dans le message retire
+  le lot et rétablit l'état d'avant.
+- Provenance (décision de Kévin, 19/10/2026) : `plan.origineImport = {fichier, format, calque, id, candidat, unite_source,
+  unite, centre, dims_source:{L, l, angle} | {D}, h_saisie, indice, date}` ; `unite_source` = unité du fichier (`null` si
+  absente), `unite` = unité retenue ; `indice` = indice du plan source saisi. Métadonnée seulement : le moteur ne la lit pas.
+  Enveloppe du fichier projet inchangée. Gardée par `addP` en mise à jour et par `fixAllPlans` ; absente d'un plan créé par
+  « Nouveau » ou `dupP` (copie indépendante). Le contenu du DXF n'est jamais stocké.
 
 ## 4. Intégration progressive proposée
 
 1. **Fait** : contrat, squelette, banc `t_import` sur objets fictifs.
 2. **Fait** : lecteur DXF (R12 / 2000+ ASCII) : `LWPOLYLINE`, `POLYLINE`, `CIRCLE`, `$INSUNITS`, calques ; arcs → `autre`.
    Testé sur des DXF produits par `ezdxf` (déjà dans `tests/requirements.txt`) puis sur de vrais plans de Kévin.
-3. Bloc `cpi-src` + script d'assemblage + `--check` en CI ; aucune fonction encore visible.
-4. Fenêtre « Importer un plan » calquée sur `openSeries` : liste des candidats (✓ / à compléter / non pris en charge),
-   filtre par calque, saisie de `h`, choix de la forme, confirmation ligne par ligne, création par le chemin de `serCreate`.
-5. Décision à prendre avec Kévin : garder ou non la provenance dans le plan (nouvelle clé → migration dans `migr`).
+3. **Fait** : bloc `cpi-src`, `assembler.py`, `--check` en CI.
+4. **Fait** : fenêtre « Importer un plan DXF » (aperçu, filtre par calque, hauteur, forme, confirmation, création, annulation).
+5. **Fait** : provenance dans le plan (`origineImport`, clé optionnelle : pas de migration nécessaire, les anciens plans n'en ont pas).
 6. IFC (`IfcOpeningElement`, hauteur connue), puis PDF vectoriel après étude.
 
 ## Protocole de validation sur un vrai plan de chantier (à faire, hors Git)
@@ -174,3 +195,7 @@ Comparé à un bundler (esbuild, Rollup) : inutile pour 3 fichiers sans import, 
 - Orientation (`angle`) et position (`centre`) ne sont gardées que dans la provenance : un plan CoffraPlan n'a pas de
   position absolue.
 - `limErr` lit le libellé d'unité dans le formulaire pour ses messages : sans formulaire, le message dirait « mm ».
+- Fenêtre testée dans Chromium seulement (t_dxf_ui) : ni Firefox, ni Safari, ni tablette réelle. Aperçu : polylignes et
+  cercles seulement ; la fenêtre ne propose que rect / carré (avec ou sans fond) et fourreau.
+- Modèle de plan repris du formulaire (CP, options de la forme affichée, ex. goussets) : vérifier le formulaire avant import.
+- Au-delà de 300 géométries non prises en charge, la liste n'affiche que les 300 premières (le bilan les compte toutes).

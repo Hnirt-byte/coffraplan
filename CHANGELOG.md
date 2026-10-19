@@ -3,6 +3,24 @@
 Détail complet de chaque version (demandes, écarts voulus, tests, non validé) : `docs/historique/HANDOFF_<version>.md`.
 Chaque version est un tag git (`git diff v2.4 v2.5 -- app/` pour voir les changements).
 
+## Non publié — import DXF dans l'appli
+**Demande (Kévin, 19/10/2026)** : rendre l'import DXF utilisable dans CoffraPlan : fenêtre « Importer un plan DXF » (fichier,
+unité, calques, liste et aperçu synchronisés), préparation (forme, hauteur commune ou par ligne, référence, chantier, ouvrage,
+indice du plan source), création sur confirmation explicite seulement, annulable, provenance persistante dans le plan.
+
+**Fait** : `modules/import/fenetre.js` (fenêtre, fonctions `dxi*`) ; `modules/import/assembler.py` assemble les 5 sources dans
+le bloc `<script id="cpi-src">` de `app/CoffraPlan.html` (`--check` dans `tests/syntax.sh`). Appli : boutons d'accès (barre
+du haut, carte Plans, accueil) ; clé optionnelle `origineImport` des plans importés, gardée par `addP` (mise à jour) et
+`fixAllPlans`, retirée par `dupP`. Enveloppe du fichier projet inchangée, aucune migration (anciens plans sans la clé).
+Références automatiques du lot attribuées après réservation des références du projet et de celles saisies dans le lot,
+puis contrôle final avant tout ajout (relecture PR #5) ; rappel des réglages repris (CP, montage, options) avant création.
+Mode d'emploi § 7.22. Banc `tests/t_dxf_ui.py` (ajouté aux suites rapides).
+
+**Écarts voulus** : aucun sur le débit, les feuilles et les exports des plans existants (t_avap). Sur un plan importé, les
+clés internes `data-vk` / `data-glk` des feuilles (empreintes du plan) incluent la provenance ; contenu identique.
+
+**Non validé** : aucun DXF réel ni exporté par AutoCAD ; fenêtre vue dans Chromium seulement (ni Firefox, Safari, tablette).
+
 ## Non publié — lecteur DXF du module d'import
 **Demande (Kévin, 18/10/2026)** : premier vrai lecteur DXF dans `modules/import/` (unités, calques, identifiants, polylignes
 fermées droites, cercles, provenance), géométries ambiguës gardées en « non pris en charge », unité absente jamais devinée.
