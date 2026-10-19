@@ -157,7 +157,8 @@ sommet (écarte le quadrilatère croisé), à `tol` près (0,5 % de la diagonale
   « à compléter » (unité, hauteur, chantier), ⛔ refusé (moteur, référence déjà utilisée dans l'ouvrage ou en double dans le
   lot), non pris en charge (liste à part, jamais créé).
 - Création (chemin de `serCreate`) : seulement les lignes cochées « Créer », prêtes et sur un calque coché ; `P.push` (aucun
-  plan remplacé), `nextRef` pour les références vides, `planUid`, `svP`, profils, liste ; « Annuler » dans le message retire
+  plan remplacé), références vides attribuées par `nextRef` en sautant celles du projet et celles saisies dans le lot (`dxiRefs`, contrôle
+  final : un doublon annule la création), `planUid`, `svP`, profils, liste ; « Annuler » dans le message retire
   le lot et rétablit l'état d'avant.
 - Provenance (décision de Kévin, 19/10/2026) : `plan.origineImport = {fichier, format, calque, id, candidat, unite_source,
   unite, centre, dims_source:{L, l, angle} | {D}, h_saisie, indice, date}` ; `unite_source` = unité du fichier (`null` si

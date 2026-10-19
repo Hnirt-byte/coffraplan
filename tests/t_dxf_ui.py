@@ -6,6 +6,7 @@ DXF fictifs écrits par ezdxf (CHANTIER_DEMO_A) :
   9. provenance enregistrée, exportée en JSON, rechargée, conservée après réouverture ;
   10. provenance gardée après modification (coll / addP) ; 11. pas de provenance sur un duplicata ;
   12. import annulable (retour à l'état initial) ; 13. hors connexion ; 14. moteur inchangé (débit, feuilles, DXF de plan) ;
+  références automatiques du lot sans collision avec le projet ni les références saisies ; rappel des réglages repris ;
   + formulaire et saisie non enregistrée préservés ; bloc cpi-src du HTML = sources du module (assembler.py --check)."""
 import json, math, os, subprocess, sys, tempfile
 import ezdxf
@@ -143,7 +144,7 @@ def t(s):
         Pn = J('P.slice(1)')
         s.check([(p['forme'], p.get('L'), p.get('l'), p.get('D'), p['h']) for p in Pn] == [('rect', 1200, 600, None, 300), ('rect', 800, 400, None, 300), ('carre_fond', 500, 500, None, 300)],
                 '7. plans : formes, cotes du contour (sans ajout d\'épaisseurs CP), hauteur', json.dumps([(p['forme'], p.get('L'), p.get('l'), p['h']) for p in Pn]))
-        s.check([p['ref'] for p in Pn] == ['T02', 'T9', 'T10'] and all(p['ch'] == 'CHANTIER_DEMO_A' and p['ouv'] == 'OUVRAGE_DEMO' for p in Pn),
+        s.check([p['ref'] for p in Pn] == ['T02', 'T9', 'T03'] and all(p['ch'] == 'CHANTIER_DEMO_A' and p['ouv'] == 'OUVRAGE_DEMO' for p in Pn),
                 '7. références (saisie ou suivante libre), chantier et ouvrage courants', json.dumps([(p['ref'], p['ch'], p['ouv']) for p in Pn]))
         s.check(len({p['uid'] for p in J('P')}) == 4, '7. identifiants de plans distincts')
         # 8. plan existant conservé
@@ -203,6 +204,24 @@ def t(s):
         pg.click('#toast button:has-text("Annuler")')
         s.check(J('JSON.stringify(P)') == Pa and J('localStorage.getItem("resa3")') == Pa, '12. « Annuler » : retour exact à l\'état d\'avant l\'import')
 
+        # références automatiques du lot : jamais celles saisies dans le lot ni celles du projet (relecture PR #5)
+        J('''()=>{el('iCh').value='CHANTIER_DEMO_A';el('iOuv').value='OUVRAGE_REF';el('iForme').value='rect';updF();
+              el('dL').value=700;el('dl').value=500;el('dh').value=250;el('iRef').value='T01';EI=-1;addP()}''')
+        pg.click('#bDxi'); pg.set_input_files('#dxiF', multi); pg.wait_for_selector('#dxiT tr[data-i]')
+        s.check(pg.input_value('#dxiOuv') == 'OUVRAGE_REF', 'références : ouvrage courant repris (OUVRAGE_REF)')
+        pg.fill('#dxiH', '300'); pg.fill('#dxiT tr[data-i="1"] [data-k=ref]', 'T02')
+        pg.check('#dxiT tr[data-i="0"] [data-k=conf]'); pg.check('#dxiT tr[data-i="1"] [data-k=conf]')
+        rp = pg.text_content('#dxiP')
+        s.check('Repris du formulaire' in rp and 'Rectangulaire' in rp and 'mm' in rp and 'options' in rp, 'rappel des réglages repris (CP, montage, options) avant création', rp)
+        pg.click('#dxiGo')
+        R = J('''P.filter(p=>p.ouv==='OUVRAGE_REF').map(p=>p.ref)''')
+        s.check(sorted(R) == ['T01', 'T02', 'T03'] and J('P[P.length-2].ref') == 'T03' and J('P[P.length-1].ref') == 'T02',
+                'références : T01 existant, B saisie T02 → A automatique reçoit T03 (pas de doublon T02)', json.dumps(R))
+        n0 = J('P.length')
+        s.check(J('''(()=>{const L=[{ch:'CHANTIER_DEMO_A',ouv:'OUVRAGE_REF',ref:'T02'}];return dxiRefs(L)})()''') is False and J('P.length') == n0,
+                'références : dernière vérification refuse un doublon avec le projet, sans toucher aux plans')
+        A = J('''(()=>{const L=[{ch:'CHANTIER_DEMO_A',ouv:'OUVRAGE_REF',ref:''},{ch:'CHANTIER_DEMO_A',ouv:'OUVRAGE_REF',ref:'T04'},{ch:'CHANTIER_DEMO_A',ouv:'OUVRAGE_REF',ref:''}];return [dxiRefs(L),L.map(d=>d.ref)]})()''')
+        s.check(A == [True, ['T05', 'T04', 'T06']], 'références : plusieurs automatiques autour d\'une saisie, sans collision', json.dumps(A))
         s.check(not [u for u in net if 'fonts.g' not in u], '13. hors connexion : aucune requête réseau nécessaire', '; '.join(net[:5]))
         s.check(not [e for e in errs if 'net::' not in e], 'aucune erreur JS', '; '.join(errs[:5]))
         pg.screenshot(path=os.path.join(HERE, 'out', 't_dxf_ui.png'))

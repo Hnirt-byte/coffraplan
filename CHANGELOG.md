@@ -12,6 +12,8 @@ indice du plan source), création sur confirmation explicite seulement, annulabl
 le bloc `<script id="cpi-src">` de `app/CoffraPlan.html` (`--check` dans `tests/syntax.sh`). Appli : boutons d'accès (barre
 du haut, carte Plans, accueil) ; clé optionnelle `origineImport` des plans importés, gardée par `addP` (mise à jour) et
 `fixAllPlans`, retirée par `dupP`. Enveloppe du fichier projet inchangée, aucune migration (anciens plans sans la clé).
+Références automatiques du lot attribuées après réservation des références du projet et de celles saisies dans le lot,
+puis contrôle final avant tout ajout (relecture PR #5) ; rappel des réglages repris (CP, montage, options) avant création.
 Mode d'emploi § 7.22. Banc `tests/t_dxf_ui.py` (ajouté aux suites rapides).
 
 **Écarts voulus** : aucun sur le débit, les feuilles et les exports des plans existants (t_avap). Sur un plan importé, les

@@ -97,6 +97,7 @@ function dxiRender(){const D=DXI,Z=el('dxiZ');if(!Z||!D)return;const d=D.doc;
     Ce n'est pas un rendu complet du fichier : textes, lignes, blocs, hachures… ne sont pas dessinés.</div></div>
   <div><div style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap"><button class="btn bs bo" onclick="dxiAll(true)" title="Cocher les lignes visibles prêtes (✓ ou ⚠)">✓ Confirmer les lignes prêtes</button><button class="btn bs bo" onclick="dxiAll(false)">Tout décocher</button></div>
   <div class="dxi-t"><table class="ser" id="dxiT"><thead><tr><th title="Confirmer">Créer</th><th>#</th><th>Entité DXF</th><th>Calque</th><th>Forme</th><th>Cotes (mm)</th><th>h (mm)</th><th>Réf.</th><th>Statut</th></tr></thead><tbody></tbody></table></div></div></div>
+  <div class="hint" id="dxiP" style="margin:8px 0 0"></div>
   <details id="dxiNP"><summary></summary><table class="ser"><thead><tr><th>#</th><th>Entité DXF</th><th>Calque</th><th>Raison</th></tr></thead><tbody></tbody></table></details>`;
   dxiRows()}
 function dxiHph(){const v=DXI.hCom.trim();document.querySelectorAll('#dxiT input[data-k=h]').forEach(e=>{e.placeholder=v||'à saisir'})}
@@ -141,12 +142,27 @@ function dxiUpd(){const D=DXI;if(!D||!el('dxiT'))return;dxiEval();
   const V=D.C.map((c,i)=>i).filter(dxiVis),ok=V.filter(i=>D.C[i].statut==='a_confirmer'),nr=ok.filter(i=>D.C[i].type==='rect').length,
     pr=ok.filter(i=>D.R[i].x).length,cf=ok.filter(i=>D.R[i].conf).length,n=dxiReady().length;
   el('dxiS').innerHTML=`<b>${ok.length} réservation(s) potentielle(s)</b> (${nr} rectangle(s) ou carré(s), ${ok.length-nr} cercle(s)) · ${pr} prête(s) · ${cf} confirmée(s) · <b>${n} à créer</b> · ${V.length-ok.length} géométrie(s) non prise(s) en charge`;
-  dxiBtn()}
+  dxiParams();dxiBtn()}
+// Rappel des réglages repris du formulaire / du profil du chantier pour les formes à créer
+function dxiParams(){const D=DXI,z=el('dxiP');if(!z||!D.M)return;const F=[...new Set(dxiReady().map(i=>D.R[i].forme||dxiDef(D.C[i])))];
+  z.style.display=F.length?'':'none';
+  z.innerHTML='Repris du formulaire ou du profil du chantier : '+F.map(f=>{const m=D.M[f],o=[m.gs&&'goussets',m.renX&&'renforts en croix',m.feuil&&'feuillure'].filter(Boolean);
+    return `<b>${esc(fmLb(f))}</b> ${f==='circ'?'matériau '+esc(m.mat||'—'):esc(cpName(m.cp&&m.cp.j))+' · '+esc(String(m.mont||'').toLowerCase())+' · options : '+(o.length?o.join(', '):'aucune')}`}).join(' ; ')}
+
+// Références automatiques : celles du projet et celles saisies dans le lot sont réservées d'abord, puis nextRef sans collision
+const dxiKey=(d,r)=>chKey(d.ch)+'\u0000'+ouKey(d.ouv).toLowerCase()+'\u0000'+String(r==null?d.ref||'':r).toUpperCase();
+function dxiRefs(L){const used=new Set(P.map(p=>dxiKey(p)));L.forEach(d=>{if(d.ref)used.add(dxiKey(d))});
+  L.forEach(d=>{if(d.ref)return;let r=nextRef(d.ch,d.ouv);const m=r.match(/^([A-Z]*)(\d+)$/);let n=+m[2];
+    while(used.has(dxiKey(d,r)))r=m[1]+String(++n).padStart(m[2].length,'0');d.ref=r;used.add(dxiKey(d))});
+  const seen=new Set(P.map(p=>dxiKey(p)));return L.every(d=>!seen.has(dxiKey(d))&&(seen.add(dxiKey(d)),true))}
 
 // Création : lignes confirmées et acceptées par le moteur seulement ; ajoutées à la suite (rien n'est remplacé), annulables
 function dxiCreate(){const D=DXI;if(!D)return;dxiEval();const L=dxiReady();if(!L.length)return dxiBtn();
   const uids=[],today=new Date().toISOString().slice(0,10),ind=String(D.ind||'').trim().toUpperCase()||null;
-  L.forEach(i=>{const x=D.R[i].x,d=JSON.parse(JSON.stringify(x.plan));if(!d.ref)d.ref=nextRef(d.ch,d.ouv);d.date=today;
-    d.origineImport=Object.assign(JSON.parse(JSON.stringify(x.provenance)),{indice:ind,date:today});uids.push(planUid(d));P.push(d)});
+  const N=L.map(i=>{const x=D.R[i].x,d=JSON.parse(JSON.stringify(x.plan));d.date=today;
+    d.origineImport=Object.assign(JSON.parse(JSON.stringify(x.provenance)),{indice:ind,date:today});return d});
+  // dernière vérification avant de toucher aux plans enregistrés : aucune référence en double, sinon rien n'est créé
+  if(!dxiRefs(N)){toast('⛔ Références en double : aucun ouvrage créé');return dxiUpd()}
+  N.forEach(d=>{uids.push(planUid(d));P.push(d)});
   svP();profFromPlans(P.slice(-L.length));profLists();rnL();updBtn();closeModal();const nom=D.nom;DXI=null;
   toast(`${L.length} ouvrage(s) créé(s) depuis ${nom}`,'Annuler',()=>{const u=EI>=0&&P[EI]?P[EI].uid:null;P=P.filter(p=>!uids.includes(p.uid));EI=u?P.findIndex(p=>p.uid===u):-1;svP();rnL();updBtn();toast('Import annulé')})}
