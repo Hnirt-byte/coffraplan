@@ -175,7 +175,7 @@ function construire(g,hg,used,K){
 function analyser(doc){
   const G={},cleG=t=>t.espace+'\u0000'+(t.presentation||'');
   (doc.textes||[]).forEach(t=>{const r=((t.rot||0)%360+360)%360;if(Math.min(r,360-r)>1||!t.texte||!(t.h>0))return;
-    const g=G[cleG(t)]=G[cleG(t)]||{espace:t.espace,presentation:t.presentation,T:[],S:[]};g.T.push(Object.assign({},t,{n:norm(t.texte),x0:t.x-t.w/2,x1:t.x+t.w/2}))});
+    const g=G[cleG(t)]=G[cleG(t)]||{espace:t.espace,presentation:t.presentation,page:t.page,T:[],S:[]};g.T.push(Object.assign({},t,{n:norm(t.texte),x0:t.x-t.w/2,x1:t.x+t.w/2}))});
   (doc.traits||[]).forEach(s=>{const g=G[cleG(s)];if(g)g.S.push(s)});
   const brut=[];
   Object.values(G).forEach(g=>{g.T.forEach((t,i)=>t.i=i);const K=g.T.map(t=>/\d/.test(t.n)&&!SOUS.test(t.n)?[]:kinds(t.n)),used=new Set();g.A=axes(g.S);
@@ -189,10 +189,10 @@ function analyser(doc){
         if(!c||t.x0-c.x1>30*hm||pk==='repere'&&c.rep&&c.T.length>=3){c={T:[],x1:-Infinity,rep:false};cand.push(c)}
         c.T.push(t);c.x1=Math.max(c.x1,t.x1);c.rep=c.rep||pk==='repere'})});
     cand.map(c=>({T:c.T,k:new Set(c.T.map(t=>K[t.i][0])).size})).filter(c=>c.T.length>=3&&c.k>=2).sort((a,b)=>b.k-a.k||b.T.length-a.T.length)
-      .forEach(c=>{if(c.T.some(t=>used.has(t.i)))return;const tb=construire(g,c.T,used,K);if(tb)brut.push(Object.assign(tb,{espace:g.espace,presentation:g.presentation}))})});
+      .forEach(c=>{if(c.T.some(t=>used.has(t.i)))return;const tb=construire(g,c.T,used,K);if(tb)brut.push(Object.assign(tb,{espace:g.espace,presentation:g.presentation},g.page?{page:g.page}:{}))})});
   brut.sort((a,b)=>(a.espace+(a.presentation||'')).localeCompare(b.espace+(b.presentation||''))||b.cadre[3]-a.cadre[3]||a.cadre[0]-b.cadre[0]);
   const nomenclatures=[],ecartes=[];
-  brut.forEach(tb=>{const nat=nature(tb.titre,tb.colonnes),base={espace:tb.espace,presentation:tb.presentation,titre:tb.titre,
+  brut.forEach(tb=>{const nat=nature(tb.titre,tb.colonnes),base={espace:tb.espace,presentation:tb.presentation,...(tb.page?{page:tb.page}:{}),titre:tb.titre,
       colonnes:tb.colonnes,cadre:tb.cadre,ids:[...tb.BT,...tb.TT,...tb.RT.flat()].map(t=>t.id)};
     if(nat!=='reservations'||!tb.R.length){ecartes.push(Object.assign(base,{id:'T'+(ecartes.length+1),nature:nat,nLignes:tb.R.length,
       raison:nat==='aciers'?'nomenclature d\'aciers (ferraillage)':nat==='autre'?'tableau non identifié comme nomenclature de réservations':'en-tête de nomenclature sans ligne lisible'}));return}
@@ -209,7 +209,7 @@ function analyser(doc){
     motifs.push(tb.grille.colonnes&&tb.grille.lignes?'grille de traits lue':'pas de grille complète : '+(tb.grille.colonnes?'lignes':tb.grille.lignes?'colonnes':'colonnes et lignes')+' déduites de la position des textes');
     if(nR<lignes.length)motifs.push((lignes.length-nR)+' ligne(s) sans repère');if(nA)motifs.push(nA+' colonne(s) non reconnue(s), gardée(s) telles quelles');
     const niveau=tb.grille.colonnes&&tb.grille.lignes&&nR===lignes.length&&!nA?'bonne':nR>=lignes.length/2?'à vérifier':'faible';
-    nomenclatures.push(Object.assign(base,{id,fichier:doc.fichier,nature:nat,calques:[...new Set(lignes.flatMap(l=>l.calques))],lignes,
+    nomenclatures.push(Object.assign(base,{id,fichier:doc.fichier,format:doc.format||'dxf',nature:nat,calques:[...new Set(lignes.flatMap(l=>l.calques))],lignes,
       unite:[...new Set(tb.colonnes.filter(c=>c.cle==='ouverture'||c.cle==='diametre').map(c=>c.unite).filter(Boolean))].length===1?tb.colonnes.find(c=>c.unite&&(c.cle==='ouverture'||c.cle==='diametre')).unite:null,
       qualite:{niveau,motifs}}))});
   return{nomenclatures,ecartes,signalements:(doc.signalements||[]).slice()};
@@ -257,11 +257,13 @@ function associer(noms,C,doc,opt){
 // Ligne + choix de l'utilisateur → candidat au format du détecteur, pour l'adaptateur (cotes déjà en mm)
 // s = {dims:{etat:'rect',a,b}|{etat:'circ',D} (mm), geo: candidat du détecteur rattaché | null}
 function candidat(N,L,s){const d=s&&s.dims,g=s&&s.geo;if(!d||(d.etat!=='rect'&&d.etat!=='circ'))return null;
-  return{id:L.id,type:d.etat,statut:'a_confirmer',unite:'mm',source:{fichier:N.fichier,format:'dxf',calque:L.calques.join(', '),id:g?g.source.id:null},
+  return{id:L.id,type:d.etat,statut:'a_confirmer',unite:'mm',source:{fichier:N.fichier,format:N.format||'dxf',calque:L.calques.join(', '),id:g?g.source.id:null},
     geometrie:null,centre:g?g.centre:null,dims:d.etat==='circ'?{D:d.D}:{L:Math.max(d.a,d.b),l:Math.min(d.a,d.b),angle:0},h:null,manquants:[],remarques:[]}}
 
 // Provenance d'un ouvrage créé depuis une ligne (clé origineImport du plan). k = {forme, cotes (texte saisi), dims (mm), ref,
 // uniteTableau, uniteChoisie, geo:{c: candidat, statut:'trouvee'|'choisie'} | null}. Aucun contenu du DXF au-delà de la ligne.
+// PDF : page, zone de page (points PDF, Y vers le haut : cadre du tableau, zone choisie ou zone de la saisie assistée) ;
+// ligne saisie par l'utilisateur (N.saisie) : type 'saisie', ses textes sont les valeurs tapées.
 function provenance(N,L,k){
   const textes={};N.colonnes.forEach((c,j)=>{const v=L.cellules[j];if(!v)return;let t=c.titre.replace(/\n/g,' ')||'colonne '+(j+1),n=2;const t0=t;while(t in textes)t=t0+' ('+(n++)+')';textes[t]=v});
   const d=L.dims,uT=d&&(d.unite||k.uniteTableau),kT=MM[uT],corrige=[];
@@ -269,11 +271,12 @@ function provenance(N,L,k){
   if(!mm||!k.dims||mm.etat!==k.dims.etat||(mm.etat==='circ'?!eq(mm.D,k.dims.D):!(eq(Math.max(mm.a,mm.b),Math.max(k.dims.a,k.dims.b))&&eq(Math.min(mm.a,mm.b),Math.min(k.dims.a,k.dims.b)))))corrige.push('cotes');
   if(String(k.ref||'')!==String(L.repere||'').toUpperCase())corrige.push('ref');
   const g=k.geo&&k.geo.c;
-  return{fichier:N.fichier,format:'dxf',type:'nomenclature',espace:N.espace,presentation:N.presentation,calque:L.calques.join(', '),id:g?g.source.id:null,
+  const pdf=N.format==='pdf'?{page:N.page,zone:L.zone||N.zone||(N.cadre?{page:N.page,x0:N.cadre[0],y0:N.cadre[1],x1:N.cadre[2],y1:N.cadre[3],unite:'pt'}:null)}:{};
+  return{fichier:N.fichier,format:N.format||'dxf',type:N.saisie?'saisie':'nomenclature',espace:N.espace,presentation:N.presentation,calque:L.calques.join(', '),id:g?g.source.id:null,
     nomenclature:N.id,titre:N.titre,ligne:L.id,rang:L.rang,repere:L.repere,ids:L.ids.slice(),textes,
     unite_source:d?d.unite:null,unite:uT||null,dims_source:d?JSON.parse(JSON.stringify(d)):null,
     geometrie:g?{id:g.source.id,calque:g.source.calque,candidat:g.id,statut:k.geo.statut,unite:k.uniteDessin||null,centre:g.centre,dims_source:JSON.parse(JSON.stringify(g.dims))}:null,
-    choix:{forme:k.forme,cotes:k.cotes,ref:k.ref||'',unite_tableau:k.uniteChoisie?k.uniteTableau:null},corrige,a_verifier:L.a_verifier.slice(),h_saisie:true};
+    choix:{forme:k.forme,cotes:k.cotes,ref:k.ref||'',unite_tableau:k.uniteChoisie?k.uniteTableau:null},corrige,a_verifier:L.a_verifier.slice(),h_saisie:true,...pdf};
 }
 
 root.CPI=Object.assign(root.CPI||{},{nomenclatures:{analyser,associer,cotes,candidat,provenance,cleRep,LIB}});

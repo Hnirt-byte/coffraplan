@@ -1,19 +1,20 @@
 # Module d'import de plans
 
-État : **intégré à l'appli** (fenêtre « Importer un plan DXF »). Lecteur DXF ASCII (`dxf.js`), détecteur, adaptateur et
-fenêtre sont des sources séparées (plus `nomenclatures.js`), assemblées dans `app/CoffraPlan.html` (bloc `<script id="cpi-src">`, § 3). Pas de
-décodeur IFC ni PDF. Bancs : `tests/t_import.py` (contrat), `tests/t_dxf.py` (vrais DXF écrits par ezdxf),
+État : **intégré à l'appli** (fenêtre unique « Importer un plan » : DXF et PDF). Lecteur DXF ASCII (`dxf.js`), détecteur, adaptateur et
+fenêtre sont des sources séparées (plus `nomenclatures.js`), assemblées dans `app/CoffraPlan.html` (bloc `<script id="cpi-src">`, § 3). PDF à texte
+extractible pris en charge (`pdf.js`, § Import PDF) ; pas de décodeur IFC. Bancs : `tests/t_import.py` (contrat), `tests/t_dxf.py` (vrais DXF écrits par ezdxf),
 `tests/t_dxf_ui.py` (interface réelle : lecture, aperçu, confirmation, création, provenance, annulation, hors connexion).
 
 | Fichier | Composant | Dépend de |
 |---|---|---|
 | `lecteur.js` | A. Lecteur de plan : fichier source → document normalisé | rien |
 | `dxf.js` | Décodeur DXF ASCII, inscrit dans `CPI.lecteur.DECODEURS.dxf` (charger après `lecteur.js`) | `lecteur.js` |
+| `pdf.js` | Lecteur PDF (`CPI.pdf.lire` asynchrone, `rendre`, `fermer`) : pages → textes et traits par page (§ PDF) | PDF.js 6.4.299 (`vendor/pdfjs`, blocs du HTML) |
 | `detecteur.js` | B. Détecteur : document normalisé → réservations **potentielles** | rien |
 | `nomenclatures.js` | B'. Nomenclatures de réservations : textes et traits du DXF → tableaux, lignes, rapprochement avec les candidats de B (§ 5) | rien |
 | `adaptateur.js` | C. Adaptateur : réservation **confirmée** → plan CoffraPlan contrôlé par le moteur | moteur reçu en paramètre |
-| `fenetre.js` | D. Fenêtre « Importer un plan DXF » : fichier → A → B → choix de l'utilisateur → C → ajout des plans | l'appli (appelée au clic, jamais au chargement) |
-| `assembler.py` | Assemblage des 5 sources dans le HTML ; `--check` : échoue si le HTML diffère | Python, bibliothèque standard |
+| `fenetre.js` | D. Fenêtre « Importer un plan » (DXF, PDF) : fichier → A → B → choix de l'utilisateur → C → ajout des plans | l'appli (appelée au clic, jamais au chargement) |
+| `assembler.py` | Assemblage des 7 sources JavaScript dans le HTML ; `--check` : échoue si le HTML diffère | Python, bibliothèque standard |
 
 A, B et C sont du JS vanilla (ES2017), sans DOM ni stockage, et s'enregistre dans un seul espace de noms global
 `CPI` (`CPI.lecteur`, `CPI.detecteur`, `CPI.adaptateur`). A et B tournent dans une page vide (vérifié par t_import).
@@ -184,6 +185,35 @@ nomenclature, titre, ligne, rang, repere, ids, textes:{titre de colonne: cellule
 geometrie:{id, calque, candidat, statut:'trouvee'|'choisie', unite (unité du dessin de centre et dims_source), centre, dims_source} | null, choix:{forme, cotes, ref ('' =
 automatique), unite_tableau}, corrige:['cotes','ref'], a_verifier, h_saisie, indice, date}`.
 
+## Import PDF (`pdf.js`, fenêtre `dxp*`)
+- Bibliothèque : PDF.js 6.4.299 (Mozilla, Apache-2.0), build « legacy » copié sans modification dans `vendor/pdfjs/`
+  (empreintes SHA-256 vérifiées par `assembler.py`) et recopié dans le HTML (`<script type="text/plain" id="pdfjs-src">`,
+  `id="pdfjs-worker-src"`, ≈ 1,8 Mo : HTML ≈ 3,3 Mo). Chargé à la première ouverture d'un PDF (module importé par URL blob).
+  Worker : le module est transformé à la volée en script classique (`import.meta.url` → `self.location.href`, `export`
+  final retiré) car une page ouverte en `file://` ne peut pas lancer un worker de module ; repli : PDF.js dans la page.
+  Options : polices standard, CMap, wasm et ICC désactivés (`null`) : aucune requête réseau (vérifié par t_pdf).
+- Document normalisé : `format:'pdf'`, `unite:null`, `entites:[]` (aucune géométrie proposée : une longueur sur la page
+  n'est pas une cote réelle), `presentations:['Page 1'…]`, `pages:[{n, w, h (points, page affichée), rotation, textes,
+  textesIllisibles, chemins, segments, images, nature}]`, `textes` (`espace:'papier'`, `presentation:'Page n'`, `page`, `x, y`
+  centre, `h` ≈ 0,7 corps, `w`, `rot`) et `traits` horizontaux / verticaux (`page`) ; coordonnées en points, Y vers le haut,
+  rotation de page et matrices appliquées. Morceaux de texte voisins sur une même ligne de base réunis.
+- Nature d'une page : `texte` (≥ 3 textes), `mixte` (plus de 50 tracés par texte : textes probablement vectorisés en
+  partie), `vectoriel` (tracés, < 3 textes), `image` (image seule : numérisation), `vide`. Rapport dans la fenêtre :
+  « lecture automatique : n ligne(s) » ou « aucune nomenclature lisible automatiquement : saisie assistée ».
+- Nomenclatures : `nomenclatures.analyser` tel quel, une page = un espace (jamais de mélange entre pages) ; `N.page`,
+  `N.format`. Rapprochement géométrique : aucun pour un PDF.
+- Fenêtre : onglets « Nomenclature » et « Aperçu du plan » (pages, zoom, tableaux reconnus encadrés, ligne encadrée par
+  « p. N ↗ »). Zone : cliquer-glisser, « Analyser la zone » (textes et traits de la zone, traits coupés au bord) : les tableaux
+  lus automatiquement qui partagent des textes avec la zone sont remplacés (`N.id` = `Z1`…, `N.zone`) ; rien n'est ajouté si la
+  zone ne donne pas de nomenclature de réservations. Saisie assistée : lignes tapées en consultant la page (`N.saisie`, `N.id`
+  = `S<page>`), mêmes contrôles et même création ; ✕ retire une ligne saisie.
+- Provenance (en plus des clés DXF de `provenance()`) : `format:'pdf'`, `type:'nomenclature'|'saisie'`, `page`, `zone`
+  `{page, x0, y0, x1, y1, unite:'pt'}` (zone choisie, sinon cadre du tableau ; ligne saisie : zone choisie au moment de la
+  saisie). Le PDF n'est jamais stocké.
+- Limites : textes tournés ignorés pour les tableaux (comme en DXF) ; tableau continué sur une autre page sans en-tête
+  répété : non relié (saisie assistée) ; PDF protégé par mot de passe refusé ; pas d'OCR ; images JPEG 2000 / JBIG2 et
+  textes CJK mal rendus dans l'aperçu (décodeurs non intégrés) ; testé dans Chromium seulement.
+
 ## 3. Fichiers séparés et HTML autonome (en place)
 
 - `python modules/import/assembler.py` remplace le bloc `<script id="cpi-src">…</script>` de `app/CoffraPlan.html` (placé
@@ -194,7 +224,8 @@ automatique), unite_tableau}, corrige:['cotes','ref'], a_verifier, h_saisie, ind
 - Le reste du HTML s'édite toujours à la main ; l'appli reste un fichier unique, hors connexion, sans CDN ni serveur.
 
 ## Intégration dans l'appli (fenêtre D)
-- Accès : bouton `#bDxi` « 📥 Importer DXF » (barre du haut), « 📥 Importer un plan DXF » (carte Plans, accueil). `impJ`
+- Accès : bouton `#bDxi` « 📥 Importer un plan » (barre du haut, carte Plans, accueil). Format reconnu au contenu (`%PDF-`,
+  DWG `AC10…` refusé avec un message, IFC refusé) puis à l'extension ; glisser-déposer sur la fenêtre. `impJ`
   (chargement d'un projet .json) n'est pas touché.
 - Lecture du fichier : UTF-8 strict, sinon CP-1252 (R12 à R2004). Unité absente → choix mm / cm / m exigé avant toute création.
 - Modèles de plan par forme : `coll()` après changement de forme et `applyProf(true)`, avec le chantier et l'ouvrage de la
@@ -238,7 +269,7 @@ Fichier confidentiel : il reste sur le poste de Kévin, hors du dépôt.
 2. `python tests/essai_plan_reel.py "<chemin du DXF>" --attendu 23` : bilan **anonyme** (comptes seulement : nombre de lignes,
    cellules remplies par colonne, cotes lues, états des rapprochements, tableaux écartés). Résultat attendu : `Total : 23 ligne(s)`,
    code de sortie 0. Le bilan peut être recopié dans le fil ; rien d'autre du plan.
-3. Puis dans CoffraPlan : « 📥 Importer DXF », onglet Nomenclature : comparer les 23 lignes au tableau d'AutoCAD (cellules,
+3. Puis dans CoffraPlan : « 📥 Importer un plan », onglet Nomenclature : comparer les 23 lignes au tableau d'AutoCAD (cellules,
    cotes proposées, motifs « à vérifier »).
 4. Écart constaté : le décrire sans contenu du plan (ex. « colonne Ouverture lue vide sur 3 lignes, cellules en MTEXT
    multiligne ») ; il sera reproduit sur un DXF fictif dans `tests/dxf_nomenclatures.py`.

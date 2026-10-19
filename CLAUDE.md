@@ -85,6 +85,11 @@ développement : il progresse vite mais n'est pas développeur senior.
   relevés par `dxf.js` (espaces Objet / présentations, blocs, ACAD_TABLE) ; vue « Nomenclature » de la fenêtre (`dxn*`) ;
   `origineImport.type = 'nomenclature'`. Toutes les lignes proposées, aucun filtre. Banc `t_nomenclature.py`
   (DXF fictifs de `tests/dxf_nomenclatures.py`).
+  Import PDF : `pdf.js` (`CPI.pdf.lire` / `rendre` / `fermer`) sur **PDF.js 6.4.299** (Apache-2.0, build legacy) copié tel quel
+  dans `modules/import/vendor/pdfjs/` et recopié par `assembler.py` dans `<script type="text/plain" id="pdfjs-src">` et
+  `id="pdfjs-worker-src"` (empreintes SHA-256 vérifiées ; ne pas éditer ces blocs). Une page PDF = un espace, coordonnées en
+  points ; aucune cote tirée du dessin. Fenêtre unique « 📥 Importer un plan » (DXF + PDF) ; PDF : aperçu, zone, saisie
+  assistée (`dxp*`). Banc `t_pdf.py` (PDF fictifs de `tests/pdf_fictifs.py`).
 - Version affichée : élément `#appVer` (« v3.0 »). Les tests t_ux et t_v30 vérifient ce numéro.
 
 ## Décisions actées (ne pas changer sans l'accord de Kévin)
