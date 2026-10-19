@@ -256,7 +256,7 @@ function dxnEval(moteur,hc){const D=DXI;if(!D.NL||!D.NL.length)return;
     if(p.ref&&P.some(q=>chKey(q.ch)===chKey(p.ch)&&ouKey(q.ouv).toLowerCase()===ouKey(p.ouv).toLowerCase()&&String(q.ref||'').toUpperCase()===p.ref)){r.st='er';r.msg=`référence ${p.ref} déjà utilisée dans cet ouvrage`;return}
     r.x=x;r.st=x.alertes.length?'wn':'ok';r.msg=x.alertes.join(' · ')})}
 function dxnProv(k){const D=DXI,{N,L}=D.NL[k],r=D.NR[k],a=D.AS[L.id],g=r.geo!==''?D.C[+r.geo]:null,u=dxnU(N,L);
-  return CPI.nomenclatures.provenance(N,L,{forme:r.x.plan.forme,cotes:r.cotes,dims:dxnDims(r),ref:r.ref.trim().toUpperCase(),uniteTableau:u||null,
+  return CPI.nomenclatures.provenance(N,L,{forme:r.x.plan.forme,cotes:r.cotes,dims:dxnDims(r),ref:r.ref.trim().toUpperCase(),uniteTableau:u||null,uniteDessin:D.u||null,
     uniteChoisie:!!(u&&!(L.dims&&L.dims.unite)&&!N.unite),geo:g?{c:g,statut:!r.geoT&&a.statut==='trouvee'?'trouvee':'choisie'}:null})}
 // Statuts, formes possibles, géométries proposées, bilan (sans reconstruire la liste : garde la saisie en cours)
 function dxnUpd(){const D=DXI;if(!D||!el('dxnT'))return;const lb={ok:'✓ prêt',wn:'⚠ prêt — ',ac:'… ',er:'⛔ non créé — '};

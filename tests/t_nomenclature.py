@@ -228,7 +228,7 @@ def t(s):
         o = pr['D01']['origineImport']
         s.check(o['type'] == 'nomenclature' and o['espace'] == 'papier' and o['presentation'] == 'NOMENCLATURE' and o['nomenclature'] == 'N1' and o['ligne'] == 'N1-L01'
                 and o['rang'] == 1 and o['textes'].get('Ouverture (mm) l×h') == '650x800' and o['textes'].get('Niveau') == '+5,60 m' and o['fichier'] == 'NOMENC_23_PRESENTATION.dxf'
-                and o['format'] == 'dxf' and o['indice'] == 'C' and o['geometrie']['id'] == G['D01'] and o['geometrie']['statut'] == 'trouvee' and o['corrige'] == [] and o['unite'] == 'mm',
+                and o['format'] == 'dxf' and o['indice'] == 'C' and o['geometrie']['id'] == G['D01'] and o['geometrie']['statut'] == 'trouvee' and o['geometrie']['unite'] == 'mm' and o['corrige'] == [] and o['unite'] == 'mm',
                 '17. provenance : fichier, format, présentation, nomenclature, ligne, repère, textes sources, géométrie, indice', json.dumps(o, ensure_ascii=False)[:700])
         o = pr['D04']['origineImport']
         s.check(o['corrige'] == ['cotes'] and o['choix']['cotes'] == '450 x 200' and o['dims_source']['a'] == 400 and o['geometrie'] is None,

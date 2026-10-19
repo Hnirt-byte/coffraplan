@@ -181,7 +181,7 @@ cotes (mm), forme, hauteur, référence (repère du tableau ou automatique), gé
 (`candidat()` → candidat au format de B). Géométrie rattachée : retirée de l'onglet « Géométries du dessin ».
 Provenance (`provenance()`) : `{fichier, format, type:'nomenclature', espace, presentation, calque, id (géométrie | null),
 nomenclature, titre, ligne, rang, repere, ids, textes:{titre de colonne: cellule}, unite_source, unite, dims_source,
-geometrie:{id, calque, candidat, statut:'trouvee'|'choisie', centre, dims_source} | null, choix:{forme, cotes, ref ('' =
+geometrie:{id, calque, candidat, statut:'trouvee'|'choisie', unite (unité du dessin de centre et dims_source), centre, dims_source} | null, choix:{forme, cotes, ref ('' =
 automatique), unite_tableau}, corrige:['cotes','ref'], a_verifier, h_saisie, indice, date}`.
 
 ## 3. Fichiers séparés et HTML autonome (en place)

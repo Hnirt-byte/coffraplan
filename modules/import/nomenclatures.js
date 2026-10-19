@@ -272,7 +272,7 @@ function provenance(N,L,k){
   return{fichier:N.fichier,format:'dxf',type:'nomenclature',espace:N.espace,presentation:N.presentation,calque:L.calques.join(', '),id:g?g.source.id:null,
     nomenclature:N.id,titre:N.titre,ligne:L.id,rang:L.rang,repere:L.repere,ids:L.ids.slice(),textes,
     unite_source:d?d.unite:null,unite:uT||null,dims_source:d?JSON.parse(JSON.stringify(d)):null,
-    geometrie:g?{id:g.source.id,calque:g.source.calque,candidat:g.id,statut:k.geo.statut,centre:g.centre,dims_source:JSON.parse(JSON.stringify(g.dims))}:null,
+    geometrie:g?{id:g.source.id,calque:g.source.calque,candidat:g.id,statut:k.geo.statut,unite:k.uniteDessin||null,centre:g.centre,dims_source:JSON.parse(JSON.stringify(g.dims))}:null,
     choix:{forme:k.forme,cotes:k.cotes,ref:k.ref||'',unite_tableau:k.uniteChoisie?k.uniteTableau:null},corrige,a_verifier:L.a_verifier.slice(),h_saisie:true};
 }
 

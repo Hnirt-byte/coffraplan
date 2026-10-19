@@ -28,6 +28,12 @@ coupes) : toutes les lignes « plusieurs possibles », jusqu'à 30 contours par 
 sont proposés en premier (ils pouvaient tomber au-delà des 12 propositions affichées). Unité du dessin absente du fichier :
 à choisir dans la fenêtre. Fenêtre ouverte sur ce plan dans Chromium : 23 lignes, aucune cochée, sans erreur JS.
 
+**Test de bout en bout sur le plan réel (19/10/2026, hors dépôt, valeurs saisies fictives)** : scénarios rectangle complet,
+DN / SO sans cotes, contours ambigus, sauvegarde / réouverture, annulation : conformes. Écart corrigé : la provenance d'une
+géométrie rattachée (`origineImport.geometrie`) ne notait pas l'unité du dessin choisie dans la fenêtre, alors que `centre`
+et `dims_source` sont dans cette unité ; ajout de `geometrie.unite` (clé optionnelle, anciens fichiers inchangés, moteur non
+concerné). t_nomenclature vérifie la nouvelle clé.
+
 **Écarts voulus** : un contour fermé dessiné dans une présentation n'est plus proposé comme réservation (il l'était, avec des
 coordonnées de feuille). Aucun écart sur le débit, les feuilles et les exports (t_avap).
 
