@@ -1,11 +1,13 @@
 # Module d'import de plans (fondation, hors appli)
 
-État : **squelette et contrat seulement**. Aucun décodeur DXF / IFC / PDF n'est écrit. Le module n'est **pas** inclus dans
-`app/CoffraPlan.html` : l'appli, ses résultats et son format de sauvegarde sont inchangés. Banc : `tests/t_import.py`.
+État : contrat + **lecteur DXF ASCII** (`dxf.js`). Pas de décodeur IFC ni PDF, pas d'interface. Le module n'est **pas** inclus dans
+`app/CoffraPlan.html` : l'appli, ses résultats et son format de sauvegarde sont inchangés. Bancs : `tests/t_import.py`
+(contrat), `tests/t_dxf.py` (vrais DXF écrits par ezdxf).
 
 | Fichier | Composant | Dépend de |
 |---|---|---|
 | `lecteur.js` | A. Lecteur de plan : fichier source → document normalisé | rien |
+| `dxf.js` | Décodeur DXF ASCII, inscrit dans `CPI.lecteur.DECODEURS.dxf` (charger après `lecteur.js`) | `lecteur.js` |
 | `detecteur.js` | B. Détecteur : document normalisé → réservations **potentielles** | rien |
 | `adaptateur.js` | C. Adaptateur : réservation **confirmée** → plan CoffraPlan contrôlé par le moteur | moteur reçu en paramètre |
 
@@ -62,6 +64,39 @@ format la porte (IFC), absente en 2D. Coordonnées et cotes dans `unite`. `verif
 absent ou en double, type inconnu, cercle sans centre / rayon, points illisibles → `{ok:false, raison:'document_invalide', erreurs}`.
 Règle pour les décodeurs : une polyligne à arcs (bulge) devient `autre`, jamais une polyligne aplatie.
 
+### Décodeur DXF (`dxf.js`)
+| Élément DXF | Document normalisé |
+|---|---|
+| `$INSUNITS` 4 / 5 / 6 | `unite` `mm` / `cm` / `m` ; 0 ou absent (toujours absent en R12) → `null` ; pouces, pieds… → fichier refusé |
+| `$ACADVER` | `version` (ex. `AC1015`) |
+| table `LAYER` + calques des entités | `calques` (liste des noms) |
+| handle (code 5) | `id` ; sans handle (R12 sans `$HANDLING`) → `#n` (rang dans ENTITIES) |
+| calque (code 8) | `calque` (`0` si absent) |
+| `LWPOLYLINE`, `POLYLINE` + `VERTEX` … `SEQEND` (2D) | `polyligne` ; `ferme` = drapeau 1, ou dernier sommet exactement égal au premier |
+| `CIRCLE` | `cercle` (`centre`, `r`) |
+| polyligne à arcs (code 42 ≠ 0) | `autre`, nature « … avec arcs » |
+| polyligne avec largeur non nulle (LWPOLYLINE 40 / 41 / 43 ; POLYLINE 40 / 41 de l'en-tête ou d'un VERTEX) | `autre`, « … avec largeur non nulle » (la ligne médiane n'est pas le contour du vide) |
+| POLYLINE lissée (70 : bit 2 courbe ajustée, bit 4 spline ; VERTEX 70 : bits 1, 8, 16) | `autre`, « POLYLINE lissée (courbe ajustée ou spline) » |
+| extrusion (0,0,−1) (objet en miroir) | X changé de signe : coordonnées dans le repère général |
+| autre extrusion, POLYLINE 3D / maillage | `autre` (hors du plan XY) |
+| `INSERT` | `autre` « bloc non décomposé » (les blocs ne sont pas explosés) |
+| tout autre type (LINE, ARC, TEXT, HATCH, DIMENSION…) | `autre`, nature = type DXF |
+
+Refus explicites (`document_invalide` avec le message) : fichier vide, DXF binaire, code de groupe illisible (fichier non
+DXF), paires incomplètes ou fin `EOF` absente (fichier tronqué), section `ENTITIES` absente, unité non métrique, valeur
+numérique illisible, `POLYLINE` sans `SEQEND`. Seule la section `ENTITIES` est lue (pas l'espace papier des BLOCKS).
+Encodage : le texte est reçu déjà décodé ; l'interface devra lire les R12 en CP-1252 et les R2007+ en UTF-8.
+
+### Décisions de Kévin (18/10/2026, relecture de la PR #1)
+- Rectangle → `rect`, ou `carre` si les côtés sont égaux ; cercle → `circ` (fourreau).
+- Les cotes du contour (le vide à réaliser) = encombrement **extérieur** de la boîte ou du fourreau dans CoffraPlan.
+- Ne **jamais** ajouter automatiquement deux épaisseurs de CP.
+- Confirmation explicite de l'utilisateur avant toute création d'ouvrage (`confirme:true`).
+- Provenance hors du plan pour l'instant ; elle devra devenir **persistante** avant l'intégration fonctionnelle : fichier
+  source, calque, identifiant, coordonnées, orientation et indice (l'indice n'existe pas en DXF : il viendra de la saisie).
+  À vérifier ensuite : provenance conservée après modification du plan via `coll()`.
+- Pas de refactorisation supplémentaire du moteur existant.
+
 ### B → candidats (`CPI.detecteur.detecter(doc, {tol})`)
 Un candidat par entité, dans l'ordre :
 ```
@@ -73,8 +108,8 @@ Un candidat par entité, dans l'ordre :
   dims: {L, l, angle} | {D} | null,       // L = grand côté, l = petit côté, angle du grand côté (°, 0 ≤ a < 180)
   h: nombre|null, manquants:['h','unite'…], remarques:[…] }
 ```
-Rectangle reconnu : contour fermé de 4 sommets (5 si refermé), côtés opposés et diagonales égaux à `tol` près (0,5 % de la
-diagonale). Cercle : `r > 0`. Tout le reste : `non_pris_en_charge`, avec la raison et la géométrie conservée.
+Rectangle reconnu : contour fermé de 4 sommets (5 si refermé), côtés opposés et diagonales égaux, angle droit au premier
+sommet (écarte le quadrilatère croisé), à `tol` près (0,5 % de la diagonale). Côtés égaux : remarque « carré potentiel ». Cercle : `r > 0`. Tout le reste : `non_pris_en_charge`, avec la raison et la géométrie conservée.
 **B ne produit jamais de statut validé** : une forme ambiguë (quadrilatère presque rectangle) reste non prise en charge.
 
 ### C → plan (`CPI.adaptateur.versPlan(candidat, confirmation, ctx)`)
@@ -112,7 +147,7 @@ Comparé à un bundler (esbuild, Rollup) : inutile pour 3 fichiers sans import, 
 ## 4. Intégration progressive proposée
 
 1. **Fait** : contrat, squelette, banc `t_import` sur objets fictifs.
-2. Lecteur DXF (R12 / 2000+ ASCII) : `LWPOLYLINE`, `POLYLINE`, `CIRCLE`, `$INSUNITS`, calques ; arcs → `autre`.
+2. **Fait** : lecteur DXF (R12 / 2000+ ASCII) : `LWPOLYLINE`, `POLYLINE`, `CIRCLE`, `$INSUNITS`, calques ; arcs → `autre`.
    Testé sur des DXF produits par `ezdxf` (déjà dans `tests/requirements.txt`) puis sur de vrais plans de Kévin.
 3. Bloc `cpi-src` + script d'assemblage + `--check` en CI ; aucune fonction encore visible.
 4. Fenêtre « Importer un plan » calquée sur `openSeries` : liste des candidats (✓ / à compléter / non pris en charge),
@@ -120,8 +155,20 @@ Comparé à un bundler (esbuild, Rollup) : inutile pour 3 fichiers sans import, 
 5. Décision à prendre avec Kévin : garder ou non la provenance dans le plan (nouvelle clé → migration dans `migr`).
 6. IFC (`IfcOpeningElement`, hauteur connue), puis PDF vectoriel après étude.
 
+## Protocole de validation sur un vrai plan de chantier (à faire, hors Git)
+1. Kévin choisit un plan réel en DXF ASCII ; le fichier reste sur son poste (dossier hors dépôt, jamais commité, jamais
+   joint à une PR).
+2. Lecture locale : page vide + `lecteur.js`, `dxf.js`, `detecteur.js` (comme `t_dxf`), fichier lu en texte ; noter
+   seulement des comptes : version, unité, nombre de calques, d'entités par type, de candidats rect / circ / non pris en charge.
+3. Contrôle croisé dans AutoCAD sur 5 à 10 réservations : cotes, centre, orientation, calque, handle (`LIST`).
+4. Relever les cas manqués (blocs, arcs, contours non fermés, réservations dessinées en lignes) ; chaque cas devient un
+   DXF **fictif** reproduit avec ezdxf dans `t_dxf.py`, sans coordonnées ni noms du plan réel.
+5. Compte rendu dans le fil de projet : uniquement les comptes et les écarts, aucun nom de chantier ni extrait du plan.
+
 ## Limites et non vérifié
-- Aucun fichier DXF / IFC / PDF réel lu : le contrat A est un choix de conception, à éprouver avec le premier décodeur.
+- Lecteur DXF éprouvé sur des fichiers ezdxf (R12, R2000) seulement : aucun plan réel, aucun fichier exporté par
+  AutoCAD, Revit ou un autre logiciel n'a été lu.
+- Non lus : blocs (`INSERT`), réservations dessinées en `LINE` séparées, hachures, arcs, espace papier, DXF binaire.
 - Hypothèses : réservation rectangulaire → coffrage `rect` / `carre` sans fond par défaut ; cercle → fourreau `circ`.
   Les autres formes (voile cintré, poutre, goulotte…) ne sont pas reconnues.
 - Orientation (`angle`) et position (`centre`) ne sont gardées que dans la provenance : un plan CoffraPlan n'a pas de

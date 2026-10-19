@@ -12,6 +12,9 @@ function rectangle(pts,tol){
   if(P.length!==4)return null;
   const [a,b,c,e]=[dist(P[0],P[1]),dist(P[1],P[2]),dist(P[2],P[3]),dist(P[3],P[0])],d1=dist(P[0],P[2]),d2=dist(P[1],P[3]),k=tol*Math.max(d1,d2);
   if(!(Math.min(a,b)>0)||Math.abs(a-c)>k||Math.abs(b-e)>k||Math.abs(d1-d2)>k)return null;
+  // angle droit au premier sommet : écarte le quadrilatère croisé (« nœud papillon »), qui a lui aussi côtés et diagonales égaux
+  const v0=[P[1][0]-P[0][0],P[1][1]-P[0][1]],v1=[P[2][0]-P[1][0],P[2][1]-P[1][1]];
+  if(Math.abs(v0[0]*v1[0]+v0[1]*v1[1])>k*Math.max(a,b))return null;
   const iL=a>=b?0:1,u=[P[iL+1][0]-P[iL][0],P[iL+1][1]-P[iL][1]];
   let ang=Math.atan2(u[1],u[0])*180/Math.PI;ang=((ang%180)+180)%180;   // direction du grand côté, 0 ≤ angle < 180°
   return{L:Math.max(a,b),l:Math.min(a,b),angle:Math.round(ang*1e6)/1e6,centre:[(P[0][0]+P[2][0])/2,(P[0][1]+P[2][1])/2]};
@@ -29,7 +32,7 @@ function detecter(doc,opt){
       if(e.r>0){c.type='circ';c.dims={D:2*e.r};c.centre=e.centre.slice(0,2)}else c.remarques.push('cercle de rayon nul');
     }else if(e.type==='polyligne'){
       const R=e.ferme?rectangle(e.points,tol):null;
-      if(R){c.type='rect';c.dims={L:R.L,l:R.l,angle:R.angle};c.centre=R.centre}
+      if(R){c.type='rect';c.dims={L:R.L,l:R.l,angle:R.angle};c.centre=R.centre;if(R.L-R.l<=1e-6*R.L)c.remarques.push('carré potentiel (côtés égaux)')}
       else c.remarques.push(e.ferme?'contour fermé non rectangulaire':'polyligne ouverte');
     }else c.remarques.push('géométrie non prise en charge'+(e.nature?' : '+e.nature:''));
     if(c.type){c.statut='a_confirmer';if(c.h==null)c.manquants.push('h');if(c.unite==null)c.manquants.push('unite')}
