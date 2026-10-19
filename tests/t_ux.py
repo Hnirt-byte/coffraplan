@@ -13,6 +13,9 @@ def page(pw, scheme='dark', clock=False, w=1400, h=900, ls=None):
     ctx = b.new_context(viewport={'width': w, 'height': h}, accept_downloads=True, color_scheme=scheme)
     ctx.add_init_script(NOFS)  # v2.6 : ces bancs testent l'enregistrement par téléchargement
     pg = ctx.new_page()
+    # interception du sélecteur de fichier active dès l'ouverture : expect_file_chooser l'active sans attendre l'accusé
+    # du navigateur, et un raccourci (Ctrl+O) envoyé juste après pouvait ouvrir le sélecteur avant (événement perdu)
+    pg.on('filechooser', lambda f: None)
     errs, dialogs = [], []
     pg.on('pageerror', lambda e: errs.append(str(e)))
     pg.on('dialog', lambda d: (dialogs.append(d.type), d.accept()))
