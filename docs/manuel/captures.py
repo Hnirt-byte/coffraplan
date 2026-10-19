@@ -146,6 +146,15 @@ with sync_playwright() as p:
         pg.check(f'#dxiT tr[data-i="{i}"] [data-k=conf]')
     pg.click('#dxiV .c[data-i="1"]'); pg.wait_for_timeout(200)
     bx = pg.locator('#mdBody').bounding_box(); shot('29_import_dxf', clip={'x': bx['x'] - 6, 'y': bx['y'] - 6, 'width': bx['width'] + 12, 'height': bx['height'] + 12}); ev("closeModal()")
+    # nomenclature de réservations : DXF fictif (même jeu que tests/t_nomenclature.py)
+    import dxf_nomenclatures
+    n23 = dxf_nomenclatures.fichiers(tempfile.mkdtemp())['NOMENC_23_PRESENTATION.dxf'][0]
+    pg.click('#bDxi'); pg.set_input_files('#dxiF', n23); pg.wait_for_selector('#dxnT tr[data-n]')
+    pg.fill('#dxiH', '250'); pg.fill('#dxiInd', 'B')
+    for i in (0, 1, 2, 4):
+        pg.check(f'#dxnT tr[data-n="{i}"] [data-k=conf]')
+    pg.click('#dxnT tr[data-n="4"] td:nth-child(2)'); pg.wait_for_timeout(200)
+    bx = pg.locator('#mdBody').bounding_box(); shot('30_import_nomenclature', clip={'x': bx['x'] - 6, 'y': bx['y'] - 6, 'width': bx['width'] + 12, 'height': bx['height'] + 12}); ev("closeModal()")
     errs = [e for e in errs if 'net::' not in e]
     assert not errs, errs
     b.close()

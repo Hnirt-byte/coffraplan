@@ -81,6 +81,10 @@ développement : il progresse vite mais n'est pas développeur senior.
   (`--check` dans `tests/syntax.sh` et t_dxf_ui) ; ne jamais éditer ce bloc à la main. Provenance d'un plan importé : clé
   optionnelle `origineImport` (métadonnée, jamais lue par le moteur), gardée par `addP` (mise à jour) et `fixAllPlans`,
   retirée par `dupP`. Bancs `tests/t_import.py`, `t_dxf.py`, `t_dxf_ui.py` (interface réelle).
+  Nomenclatures de réservations : `nomenclatures.js` (`analyser`, `associer`, `cotes`, `provenance`) sur les textes / traits
+  relevés par `dxf.js` (espaces Objet / présentations, blocs, ACAD_TABLE) ; vue « Nomenclature » de la fenêtre (`dxn*`) ;
+  `origineImport.type = 'nomenclature'`. Toutes les lignes proposées, aucun filtre. Banc `t_nomenclature.py`
+  (DXF fictifs de `tests/dxf_nomenclatures.py`).
 - Version affichée : élément `#appVer` (« v3.0 »). Les tests t_ux et t_v30 vérifient ce numéro.
 
 ## Décisions actées (ne pas changer sans l'accord de Kévin)

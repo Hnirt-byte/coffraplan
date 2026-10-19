@@ -3,6 +3,38 @@
 Détail complet de chaque version (demandes, écarts voulus, tests, non validé) : `docs/historique/HANDOFF_<version>.md`.
 Chaque version est un tag git (`git diff v2.4 v2.5 -- app/` pour voir les changements).
 
+## Non publié — nomenclatures de réservations dans l'import DXF
+**Demande (Kévin, 19/10/2026)** : un vrai plan de bureau d'études donnait 772 formes pour une nomenclature de 23 réservations
+placée dans une présentation. Détecter les nomenclatures de réservations (espace Objet et présentations), garder toutes leurs
+lignes sans filtre, rapprocher les lignes des géométries, les proposer en priorité dans la fenêtre, provenance étendue.
+
+**Fait** : `dxf.js` : espace de chaque entité (code 67, BLOCK_RECORD → LAYOUT : nom de la présentation), textes (TEXT, MTEXT,
+ATTRIB, MULTILEADER ; codes %%c, mise en forme MTEXT retirée) et traits droits de tous les espaces, contenu des blocs insérés
+et des ACAD_TABLE (bloc de rendu) transformé dans le repère de l'espace qui les contient. Détecteur : contour d'une présentation
+non proposé (autre repère que le dessin). `nomenclatures.js` (nouveau) : reconstruction des tableaux (grille de traits, sinon
+position des textes ; titres de colonne sur plusieurs lignes, cellules multilignes ou vides, en-tête en haut ou en bas,
+plusieurs tableaux), nature décidée sur l'en-tête et le titre (tableau d'aciers ou autre : signalé, écarté), lecture des
+cotes sans invention (DN ≠ ouverture, SO / à définir / « / » → manquant, niveau et angle gardés en texte), rapprochement
+trouvee / probable / multiple / absente (repère texte, attribut ou flèche de ligne de repère, proximité, cotes), espace
+Objet seulement. Fenêtre : onglets « Nomenclature des réservations » (par défaut) et « Géométries du dessin » (géométries
+rattachées retirées), sélection libre, cotes / forme / hauteur / référence / géométrie modifiables, création par le même
+chemin (adaptateur, contrôles, références sans doublon). `origineImport` d'un ouvrage de nomenclature : `type:'nomenclature'`,
+espace, présentation, tableau, ligne, repère, textes des cellules, géométrie (trouvée ou choisie), choix et corrections, indice
+source. Mode d'emploi § 7.22. Banc `tests/t_nomenclature.py` (DXF fictifs `tests/dxf_nomenclatures.py`, 18 scénarios).
+
+**Essai local sur un plan réel (19/10/2026, comptes seulement, fichier hors dépôt)** : 23 lignes lues sur 23 attendues, 2
+tableaux d'aciers écartés, 2 colonnes non reconnues gardées telles quelles ; chaque repère est dessiné plusieurs fois (vues,
+coupes) : toutes les lignes « plusieurs possibles », jusqu'à 30 contours par ligne. Correction : les contours de mêmes cotes
+sont proposés en premier (ils pouvaient tomber au-delà des 12 propositions affichées). Unité du dessin absente du fichier :
+à choisir dans la fenêtre. Fenêtre ouverte sur ce plan dans Chromium : 23 lignes, aucune cochée, sans erreur JS.
+
+**Écarts voulus** : un contour fermé dessiné dans une présentation n'est plus proposé comme réservation (il l'était, avec des
+coordonnées de feuille). Aucun écart sur le débit, les feuilles et les exports (t_avap).
+
+**Non validé** : création d'ouvrages à partir du plan réel ; ACAD_TABLE
+réel (seule une entité minimale fabriquée est testée) ; fenêtres de présentation (VIEWPORT) non interprétées : un repère placé
+seulement dans une présentation ne relie pas la ligne au dessin ; Chromium seulement.
+
 ## Non publié — import DXF dans l'appli
 **Demande (Kévin, 19/10/2026)** : rendre l'import DXF utilisable dans CoffraPlan : fenêtre « Importer un plan DXF » (fichier,
 unité, calques, liste et aperçu synchronisés), préparation (forme, hauteur commune ou par ligne, référence, chantier, ouvrage,
