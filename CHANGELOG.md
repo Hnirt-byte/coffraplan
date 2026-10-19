@@ -3,6 +3,32 @@
 Détail complet de chaque version (demandes, écarts voulus, tests, non validé) : `docs/historique/HANDOFF_<version>.md`.
 Chaque version est un tag git (`git diff v2.4 v2.5 -- app/` pour voir les changements).
 
+## Non publié — « Importer un plan » : fenêtre unique DXF et PDF
+**Demande (Kévin, 19/10/2026)** : remplacer « Importer un plan DXF » par une entrée unique, lire les PDF (textes extractibles),
+détecter leurs nomenclatures de réservations, aperçu des pages, sélection de zone, saisie assistée quand le tableau n'est pas
+lisible (PDF dont les textes sont vectorisés), même création et même provenance que le DXF ; appli toujours hors connexion.
+
+**Fait** : PDF.js 6.4.299 (Apache-2.0, build legacy) intégré tel quel au HTML par `assembler.py` (empreintes SHA-256,
+`vendor/pdfjs/`), chargé à l'ouverture d'un PDF, worker lancé en `file://`, aucune requête réseau. `modules/import/pdf.js` :
+textes et traits par page (rotation et matrices appliquées, Y vers le haut), nature de chaque page (texte, mixte, vectoriel,
+image). `nomenclatures.js` : page et format gardés sur les tableaux, provenance PDF (`page`, `zone`, `type:'saisie'`).
+Fenêtre « 📥 Importer un plan » (barre, carte Plans, accueil) : DXF ou PDF, glisser-déposer, DWG / IFC refusés avec un message ;
+PDF : onglets Nomenclature et Aperçu du plan (pages, zoom, tableaux encadrés, ligne encadrée), zone à analyser, saisie
+assistée, création par le même chemin (contrôles du moteur, références sans doublon, annulation). Mode d'emploi § 7.22.
+Banc `tests/t_pdf.py` (PDF fictifs écrits par `tests/pdf_fictifs.py`, sans bibliothèque).
+
+**Écarts voulus** : titre et libellés « Importer un plan DXF » / « Importer DXF » → « Importer un plan » ; t_dxf_ui vérifie le
+nouveau titre et l'acceptation des .pdf (vérification modifiée, documentée ici). HTML : 1,47 Mo → 3,3 Mo (PDF.js). Moteur,
+débit, feuilles et exports inchangés (t_avap).
+
+**Essai local sur un PDF réel (19/10/2026, hors dépôt, comptes seulement)** : 2 pages tournées de 270° lues, aperçu des deux
+pages correct, nomenclature visible sur la page 2 ; 125 textes extractibles pour ≈ 17 500 tracés : les textes de la
+nomenclature sont dessinés en traits, aucune ligne lue, aucune inventée ; rapport « saisie assistée ». Une ligne saisie avec
+des valeurs fictives a donné un ouvrage avec sa provenance (page 2). Aucune requête réseau.
+
+**Non validé** : Firefox, Safari, tablette réelle ; PDF d'autres logiciels que le générateur de test et ce plan ; tableaux
+continués sur plusieurs pages sans en-tête ; OCR (non développé).
+
 ## Non publié — nomenclatures de réservations dans l'import DXF
 **Demande (Kévin, 19/10/2026)** : un vrai plan de bureau d'études donnait 772 formes pour une nomenclature de 23 réservations
 placée dans une présentation. Détecter les nomenclatures de réservations (espace Objet et présentations), garder toutes leurs

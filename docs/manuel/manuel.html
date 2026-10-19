@@ -430,9 +430,9 @@ code{font:9pt 'DejaVu Sans Mono',monospace;background:#f1f3f7;padding:0 1mm;bord
 <p>Forme spéciale et poutre avec poteaux : un tableau donne la position de chaque poteau (x, y) depuis les axes. Les files du bâtiment ne sont pas reportées : implanter les axes de l'ouvrage depuis le plan du bureau d'études.</p></div>
 <div class="fig" style="flex:0 0 52%"><img src="img/28_implantation.png"><div class="cap">Axes X / Y et cotes d'implantation (forme spéciale avec poteaux)</div></div></div>
 
-<h2>7.22 Importer un plan DXF</h2>
-<p>Pour créer les réservations dessinées sur un plan DXF (plan de réservations du bureau d'études) : <b>📥 Importer DXF</b> (barre du haut) ou <b>📥 Importer un plan DXF</b> (carte Plans ou accueil). Le chargement des projets (.json) n'est pas concerné.</p>
-<ol><li><b>Choisir un fichier .dxf</b> (DXF ASCII, R12 à R2018). Le nom du fichier et son unité s'affichent. <b>Unité absente</b> (toujours le cas en R12) : la choisir (mm, cm ou m) ; elle n'est jamais devinée.</li>
+<h2>7.22 Importer un plan (DXF ou PDF)</h2>
+<p>Pour créer les réservations d'un plan du bureau d'études : <b>📥 Importer un plan</b> (barre du haut, carte Plans ou accueil). La même fenêtre lit les <b>DXF</b> et les <b>PDF</b> (voir « Plan PDF » plus bas) ; le fichier peut aussi y être glissé. Le chargement des projets (.json) reste dans <b>📂 Charger</b>. DWG et IFC ne sont pas encore lus : la fenêtre le dit.</p>
+<ol><li><b>Choisir un plan</b> (DXF ASCII, R12 à R2018). Le nom du fichier et son unité s'affichent. <b>Unité absente</b> (toujours le cas en R12) : la choisir (mm, cm ou m) ; elle n'est jamais devinée.</li>
 <li>Vérifier le <b>chantier</b> et l'<b>ouvrage</b> (repris du formulaire), l'<b>indice du plan source</b> et, si les réservations ont la même hauteur, la <b>hauteur commune</b> ; une hauteur saisie sur une ligne la remplace pour cette ligne.</li>
 <li>Cocher les <b>calques analysés</b>. Le bilan compte les réservations potentielles et les géométries non prises en charge (lignes séparées, arcs, blocs, textes… : listées avec la raison, jamais créées).</li>
 <li>Contrôler chaque ligne : identifiant de l'entité DXF, calque, <b>forme</b> (rectangle → rectangulaire, carré → carré, cercle → circulaire ; « avec fond » seulement si on le choisit), cotes converties en mm, hauteur, référence (vide = numérotation automatique), statut. Une référence déjà utilisée dans l'ouvrage est signalée et la ligne n'est pas créée.</li>
@@ -449,6 +449,13 @@ code{font:9pt 'DejaVu Sans Mono',monospace;background:#f1f3f7;padding:0 1mm;bord
 <li><b>Géométrie du dessin</b> : « trouvée » (repère près d'un contour de mêmes cotes : rattachée), « probable » ou « plusieurs possibles » (à choisir dans la liste ou en cliquant le contour orange du schéma), « non retrouvée ». Une géométrie rattachée quitte l'onglet <b>Géométries du dessin</b> (pas de doublon). La ligne reste créable sans géométrie.</li></ol>
 <p class="small">L'ouvrage créé garde son origine : fichier, présentation, tableau, ligne, repère, textes des cellules, géométrie rattachée (trouvée ou choisie), corrections faites, indice du plan source (distinct de l'indice du plan CoffraPlan).</p>
 <div class="fig"><img src="img/30_import_nomenclature.png" style="max-width:96%"><div class="cap">Import d'un plan DXF : nomenclature des réservations, correspondances avec le dessin</div></div>
+<h3>Plan PDF</h3>
+<p>Un PDF est lu dans l'application, sans connexion. L'en-tête de la fenêtre dit si la <b>lecture automatique</b> a trouvé des lignes de nomenclature, ou s'il faut passer par la <b>saisie assistée</b>.</p>
+<ol><li><b>Nomenclature des réservations</b> : mêmes règles que pour un DXF (toutes les lignes, rien de coché d'office, cotes jamais inventées, niveau ≠ hauteur). Le bouton <b>p. N ↗</b> d'une ligne ouvre la page du PDF avec la ligne encadrée.</li>
+<li><b>Aperçu du plan</b> : pages (◀ ▶), zoom (− + Ajuster). Les tableaux reconnus sont encadrés en vert. Sous l'aperçu, la nature de chaque page : textes extractibles, textes et nombreux tracés, dessin vectoriel sans texte, image (numérisation).</li>
+<li><b>Zone du tableau</b> : <b>Sélectionner une zone</b>, puis cliquer-glisser autour du tableau et <b>Analyser la zone</b>. Utile quand la lecture automatique mélange deux tableaux ou n'en trouve pas. Si la zone ne contient aucun texte lisible, rien n'est ajouté.</li>
+<li><b>Saisie assistée</b> : quand le tableau est dessiné en traits (export de DAO qui vectorise les textes) ou numérisé, recopier chaque ligne (repère, désignation, cotes, niveau, observations) en regardant la page. Les lignes saisies rejoignent l'onglet Nomenclature, non cochées ; ✕ en retire une.</li></ol>
+<p class="small">Les contours dessinés sur un PDF ne donnent <b>aucune cote</b> : l'échelle de la page n'est pas connue. Seules les cotes écrites dans le tableau ou saisies sont utilisées. L'ouvrage créé garde son origine : fichier, page, tableau, ligne, repère, textes, cotes et unité sources, zone de la page, valeurs saisies ou corrigées, indice du plan source ; le PDF lui-même n'est pas enregistré.</p>
 
 <!-- ======================= 8 ======================= -->
 <h1 class="chap">8. Raccourcis clavier</h1>

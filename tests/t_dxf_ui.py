@@ -66,7 +66,9 @@ def t(s):
 
         # 1. ouverture et lecture
         pg.click('#bDxi')
-        s.check(pg.is_visible('#dxi') and 'Importer un plan DXF' in pg.text_content('#dxi .ct'), '1. commande « Importer un plan DXF » : fenêtre ouverte')
+        # 20/10/2026 : fenêtre unique DXF + PDF, titre « Importer un plan » (changement voulu, voir CHANGELOG)
+        s.check(pg.is_visible('#dxi') and pg.text_content('#dxi .ct').strip() == '📥 Importer un plan' and '.pdf' in pg.get_attribute('#dxiF', 'accept'),
+                '1. commande « Importer un plan » : fenêtre ouverte, DXF et PDF acceptés')
         pg.set_input_files('#dxiF', bad)
         pg.wait_for_selector('#dxiZ .hint')
         s.check('Fichier non lu' in pg.inner_text('#dxiZ') and pg.is_disabled('#dxiGo'), '1. fichier non DXF : refus écrit, rien à créer', pg.inner_text('#dxiZ'))
