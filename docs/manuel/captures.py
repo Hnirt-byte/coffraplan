@@ -136,6 +136,16 @@ with sync_playwright() as p:
     ev("document.querySelector('.hdr').style.visibility='hidden'")
     pg.locator('#pvA .ps').first.locator('.ps-c').first.screenshot(path=D + '28_implantation.png')
     ev("document.querySelector('.hdr').style.visibility=''")
+    # import DXF : fichier fictif écrit par ezdxf (même jeu que tests/t_dxf_ui.py)
+    import tempfile
+    from t_dxf_ui import fichiers
+    multi = fichiers(tempfile.mkdtemp())[0]
+    ev("()=>{shP(0);EI=-1;updBtn()}"); pg.click('#bDxi'); pg.set_input_files('#dxiF', multi); pg.wait_for_selector('#dxiT tr[data-i]')
+    pg.fill('#dxiH', '300'); pg.fill('#dxiInd', 'B'); pg.fill('#dxiT tr[data-i="3"] [data-k=h]', '450')
+    for i in (0, 1, 3):
+        pg.check(f'#dxiT tr[data-i="{i}"] [data-k=conf]')
+    pg.click('#dxiV .c[data-i="1"]'); pg.wait_for_timeout(200)
+    bx = pg.locator('#mdBody').bounding_box(); shot('29_import_dxf', clip={'x': bx['x'] - 6, 'y': bx['y'] - 6, 'width': bx['width'] + 12, 'height': bx['height'] + 12}); ev("closeModal()")
     errs = [e for e in errs if 'net::' not in e]
     assert not errs, errs
     b.close()
