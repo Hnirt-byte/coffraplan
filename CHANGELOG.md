@@ -22,10 +22,16 @@ chemin (adaptateur, contrôles, références sans doublon). `origineImport` d'un
 espace, présentation, tableau, ligne, repère, textes des cellules, géométrie (trouvée ou choisie), choix et corrections, indice
 source. Mode d'emploi § 7.22. Banc `tests/t_nomenclature.py` (DXF fictifs `tests/dxf_nomenclatures.py`, 18 scénarios).
 
+**Essai local sur un plan réel (19/10/2026, comptes seulement, fichier hors dépôt)** : 23 lignes lues sur 23 attendues, 2
+tableaux d'aciers écartés, 2 colonnes non reconnues gardées telles quelles ; chaque repère est dessiné plusieurs fois (vues,
+coupes) : toutes les lignes « plusieurs possibles », jusqu'à 30 contours par ligne. Correction : les contours de mêmes cotes
+sont proposés en premier (ils pouvaient tomber au-delà des 12 propositions affichées). Unité du dessin absente du fichier :
+à choisir dans la fenêtre. Fenêtre ouverte sur ce plan dans Chromium : 23 lignes, aucune cochée, sans erreur JS.
+
 **Écarts voulus** : un contour fermé dessiné dans une présentation n'est plus proposé comme réservation (il l'était, avec des
 coordonnées de feuille). Aucun écart sur le débit, les feuilles et les exports (t_avap).
 
-**Non validé** : plan réel (confidentiel, absent de l'environnement de développement) ; DXF exporté par AutoCAD ; ACAD_TABLE
+**Non validé** : création d'ouvrages à partir du plan réel ; ACAD_TABLE
 réel (seule une entité minimale fabriquée est testée) ; fenêtres de présentation (VIEWPORT) non interprétées : un repère placé
 seulement dans une présentation ne relie pas la ligne au dessin ; Chromium seulement.
 

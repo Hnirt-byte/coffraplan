@@ -239,7 +239,8 @@ function associer(noms,C,doc,opt){
   noms.forEach(N=>{const uT=(o.unites||{})[N.id]||N.unite;N.lignes.forEach(L=>{const k=cleRep(L.repere),occ=k?idx[k]||[]:[],op={};
     occ.forEach(t=>{const P=[[t.x,t.y]].concat(t.fleches||[]),lim=4*t.h;
       geo.forEach(({c,i})=>{const d=Math.min(...P.map(p=>dGeo(p,c.geometrie)));if(d<=lim&&(!op[i]||d<op[i].d))op[i]={c:i,id:c.id,d,via:'repere',cotes:compat(L,uT,c,o.uniteDessin)}})});
-    let options=Object.values(op).sort((a,b)=>a.d-b.d),statut,note='';
+    // cotes compatibles d'abord (sinon tronquées au-delà des DXN_OPT premières propositions), puis distance
+    const rg={ok:0,'?':1,diff:2};let options=Object.values(op).sort((a,b)=>rg[a.cotes]-rg[b.cotes]||a.d-b.d),statut,note='';
     const enPapier=k&&papier[k]?' ; repère présent dans une présentation (« '+[...papier[k]].join(' », « ')+' ») : lien non établi, fenêtre de présentation non interprétée':'';
     if(!occ.length){
       const M=L.dims?geo.filter(({c})=>compat(L,uT,c,o.uniteDessin)==='ok').map(({c,i})=>({c:i,id:c.id,d:null,via:'cotes',cotes:'ok'})):[];

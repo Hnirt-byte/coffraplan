@@ -51,6 +51,10 @@ def t(s):
         R['ancien'] = pg.evaluate(ANALYSE, ['ancien.dxf', texte(old)])
         K = pg.evaluate('''()=>{const c=CPI.nomenclatures.cotes;return ['650x800','0,65 x 0,80 m','65 x 80 x 20','Ø 12,5','%%c','DN250','SO','S.O.','à définir','/','','250','Trémie'].map(v=>[v,c(v,'mm')])
           .concat([['d250 saisie',c('d250','mm',true)],['d250 tableau',c('d250','mm')]])}''')
+        # 14 contours près d'un même repère : le seul de mêmes cotes est le plus éloigné
+        O = pg.evaluate('''()=>{const r=(x,L,l)=>({statut:'a_confirmer',type:'rect',id:'g'+x,dims:{L,l},geometrie:{type:'polyligne',espace:'objet',points:[[x,50],[x+l,50],[x+l,50+L],[x,50+L]]}});
+          const C=[...Array(13)].map((_,i)=>r(20*i,100,50)).concat([r(300,800,650)]),L={id:'X-L01',repere:'Z9',dims:{type:'rect',a:650,b:800,unite:'mm'}};
+          return CPI.nomenclatures.associer([{id:'X',unite:'mm',ids:[],lignes:[L]}],C,{textes:[{id:'t',texte:'Z9',espace:'objet',x:0,y:0,h:100}]},{uniteDessin:'mm'})['X-L01'].options.map(o=>[o.id,o.cotes])}''')
         s.check(not errs, 'page vide : modules sans erreur JS', '; '.join(errs))
         b.close()
 
@@ -109,6 +113,7 @@ def t(s):
     x = st('D10')
     s.check(x['statut'] == 'absente' and 'aucun contour' in x['note'], '12. D10 : repère loin de tout contour → non retrouvée, ligne gardée')
     s.check(st('D06')['statut'] == 'absente' and sum(1 for l in L if S[l['id']]['statut'] == 'absente') >= 10, '12. lignes sans géométrie toujours présentes')
+    s.check(len(O) == 14 and O[0] == ['g300', 'ok'] and all(c == 'diff' for _, c in O[1:]), '13. repère entouré de contours : la géométrie de mêmes cotes est proposée en premier', json.dumps(O[:3]))
     s.check(all(not o.get('id', '').startswith('#') for x in S.values() for o in x['options']) and all(hid(o) not in [c['h'] for c in fr] for x in S.values() for o in x['options']),
             'rapprochement : géométries de l\'espace Objet seulement')
 
