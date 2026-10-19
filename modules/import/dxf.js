@@ -54,9 +54,11 @@ function decoder(txt,nom){
   const base=o=>{n++;const h=val(o,5);return{id:h!==undefined?h:'#'+n,calque:val(o,8)===undefined?'0':val(o,8)}};
   const autre=(o,b,nature)=>entites.push(Object.assign(b,{type:'autre',nature}));
   // contour : fermé par le drapeau 1, ou dernier sommet = premier (dessin non « fermé » mais refermé exactement)
-  const poly=(o,b,pts,f,bulge)=>{const s=repere(o);
+  // largeur non nulle : la ligne médiane n'est pas le contour exact du vide → non prise en charge
+  const poly=(o,b,pts,f,bulge,large)=>{const s=repere(o);
     if(!s)return autre(o,b,o.type+' hors du plan XY');
     if(bulge)return autre(o,b,o.type+' avec arcs');
+    if(large)return autre(o,b,o.type+' avec largeur non nulle');
     if(pts.length<2)return autre(o,b,o.type+' de moins de 2 sommets');
     const P=pts.map(p=>[s*p[0],p[1]]),z=P[P.length-1];
     entites.push(Object.assign(b,{type:'polyligne',points:P,ferme:!!(f&1)||(P.length>3&&z[0]===P[0][0]&&z[1]===P[0][1])}))};
@@ -64,15 +66,19 @@ function decoder(txt,nom){
     if(o.type==='CIRCLE'){const s=repere(o),r=num(o,40,NaN);
       if(!s)autre(o,b,'CIRCLE hors du plan XY');
       else entites.push(Object.assign(b,{type:'cercle',centre:[s*num(o,10,NaN),num(o,20,NaN)],r}))}
-    else if(o.type==='LWPOLYLINE'){const pts=[];let bulge=false;
-      for(const [c,v] of o.g){if(c===10)pts.push([+v,NaN]);else if(c===20&&pts.length)pts[pts.length-1][1]=+v;else if(c===42&&+v!==0)bulge=true}
+    else if(o.type==='LWPOLYLINE'){const pts=[];let bulge=false,large=false;
+      for(const [c,v] of o.g){if(c===10)pts.push([+v,NaN]);else if(c===20&&pts.length)pts[pts.length-1][1]=+v;else if(c===42&&+v!==0)bulge=true;else if((c===40||c===41||c===43)&&+v!==0)large=true}
       if(pts.some(p=>!p.every(Number.isFinite)))fail(`LWPOLYLINE ${b.id} : sommet illisible`);
-      poly(o,b,pts,num(o,70,0),bulge)}
-    else if(o.type==='POLYLINE'){const f=num(o,70,0),pts=[];let bulge=false;
-      for(i++;i<E.length&&E[i].type==='VERTEX';i++){const v=E[i];pts.push([num(v,10,NaN),num(v,20,NaN)]);if(num(v,42,0)!==0)bulge=true}
+      poly(o,b,pts,num(o,70,0),bulge,large)}
+    else if(o.type==='POLYLINE'){const f=num(o,70,0),pts=[];let bulge=false,lisse=false,large=num(o,40,0)!==0||num(o,41,0)!==0;
+      for(i++;i<E.length&&E[i].type==='VERTEX';i++){const v=E[i];pts.push([num(v,10,NaN),num(v,20,NaN)]);
+        if(num(v,42,0)!==0)bulge=true;if(num(v,40,0)!==0||num(v,41,0)!==0)large=true;
+        if(num(v,70,0)&(1|8|16))lisse=true}   // sommet ajouté par lissage, sommet de spline, point de contrôle de spline
       if(!E[i]||E[i].type!=='SEQEND')fail(`POLYLINE ${b.id} : fin SEQEND absente`);
       if(pts.some(p=>!p.every(Number.isFinite)))fail(`POLYLINE ${b.id} : sommet illisible`);
-      if(f&(8|16|64))autre(o,b,'POLYLINE 3D ou maillage');else poly(o,b,pts,f,bulge)}
+      if(f&(8|16|64))autre(o,b,'POLYLINE 3D ou maillage');
+      else if(f&2||f&4||lisse)autre(o,b,'POLYLINE lissée (courbe ajustée ou spline)');   // 70 : bit 2 = courbe ajustée, bit 4 = spline
+      else poly(o,b,pts,f,bulge,large)}
     else autre(o,b,o.type==='INSERT'?'INSERT (bloc non décomposé)':o.type)}
   return{format:'dxf',fichier:nom==null?'':String(nom),unite:iu?UNITES[iu]:null,version:H.$ACADVER||null,
     calques:[...new Set(calques.concat(entites.map(e=>e.calque)))],entites};

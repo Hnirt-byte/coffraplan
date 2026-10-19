@@ -75,6 +75,8 @@ Règle pour les décodeurs : une polyligne à arcs (bulge) devient `autre`, jama
 | `LWPOLYLINE`, `POLYLINE` + `VERTEX` … `SEQEND` (2D) | `polyligne` ; `ferme` = drapeau 1, ou dernier sommet exactement égal au premier |
 | `CIRCLE` | `cercle` (`centre`, `r`) |
 | polyligne à arcs (code 42 ≠ 0) | `autre`, nature « … avec arcs » |
+| polyligne avec largeur non nulle (LWPOLYLINE 40 / 41 / 43 ; POLYLINE 40 / 41 de l'en-tête ou d'un VERTEX) | `autre`, « … avec largeur non nulle » (la ligne médiane n'est pas le contour du vide) |
+| POLYLINE lissée (70 : bit 2 courbe ajustée, bit 4 spline ; VERTEX 70 : bits 1, 8, 16) | `autre`, « POLYLINE lissée (courbe ajustée ou spline) » |
 | extrusion (0,0,−1) (objet en miroir) | X changé de signe : coordonnées dans le repère général |
 | autre extrusion, POLYLINE 3D / maillage | `autre` (hors du plan XY) |
 | `INSERT` | `autre` « bloc non décomposé » (les blocs ne sont pas explosés) |

@@ -59,6 +59,19 @@ def fichiers(dossier):
     d, m = nouveau(); save('miroir.dxf', d, {'c': m.add_circle((100, 50), 75, dxfattribs={'extrusion': (0, 0, -1)}).dxf.handle})
     d, m = nouveau(); save('papillon.dxf', d, {'p': m.add_lwpolyline([(0, 0), (1000, 0), (0, 500), (1000, 500)], close=True).dxf.handle})
     d, m = nouveau(); save('refermee.dxf', d, {'p': m.add_lwpolyline(rect(0, 0, 1000, 500) + [rect(0, 0, 1000, 500)[0]], close=False).dxf.handle})
+    # polylignes lissées (R12, POLYLINE 70 bit 2 = courbe ajustée, bit 4 = spline ; VERTEX 70 bit 8 = sommet de spline)
+    for nom, fl, vfl in (('r12_ajustee.dxf', 2, 0), ('r12_spline.dxf', 4, 0), ('r12_sommet_spline.dxf', 0, 8)):
+        d, m = nouveau(v='R12'); p = m.add_polyline2d(rect(0, 0, 1000, 500), close=True)
+        p.dxf.flags |= fl
+        for v in p.vertices:
+            v.dxf.flags |= vfl
+        save(nom, d, {'p': p.dxf.handle})
+    # largeur non nulle : 43 (constante), 40 / 41 (par sommet), POLYLINE R12 (largeur par défaut de l'en-tête, largeur d'un VERTEX)
+    d, m = nouveau(); p = m.add_lwpolyline(rect(0, 0, 1000, 500), close=True); p.dxf.const_width = 20; save('lw_largeur_cst.dxf', d, {'p': p.dxf.handle})
+    d, m = nouveau(); save('lw_largeur_som.dxf', d, {'p': m.add_lwpolyline([(x, y, 0, 15, 0) for x, y in rect(0, 0, 1000, 500)], format='xyseb', close=True).dxf.handle})
+    d, m = nouveau(v='R12'); save('r12_largeur.dxf', d, {'p': m.add_polyline2d(rect(0, 0, 1000, 500), close=True, dxfattribs={'default_start_width': 10, 'default_end_width': 10}).dxf.handle})
+    d, m = nouveau(v='R12'); p = m.add_polyline2d(rect(0, 0, 1000, 500), close=True); p.vertices[2].dxf.start_width = 5
+    save('r12_largeur_sommet.dxf', d, {'p': p.dxf.handle})
     d, m = nouveau(); m.add_circle((0, 0), 5); p = os.path.join(dossier, 'binaire.dxf'); d.saveas(p, fmt='bin')
     F['binaire.dxf'] = (open(p, 'rb').read().decode('latin-1'), {})
     t = F['CHANTIER_DEMO_A_rect.dxf'][0]
@@ -140,7 +153,10 @@ def t(s):
         s.check([c['remarques'] for c in C[4:]] == [['géométrie non prise en charge : LINE'], ['géométrie non prise en charge : TEXT']], 'multi : nature de la ligne et du texte écrite')
         s.check(all(c['statut'] in ('a_confirmer', 'non_pris_en_charge') for n in R if R[n]['D'] for c in R[n]['D']['candidats']), 'aucun candidat validé d\'office, dans aucun fichier')
         s.check(cand('CHANTIER_DEMO_B_r12.dxf').get('type') == 'rect' and cand('CHANTIER_DEMO_B_r12.dxf', 1).get('type') == 'circ', 'R12 : rectangle et cercle détectés')
-        for n, why in (('ouverte.dxf', 'polyligne ouverte'), ('arc.dxf', 'LWPOLYLINE avec arcs'), ('papillon.dxf', 'non rectangulaire')):
+        for n, why in (('ouverte.dxf', 'polyligne ouverte'), ('arc.dxf', 'LWPOLYLINE avec arcs'), ('papillon.dxf', 'non rectangulaire'),
+                       ('r12_ajustee.dxf', 'POLYLINE lissée'), ('r12_spline.dxf', 'POLYLINE lissée'), ('r12_sommet_spline.dxf', 'POLYLINE lissée'),
+                       ('lw_largeur_cst.dxf', 'LWPOLYLINE avec largeur non nulle'), ('lw_largeur_som.dxf', 'LWPOLYLINE avec largeur non nulle'),
+                       ('r12_largeur.dxf', 'POLYLINE avec largeur non nulle'), ('r12_largeur_sommet.dxf', 'POLYLINE avec largeur non nulle')):
             x = cand(n)
             s.check(x.get('type') is None and x['statut'] == 'non_pris_en_charge' and why in ' '.join(x['remarques']) and x['geometrie']['id'] == F[n][1][next(iter(F[n][1]))],
                     f'{n} : non pris en charge ({why}), géométrie et identifiant conservés', json.dumps(x)[:300])

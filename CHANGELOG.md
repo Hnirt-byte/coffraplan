@@ -8,7 +8,8 @@ Chaque version est un tag git (`git diff v2.4 v2.5 -- app/` pour voir les change
 fermées droites, cercles, provenance), géométries ambiguës gardées en « non pris en charge », unité absente jamais devinée.
 
 **Fait** : `modules/import/dxf.js` (DXF ASCII R12 à R2018 : LWPOLYLINE, POLYLINE + VERTEX, CIRCLE, `$INSUNITS`, table
-LAYER, handles ; arcs, blocs, 3D et autres types → « autre » avec leur nature ; fichiers vides, binaires, tronqués ou non
+LAYER, handles ; arcs, largeur non nulle, POLYLINE lissées (courbe ajustée, spline), blocs, 3D et autres types → « autre »
+avec leur nature ; fichiers vides, binaires, tronqués ou non
 DXF refusés). Détecteur : angle droit exigé (un quadrilatère croisé passait pour un rectangle), remarque « carré
 potentiel ». README du module : table du décodeur, décisions de Kévin, protocole de validation sur un vrai plan. Banc
 `tests/t_dxf.py` (fichiers écrits par ezdxf, chantier fictif ; ajouté aux suites rapides). `app/CoffraPlan.html` inchangé.
