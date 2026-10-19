@@ -37,6 +37,9 @@ def open_app(pw, app=None, width=1400, height=1000):
     # existants testent le repli par téléchargement (t_v26 teste l'écriture directe avec un faux fichier)
     ctx.add_init_script(NOFS)
     pg = ctx.new_page()
+    # interception du sélecteur de fichier active dès l'ouverture : expect_file_chooser l'active sans attendre l'accusé
+    # du navigateur, et un raccourci (Ctrl+O) envoyé juste après pouvait ouvrir le sélecteur avant (événement perdu)
+    pg.on('filechooser', lambda f: None)
     errs = []
     pg.on('pageerror', lambda e: errs.append(str(e)+' @ '+(e.stack or '')[:400]))
     pg.on('console', lambda m: errs.append('console:' + m.text) if m.type == 'error' and 'fonts.g' not in m.text else None)

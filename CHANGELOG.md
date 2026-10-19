@@ -3,6 +3,18 @@
 Détail complet de chaque version (demandes, écarts voulus, tests, non validé) : `docs/historique/HANDOFF_<version>.md`.
 Chaque version est un tag git (`git diff v2.4 v2.5 -- app/` pour voir les changements).
 
+## Non publié — stabilité de t_ux (sélecteur de fichier)
+**Demande (Kévin, 19/10/2026)** : trouver la cause de l'échec intermittent de t_ux (attente du sélecteur de fichier après
+Ctrl+O), sans désactiver ni affaiblir le contrôle.
+
+**Cause** : `expect_file_chooser` de Playwright active l'interception du sélecteur sans attendre l'accusé du navigateur ;
+le Ctrl+O envoyé juste après pouvait ouvrir le sélecteur avant l'interception, et l'événement était perdu (30 s d'attente).
+L'appli, elle, répondait bien : sur un échec reproduit, `impJ` avait cliqué le champ fichier avec activation utilisateur.
+
+**Fait** : `tests/lib.py` (`open_app`), `t_ux` et `t_v23` (`page`) activent l'interception à la création de la page
+(écouteur `filechooser` sans effet). Les contrôles sont inchangés : t_ux échoue toujours si Ctrl+O n'ouvre plus le sélecteur.
+Reproduction hors banc : 1 échec sur 40 puis 1 sur 150 avant, 0 sur 150 après. `app/CoffraPlan.html` inchangé.
+
 ## Non publié — nettoyage des noms de chantiers réels
 **Demande (Kévin, 18/10/2026)** : retirer des fichiers suivis les références à des chantiers réels, remplacées par des noms
 fictifs (`CHANTIER_DEMO_A`).
