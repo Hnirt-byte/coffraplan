@@ -6,7 +6,7 @@ import os, sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 HTML = os.path.join(HERE, '..', '..', 'app', 'CoffraPlan.html')
-ORDRE = ['lecteur.js', 'dxf.js', 'detecteur.js', 'adaptateur.js', 'fenetre.js']   # dxf.js après lecteur.js (DECODEURS)
+ORDRE = ['lecteur.js', 'dxf.js', 'detecteur.js', 'nomenclatures.js', 'adaptateur.js', 'fenetre.js']   # dxf.js après lecteur.js (DECODEURS)
 DEBUT, FIN = '<script id="cpi-src">', '</script>'
 
 

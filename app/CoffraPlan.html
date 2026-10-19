@@ -329,7 +329,9 @@ root.CPI=Object.assign(root.CPI||{},{lecteur:{lirePlan,verifierDocument,UNITES,D
 // ==== modules/import/dxf.js ====
 // CoffraPlan — module d'import de plans : décodeur DXF ASCII (inscrit dans CPI.lecteur.DECODEURS.dxf).
 // Lit la section ENTITIES (LWPOLYLINE, POLYLINE R12 + VERTEX, CIRCLE ; le reste → « autre »), l'unité $INSUNITS et la
-// table des calques. Charger après lecteur.js. Indépendant de l'interface et du moteur.
+// table des calques ; chaque entité porte son espace (Objet ou présentation). Relève aussi les textes et les traits droits
+// de tous les espaces, blocs insérés compris (tableaux, repères : voir nomenclatures.js). Charger après lecteur.js.
+// Indépendant de l'interface et du moteur.
 (function(root){'use strict';
 const UNITES={4:'mm',5:'cm',6:'m'};   // $INSUNITS ; 0 ou absent → null (jamais devinée) ; autres codes → refus
 const NOMS_U={1:'pouces',2:'pieds',3:'miles',7:'km',8:'micro-pouces',9:'mils',10:'yards',11:'angströms',12:'nanomètres',13:'microns',14:'décimètres'};
@@ -379,8 +381,8 @@ function decoder(txt,nom){
   if(!Number.isInteger(iu)||iu<0)fail('$INSUNITS illisible');
   if(iu&&!UNITES[iu])fail(`unité du fichier non prise en charge : ${NOMS_U[iu]||'code '+iu} (mm, cm ou m attendus)`);
   const calques=objets(S.TABLES).filter(o=>o.type==='LAYER').map(o=>val(o,2)).filter(x=>x!==undefined);
-  const E=objets(S.ENTITIES),entites=[];let n=0;
-  const base=o=>{n++;const h=val(o,5);return{id:h!==undefined?h:'#'+n,calque:val(o,8)===undefined?'0':val(o,8)}};
+  const E=objets(S.ENTITIES),entites=[],X=espaces(S);let n=0;
+  const base=o=>{n++;const h=val(o,5);return Object.assign({id:h!==undefined?h:'#'+n,calque:val(o,8)===undefined?'0':val(o,8)},X.de(o))};
   const autre=(o,b,nature)=>entites.push(Object.assign(b,{type:'autre',nature}));
   // contour : fermé par le drapeau 1, ou dernier sommet = premier (dessin non « fermé » mais refermé exactement)
   // largeur non nulle : la ligne médiane n'est pas le contour exact du vide → non prise en charge
@@ -409,8 +411,94 @@ function decoder(txt,nom){
       else if(f&2||f&4||lisse)autre(o,b,'POLYLINE lissée (courbe ajustée ou spline)');   // 70 : bit 2 = courbe ajustée, bit 4 = spline
       else poly(o,b,pts,f,bulge,large)}
     else autre(o,b,o.type==='INSERT'?'INSERT (bloc non décomposé)':o.type)}
-  return{format:'dxf',fichier:nom==null?'':String(nom),unite:iu?UNITES[iu]:null,version:H.$ACADVER||null,
-    calques:[...new Set(calques.concat(entites.map(e=>e.calque)))],entites};
+  return Object.assign({format:'dxf',fichier:nom==null?'':String(nom),unite:iu?UNITES[iu]:null,version:H.$ACADVER||null,
+    calques:[...new Set(calques.concat(entites.map(e=>e.calque)))],entites},annexes(S,E,X));
+}
+
+// Espaces AutoCAD. Entité : code 67 = 1 → espace papier ; propriétaire (330) → BLOCK_RECORD (table) → LAYOUT (objets) pour
+// le nom de la présentation. Les présentations non actives sont dans BLOCKS (*Paper_Space0, 1…). R12 : pas de nom (null).
+function espaces(S){
+  const lay={},br={};
+  for(const o of objets(S.OBJECTS))if(o.type==='LAYOUT'&&val(o,5)!==undefined){const n=o.g.filter(p=>p[0]===1).pop();if(n&&n[1])lay[val(o,5)]=n[1]}
+  for(const o of objets(S.TABLES))if(o.type==='BLOCK_RECORD'&&val(o,5)!==undefined)br[val(o,5)]={nom:val(o,2)||'',lay:val(o,340)};
+  const nomBR=h=>{const b=br[h];return b?lay[b.lay]||(/^\*paper_space/i.test(b.nom)?b.nom:null):null};
+  const actif=Object.keys(br).find(h=>/^\*paper_space$/i.test(br[h].nom));
+  return{nomBR,presentations:[...new Set(Object.values(lay))].filter(x=>x.toLowerCase()!=='model'),
+    de:o=>+val(o,67)===1?{espace:'papier',presentation:nomBR(val(o,330))||(actif?nomBR(actif):null)}:{espace:'objet',presentation:null}};
+}
+
+// Textes : %%c → Ø, %%d → °, %%p → ±, soulignés supprimés ; MTEXT : mise en forme retirée, \P = retour à la ligne
+const uni=s=>s.replace(/\\U\+([0-9a-fA-F]{4})/g,(m,h)=>String.fromCharCode(parseInt(h,16)));
+const pct=s=>s.replace(/%%(\d{3})/g,(m,c)=>String.fromCharCode(+c)).replace(/%%[cC]/g,'Ø').replace(/%%[dD]/g,'°').replace(/%%[pP]/g,'±').replace(/%%[uUoOkK]/g,'').replace(/%%%/g,'%');
+const txtBrut=s=>pct(uni(s));
+function mtextBrut(s){
+  return pct(uni(s).replace(/\\\\/g,'\u0001').replace(/\\[{}]/g,m=>m[1]==='{'?'\u0002':'\u0003')
+    .replace(/\\P/g,'\n').replace(/\\~/g,' ').replace(/\\S([^;]*?)[\^\/#]([^;]*);/g,'$1/$2')
+    .replace(/\\[ACcFfHhQTWp][^;]*;/g,'').replace(/\\M\+[0-9a-fA-F]{5}/g,'?').replace(/\\[LlOoKkNX]/g,'').replace(/[{}]/g,'')
+    .replace(/\u0001/g,'\\').replace(/\u0002/g,'{').replace(/\u0003/g,'}'));
+}
+
+// Matrices 2D [a,b,c,d,e,f] : x' = a·x + c·y + e, y' = b·x + d·y + f
+const app=(M,x,y)=>[M[0]*x+M[2]*y+M[4],M[1]*x+M[3]*y+M[5]];
+const mul=(A,B)=>[A[0]*B[0]+A[2]*B[1],A[1]*B[0]+A[3]*B[1],A[0]*B[2]+A[2]*B[3],A[1]*B[2]+A[3]*B[3],A[0]*B[4]+A[2]*B[5]+A[4],A[1]*B[4]+A[3]*B[5]+A[5]];
+const rotM=a=>{const c=Math.cos(a),s=Math.sin(a);return[c,s,-s,c,0,0]};
+const BUDGET=500000;   // shortcut: au-delà de 500 000 textes + traits (fichiers énormes), le reste n'est pas relevé ; signalé
+
+// Textes et traits de tous les espaces : ENTITIES (Objet + présentation active), présentations de BLOCKS, contenu des blocs
+// insérés (INSERT ; ACAD_TABLE par son bloc de rendu *T…), transformé dans le repère de l'espace qui les contient.
+// Texte : {id, calque, espace, presentation, nature, texte, x, y (centre estimé), h, w (largeur estimée), rot (°), bloc?, fleches?}
+// Trait : {calque, espace, presentation, a:[x,y], b:[x,y]}. Coordonnées propres à chaque espace : jamais mélangées.
+function annexes(S,E,X){
+  const textes=[],traits=[],sig=new Set(),blocs={},fl={};let cur=null,nb=0;
+  for(const o of objets(S.BLOCKS)){if(o.type==='BLOCK'){cur={nom:val(o,2)||'',br:val(o,330),base:[+val(o,10)||0,+val(o,20)||0],E:[]};blocs[cur.nom.toUpperCase()]=cur}
+    else if(o.type==='ENDBLK')cur=null;else if(cur)cur.E.push(o)}
+  const plein=()=>{if(++nb<=BUDGET)return false;sig.add('fichier très chargé : textes et traits au-delà de '+BUDGET+' non relevés');return true};
+  // texte d'une ligne : centre estimé (largeur ≈ 0,6 h par caractère) selon le point d'insertion et la justification
+  function pose(c,M,t,ox,oy,h,rot,dx,dy){if(plein())return;const r=rot*Math.PI/180,u=[Math.cos(r),Math.sin(r)],p=app(M,ox+dx*u[0]-dy*u[1],oy+dx*u[1]+dy*u[0]),
+    k=Math.sqrt(Math.abs(M[0]*M[3]-M[1]*M[2]))||1;
+    textes.push(Object.assign({},c,{texte:t,x:p[0],y:p[1],h:h*k,w:t.length*0.6*h*k,rot:((rot+Math.atan2(M[1],M[0])*180/Math.PI)%360+360)%360}))}
+  function trait(c,M,a,b){if(plein())return;traits.push({calque:c.calque,espace:c.espace,presentation:c.presentation,a:app(M,a[0],a[1]),b:app(M,b[0],b[1])})}
+  function walk(L,M,c0,pre,prof){
+    for(let i=0;i<L.length;i++){const o=L[i],ty=o.type,sg=repere(o);
+      let cal=val(o,8)===undefined?'0':val(o,8);if(cal==='0'&&c0.calque)cal=c0.calque;   // calque 0 dans un bloc : celui de l'insertion
+      const h5=val(o,5),sp=c0.de?c0.de(o):c0,c={id:pre+(h5!==undefined?h5:'#'+i),calque:cal,espace:sp.espace,presentation:sp.presentation};if(c0.bloc)c.bloc=c0.bloc;
+      const Mo=sg===-1?mul(M,[-1,0,0,1,0,0]):M;
+      if(!sg&&ty!=='MULTILEADER')continue;
+      if(ty==='TEXT'||ty==='ATTRIB'){if(ty==='ATTRIB'&&num(o,70,0)&1)continue;const t=txtBrut(val(o,1)||'').trim();if(!t)continue;
+        const h=num(o,40,0),ha=num(o,72,0),va=num(o,ty==='TEXT'?73:74,0),p=[num(o,10,0),num(o,20,0)],q=ha||va?[num(o,11,p[0]),num(o,21,p[1])]:p,w=t.length*0.6*h;
+        if(ha===3||ha===5)pose(Object.assign(c,{nature:ty}),Mo,t,(p[0]+q[0])/2,(p[1]+q[1])/2,h,num(o,50,0),0,h/2);
+        else pose(Object.assign(c,{nature:ty}),Mo,t,q[0],q[1],h,num(o,50,0),ha===1||ha===4?0:ha===2?-w/2:w/2,va===2?0:va===3?-h/2:h/2)}
+      else if(ty==='MTEXT'){const brut=o.g.filter(p=>p[0]===3).map(p=>p[1]).join('')+(val(o,1)||''),L2=mtextBrut(brut).split('\n').map(x=>x.trim());
+        const h=num(o,40,0),at=num(o,71,1),ec=h*5/3*num(o,44,1),n=L2.length,H=(n-1)*ec+h,col=(at-1)%3,row=Math.floor((at-1)/3),
+          rot=val(o,50)!==undefined?num(o,50,0)*180/Math.PI:val(o,11)!==undefined?Math.atan2(num(o,21,0),num(o,11,1))*180/Math.PI:0;
+        L2.forEach((t,j)=>{if(!t)return;const w=t.length*0.6*h;
+          pose(Object.assign({},c,{id:c.id+(n>1?'#'+(j+1):''),nature:'MTEXT'}),Mo,t,num(o,10,0),num(o,20,0),h,rot,col===0?w/2:col===2?-w/2:0,(row===0?0:row===1?H/2:H)-h/2-j*ec)})}
+      else if(ty==='MULTILEADER'){let t=null,p=null,h=0,ll=false,f=[];
+        for(const [k,v] of o.g){if(k===304&&v==='LEADER_LINE{')ll=true;else if(k===305)ll=false;else if(k===304&&t===null)t=v;
+          else if(k===12&&!p)p=[+v,NaN];else if(k===22&&p&&isNaN(p[1]))p[1]=+v;else if(k===41&&!h)h=+v;
+          else if(ll&&k===10)f.push([+v,NaN]);else if(ll&&k===20&&f.length&&isNaN(f[f.length-1][1]))f[f.length-1][1]=+v}
+        f=f.filter(q=>q.every(Number.isFinite)).map(q=>app(M,q[0],q[1]));
+        if(t&&p&&p.every(Number.isFinite))mtextBrut(t).split('\n').map(x=>x.trim()).forEach((x,j,A)=>{if(!x)return;
+          pose(Object.assign({},c,{id:c.id+(A.length>1?'#'+(j+1):''),nature:'MULTILEADER',fleches:f}),M,x,p[0],p[1],h,0,x.length*0.3*h,-h/2-j*h*5/3)})}
+      else if(ty==='LEADER'){const a=val(o,340);if(a!==undefined&&val(o,10)!==undefined)(fl[pre+a]=fl[pre+a]||[]).push(app(Mo,num(o,10,0),num(o,20,0)))}
+      else if(ty==='LINE')trait(c,Mo,[num(o,10,0),num(o,20,0)],[num(o,11,0),num(o,21,0)]);
+      else if(ty==='LWPOLYLINE'||ty==='POLYLINE'){let P=[],bul=false,f=num(o,70,0);
+        if(ty==='LWPOLYLINE'){for(const [k,v] of o.g){if(k===10)P.push([+v,NaN]);else if(k===20&&P.length)P[P.length-1][1]=+v;else if(k===42&&+v)bul=true}}
+        else for(i++;i<L.length&&L[i].type==='VERTEX';i++){P.push([num(L[i],10,0),num(L[i],20,0)]);if(num(L[i],42,0))bul=true}
+        if(bul||f&(8|16|64)||P.some(q=>!q.every(Number.isFinite)))continue;
+        for(let j=0;j+1<P.length;j++)trait(c,Mo,P[j],P[j+1]);if(f&1&&P.length>2)trait(c,Mo,P[P.length-1],P[0])}
+      else if(ty==='INSERT'||ty==='ACAD_TABLE'){const B=blocs[String(val(o,2)||'').toUpperCase()];
+        if(!B){sig.add(ty==='ACAD_TABLE'?'tableau AutoCAD (ACAD_TABLE) sans bloc de rendu : non lu':'bloc inséré introuvable : '+(val(o,2)||'?'));continue}
+        if(prof>=8){sig.add('blocs imbriqués sur plus de 8 niveaux : non lus');continue}
+        if(ty==='INSERT'&&(num(o,70,1)>1||num(o,71,1)>1))sig.add('MINSERT (blocs en réseau) : seule la première occurrence est lue');
+        const r=ty==='ACAD_TABLE'?Math.atan2(num(o,21,0),num(o,11,1)):num(o,50,0)*Math.PI/180,sx=ty==='ACAD_TABLE'?1:num(o,41,1),sy=ty==='ACAD_TABLE'?1:num(o,42,1);
+        const Mi=mul(Mo,mul([1,0,0,1,num(o,10,0),num(o,20,0)],mul(rotM(r),[sx,0,0,sy,-sx*B.base[0],-sy*B.base[1]])));
+        walk(B.E,Mi,{calque:cal,espace:c.espace,presentation:c.presentation,bloc:c0.bloc||B.nom},c.id+'/',prof+1)}}
+  }
+  walk(E,[1,0,0,1,0,0],{de:X.de},'',0);   // ENTITIES : espace propre à chaque entité (code 67)
+  for(const B of Object.values(blocs))if(/^\*paper_space\d+$/i.test(B.nom))walk(B.E,[1,0,0,1,0,0],{espace:'papier',presentation:X.nomBR(B.br)||B.nom},'',0);
+  textes.forEach(t=>{const f=fl[t.id.split('#')[0]];if(f)t.fleches=(t.fleches||[]).concat(f)});
+  return{presentations:X.presentations,textes,traits,signalements:[...sig]};
 }
 
 if(!root.CPI||!root.CPI.lecteur)throw new Error('dxf.js : charger lecteur.js avant');
@@ -448,7 +536,9 @@ function detecter(doc,opt){
     const c={id:'R'+(i+1),type:null,statut:'non_pris_en_charge',unite:doc.unite,
       source:{fichier:doc.fichier,format:doc.format,calque:e.calque==null?null:e.calque,id:String(e.id)},
       geometrie:cp(e),centre:null,dims:null,h:Number.isFinite(e.h)&&e.h>0?e.h:null,manquants:[],remarques:[]};
-    if(e.type==='cercle'){
+    // présentation (espace papier) : cadres, cartouches, tableaux ; coordonnées d'un autre repère que le dessin → jamais proposée
+    if(e.espace==='papier')c.remarques.push('dessiné dans une présentation (espace papier'+(e.presentation?' « '+e.presentation+' »':'')+')');
+    else if(e.type==='cercle'){
       if(e.r>0){c.type='circ';c.dims={D:2*e.r};c.centre=e.centre.slice(0,2)}else c.remarques.push('cercle de rayon nul');
     }else if(e.type==='polyligne'){
       const R=e.ferme?rectangle(e.points,tol):null;
@@ -461,6 +551,286 @@ function detecter(doc,opt){
 }
 
 root.CPI=Object.assign(root.CPI||{},{detecteur:{detecter,rectangle}});
+})(typeof globalThis!=='undefined'?globalThis:this);
+// ==== modules/import/nomenclatures.js ====
+// CoffraPlan — module d'import de plans : nomenclatures de réservations (tableaux de textes d'un DXF).
+// Reconstruit les tableaux dessinés en textes (TEXT, MTEXT, attributs, blocs ; ACAD_TABLE par son bloc de rendu) dans
+// l'espace Objet et dans chaque présentation, à partir des textes et traits relevés par dxf.js. La nature d'un tableau
+// (réservations, aciers, autre) se décide sur son en-tête et son titre, jamais sur ses lignes. Un tableau de réservations
+// garde TOUTES ses lignes : aucun filtre (lot, fournisseur, type, matériau, nature…) ; le choix appartient à l'utilisateur.
+// Cotes lues sans rien inventer : SO, à définir, vide → manquant ; DN du réseau ≠ ouverture ; niveau ≠ hauteur à coffrer.
+// Rapprochement avec les géométries du détecteur (états trouvee / probable / multiple / absente), jamais tranché à la place
+// de l'utilisateur ; coordonnées d'une présentation jamais comparées à celles de l'espace Objet.
+// Indépendant de l'interface et du moteur.
+(function(root){'use strict';
+const sansAcc=s=>String(s==null?'':s).normalize('NFD').replace(/[̀-ͯ]/g,'');
+const norm=s=>sansAcc(s).toLowerCase().replace(/[⌀∅]/g,'ø').replace(/\s+/g,' ').trim();
+const mot=a=>new RegExp('(?<![a-z0-9])(?:'+a+')(?![a-z0-9])');
+const med=A=>{const B=A.filter(Number.isFinite).sort((a,b)=>a-b);return B.length?B[B.length>>1]:0};
+const MM={mm:1,cm:10,m:1000};
+
+// Nature d'une colonne d'après son titre : premier motif reconnu (« Réservation » seul = colonne des repères, en dernier)
+const COLS=[
+  ['niveau',mot("niv(eau|\\.)?|alti(metrie|tude)?|ngf|fil d'?eau|arase|cote (d'?axe|ngf|fil)|hauteur ?(\\/|par rapport|d'?axe|sous)|h ?\\/ ?[a-z]+")],
+  ['angle',mot('angles?|orientation|azimut|gisement')],
+  ['ouverture',mot("ouvertures?|tremies?|dim(ension)?s?\\.?|sections?|percements?|carottages?|passages?|encombrement|cotes|taille|l ?[x×*] ?[hl]|b ?[x×*] ?h")],
+  ['reseau',mot("dn|reseaux?|canalisations?|tuyaux?|conduits?|gaines?|fluides?")],
+  ['diametre',/(?<![a-z0-9])diam(etre|\.)?(?![a-z0-9])|ø/],
+  ['largeur',mot('larg(eur|\\.)?')],
+  ['hauteur',mot('haut(eur|\\.)?')],
+  ['quantite',mot('qte|quantites?|nombre|nbre?|qt')],
+  ['type',mot('types?|elements?|elts?|supports?|parois?|ouvrages?|localisation|emplacement|zone')],
+  ['description',mot('designation|description|libelle|objet|nature|fonctions?|usage|destination|intitule')],
+  ['observations',mot('observations?|remarques?|commentaires?|notes?|obs\\.?')],
+  ['lot',mot("lots?|entreprises?|corps d'?etat|fournisseurs?|intervenants?|emetteur|responsable|societe|poseur")],
+  ['repere',mot("rep(ere|\\.)?|ref(erence|\\.)?|n°|no\\.?|num(ero|\\.)?|marque|identifiant|id|code|reservations?|resas?")]];
+const kinds=n=>COLS.filter(c=>c[1].test(n)).map(c=>c[0]);
+const LIB={repere:'repère',description:'désignation',type:'type / élément',ouverture:'ouverture',reseau:'réseau',diametre:'diamètre',
+  niveau:'niveau (position)',angle:'angle (position)',largeur:'largeur',hauteur:'hauteur',quantite:'quantité',observations:'observations',lot:'lot / entreprise',autre:'non reconnue'};
+// Nature du tableau : en-tête + titre seulement (un tableau d'aciers a aussi des repères et des diamètres)
+const RESA=mot('reservations?|resas?|tremies?|fourreaux?|ouvertures?|percements?|carottages?|traversees?|incorporations?|passages?|rebouchages?');
+const ACIER=mot('aciers?|ha\\d*|ferraillages?|armatures?|nuances?|faconnages?|barres?|poids|masses?|kg|longueurs? developpees?|crochets?|epingles?|etriers?|cadres?|enrobages?|espacements?|fe ?e?500|b ?500|treillis');
+const AUTRE=mot("indices?|ind\\.?|revisions?|modifications?|dessine|verifie|approuve|folios?|liste des plans|documents?|bordereau|planning");
+const POIDS={ouverture:2,niveau:1,angle:1,reseau:1,diametre:1};
+function nature(titre,cols){let R=0,A=0,O=0;
+  [titre].concat(cols.map(c=>c.titre)).forEach(t=>{const n=norm(t);if(RESA.test(n))R+=3;if(ACIER.test(n))A+=3;if(AUTRE.test(n))O+=3});
+  cols.forEach(c=>{R+=POIDS[c.cle]||0});
+  return R>=3&&R>A&&R>O?'reservations':A>=3&&A>=R?'aciers':'autre'}
+const UNIT=/\(\s*(mm|cm|m)\s*\)|(?<![a-z])(?:en|unite :?) (mm|cm|m)(?![a-z])/;
+const SOUS=/\(\s*(mm|cm|m)\s*\)|^\(.*\)$|(?<![a-z])[lb] ?[x×*] ?[hl](?![a-z])/;   // 2e ligne d'un titre de colonne
+
+// Valeur d'une cellule de cotes → {etat:'rect',a,b,c?,unite} | {etat:'circ',D,unite} | {etat:'dn',D} | {etat:'seul',v,unite}
+// | {etat:'manquant'|'vide'|'illisible'}. u0 = unité de la colonne ; une unité écrite dans la cellule l'emporte.
+// saisie : texte tapé dans la fenêtre (« d250 » ou « o250 » acceptés pour Ø, le Ø étant rare sur un clavier).
+const VIDE=/^(s\.?o\.?|sans objet|a definir|adf|a voir|nc|n\.c\.?|non communique|neant|nr|\/+|-+|—|–|\?+|x)$/;
+function cotes(s,u0,saisie){
+  const t0=String(s==null?'':s).trim(),t=norm(t0).replace(/,/g,'.');
+  if(!t)return{etat:'vide'};
+  if(VIDE.test(t))return{etat:'manquant',texte:t0};
+  const mu=t.match(/\d\s*(mm|cm|m)(?![a-z0-9])/),u=mu?mu[1]:u0||null,N='(\\d+(?:\\.\\d+)?)',U='\\s*(?:mm|cm|m)?\\s*';
+  let m=t.match(new RegExp(N+U+'[x×*]\\s*'+N+'(?:'+U+'[x×*]\\s*'+N+')?'));
+  if(m)return Object.assign({etat:'rect',a:+m[1],b:+m[2],unite:u},m[3]?{c:+m[3]}:{});
+  if((m=t.match(new RegExp('(?:ø|diam\\.?|diametre|phi'+(saisie?'|d|o':'')+')\\s*'+N))))return{etat:'circ',D:+m[1],unite:u};
+  if((m=t.match(new RegExp('(?<![a-z])dn\\s*'+N))))return{etat:'dn',D:+m[1]};
+  if((m=t.match(new RegExp('^'+N+'\\s*(mm|cm|m)?$'))))return{etat:'seul',v:+m[1],unite:u};
+  return{etat:'illisible',texte:t0};
+}
+
+// Cotes d'une ligne : la colonne « ouverture » d'abord ; un DN ou une cote seule ne donnent pas de cote certaine
+function dimsLigne(cols,cells,av){
+  const get=k=>cols.map((c,j)=>c.cle===k&&cells[j]?{c,v:cells[j]}:null).filter(Boolean),q=v=>`« ${v.replace(/\n/g,' ')} »`;
+  const dd=(r,c,v)=>r.etat==='rect'?{type:'rect',a:r.a,b:r.b,unite:r.unite,texte:v,colonne:c.titre}:{type:'circ',D:r.D,unite:r.unite,texte:v,colonne:c.titre};
+  const O=get('ouverture');
+  if(O.length){const {c,v}=O[0],r=cotes(v,c.unite);
+    if(r.etat==='rect'){if(r.c!=null)av.push(`ouverture ${q(v)} : 3e cote ignorée`);return dd(r,c,v)}
+    if(r.etat==='circ')return dd(r,c,v);
+    av.push(`ouverture ${q(v)} : `+(r.etat==='dn'?'DN du réseau, diamètre de la réservation à saisir':r.etat==='seul'?'une seule cote, forme et cotes à préciser':r.etat==='manquant'?'non renseignée':'cotes non lues'));
+    return null}
+  const Dm=get('diametre');
+  if(Dm.length){const {c,v}=Dm[0],r=cotes(v,c.unite);
+    if(r.etat==='rect'||r.etat==='circ'||r.etat==='seul'){av.push(`cote prise dans la colonne « ${c.titre} » : à confirmer comme cote de la réservation`);return dd(r.etat==='seul'?{etat:'circ',D:r.v,unite:r.unite}:r,c,v)}
+    av.push(`colonne « ${c.titre} » ${q(v)} : `+(r.etat==='dn'?'DN du réseau, diamètre de la réservation à saisir':r.etat==='manquant'?'non renseignée':'cotes non lues'));return null}
+  const La=get('largeur'),Ha=get('hauteur');
+  if(La.length&&Ha.length){const a=cotes(La[0].v,La[0].c.unite),b=cotes(Ha[0].v,Ha[0].c.unite);
+    if(a.etat==='seul'&&b.etat==='seul'){av.push('cotes reconstituées des colonnes Largeur et Hauteur : à confirmer');return{type:'rect',a:a.v,b:b.v,unite:a.unite===b.unite?a.unite:null,texte:La[0].v+' × '+Ha[0].v,colonne:La[0].c.titre+' / '+Ha[0].c.titre}}}
+  const R=get('reseau');
+  av.push(R.length?`ouverture non donnée : le réseau ${q(R[0].v)} ne donne pas la cote de la réservation`:'cotes de l\'ouverture absentes du tableau');
+  return null;
+}
+
+// Cellule : textes triés de haut en bas puis de gauche à droite ; même ligne → espace, lignes → retour à la ligne
+function cellule(T){const L=[];T.slice().sort((a,b)=>b.y-a.y||a.x-b.x).forEach(t=>{const l=L[L.length-1];if(l&&Math.abs(l.y-t.y)<=0.5*Math.max(l.h,t.h))l.T.push(t);else L.push({y:t.y,h:t.h,T:[t]})});
+  return L.map(l=>l.T.sort((a,b)=>a.x-b.x).map(t=>t.texte.trim()).join(' ')).join('\n').trim()}
+
+// Traits horizontaux (y) et verticaux (x) d'un groupe, fusionnés à tol près
+function axes(S,tol){const H=[],V=[];
+  S.forEach(s=>{const dx=s.b[0]-s.a[0],dy=s.b[1]-s.a[1],l=Math.hypot(dx,dy);if(!(l>0))return;
+    if(Math.abs(dy)<=0.01*l)H.push({y:(s.a[1]+s.b[1])/2,x0:Math.min(s.a[0],s.b[0]),x1:Math.max(s.a[0],s.b[0])});
+    else if(Math.abs(dx)<=0.01*l)V.push({x:(s.a[0]+s.b[0])/2,y0:Math.min(s.a[1],s.b[1]),y1:Math.max(s.a[1],s.b[1])})});
+  return{H,V}}
+const fusion=(A,tol)=>{const R=[];A.slice().sort((a,b)=>a-b).forEach(v=>{if(!R.length||v-R[R.length-1]>tol)R.push(v)});return R};
+const couvre=(H,x0,x1)=>H.reduce((s,h)=>s+Math.max(0,Math.min(h.x1,x1)-Math.max(h.x0,x0)),0);
+// étendue du trait horizontal (segments bout à bout fusionnés) à la hauteur y qui recouvre [x0, x1]
+function etendue(H,y,x0,x1,hm){const S=H.filter(h=>Math.abs(h.y-y)<=0.2*hm).sort((a,b)=>a.x0-b.x0),R=[];
+  S.forEach(h=>{const r=R[R.length-1];if(r&&h.x0<=r[1]+0.3*hm)r[1]=Math.max(r[1],h.x1);else R.push([h.x0,h.x1])});
+  return R.find(r=>r[0]<=x1&&r[1]>=x0)||null}
+
+// Un tableau à partir d'une ligne d'en-tête hg (textes) ; renvoie null si aucune colonne lisible
+function construire(g,hg,used,K){
+  const hm=med(hg.map(t=>t.h)),yH=hg.reduce((s,t)=>s+t.y,0)/hg.length,xL=Math.min(...hg.map(t=>t.x0)),xR=Math.max(...hg.map(t=>t.x1));
+  const libre=t=>!used.has(t.i);
+  // bande d'en-tête : entre deux traits horizontaux de la grille, sinon textes à mot-clé ou sous-titres « (mm) » juste au-dessus / au-dessous
+  const Hy=fusion(g.A.H.filter(h=>couvre([h],xL,xR)>=0.5*(xR-xL)).map(h=>h.y),0.2*hm),   // croissant
+    dessus=Hy.find(y=>y>yH+0.3*hm),dessous=Hy.filter(y=>y<yH-0.3*hm).pop();
+  let band,grL=false;
+  if(dessus!==undefined&&dessous!==undefined&&dessus-dessous<=8*hm){band=[dessous,dessus];grL=true}
+  else{band=[Math.min(...hg.map(t=>t.y))-0.6*hm,Math.max(...hg.map(t=>t.y))+0.6*hm];
+    for(let k=0;k<3;k++)g.T.forEach(t=>{if(!libre(t)||t.x<xL-2*hm||t.x>xR+2*hm||t.y>=band[0]&&t.y<=band[1])return;
+      const d=t.y<band[0]?band[0]-t.y:t.y-band[1];if(d<=1.3*hm&&(K[t.i].length||SOUS.test(t.n))){band[0]=Math.min(band[0],t.y-0.6*t.h);band[1]=Math.max(band[1],t.y+0.6*t.h)}})}
+  // traits verticaux de la grille : ils traversent l'en-tête, entre les extrémités du trait qui la borde (grille) ou en
+  // partant de son bord (un cadre de feuille ou le tableau voisin ne comptent pas)
+  const yM=(band[0]+band[1])/2,ext=grL?etendue(g.A.H,dessus,xL,xR,hm):null,
+    garde=v=>ext?v.x>=ext[0]-0.3*hm&&v.x<=ext[1]+0.3*hm:v.x>=xL-15*hm&&v.x<=xR+15*hm&&(Math.abs(v.y1-band[1])<=0.5*hm||Math.abs(v.y0-band[0])<=0.5*hm);
+  let xs=fusion(g.A.V.filter(v=>v.y0-0.2*hm<=yM&&yM<=v.y1+0.2*hm&&garde(v)).map(v=>v.x),0.3*hm);
+  if(ext&&xs.length){if(xs[0]>ext[0]+0.3*hm)xs.unshift(ext[0]);if(xs[xs.length-1]<ext[1]-0.3*hm)xs.push(ext[1])}
+  const grC=xs.length>=2;
+  const BT0=g.T.filter(t=>libre(t)&&t.y>=band[0]&&t.y<=band[1]&&t.x>=(grC?Math.min(xs[0],xL-2*hm):xL-2*hm)&&t.x<=(grC?Math.max(xs[xs.length-1],xR+2*hm):xR+2*hm));
+  const Cl=[];BT0.slice().sort((a,b)=>a.x0-b.x0).forEach(t=>{const c=Cl[Cl.length-1];if(c&&t.x0<=c.x1+0.3*hm)c.x1=Math.max(c.x1,t.x1);else Cl.push({x0:t.x0,x1:t.x1})});
+  const pad=Math.max(4*hm,med(Cl.map(c=>c.x1-c.x0))),P0=ext&&grC?xs[0]:Cl[0].x0-pad,PN=ext&&grC?xs[xs.length-1]:Cl[Cl.length-1].x1+pad;
+  const enTete=T=>{const k=new Set();let c=0;T.forEach(t=>{if(K[t.i].length){c++;k.add(K[t.i][0])}});return c>=3&&k.size>=2};
+  // lignes de texte d'un côté de l'en-tête (dir -1 : dessous, +1 : dessus) : bandes de la grille, sinon regroupement par hauteur
+  function cote(dir){
+    const bord=dir<0?band[0]:band[1],loin=t=>dir<0?bord-t.y:t.y-bord;
+    const D=g.T.filter(t=>libre(t)&&!BT0.includes(t)&&t.x>=P0&&t.x<=PN&&loin(t)>0).sort((a,b)=>loin(a)-loin(b));
+    const Hc=fusion(g.A.H.filter(h=>couvre([h],P0,PN)>=0.5*(xR-xL)).map(h=>h.y),0.2*hm).filter(y=>dir<0?y<=bord+0.2*hm:y>=bord-0.2*hm).sort((a,b)=>dir<0?b-a:a-b);
+    if(grL&&Hc.length>=2){const R=[];let vides=0;
+      for(let k=0;k+1<Hc.length;k++){const a=Math.min(Hc[k],Hc[k+1]),b=Math.max(Hc[k],Hc[k+1]);if(b-a>10*hm)break;
+        const T=D.filter(t=>t.y>a&&t.y<b);if(T.length&&enTete(T))break;
+        if(!T.length){if(++vides>=2)break;continue}vides=0;R.push({y:(a+b)/2,T})}
+      return{G:R,grille:true}}
+    const L=[];D.forEach(t=>{const l=L.find(l=>Math.abs(l.y-t.y)<=0.5*Math.max(l.h,t.h));if(l)l.T.push(t);else L.push({y:t.y,h:t.h,T:[t]})});
+    L.sort((a,b)=>loin(a)-loin(b));
+    const G=[],pas=[];let prev=bord;
+    for(const l of L){const gap=Math.abs(l.y-prev);if(gap>(G.length?Math.max(4*hm,2.5*(med(pas)||2*hm)):6*hm)||enTete(l.T))break;if(G.length)pas.push(gap);G.push(l);prev=l.y}
+    return{G,grille:false}}
+  // côté des lignes : celui qui en a le plus (en-tête en haut ou en bas ; un titre seul ne fait pas un côté)
+  let dir=-1,res=cote(-1);const r2=cote(1);if(r2.G.length>res.G.length){dir=1;res=r2}
+  const DT=res.G.flatMap(l=>l.T);
+  // colonnes : traits de la grille ; sinon, entre deux titres, au milieu du plus large intervalle libre de textes (titres centrés,
+  // valeurs alignées à gauche : le milieu entre titres tomberait dans une valeur) ; bords extérieurs complétés par les textes
+  let B;
+  if(grC)B=xs.slice();
+  else{B=[];for(let j=0;j+1<Cl.length;j++){const a=Cl[j].x1,b=Cl[j+1].x0;let libres=[[a,b]];
+      DT.forEach(t=>{libres=libres.flatMap(([u,v])=>t.x1<=u||t.x0>=v?[[u,v]]:[[u,t.x0],[t.x1,v]].filter(([p,q])=>q-p>0))});
+      const w=libres.sort((p,q)=>(q[1]-q[0])-(p[1]-p[0]))[0];B.push(w?(w[0]+w[1])/2:(a+b)/2)}}
+  const all=BT0.concat(DT),xmin=Math.min(...all.map(t=>t.x0)),xmax=Math.max(...all.map(t=>t.x1));
+  if(!(ext&&grC)){if(!B.length||xmin<B[0]-0.3*hm)B.unshift(xmin-0.5*hm);if(xmax>B[B.length-1]+0.3*hm)B.push(xmax+0.5*hm)}
+  const B0=B[0],BN=B[B.length-1],col=x=>{for(let j=0;j+1<B.length;j++)if(x<B[j+1])return j;return B.length-2};
+  const BT=BT0.filter(t=>t.x>=B0&&t.x<=BN);
+  const colonnes=B.slice(1).map((b,j)=>{const titre=cellule(BT.filter(t=>col(t.x)===j)),n=norm(titre),u=n.match(UNIT);
+    return{titre,cle:kinds(n)[0]||'autre',unite:u?u[1]||u[2]:null}});
+  if(!colonnes.some(c=>c.cle!=='autre'))return null;
+  // lignes du tableau : bandes de la grille ; sans grille, une ligne par repère, les lignes de texte sans repère
+  // (valeurs sur plusieurs lignes) rattachées au repère le plus proche en hauteur
+  const rj=colonnes.findIndex(c=>c.cle==='repere'),G=res.G.map(l=>Object.assign({},l,{T:l.T.filter(t=>t.x>=B0&&t.x<=BN)})).filter(l=>l.T.length);
+  let R;
+  if(res.grille||rj<0)R=G.map(l=>l.T);
+  else{const A=G.filter(l=>l.T.some(t=>col(t.x)===rj));
+    if(!A.length)R=G.map(l=>l.T);
+    else{R=A.map(a=>a.T.slice());G.forEach(l=>{if(A.includes(l))return;let k=0;A.forEach((a,j)=>{if(Math.abs(a.y-l.y)<Math.abs(A[k].y-l.y))k=j});R[k].push(...l.T)})}}
+  // titre : textes au-delà de l'en-tête, du côté opposé aux lignes
+  const bt=dir<0?band[1]:band[0],TT=g.T.filter(t=>libre(t)&&!BT0.includes(t)&&t.x>=B0-2*hm&&t.x<=BN+2*hm&&(dir<0?t.y>bt&&t.y-bt<=6*hm:t.y<bt&&bt-t.y<=6*hm));
+  const RT=R.flat();
+  [...BT,...TT,...RT].forEach(t=>used.add(t.i));
+  return{titre:cellule(TT),colonnes,R:R.map(T=>colonnes.map((c,j)=>cellule(T.filter(t=>col(t.x)===j)))),RT:R,BT,TT,
+    grille:{colonnes:grC,lignes:res.grille},cadre:[B0,Math.min(band[0],...RT.map(t=>t.y)),BN,Math.max(band[1],...RT.map(t=>t.y))],hm}
+}
+
+// doc (lecteur DXF) → {nomenclatures:[…], ecartes:[…], signalements:[…]} ; nomenclature = tableau de réservations
+function analyser(doc){
+  const G={},cleG=t=>t.espace+'\u0000'+(t.presentation||'');
+  (doc.textes||[]).forEach(t=>{const r=((t.rot||0)%360+360)%360;if(Math.min(r,360-r)>1||!t.texte||!(t.h>0))return;
+    const g=G[cleG(t)]=G[cleG(t)]||{espace:t.espace,presentation:t.presentation,T:[],S:[]};g.T.push(Object.assign({},t,{n:norm(t.texte),x0:t.x-t.w/2,x1:t.x+t.w/2}))});
+  (doc.traits||[]).forEach(s=>{const g=G[cleG(s)];if(g)g.S.push(s)});
+  const brut=[];
+  Object.values(G).forEach(g=>{g.T.forEach((t,i)=>t.i=i);const K=g.T.map(t=>/\d/.test(t.n)&&!SOUS.test(t.n)?[]:kinds(t.n)),used=new Set();g.A=axes(g.S);
+    // lignes d'en-tête possibles : textes à mot-clé alignés, coupées aux grands écarts et au 2e « repère » d'un en-tête complet
+    const S=g.T.filter(t=>K[t.i].length).sort((a,b)=>b.y-a.y),rows=[];
+    // tolérance 1 h : un titre de colonne sur deux lignes reste dans la même ligne d'en-tête (lignes à ± 0,8 h)
+    S.forEach(t=>{const r=rows[rows.length-1];if(r&&Math.abs(r.y-t.y)<=Math.max(r.h,t.h))r.T.push(t);else rows.push({y:t.y,h:t.h,T:[t]})});
+    const cand=[];
+    rows.forEach(r=>{const hm=med(r.T.map(t=>t.h));let c=null;
+      r.T.sort((a,b)=>a.x-b.x).forEach(t=>{const pk=K[t.i][0];
+        if(!c||t.x0-c.x1>30*hm||pk==='repere'&&c.rep&&c.T.length>=3){c={T:[],x1:-Infinity,rep:false};cand.push(c)}
+        c.T.push(t);c.x1=Math.max(c.x1,t.x1);c.rep=c.rep||pk==='repere'})});
+    cand.map(c=>({T:c.T,k:new Set(c.T.map(t=>K[t.i][0])).size})).filter(c=>c.T.length>=3&&c.k>=2).sort((a,b)=>b.k-a.k||b.T.length-a.T.length)
+      .forEach(c=>{if(c.T.some(t=>used.has(t.i)))return;const tb=construire(g,c.T,used,K);if(tb)brut.push(Object.assign(tb,{espace:g.espace,presentation:g.presentation}))})});
+  brut.sort((a,b)=>(a.espace+(a.presentation||'')).localeCompare(b.espace+(b.presentation||''))||b.cadre[3]-a.cadre[3]||a.cadre[0]-b.cadre[0]);
+  const nomenclatures=[],ecartes=[];
+  brut.forEach(tb=>{const nat=nature(tb.titre,tb.colonnes),base={espace:tb.espace,presentation:tb.presentation,titre:tb.titre,
+      colonnes:tb.colonnes,cadre:tb.cadre,ids:[...tb.BT,...tb.TT,...tb.RT.flat()].map(t=>t.id)};
+    if(nat!=='reservations'||!tb.R.length){ecartes.push(Object.assign(base,{id:'T'+(ecartes.length+1),nature:nat,nLignes:tb.R.length,
+      raison:nat==='aciers'?'nomenclature d\'aciers (ferraillage)':nat==='autre'?'tableau non identifié comme nomenclature de réservations':'en-tête de nomenclature sans ligne lisible'}));return}
+    const id='N'+(nomenclatures.length+1),cj=k=>tb.colonnes.map((c,j)=>c.cle===k?j:-1).filter(j=>j>=0);
+    const lignes=tb.R.map((cells,k)=>{const av=[],T=tb.RT[k],v=key=>cj(key).map(j=>cells[j]).filter(Boolean).join(' — ');
+      const L={id:id+'-L'+String(k+1).padStart(2,'0'),rang:k+1,ids:T.map(t=>t.id),calques:[...new Set(T.map(t=>t.calque))],cellules:cells,
+        repere:(cj('repere').map(j=>cells[j]).find(Boolean)||'').replace(/\n/g,' '),description:v('description'),type:v('type'),observations:v('observations'),
+        lot:v('lot'),quantite:v('quantite'),niveau:v('niveau'),angle:v('angle'),reseau:v('reseau'),ouverture:v('ouverture')||v('diametre'),dims:null,a_verifier:av};
+      if(!L.repere)av.push(cj('repere').length?'repère absent de la ligne':'pas de colonne repère dans le tableau');
+      L.dims=dimsLigne(tb.colonnes,cells,av);
+      if(L.dims&&!L.dims.unite)av.push('unité des cotes non indiquée par le tableau');
+      return L});
+    const nR=lignes.filter(l=>l.repere).length,nA=tb.colonnes.filter(c=>c.cle==='autre').length,motifs=[];
+    motifs.push(tb.grille.colonnes&&tb.grille.lignes?'grille de traits lue':'pas de grille complète : '+(tb.grille.colonnes?'lignes':tb.grille.lignes?'colonnes':'colonnes et lignes')+' déduites de la position des textes');
+    if(nR<lignes.length)motifs.push((lignes.length-nR)+' ligne(s) sans repère');if(nA)motifs.push(nA+' colonne(s) non reconnue(s), gardée(s) telles quelles');
+    const niveau=tb.grille.colonnes&&tb.grille.lignes&&nR===lignes.length&&!nA?'bonne':nR>=lignes.length/2?'à vérifier':'faible';
+    nomenclatures.push(Object.assign(base,{id,fichier:doc.fichier,nature:nat,calques:[...new Set(lignes.flatMap(l=>l.calques))],lignes,
+      unite:[...new Set(tb.colonnes.filter(c=>c.cle==='ouverture'||c.cle==='diametre').map(c=>c.unite).filter(Boolean))].length===1?tb.colonnes.find(c=>c.unite&&(c.cle==='ouverture'||c.cle==='diametre')).unite:null,
+      qualite:{niveau,motifs}}))});
+  return{nomenclatures,ecartes,signalements:(doc.signalements||[]).slice()};
+}
+
+// Repère normalisé : majuscules, sans espaces ni séparateurs, zéros de tête des nombres retirés (D03 = D3 = d 3)
+const cleRep=s=>sansAcc(s).toUpperCase().replace(/[\s._\-–—/]+/g,'').replace(/(^|[^0-9])0+(?=\d)/g,'$1');
+function dansPoly(p,P){let c=false;for(let i=0,j=P.length-1;i<P.length;j=i++){const a=P[i],b=P[j];if((a[1]>p[1])!==(b[1]>p[1])&&p[0]<(b[0]-a[0])*(p[1]-a[1])/(b[1]-a[1])+a[0])c=!c}return c}
+function dSeg(p,a,b){const dx=b[0]-a[0],dy=b[1]-a[1],l=dx*dx+dy*dy,t=l?Math.max(0,Math.min(1,((p[0]-a[0])*dx+(p[1]-a[1])*dy)/l)):0;return Math.hypot(p[0]-a[0]-t*dx,p[1]-a[1]-t*dy)}
+function dGeo(p,g){if(g.type==='cercle')return Math.max(0,Math.hypot(p[0]-g.centre[0],p[1]-g.centre[1])-g.r);
+  const P=g.points;if(dansPoly(p,P))return 0;let d=Infinity;for(let i=0;i<P.length;i++)d=Math.min(d,dSeg(p,P[i],P[(i+1)%P.length]));return d}
+// Cotes compatibles (mm) : 'ok' | 'diff' | '?' (unité inconnue ou cotes absentes) ; tolérance 1 % ou 2 mm
+function compat(L,uT,c,uD){const d=L.dims;if(!d||!MM[d.unite||uT]||!MM[uD]||!c.dims)return'?';
+  const kT=MM[d.unite||uT],kD=MM[uD],eq=(x,y)=>Math.abs(x-y)<=Math.max(2,0.01*Math.max(x,y));
+  if(d.type==='circ')return c.type==='circ'&&eq(d.D*kT,c.dims.D*kD)?'ok':'diff';
+  return c.type==='rect'&&eq(Math.max(d.a,d.b)*kT,c.dims.L*kD)&&eq(Math.min(d.a,d.b)*kT,c.dims.l*kD)?'ok':'diff'}
+
+// Rapprochement des lignes avec les géométries du détecteur (espace Objet seulement). opt = {uniteDessin, unites:{idNomenclature:unité}}
+// → {idLigne: {statut, options:[{c (rang dans C), id, d, via, cotes}], reperes:[{x,y,id}], note}}
+function associer(noms,C,doc,opt){
+  const o=opt||{},pris=new Set(),idx={},papier={};
+  noms.forEach(N=>N.ids.forEach(i=>pris.add(i)));(o.exclus||[]).forEach(i=>pris.add(i));
+  (doc.textes||[]).forEach(t=>{if(pris.has(t.id))return;const k=new Set([cleRep(t.texte)]);t.texte.split(/[\s,;:()[\]]+/).forEach(x=>k.add(cleRep(x)));
+    k.forEach(x=>{if(!x)return;if(t.espace==='objet')(idx[x]=idx[x]||[]).push(t);else(papier[x]=papier[x]||new Set()).add(t.presentation||'présentation')})});
+  const geo=C.map((c,i)=>({c,i})).filter(x=>x.c.statut==='a_confirmer'&&x.c.geometrie&&x.c.geometrie.espace!=='papier');
+  const R={};
+  noms.forEach(N=>{const uT=(o.unites||{})[N.id]||N.unite;N.lignes.forEach(L=>{const k=cleRep(L.repere),occ=k?idx[k]||[]:[],op={};
+    occ.forEach(t=>{const P=[[t.x,t.y]].concat(t.fleches||[]),lim=4*t.h;
+      geo.forEach(({c,i})=>{const d=Math.min(...P.map(p=>dGeo(p,c.geometrie)));if(d<=lim&&(!op[i]||d<op[i].d))op[i]={c:i,id:c.id,d,via:'repere',cotes:compat(L,uT,c,o.uniteDessin)}})});
+    let options=Object.values(op).sort((a,b)=>a.d-b.d),statut,note='';
+    const enPapier=k&&papier[k]?' ; repère présent dans une présentation (« '+[...papier[k]].join(' », « ')+' ») : lien non établi, fenêtre de présentation non interprétée':'';
+    if(!occ.length){
+      const M=L.dims?geo.filter(({c})=>compat(L,uT,c,o.uniteDessin)==='ok').map(({c,i})=>({c:i,id:c.id,d:null,via:'cotes',cotes:'ok'})):[];
+      options=M;statut=M.length===1?'probable':M.length>1?'multiple':'absente';
+      note=(k?'repère non trouvé dans l\'espace Objet':'ligne sans repère')+(M.length===1?' ; une seule géométrie de mêmes cotes':M.length>1?' ; '+M.length+' géométries de mêmes cotes':'')+enPapier}
+    else if(!options.length){statut='absente';note=`repère trouvé ${occ.length} fois, aucun contour reconnu à proximité`}
+    else if(options.length===1){const ok=options[0].cotes==='ok'&&!/^\d+$/.test(k);statut=ok?'trouvee':'probable';
+      note=ok?'repère à proximité, cotes identiques':options[0].cotes==='diff'?'cotes du dessin différentes de celles du tableau':/^\d+$/.test(k)?'repère purement numérique : à vérifier':'cotes non comparables (unité ou cotes manquantes)'}
+    else{statut='multiple';note=`${options.length} contours possibles`+(occ.length>1?` (repère présent ${occ.length} fois : vue, coupe ou détail ?)`:'')}
+    R[L.id]={statut,options,reperes:occ.map(t=>({x:t.x,y:t.y,id:t.id})),note}})});
+  return R;
+}
+
+// Ligne + choix de l'utilisateur → candidat au format du détecteur, pour l'adaptateur (cotes déjà en mm)
+// s = {dims:{etat:'rect',a,b}|{etat:'circ',D} (mm), geo: candidat du détecteur rattaché | null}
+function candidat(N,L,s){const d=s&&s.dims,g=s&&s.geo;if(!d||(d.etat!=='rect'&&d.etat!=='circ'))return null;
+  return{id:L.id,type:d.etat,statut:'a_confirmer',unite:'mm',source:{fichier:N.fichier,format:'dxf',calque:L.calques.join(', '),id:g?g.source.id:null},
+    geometrie:null,centre:g?g.centre:null,dims:d.etat==='circ'?{D:d.D}:{L:Math.max(d.a,d.b),l:Math.min(d.a,d.b),angle:0},h:null,manquants:[],remarques:[]}}
+
+// Provenance d'un ouvrage créé depuis une ligne (clé origineImport du plan). k = {forme, cotes (texte saisi), dims (mm), ref,
+// uniteTableau, uniteChoisie, geo:{c: candidat, statut:'trouvee'|'choisie'} | null}. Aucun contenu du DXF au-delà de la ligne.
+function provenance(N,L,k){
+  const textes={};N.colonnes.forEach((c,j)=>{const v=L.cellules[j];if(!v)return;let t=c.titre.replace(/\n/g,' ')||'colonne '+(j+1),n=2;const t0=t;while(t in textes)t=t0+' ('+(n++)+')';textes[t]=v});
+  const d=L.dims,uT=d&&(d.unite||k.uniteTableau),kT=MM[uT],corrige=[];
+  const mm=d&&kT?(d.type==='circ'?{etat:'circ',D:d.D*kT}:{etat:'rect',a:d.a*kT,b:d.b*kT}):null,eq=(x,y)=>Math.abs(x-y)<0.01;
+  if(!mm||!k.dims||mm.etat!==k.dims.etat||(mm.etat==='circ'?!eq(mm.D,k.dims.D):!(eq(Math.max(mm.a,mm.b),Math.max(k.dims.a,k.dims.b))&&eq(Math.min(mm.a,mm.b),Math.min(k.dims.a,k.dims.b)))))corrige.push('cotes');
+  if(String(k.ref||'')!==String(L.repere||'').toUpperCase())corrige.push('ref');
+  const g=k.geo&&k.geo.c;
+  return{fichier:N.fichier,format:'dxf',type:'nomenclature',espace:N.espace,presentation:N.presentation,calque:L.calques.join(', '),id:g?g.source.id:null,
+    nomenclature:N.id,titre:N.titre,ligne:L.id,rang:L.rang,repere:L.repere,ids:L.ids.slice(),textes,
+    unite_source:d?d.unite:null,unite:uT||null,dims_source:d?JSON.parse(JSON.stringify(d)):null,
+    geometrie:g?{id:g.source.id,calque:g.source.calque,candidat:g.id,statut:k.geo.statut,centre:g.centre,dims_source:JSON.parse(JSON.stringify(g.dims))}:null,
+    choix:{forme:k.forme,cotes:k.cotes,ref:k.ref||'',unite_tableau:k.uniteChoisie?k.uniteTableau:null},corrige,a_verifier:L.a_verifier.slice(),h_saisie:true};
+}
+
+root.CPI=Object.assign(root.CPI||{},{nomenclatures:{analyser,associer,cotes,candidat,provenance,cleRep,LIB}});
 })(typeof globalThis!=='undefined'?globalThis:this);
 // ==== modules/import/adaptateur.js ====
 // CoffraPlan — module d'import de plans, composant C : adaptateur CoffraPlan.
@@ -507,6 +877,8 @@ root.CPI=Object.assign(root.CPI||{},{adaptateur:{versPlan,FORMES}});
 // l'action, jamais au chargement. Chaîne : fichier → A (lecteur + dxf.js) → B (détecteur) → choix de l'utilisateur ligne
 // par ligne → C (adaptateur : contrôles du moteur) → ajout à P comme serCreate. Rien n'est créé avant « Créer les ouvrages
 // sélectionnés ». Provenance gardée dans le plan : clé optionnelle origineImport (métadonnée, jamais lue par le moteur).
+// Nomenclatures de réservations (nomenclatures.js, fonctions dxn*) : vue par défaut quand le DXF en contient ; toutes les
+// lignes proposées, aucune cochée d'office ; les géométries rattachées sont retirées de la vue « Géométries du dessin ».
 let DXI=null;
 const DXI_MM={mm:1,cm:10,m:1000};
 const DXI_NP=300;   // shortcut: au-delà, les géométries non prises en charge sont comptées mais pas listées une à une (fichiers à milliers de LINE / TEXT)
@@ -528,12 +900,23 @@ function dxiCss(){if(el('dxiCss'))return;document.head.insertAdjacentHTML('befor
 #dxiT th{position:sticky;top:0;background:var(--surface)}#dxiT tr{cursor:pointer}#dxiT tr.on td{background:rgba(232,130,12,.16)}
 #dxiT .fi{padding:3px 5px;font-size:12px;min-width:0}#dxiT .np td{color:var(--muted)}
 #dxi details{margin-top:8px;font-size:12px}#dxi summary{cursor:pointer;color:var(--muted)}
+#dxi .dxi-tab{display:flex;gap:4px;margin-top:10px;border-bottom:1px solid var(--border)}
+#dxi .dxi-tab button{background:none;border:1px solid transparent;border-bottom:none;border-radius:6px 6px 0 0;padding:6px 12px;color:var(--muted);cursor:pointer;font:inherit;font-size:12px}
+#dxi .dxi-tab button.on{border-color:var(--border);background:var(--surface2);color:var(--text);font-weight:600}
+#dxi .dxn-i{font-size:12px;margin:6px 0;padding:6px 8px;border:1px solid var(--border);border-radius:6px;line-height:1.5}#dxi .dxn-i select{width:auto}
+#dxnT td{white-space:pre-line}#dxnT .fi{padding:3px 5px;font-size:12px;min-width:0}#dxnT select[data-k=forme]{min-width:110px}#dxnT tr{cursor:pointer}#dxnT tr.on td{background:rgba(232,130,12,.16)}
+#dxnT .mu,#dxi .mu{color:var(--muted);font-size:11px}#dxnT .av{color:var(--acct);font-size:11px}#dxnT .gs{font-size:11px;margin-top:2px}
+#dxnT th{position:sticky;top:0;background:var(--surface);z-index:1}
+#dxnV{width:100%;height:260px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;display:block;margin-top:8px}
+#dxnV .g{fill:rgba(136,146,168,.16);stroke:var(--muted);stroke-width:1.5px;vector-effect:non-scaling-stroke}#dxnV .g.on{stroke:var(--accent);stroke-width:3px;cursor:pointer}
+#dxnV .g.cf{stroke:var(--okt);fill:rgba(46,204,113,.3)}#dxnV .rp{fill:var(--acct)}#dxnV .rp.on{fill:var(--redt)}#dxnV text{fill:var(--text);pointer-events:none;font-family:'Barlow',sans-serif}
 @media (max-width:820px){#dxi .dxi-w,#dxi .dxi-g{grid-template-columns:1fr}}
 </style>`)}
 
 function dxiOpen(){dxiCss();modal(`<div class="cd" style="margin:0" id="dxi"><div class="ct">📥 Importer un plan DXF</div>
-  <div class="hint">Réservations lues dans le DXF : polylignes fermées rectangulaires (rectangles, carrés) et cercles. Chaque réservation est à
-  confirmer ; aucun ouvrage n'est créé avant « Créer les ouvrages sélectionnés ». Les projets et plans déjà enregistrés ne sont pas modifiés.</div>
+  <div class="hint">Réservations lues dans le DXF : nomenclatures de réservations (tableaux de l'espace Objet ou des présentations), polylignes
+  fermées rectangulaires (rectangles, carrés) et cercles. Chaque réservation est à confirmer ; aucun ouvrage n'est créé avant « Créer les ouvrages
+  sélectionnés ». Les projets et plans déjà enregistrés ne sont pas modifiés.</div>
   <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><label class="btn bs bo" style="cursor:pointer;display:inline-flex;align-items:center">📂 Choisir un fichier .dxf
   <input type="file" id="dxiF" accept=".dxf" hidden onchange="dxiFile(this.files[0]);this.value=''"></label><span id="dxiN" style="font-size:12px"></span></div>
   <div id="dxiZ"></div>
@@ -548,10 +931,12 @@ async function dxiFile(f){if(!f)return;let txt;
   const lu=txt==null?{ok:false,message:'fichier illisible'}:CPI.lecteur.lirePlan({format:'dxf',nom:f.name,contenu:txt});
   if(!lu.ok){DXI=null;if(!el('dxiZ'))return;el('dxiN').innerHTML=`<b>${esc(f.name)}</b>`;
     el('dxiZ').innerHTML=`<div class="hint" style="margin:10px 0 0;border-left-color:var(--red)">⛔ Fichier non lu : ${esc(lu.message)}${(lu.erreurs||[]).length?' — '+esc(lu.erreurs.slice(0,5).join(' · ')):''}</div>`;dxiBtn();return}
-  const doc=lu.document,C=CPI.detecteur.detecter(doc).candidats,cur=coll(),lay={};
+  const doc=lu.document,C=CPI.detecteur.detecter(doc).candidats,cur=coll(),lay={},NA=CPI.nomenclatures.analyser(doc);
   C.forEach(c=>{lay[c.source.calque]=true});
-  DXI={nom:f.name,doc,C,R:C.map(()=>({conf:false,forme:'',h:'',ref:''})),lay,u:doc.unite||'',ch:cur.ch,ouv:cur.ouv,ind:'',hCom:'',sel:-1,M:null};
-  if(el('dxiZ'))dxiRender()}
+  const NL=NA.nomenclatures.flatMap(N=>N.lignes.map(L=>({N,L})));
+  DXI={nom:f.name,doc,C,R:C.map(()=>({conf:false,forme:'',h:'',ref:''})),lay,u:doc.unite||'',ch:cur.ch,ouv:cur.ouv,ind:'',hCom:'',sel:-1,M:null,
+    NA,NL,NR:NL.map(({L})=>({conf:false,forme:'',cotes:'',cotesT:false,h:'',ref:String(L.repere||'').toUpperCase(),geo:'',geoT:false})),NU:{},nsel:-1,vue:NL.length?'n':'g',lk:new Set()};
+  dxnAssoc();if(el('dxiZ'))dxiRender()}
 
 // Plans modèles (chantier, CP, options) pour chaque forme visée : même méthode que serAnalyse, formulaire rétabli ensuite
 function dxiModels(){const D=DXI,tpl=coll(),tplS=formSnap(),ei=EI,ho=_hisOff,M={},ch=String(D.ch||'').trim().toUpperCase(),ouv=String(D.ouv||'').trim();delete tpl.date;
@@ -561,7 +946,7 @@ function dxiModels(){const D=DXI,tpl=coll(),tplS=formSnap(),ei=EI,ho=_hisOff,M={
       M[f]=Object.assign(d,{ch,ouv})})}
   finally{_loading=true;try{setForm(JSON.parse(tplS))}finally{_loading=false}EI=ei;_hisOff=ho;syncVis()}
   D.M=M}
-const dxiVis=i=>DXI.lay[DXI.C[i].source.calque];
+const dxiVis=i=>DXI.lay[DXI.C[i].source.calque]&&!(DXI.lk&&DXI.lk.has(i));   // géométrie rattachée à une ligne de nomenclature : dans l'autre vue
 function dxiDef(c){if(c.type==='circ')return 'circ';const k=DXI_MM[DXI.u];return (k?(c.dims.L-c.dims.l)*k<0.5:c.dims.L-c.dims.l<=1e-6*c.dims.L)?'carre':'rect'}
 function dxiFormes(c){return c.type==='circ'?['circ']:dxiDef(c)==='carre'?['carre','carre_fond']:['rect','rect_fond']}
 function dxiDims(c){const k=DXI_MM[DXI.u],v=x=>dxiNum(k?x*k:x),u=k?'':' (unité ?)';
@@ -579,21 +964,30 @@ function dxiEval(){const D=DXI;if(!D.M)dxiModels();const hc=parseCote(D.hCom,'mm
     const p=x.plan;
     if(p.ref&&P.some(q=>chKey(q.ch)===chKey(p.ch)&&ouKey(q.ouv).toLowerCase()===ouKey(p.ouv).toLowerCase()&&String(q.ref||'').toUpperCase()===p.ref)){r.st='er';r.msg=`référence ${p.ref} déjà utilisée dans cet ouvrage`;return}
     r.x=x;r.st=x.alertes.length?'wn':'ok';r.msg=x.alertes.join(' · ')});
-  // références saisies en double dans le lot (lignes confirmées)
-  const n={};D.R.forEach((r,i)=>{if(r.x&&r.conf&&dxiVis(i)&&r.x.plan.ref)n[r.x.plan.ref]=(n[r.x.plan.ref]||0)+1});
-  D.R.forEach((r,i)=>{if(r.x&&r.conf&&dxiVis(i)&&n[r.x.plan.ref]>1){r.x=null;r.st='er';r.msg='référence en double dans l\'import'}})}
+  dxnEval(moteur,hc);
+  // références saisies en double dans le lot (lignes confirmées des deux vues)
+  const n={},Lr=D.R.filter((r,i)=>r.x&&r.conf&&dxiVis(i)).concat((D.NR||[]).filter(r=>r.x&&r.conf));
+  Lr.forEach(r=>{if(r.x.plan.ref)n[r.x.plan.ref]=(n[r.x.plan.ref]||0)+1});
+  Lr.forEach(r=>{if(n[r.x.plan.ref]>1){r.x=null;r.st='er';r.msg='référence en double dans l\'import'}})}
 const dxiReady=()=>DXI?DXI.R.map((r,i)=>i).filter(i=>DXI.R[i].conf&&DXI.R[i].x&&dxiVis(i)):[];
-function dxiBtn(){const b=el('dxiGo');if(!b)return;const n=dxiReady().length;b.disabled=!n;b.textContent=`Créer les ouvrages sélectionnés (${n})`}
+const dxnReady=()=>DXI&&DXI.NR?DXI.NR.map((r,k)=>k).filter(k=>DXI.NR[k].conf&&DXI.NR[k].x):[];
+function dxiBtn(){const b=el('dxiGo');if(!b)return;const n=dxiReady().length+dxnReady().length;b.disabled=!n;b.textContent=`Créer les ouvrages sélectionnés (${n})`}
 
 function dxiRender(){const D=DXI,Z=el('dxiZ');if(!Z||!D)return;const d=D.doc;
   el('dxiN').innerHTML=`<b>${esc(D.nom)}</b>${d.version?' · DXF '+esc(d.version):''} · unité : ${d.unite?`<b>${d.unite}</b> (donnée par le fichier)`:'<b style="color:var(--redt)">absente du fichier</b>'}`;
-  const L=[...new Set(D.C.map(c=>c.source.calque))].sort(_cmp),nb=k=>D.C.filter(c=>c.source.calque===k&&c.statut==='a_confirmer').length;
+  const L=[...new Set(D.C.map(c=>c.source.calque))].sort(_cmp),nb=k=>D.C.filter(c=>c.source.calque===k&&c.statut==='a_confirmer').length,
+    NA=D.NA,E=NA.ecartes.map(e=>`${esc(e.id)}${e.titre?' « '+esc(e.titre.replace(/\n/g,' '))+' »':''} (${e.espace==='objet'?'espace Objet':'présentation « '+esc(e.presentation||'?')+' »'}, ${e.nLignes} ligne(s)) : ${esc(e.raison)}`).concat(NA.signalements.map(esc));
   Z.innerHTML=(d.unite?'':`<div class="dxi-u">⚠ Le fichier ne donne pas son unité ($INSUNITS absent ou nul, toujours le cas en R12). Unité des cotes du dessin :
-    <select class="fi" id="dxiU" onchange="DXI.u=this.value;dxiRows()"><option value="">— choisir —</option>${['mm','cm','m'].map(u=>`<option${D.u===u?' selected':''}>${u}</option>`).join('')}</select></div>`)
+    <select class="fi" id="dxiU" onchange="DXI.u=this.value;dxnAssoc();dxiRows()"><option value="">— choisir —</option>${['mm','cm','m'].map(u=>`<option${D.u===u?' selected':''}>${u}</option>`).join('')}</select></div>`)
   +`<div class="dxi-g"><div class="fd"><label>Chantier</label><input class="fi" id="dxiCh" value="${esc(D.ch)}" onchange="DXI.ch=this.value;DXI.M=null;dxiUpd()"></div>
     <div class="fd"><label>Ouvrage</label><input class="fi" id="dxiOuv" value="${esc(D.ouv)}" onchange="DXI.ouv=this.value;DXI.M=null;dxiUpd()"></div>
     <div class="fd"><label>Indice du plan source</label><input class="fi" id="dxiInd" value="${esc(D.ind)}" placeholder="ex. B" oninput="DXI.ind=this.value"></div>
     <div class="fd"><label>Hauteur commune (mm)</label><input class="fi" id="dxiH" value="${esc(D.hCom)}" placeholder="facultative" oninput="DXI.hCom=this.value;dxiHph();dxiUpd()"></div></div>
+  ${E.length?`<details class="mu" id="dxiE" style="margin-top:8px"><summary>Tableaux non retenus et limites de lecture (${E.length})</summary><ul style="margin:4px 0">${E.map(x=>'<li>'+x+'</li>').join('')}</ul>
+    <div>Ces tableaux sont signalés, pas utilisés : leurs lignes ne deviennent pas des réservations.</div></details>`:''}
+  ${D.NL.length?`<div class="dxi-tab" role="tablist"><button id="dxiTabN" role="tab" onclick="dxiVue('n')">Nomenclature des réservations (${D.NL.length})</button>
+    <button id="dxiTabG" role="tab" onclick="dxiVue('g')">Géométries du dessin</button></div>${dxnPane()}`:''}
+  <div id="dxiPG">
   <div class="dxi-l"><b>Calques analysés</b>${L.map(k=>`<label><input type="checkbox" data-lay="${esc(k)}"${D.lay[k]?' checked':''} onchange="DXI.lay[this.dataset.lay]=this.checked;dxiRows()"> ${esc(k)} (${nb(k)})</label>`).join('')}</div>
   <div class="dxi-s" id="dxiS"></div>
   <div class="dxi-w"><div><svg id="dxiV" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Schéma des réservations reconnues"></svg>
@@ -601,10 +995,10 @@ function dxiRender(){const D=DXI,Z=el('dxiZ');if(!Z||!D)return;const d=D.doc;
     Ce n'est pas un rendu complet du fichier : textes, lignes, blocs, hachures… ne sont pas dessinés.</div></div>
   <div><div style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap"><button class="btn bs bo" onclick="dxiAll(true)" title="Cocher les lignes visibles prêtes (✓ ou ⚠)">✓ Confirmer les lignes prêtes</button><button class="btn bs bo" onclick="dxiAll(false)">Tout décocher</button></div>
   <div class="dxi-t"><table class="ser" id="dxiT"><thead><tr><th title="Confirmer">Créer</th><th>#</th><th>Entité DXF</th><th>Calque</th><th>Forme</th><th>Cotes (mm)</th><th>h (mm)</th><th>Réf.</th><th>Statut</th></tr></thead><tbody></tbody></table></div></div></div>
-  <div class="hint" id="dxiP" style="margin:8px 0 0"></div>
-  <details id="dxiNP"><summary></summary><table class="ser"><thead><tr><th>#</th><th>Entité DXF</th><th>Calque</th><th>Raison</th></tr></thead><tbody></tbody></table></details>`;
-  dxiRows()}
-function dxiHph(){const v=DXI.hCom.trim();document.querySelectorAll('#dxiT input[data-k=h]').forEach(e=>{e.placeholder=v||'à saisir'})}
+  <details id="dxiNP"><summary></summary><table class="ser"><thead><tr><th>#</th><th>Entité DXF</th><th>Calque</th><th>Raison</th></tr></thead><tbody></tbody></table></details></div>
+  <div class="hint" id="dxiP" style="margin:8px 0 0"></div>`;
+  dxiRows();if(D.NL.length){dxnRows();dxiVue(D.vue)}}
+function dxiHph(){const v=DXI.hCom.trim();document.querySelectorAll('#dxiT input[data-k=h],#dxnT input[data-k=h]').forEach(e=>{e.placeholder=v||'à saisir'})}
 // Liste, aperçu et bilan des lignes visibles (calques cochés) ; cotes affichées selon l'unité choisie
 function dxiRows(){const D=DXI,T=el('dxiT');if(!T)return;
   const V=D.C.map((c,i)=>i).filter(dxiVis),ok=V.filter(i=>D.C[i].statut==='a_confirmer'),np=V.filter(i=>D.C[i].statut!=='a_confirmer');
@@ -645,10 +1039,11 @@ function dxiUpd(){const D=DXI;if(!D||!el('dxiT'))return;dxiEval();
   document.querySelectorAll('#dxiV .c').forEach(s=>{const i=+s.dataset.i;s.classList.toggle('cf',D.R[i].conf);s.classList.toggle('on',i===D.sel)});
   const V=D.C.map((c,i)=>i).filter(dxiVis),ok=V.filter(i=>D.C[i].statut==='a_confirmer'),nr=ok.filter(i=>D.C[i].type==='rect').length,
     pr=ok.filter(i=>D.R[i].x).length,cf=ok.filter(i=>D.R[i].conf).length,n=dxiReady().length;
-  el('dxiS').innerHTML=`<b>${ok.length} réservation(s) potentielle(s)</b> (${nr} rectangle(s) ou carré(s), ${ok.length-nr} cercle(s)) · ${pr} prête(s) · ${cf} confirmée(s) · <b>${n} à créer</b> · ${V.length-ok.length} géométrie(s) non prise(s) en charge`;
-  dxiParams();dxiBtn()}
+  el('dxiS').innerHTML=`<b>${ok.length} réservation(s) potentielle(s)</b> (${nr} rectangle(s) ou carré(s), ${ok.length-nr} cercle(s)) · ${pr} prête(s) · ${cf} confirmée(s) · <b>${n} à créer</b> · ${V.length-ok.length} géométrie(s) non prise(s) en charge`
+    +(D.lk&&D.lk.size?` · ${D.lk.size} rattachée(s) à la nomenclature (vue « Nomenclature »)`:'');
+  dxnUpd();dxiParams();dxiBtn()}
 // Rappel des réglages repris du formulaire / du profil du chantier pour les formes à créer
-function dxiParams(){const D=DXI,z=el('dxiP');if(!z||!D.M)return;const F=[...new Set(dxiReady().map(i=>D.R[i].forme||dxiDef(D.C[i])))];
+function dxiParams(){const D=DXI,z=el('dxiP');if(!z||!D.M)return;const F=[...new Set(dxiReady().map(i=>D.R[i].forme||dxiDef(D.C[i])).concat(dxnReady().map(k=>D.NR[k].x.plan.forme)))];
   z.style.display=F.length?'':'none';
   z.innerHTML='Repris du formulaire ou du profil du chantier : '+F.map(f=>{const m=D.M[f],o=[m.gs&&'goussets',m.renX&&'renforts en croix',m.feuil&&'feuillure'].filter(Boolean);
     return `<b>${esc(fmLb(f))}</b> ${f==='circ'?'matériau '+esc(m.mat||'—'):esc(cpName(m.cp&&m.cp.j))+' · '+esc(String(m.mont||'').toLowerCase())+' · options : '+(o.length?o.join(', '):'aucune')}`}).join(' ; ')}
@@ -661,15 +1056,115 @@ function dxiRefs(L){const used=new Set(P.map(p=>dxiKey(p)));L.forEach(d=>{if(d.r
   const seen=new Set(P.map(p=>dxiKey(p)));return L.every(d=>!seen.has(dxiKey(d))&&(seen.add(dxiKey(d)),true))}
 
 // Création : lignes confirmées et acceptées par le moteur seulement ; ajoutées à la suite (rien n'est remplacé), annulables
-function dxiCreate(){const D=DXI;if(!D)return;dxiEval();const L=dxiReady();if(!L.length)return dxiBtn();
+function dxiCreate(){const D=DXI;if(!D)return;dxiEval();const L=dxiReady(),LN=dxnReady();if(!L.length&&!LN.length)return dxiBtn();
   const uids=[],today=new Date().toISOString().slice(0,10),ind=String(D.ind||'').trim().toUpperCase()||null;
-  const N=L.map(i=>{const x=D.R[i].x,d=JSON.parse(JSON.stringify(x.plan));d.date=today;
-    d.origineImport=Object.assign(JSON.parse(JSON.stringify(x.provenance)),{indice:ind,date:today});return d});
+  // lignes de nomenclature d'abord (ordre du tableau), puis géométries ; provenance de la ligne (textes sources, choix, géométrie rattachée)
+  const N=LN.map(k=>{const r=D.NR[k],d=JSON.parse(JSON.stringify(r.x.plan));d.date=today;d.origineImport=Object.assign(dxnProv(k),{indice:ind,date:today});return d})
+    .concat(L.map(i=>{const x=D.R[i].x,d=JSON.parse(JSON.stringify(x.plan));d.date=today;
+    d.origineImport=Object.assign(JSON.parse(JSON.stringify(x.provenance)),{indice:ind,date:today});return d}));
   // dernière vérification avant de toucher aux plans enregistrés : aucune référence en double, sinon rien n'est créé
   if(!dxiRefs(N)){toast('⛔ Références en double : aucun ouvrage créé');return dxiUpd()}
   N.forEach(d=>{uids.push(planUid(d));P.push(d)});
-  svP();profFromPlans(P.slice(-L.length));profLists();rnL();updBtn();closeModal();const nom=D.nom;DXI=null;
-  toast(`${L.length} ouvrage(s) créé(s) depuis ${nom}`,'Annuler',()=>{const u=EI>=0&&P[EI]?P[EI].uid:null;P=P.filter(p=>!uids.includes(p.uid));EI=u?P.findIndex(p=>p.uid===u):-1;svP();rnL();updBtn();toast('Import annulé')})}
+  svP();profFromPlans(P.slice(-N.length));profLists();rnL();updBtn();closeModal();const nom=D.nom;DXI=null;
+  toast(`${N.length} ouvrage(s) créé(s) depuis ${nom}`,'Annuler',()=>{const u=EI>=0&&P[EI]?P[EI].uid:null;P=P.filter(p=>!uids.includes(p.uid));EI=u?P.findIndex(p=>p.uid===u):-1;svP();rnL();updBtn();toast('Import annulé')})}
+
+// ==== Nomenclatures de réservations (vue par défaut quand le DXF en contient) ====
+const DXN_ST={trouvee:'✓ trouvée, cohérente',probable:'≈ probable, à vérifier',multiple:'⋯ plusieurs possibles',absente:'∅ non retrouvée',choisie:'✓ choisie'};
+const DXN_OPT=12;   // shortcut: au plus 12 géométries proposées par ligne (les autres sont comptées) ; liste filtrable si un vrai plan l'exige
+const dxnU=(N,L)=>L.dims&&L.dims.unite||DXI.NU[N.id]||N.unite||'';
+const dxnDims=r=>CPI.nomenclatures.cotes(r.cotes,'mm',true);
+function dxnDef(dm){return dm.etat==='circ'?'circ':dm.etat==='rect'?(Math.abs(dm.a-dm.b)<0.5?'carre':'rect'):''}
+function dxnFormes(dm){return dm.etat==='circ'?['circ']:dm.etat==='rect'?(dxnDef(dm)==='carre'?['carre','carre_fond']:['rect','rect_fond']):['','rect','carre','rect_fond','carre_fond','circ']}
+// Cotes proposées (mm) : celles du tableau, si leur unité est connue ; jamais devinées
+function dxnPre(k){const {N,L}=DXI.NL[k],d=L.dims,f=DXI_MM[dxnU(N,L)];if(!d||!f)return'';return d.type==='circ'?'Ø '+dxiNum(d.D*f):dxiNum(d.a*f)+' × '+dxiNum(d.b*f)}
+// Rapprochements (à refaire si l'unité du dessin ou d'un tableau change) ; une correspondance « trouvée » est rattachée d'office, modifiable
+function dxnAssoc(){const D=DXI;if(!D.NL.length)return;
+  D.AS=CPI.nomenclatures.associer(D.NA.nomenclatures,D.C,D.doc,{uniteDessin:D.u,unites:D.NU,exclus:D.NA.ecartes.flatMap(e=>e.ids)});
+  D.NL.forEach(({L},k)=>{const r=D.NR[k],a=D.AS[L.id];if(!r.cotesT)r.cotes=dxnPre(k);if(!r.geoT)r.geo=a.statut==='trouvee'?String(a.options[0].c):''});dxnLinks()}
+function dxnLinks(){DXI.lk=new Set(DXI.NR.filter(r=>r.geo!=='').map(r=>+r.geo))}
+function dxnPane(){const D=DXI,NA=D.NA;
+  return `<div id="dxiPN"><div class="dxi-s" id="dxnS"></div>${NA.nomenclatures.map(N=>{const cs=N.colonnes.map(c=>`${esc((c.titre||'(sans titre)').replace(/\n/g,' '))} → ${CPI.nomenclatures.LIB[c.cle]}`).join(' · '),
+      sansU=N.lignes.some(L=>L.dims&&!L.dims.unite)&&!N.unite;
+    return `<div class="dxn-i"><b>Tableau ${esc(N.id)}</b>${N.titre?' « '+esc(N.titre.replace(/\n/g,' '))+' »':''} · ${N.espace==='objet'?'espace Objet':'présentation « '+esc(N.presentation||'?')+' »'}
+      · calque(s) ${esc(N.calques.join(', '))} · <b>${N.lignes.length} ligne(s)</b> · lecture : <b>${esc(N.qualite.niveau)}</b> (${esc(N.qualite.motifs.join(' ; '))})
+      ${sansU?` · <span style="color:var(--acct)">unité des cotes non indiquée :</span> <select class="fi" data-nu="${esc(N.id)}" onchange="DXI.NU[this.dataset.nu]=this.value;dxnAssoc();dxnRows()"><option value="">— choisir —</option>${['mm','cm','m'].map(u=>`<option${D.NU[N.id]===u?' selected':''}>${u}</option>`).join('')}</select>`:N.unite?` · cotes en ${N.unite} (en-tête)`:''}
+      <div class="mu">Colonnes : ${cs}</div></div>`}).join('')}
+    <div class="hint" style="margin:6px 0">Toutes les lignes des tableaux sont proposées, quels que soient le type, le lot ou le fournisseur : rien n'est coché d'office.
+    Cotes en mm (ex. 650x800 ou Ø250 ; tableau : ouverture l × h). Niveau et angle = position de la réservation : ils ne donnent ni la hauteur à coffrer ni la rotation du coffrage.</div>
+    <div style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap"><button class="btn bs bo" onclick="dxnAll(true)">☑ Tout sélectionner</button><button class="btn bs bo" onclick="dxnAll(false)">Tout décocher</button>
+    <button class="btn bs bo" onclick="dxnRefs(true)" title="Référence CoffraPlan = repère du tableau">Références du tableau</button><button class="btn bs bo" onclick="dxnRefs(false)" title="Références vides : numérotation automatique CoffraPlan">Références CoffraPlan automatiques</button></div>
+    <div class="dxi-t"><table class="ser" id="dxnT"><thead><tr><th>Créer</th><th>Repère</th><th>Désignation</th><th>Ouverture · réseau</th><th>Niveau · angle</th><th>Forme</th><th>Cotes (mm)</th><th>h (mm)</th><th>Réf.</th><th>Géométrie du dessin</th><th>Statut</th></tr></thead><tbody></tbody></table></div>
+    <svg id="dxnV" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Correspondances possibles dans le dessin"></svg>
+    <div class="hint" style="margin:6px 0 0">Schéma des géométries proposées pour les lignes (espace Objet) ; points : repères trouvés dans le dessin. Ligne sélectionnée : propositions en orange, un clic en choisit une.</div></div>`}
+function dxiVue(v){const D=DXI;if(!D||!el('dxiPN'))return;D.vue=v;el('dxiPN').style.display=v==='n'?'':'none';el('dxiPG').style.display=v==='g'?'':'none';
+  el('dxiTabN').classList.toggle('on',v==='n');el('dxiTabG').classList.toggle('on',v==='g');el('dxiTabN').setAttribute('aria-selected',v==='n');el('dxiTabG').setAttribute('aria-selected',v==='g');
+  if(v==='g')dxiRows()}
+function dxnRows(){const D=DXI,T=el('dxnT');if(!T)return;
+  T.tBodies[0].innerHTML=D.NL.map(({N,L},k)=>{const r=D.NR[k],det=N.colonnes.map((c,j)=>L.cellules[j]?`${(c.titre||'colonne '+(j+1)).replace(/\n/g,' ')} : ${L.cellules[j].replace(/\n/g,' ')}`:'').filter(Boolean).join('\n'),
+      ds=[L.description,L.type&&'Type : '+L.type,L.observations&&'Obs. : '+L.observations,L.lot&&'Lot : '+L.lot].filter(Boolean).join('\n');
+    return `<tr data-n="${k}" onclick="dxnSel(${k})" title="${esc(N.id+' ligne '+L.rang+'\n'+det)}"><td><input type="checkbox" data-k="conf"${r.conf?' checked':''} aria-label="Créer ${esc(L.repere||L.id)}" onchange="DXI.NR[${k}].conf=this.checked;dxiUpd()"></td>
+      <td><b>${esc(L.repere||'—')}</b><div class="mu">${esc(N.id)} · ${L.rang}</div></td><td>${esc(ds)}</td>
+      <td>${esc(L.ouverture)}${L.reseau?`<div class="mu">réseau : ${esc(L.reseau)}</div>`:''}</td><td>${esc([L.niveau,L.angle].filter(Boolean).join(' · '))}</td>
+      <td><select class="fi" data-k="forme" onchange="DXI.NR[${k}].forme=this.value;dxiUpd()"></select></td>
+      <td><input class="fi" data-k="cotes" style="width:96px" value="${esc(r.cotes)}" placeholder="${esc(L.dims?L.dims.texte+(dxnU(N,L)?'':' (unité ?)'):'à saisir')}" oninput="DXI.NR[${k}].cotes=this.value;DXI.NR[${k}].cotesT=true;dxiUpd()"></td>
+      <td><input class="fi" data-k="h" style="width:62px" value="${esc(r.h)}" placeholder="${esc(D.hCom.trim()||'à saisir')}" oninput="DXI.NR[${k}].h=this.value;dxiUpd()"></td>
+      <td><input class="fi" data-k="ref" style="width:72px" value="${esc(r.ref)}" placeholder="auto" oninput="DXI.NR[${k}].ref=this.value;dxiUpd()"></td>
+      <td><select class="fi" data-k="geo" style="max-width:190px" onchange="dxnGeo(${k},this.value)"></select><div class="gs"></div></td><td class="st"></td></tr>`}).join('');
+  dxiUpd()}
+// Choix de la géométrie rattachée à une ligne (retirée de la vue « Géométries du dessin » ; aucune : elle y revient)
+function dxnGeo(k,v){const r=DXI.NR[k];r.geo=v;r.geoT=true;dxnLinks();dxiUpd()}
+function dxnSel(k){const D=DXI;if(!D)return;D.nsel=k;document.querySelectorAll('#dxnT tr[data-n]').forEach(t=>t.classList.toggle('on',+t.dataset.n===k));dxnSvg()}
+function dxnAll(on){const D=DXI;if(!D)return;D.NR.forEach(r=>r.conf=on);document.querySelectorAll('#dxnT [data-k=conf]').forEach(e=>e.checked=on);dxiUpd()}
+function dxnRefs(tab){const D=DXI;if(!D)return;D.NR.forEach((r,k)=>r.ref=tab?String(D.NL[k].L.repere||'').toUpperCase():'');
+  document.querySelectorAll('#dxnT tr[data-n]').forEach(t=>t.querySelector('[data-k=ref]').value=D.NR[+t.dataset.n].ref);dxiUpd()}
+// Lignes de nomenclature : cotes (mm) et forme saisies ou reprises du tableau → adaptateur (contrôles du moteur), comme les géométries
+function dxnEval(moteur,hc){const D=DXI;if(!D.NL||!D.NL.length)return;
+  D.NL.forEach(({N,L},k)=>{const r=D.NR[k],dm=dxnDims(r),fo=r.forme||dxnDef(dm);r.x=null;
+    let h=hc;if(String(r.h).trim()!==''){try{h=parseCote(r.h,'mm')}catch(e){h=null}}
+    const man=[];if(dm.etat!=='rect'&&dm.etat!=='circ')man.push(String(r.cotes).trim()?'cotes illisibles (ex. 650x800 ou Ø250)':L.dims&&!dxnU(N,L)?'unité des cotes du tableau':'cotes');
+    if(!fo)man.push('forme');if(!(h>0))man.push(String(r.h).trim()?'hauteur illisible':'hauteur à coffrer');if(!String(D.ch||'').trim())man.push('chantier');
+    if(man.length){r.st='ac';r.msg='à compléter : '+man.join(', ');return}
+    const g=r.geo!==''?D.C[+r.geo]:null,x=CPI.adaptateur.versPlan(CPI.nomenclatures.candidat(N,L,{dims:dm,geo:g}),{confirme:true,forme:fo,h,unite:'mm',ref:r.ref.trim()},{moteur,modele:D.M[fo]});
+    if(!x.ok){r.st='er';r.msg=x.message+(x.messages&&x.messages.length?' : '+x.messages.join(' · '):'');return}
+    const p=x.plan;
+    if(p.ref&&P.some(q=>chKey(q.ch)===chKey(p.ch)&&ouKey(q.ouv).toLowerCase()===ouKey(p.ouv).toLowerCase()&&String(q.ref||'').toUpperCase()===p.ref)){r.st='er';r.msg=`référence ${p.ref} déjà utilisée dans cet ouvrage`;return}
+    r.x=x;r.st=x.alertes.length?'wn':'ok';r.msg=x.alertes.join(' · ')})}
+function dxnProv(k){const D=DXI,{N,L}=D.NL[k],r=D.NR[k],a=D.AS[L.id],g=r.geo!==''?D.C[+r.geo]:null,u=dxnU(N,L);
+  return CPI.nomenclatures.provenance(N,L,{forme:r.x.plan.forme,cotes:r.cotes,dims:dxnDims(r),ref:r.ref.trim().toUpperCase(),uniteTableau:u||null,
+    uniteChoisie:!!(u&&!(L.dims&&L.dims.unite)&&!N.unite),geo:g?{c:g,statut:!r.geoT&&a.statut==='trouvee'?'trouvee':'choisie'}:null})}
+// Statuts, formes possibles, géométries proposées, bilan (sans reconstruire la liste : garde la saisie en cours)
+function dxnUpd(){const D=DXI;if(!D||!el('dxnT'))return;const lb={ok:'✓ prêt',wn:'⚠ prêt — ',ac:'… ',er:'⛔ non créé — '};
+  document.querySelectorAll('#dxnT tr[data-n]').forEach(t=>{const k=+t.dataset.n,r=D.NR[k],{L}=D.NL[k],a=D.AS[L.id],dm=dxnDims(r),F=dxnFormes(dm);
+    if(r.forme&&!F.includes(r.forme))r.forme='';
+    const sf=t.querySelector('[data-k=forme]'),fo=r.forme||dxnDef(dm),key=F.join();
+    if(sf.dataset.f!==key){sf.dataset.f=key;sf.innerHTML=F.map(f=>`<option value="${f}">${f?esc(fmLb(f))+(/_fond$/.test(f)?' (choix explicite)':''):'— à choisir —'}</option>`).join('')}sf.value=fo;
+    const sg=t.querySelector('[data-k=geo]'),O=a.options.slice(0,DXN_OPT),gk=O.map(o=>o.c).join()+'|'+D.u;
+    if(sg.dataset.g!==gk){sg.dataset.g=gk;sg.innerHTML=`<option value="">— aucune —</option>`+O.map(o=>{const c=D.C[o.c];
+      return `<option value="${o.c}">${esc(c.id+' · '+dxiDims(c)+' · '+c.source.calque+(o.via==='cotes'?' · mêmes cotes':o.cotes==='diff'?' · cotes différentes':''))}</option>`}).join('')
+      +(a.options.length>DXN_OPT?`<option disabled>… et ${a.options.length-DXN_OPT} autre(s)</option>`:'')}
+    sg.value=r.geo;const gs=t.querySelector('.gs');gs.textContent=r.geo!==''&&r.geoT?DXN_ST.choisie:DXN_ST[a.statut];gs.title=a.note;
+    gs.style.color=r.geo!==''||a.statut==='trouvee'?'var(--okt)':a.statut==='absente'?'var(--muted)':'var(--acct)';
+    const s=t.querySelector('.st');s.className='st '+(r.st==='ac'?'wn':r.st);
+    s.innerHTML=esc(lb[r.st]+(r.st==='ok'?'':r.msg))+(L.a_verifier.length?`<div class="av">à vérifier : ${esc(L.a_verifier.join(' ; '))}</div>`:'')+(a.note?`<div class="mu">${esc(a.note)}</div>`:'')});
+  const n={trouvee:0,probable:0,multiple:0,absente:0};D.NL.forEach(({L})=>n[D.AS[L.id].statut]++);
+  const NN=D.NA.nomenclatures.length,cf=D.NR.filter(r=>r.conf).length;
+  el('dxnS').innerHTML=`<b>${D.NL.length} ligne(s) de nomenclature</b> dans ${NN} tableau${NN>1?'x':''} · géométries : ${n.trouvee} trouvée(s), ${n.probable} probable(s), ${n.multiple} à choisir parmi plusieurs, ${n.absente} non retrouvée(s)
+    · ${cf} sélectionnée(s) · <b>${dxnReady().length} à créer</b>`;
+  dxnSvg()}
+// Schéma : géométries proposées (espace Objet, repère du DXF, Y vers le haut) et repères trouvés ; ligne sélectionnée en évidence
+function dxnSvg(){const D=DXI,S=el('dxnV');if(!S)return;const G=new Set(),pts=[],R=[],k=D.nsel,a=k>=0?D.AS[D.NL[k].L.id]:null,on=new Set(a?a.options.map(o=>o.c):[]);
+  D.NL.forEach(({L})=>{const x=D.AS[L.id];x.options.slice(0,DXN_OPT).forEach(o=>G.add(o.c));x.reperes.forEach(p=>R.push([p,x===a]))});
+  // cadrage : propositions et repères de la ligne sélectionnée s'il y en a, sinon tout
+  const zG=on.size||(a&&a.reperes.length)?[...on]:[...G],zR=on.size||(a&&a.reperes.length)?R.filter(r=>r[1]):R;
+  zG.forEach(i=>{const g=D.C[i].geometrie;if(g.type==='cercle')pts.push([g.centre[0]-g.r,g.centre[1]-g.r],[g.centre[0]+g.r,g.centre[1]+g.r]);else g.points.forEach(p=>pts.push(p))});
+  zR.forEach(([p])=>pts.push([p.x,p.y]));
+  if(!pts.length){S.removeAttribute('viewBox');S.innerHTML='<text x="50%" y="50%" text-anchor="middle" font-size="13">Aucune géométrie proposée</text>';return}
+  const xs=pts.map(p=>p[0]),ys=pts.map(p=>p[1]),x0=Math.min(...xs),x1=Math.max(...xs),y0=Math.min(...ys),y1=Math.max(...ys),w=Math.max(x1-x0,1e-9),h=Math.max(y1-y0,1e-9),m=Math.max(w,h)*0.06,rr=Math.max(w,h)*0.008;
+  S.setAttribute('viewBox',`${x0-m} ${-y1-m} ${w+2*m} ${h+2*m}`);const sel=k>=0?D.NR[k].geo:'';
+  S.innerHTML=[...G].map(i=>{const c=D.C[i],g=c.geometrie,cl=`class="g${on.has(i)?' on':''}${String(i)===sel?' cf':''}" data-c="${i}"`+(on.has(i)?` onclick="dxnPick(${i})"`:''),t=`<title>${esc(c.id+' · '+c.source.calque+' · '+dxiDims(c))}</title>`;
+    return g.type==='cercle'?`<circle ${cl} cx="${g.centre[0]}" cy="${-g.centre[1]}" r="${g.r}">${t}</circle>`:`<polygon ${cl} points="${g.points.map(p=>p[0]+','+(-p[1])).join(' ')}">${t}</polygon>`}).join('')
+    +R.map(([p,o])=>`<circle class="rp${o?' on':''}" cx="${p.x}" cy="${-p.y}" r="${rr}"><title>repère ${esc(p.id)}</title></circle>`).join('')}
+function dxnPick(i){const D=DXI;if(!D||D.nsel<0)return;const t=document.querySelector(`#dxnT tr[data-n="${D.nsel}"] [data-k=geo]`);dxnGeo(D.nsel,String(i));if(t)t.value=String(i)}
 </script>
 <script>
 // ====== CONSTANTES ======

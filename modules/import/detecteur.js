@@ -28,7 +28,9 @@ function detecter(doc,opt){
     const c={id:'R'+(i+1),type:null,statut:'non_pris_en_charge',unite:doc.unite,
       source:{fichier:doc.fichier,format:doc.format,calque:e.calque==null?null:e.calque,id:String(e.id)},
       geometrie:cp(e),centre:null,dims:null,h:Number.isFinite(e.h)&&e.h>0?e.h:null,manquants:[],remarques:[]};
-    if(e.type==='cercle'){
+    // présentation (espace papier) : cadres, cartouches, tableaux ; coordonnées d'un autre repère que le dessin → jamais proposée
+    if(e.espace==='papier')c.remarques.push('dessiné dans une présentation (espace papier'+(e.presentation?' « '+e.presentation+' »':'')+')');
+    else if(e.type==='cercle'){
       if(e.r>0){c.type='circ';c.dims={D:2*e.r};c.centre=e.centre.slice(0,2)}else c.remarques.push('cercle de rayon nul');
     }else if(e.type==='polyligne'){
       const R=e.ferme?rectangle(e.points,tol):null;

@@ -1,7 +1,7 @@
 # Module d'import de plans
 
 État : **intégré à l'appli** (fenêtre « Importer un plan DXF »). Lecteur DXF ASCII (`dxf.js`), détecteur, adaptateur et
-fenêtre sont des sources séparées, assemblées dans `app/CoffraPlan.html` (bloc `<script id="cpi-src">`, § 3). Pas de
+fenêtre sont des sources séparées (plus `nomenclatures.js`), assemblées dans `app/CoffraPlan.html` (bloc `<script id="cpi-src">`, § 3). Pas de
 décodeur IFC ni PDF. Bancs : `tests/t_import.py` (contrat), `tests/t_dxf.py` (vrais DXF écrits par ezdxf),
 `tests/t_dxf_ui.py` (interface réelle : lecture, aperçu, confirmation, création, provenance, annulation, hors connexion).
 
@@ -10,6 +10,7 @@ décodeur IFC ni PDF. Bancs : `tests/t_import.py` (contrat), `tests/t_dxf.py` (v
 | `lecteur.js` | A. Lecteur de plan : fichier source → document normalisé | rien |
 | `dxf.js` | Décodeur DXF ASCII, inscrit dans `CPI.lecteur.DECODEURS.dxf` (charger après `lecteur.js`) | `lecteur.js` |
 | `detecteur.js` | B. Détecteur : document normalisé → réservations **potentielles** | rien |
+| `nomenclatures.js` | B'. Nomenclatures de réservations : textes et traits du DXF → tableaux, lignes, rapprochement avec les candidats de B (§ 5) | rien |
 | `adaptateur.js` | C. Adaptateur : réservation **confirmée** → plan CoffraPlan contrôlé par le moteur | moteur reçu en paramètre |
 | `fenetre.js` | D. Fenêtre « Importer un plan DXF » : fichier → A → B → choix de l'utilisateur → C → ajout des plans | l'appli (appelée au clic, jamais au chargement) |
 | `assembler.py` | Assemblage des 5 sources dans le HTML ; `--check` : échoue si le HTML diffère | Python, bibliothèque standard |
@@ -87,7 +88,19 @@ Règle pour les décodeurs : une polyligne à arcs (bulge) devient `autre`, jama
 
 Refus explicites (`document_invalide` avec le message) : fichier vide, DXF binaire, code de groupe illisible (fichier non
 DXF), paires incomplètes ou fin `EOF` absente (fichier tronqué), section `ENTITIES` absente, unité non métrique, valeur
-numérique illisible, `POLYLINE` sans `SEQEND`. Seule la section `ENTITIES` est lue (pas l'espace papier des BLOCKS).
+numérique illisible, `POLYLINE` sans `SEQEND`. `entites` = section `ENTITIES` seulement (espace Objet et présentation active),
+chacune avec `espace` (`objet` | `papier`) et `presentation` (nom lu par BLOCK_RECORD → LAYOUT ; `null` en R12).
+
+En plus, pour les nomenclatures (champs facultatifs du document) :
+| Champ | Contenu |
+|---|---|
+| `presentations` | noms des présentations (objets LAYOUT, sans « Model ») |
+| `textes` | `{id, calque, espace, presentation, nature, texte, x, y, h, w, rot, bloc?, fleches?}` : TEXT, ATTRIB (visible), MTEXT (une entrée par ligne `\P`, mise en forme retirée), MULTILEADER (texte + pointes de flèche) ; `%%c` → Ø, `%%d` → °, `%%p` → ± ; `x, y` = centre estimé (largeur ≈ 0,6 h par caractère) ; flèche d'un LEADER rattachée à son texte (code 340) |
+| `traits` | segments droits (LINE, côtés des polylignes sans arc) : `{calque, espace, presentation, a, b}` |
+| `signalements` | limites rencontrées (ACAD_TABLE sans bloc de rendu, bloc introuvable, MINSERT, fichier très chargé…) |
+Sources : `ENTITIES`, présentations non actives (`BLOCKS` `*Paper_Space<n>`), contenu des blocs `INSERT` (point de base, échelle,
+rotation, miroir ; calque 0 → calque de l'insertion ; 8 niveaux au plus) et des `ACAD_TABLE` par leur bloc de rendu `*T…`
+(codes 2, 10/20, 11/21). Coordonnées dans le repère de l'espace qui contient l'objet : jamais mélangées entre espaces.
 Encodage : le texte est reçu déjà décodé ; l'interface devra lire les R12 en CP-1252 et les R2007+ en UTF-8.
 
 ### Décisions de Kévin (18/10/2026, relecture de la PR #1)
@@ -138,10 +151,43 @@ sommet (écarte le quadrilatère croisé), à `tol` près (0,5 % de la diagonale
 `provenance = {fichier, format, calque, id, candidat, unite_source, unite, centre, dims_source, h_saisie}`. C ne modifie ni
 `P`, ni le stockage, ni le modèle : il renvoie un nouvel objet ; l'enregistrement reste une action de l'utilisateur.
 
+## Nomenclatures de réservations (`nomenclatures.js`, fenêtre `dxn*`)
+`CPI.nomenclatures.analyser(doc)` → `{nomenclatures, ecartes, signalements}`, par espace (Objet, chaque présentation) :
+1. **En-tête** : textes sans chiffre portant un mot-clé de colonne (Repère / Réf. / N°, Désignation, Type / Élément, Ouverture /
+   Trémie / Dimensions / l×h, Diamètre / Ø, DN / Réseau, Niveau / Altimétrie / NGF / Hauteur / dalle, Angle / Orientation,
+   Observations, Lot / Entreprise…) alignés (± 1 h) ; au moins 3 textes et 2 sortes ; coupé aux écarts > 30 h et au 2e « repère ».
+2. **Bande d'en-tête** : entre deux traits horizontaux de la grille, sinon textes à mot-clé ou « (mm) », « l×h » à ± 1,3 h.
+3. **Colonnes** : traits verticaux de la grille (entre les extrémités du trait qui borde l'en-tête) ; sans grille, entre deux titres
+   au milieu du plus large intervalle libre de textes. **Lignes** : bandes de la grille ; sans grille, une ligne par repère, les
+   lignes de texte sans repère rattachées au repère le plus proche. Côté des lignes : celui qui en a le plus (en-tête en bas admis).
+4. **Nature** (en-tête + titre, jamais les lignes) : réservations (mots trémie, fourreau, ouverture, carottage… et colonnes
+   ouverture / niveau / angle / réseau / diamètre) ; aciers (acier, HA, poids, façonnage…) ; autre (indice, modification…).
+   Seules les nomenclatures de réservations sont proposées ; les autres tableaux vont dans `ecartes` avec la raison.
+5. **Lignes** : toutes gardées : `{id, rang, ids, calques, cellules (textes bruts), repere, description, type, observations, lot,
+   quantite, niveau, angle, reseau, ouverture, dims, a_verifier}`. `dims` (unité du tableau, non convertie) : colonne ouverture
+   d'abord (`650x800` → `{type:'rect',a:650,b:800}`, `Ø300` → `{type:'circ',D:300}`) ; DN, cote seule, SO / à définir / « / » →
+   `null` + motif ; colonne « Diamètre » ou Largeur + Hauteur → cote proposée « à confirmer ». Niveau et angle : texte seulement.
+6. **Qualité** : `bonne` (grille complète, tous les repères, toutes les colonnes reconnues), `à vérifier`, `faible`, et motifs.
+
+`associer(noms, candidats, doc, {uniteDessin, unites, exclus})` : repères du dessin (TEXT, MTEXT, attributs, lignes de repère ;
+textes des tableaux exclus) normalisés (`D03` = `D3` = `d 3`), contour à moins de 4 h du texte ou d'une pointe de flèche,
+cotes comparées en mm (1 % ou 2 mm). États : `trouvee` (un seul contour, cotes identiques, repère non numérique : rattaché
+d'office, modifiable), `probable` (un contour, cotes différentes ou non comparables ; ou repère absent et une seule géométrie de
+mêmes cotes), `multiple` (plusieurs contours : vue, coupe, détail ; ou plusieurs géométries de mêmes cotes), `absente`. Espace
+Objet seulement : un repère d'une présentation est signalé, la fenêtre de présentation (VIEWPORT) n'est pas interprétée.
+
+Fenêtre : onglet « Nomenclature des réservations » par défaut (sinon comportement inchangé) ; aucune ligne cochée d'office ;
+cotes (mm), forme, hauteur, référence (repère du tableau ou automatique), géométrie modifiables ; création par `versPlan`
+(`candidat()` → candidat au format de B). Géométrie rattachée : retirée de l'onglet « Géométries du dessin ».
+Provenance (`provenance()`) : `{fichier, format, type:'nomenclature', espace, presentation, calque, id (géométrie | null),
+nomenclature, titre, ligne, rang, repere, ids, textes:{titre de colonne: cellule}, unite_source, unite, dims_source,
+geometrie:{id, calque, candidat, statut:'trouvee'|'choisie', centre, dims_source} | null, choix:{forme, cotes, ref ('' =
+automatique), unite_tableau}, corrige:['cotes','ref'], a_verifier, h_saisie, indice, date}`.
+
 ## 3. Fichiers séparés et HTML autonome (en place)
 
 - `python modules/import/assembler.py` remplace le bloc `<script id="cpi-src">…</script>` de `app/CoffraPlan.html` (placé
-  avant le `<script>` principal) par `lecteur.js`, `dxf.js`, `detecteur.js`, `adaptateur.js`, `fenetre.js`, dans cet ordre,
+  avant le `<script>` principal) par `lecteur.js`, `dxf.js`, `detecteur.js`, `nomenclatures.js`, `adaptateur.js`, `fenetre.js`, dans cet ordre,
   chacun précédé de son nom. Résultat déterministe (fins de ligne normalisées), bibliothèque standard Python seulement.
 - `--check` échoue si le bloc diffère des sources : lancé par `tests/syntax.sh` (étape « Syntaxe » de la CI) et par t_dxf_ui.
   Une source modifiée sans réassemblage fait donc échouer la CI.
@@ -186,10 +232,26 @@ sommet (écarte le quadrilatère croisé), à `tol` près (0,5 % de la diagonale
    DXF **fictif** reproduit avec ezdxf dans `t_dxf.py`, sans coordonnées ni noms du plan réel.
 5. Compte rendu dans le fil de projet : uniquement les comptes et les écarts, aucun nom de chantier ni extrait du plan.
 
+## Essai local sur le plan réel de la nomenclature (23 lignes, présentation)
+Fichier confidentiel : il reste sur le poste de Kévin, hors du dépôt.
+1. `git pull` puis `pip install -r tests/requirements.txt` (une fois).
+2. `python tests/essai_plan_reel.py "<chemin du DXF>" --attendu 23` : bilan **anonyme** (comptes seulement : nombre de lignes,
+   cellules remplies par colonne, cotes lues, états des rapprochements, tableaux écartés). Résultat attendu : `Total : 23 ligne(s)`,
+   code de sortie 0. Le bilan peut être recopié dans le fil ; rien d'autre du plan.
+3. Puis dans CoffraPlan : « 📥 Importer DXF », onglet Nomenclature : comparer les 23 lignes au tableau d'AutoCAD (cellules,
+   cotes proposées, motifs « à vérifier »).
+4. Écart constaté : le décrire sans contenu du plan (ex. « colonne Ouverture lue vide sur 3 lignes, cellules en MTEXT
+   multiligne ») ; il sera reproduit sur un DXF fictif dans `tests/dxf_nomenclatures.py`.
+
 ## Limites et non vérifié
 - Lecteur DXF éprouvé sur des fichiers ezdxf (R12, R2000) seulement : aucun plan réel, aucun fichier exporté par
   AutoCAD, Revit ou un autre logiciel n'a été lu.
-- Non lus : blocs (`INSERT`), réservations dessinées en `LINE` séparées, hachures, arcs, espace papier, DXF binaire.
+- Non lus comme géométries : blocs (`INSERT`), réservations dessinées en `LINE` séparées, hachures, arcs, DXF binaire ; contours
+  d'une présentation non proposés.
+- Nomenclatures : éprouvées sur des DXF ezdxf fictifs seulement (TEXT + LINE, MTEXT sans grille, blocs, présentation active ou
+  non) ; ACAD_TABLE : entité minimale fabriquée, jamais un fichier AutoCAD ; textes tournés ignorés pour les tableaux ;
+  largeur des textes estimée (0,6 h par caractère) ; fenêtres de présentation non interprétées ; MINSERT : première occurrence ;
+  attributs et blocs dynamiques non testés sur un vrai fichier ; quantité (« Qté ») gardée en texte, pas reportée dans `nb`.
 - Hypothèses : réservation rectangulaire → coffrage `rect` / `carre` sans fond par défaut ; cercle → fourreau `circ`.
   Les autres formes (voile cintré, poutre, goulotte…) ne sont pas reconnues.
 - Orientation (`angle`) et position (`centre`) ne sont gardées que dans la provenance : un plan CoffraPlan n'a pas de
