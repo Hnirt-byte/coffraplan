@@ -767,7 +767,7 @@ const BASE=['repere','description','type','ouverture','niveau','observations'];
 const VERS={repere:'repere',description:'description',type:'type',ouverture:'ouverture',diametre:'ouverture',largeur:'ouverture',hauteur:'ouverture',reseau:'reseau',
   niveau:'niveau',angle:'angle',observations:'observations',lot:'lot',quantite:'quantite'};
 const unionBox=B=>B.length?{page:B[0].page,x0:Math.min(...B.map(b=>b.x0)),y0:Math.min(...B.map(b=>b.y0)),x1:Math.max(...B.map(b=>b.x1)),y1:Math.max(...B.map(b=>b.y1))}:null;
-// Ø mal lu devant un nombre seul (« 2250 », « 0250 », « @16 », « D120 ») dans la colonne des dimensions, mot incertain seulement
+// Ø peut-être mal lu devant un nombre seul (« 2250 », « 0250 », « D120 ») dans la colonne des dimensions, mot incertain : signalé seulement
 const OMAL=/^[2@©®0OoDGQ%9]\s?(\d{2,4})$/;
 function grille(N,textes){const tid=new Map(textes.map(t=>[t.id,t]));
   const reps=N.lignes.map(L=>L.repere.trim()),pref={};
@@ -779,7 +779,8 @@ function grille(N,textes){const tid=new Map(textes.map(t=>[t.id,t]));
       const corr=O.flatMap(o=>o.corrections||[]),conf=O.length?Math.min(...O.map(o=>o.conf)):null;
       if(k==='ouverture'&&!A.some(a=>a.c.cle==='ouverture')&&L.dims){   // colonne Diamètre ou Largeur + Hauteur : cote reconstituée, à confirmer
         v=L.dims.type==='circ'?'Ø'+L.dims.D:L.dims.a+'x'+L.dims.b;corr.push(`cote reprise de la colonne « ${L.dims.colonne.replace(/\n/g,' ')} » : ${v}`)}
-      if(k==='ouverture'&&conf!=null&&conf<SEUIL){const m=v.trim().match(OMAL);if(m){corr.push(`« ${v.trim()} » interprété Ø${m[1]} (symbole Ø mal lu ?)`);v='Ø'+m[1]}}
+      if(k==='ouverture'&&conf!=null&&conf<SEUIL&&OMAL.test(v.trim()))   // jamais converti : 250 peut être Ø50 ou 250 ; l'utilisateur précise Ø
+        corr.push(`« ${v.trim()} » : nombre seul ambigu (symbole Ø mal lu ?), à préciser — valeur gardée telle quelle`);
       if(k==='ouverture'&&/\d[+'`´]\d/.test(v)){const u=v.replace(/(?<=\d)[+'`´](?=\d)/g,'');   // « 4+00x400 » : signe parasite dans un nombre
         if(u!==v&&root.CPI.nomenclatures.cotes(u).etat==='rect'){corr.push(`« ${v} » lu comme ${u}`);v=u}}
       if((k==='angle'||k==='niveau')&&/^[Oo]$/.test(v.trim())){corr.push(`« ${v.trim()} » lu comme 0`);v='0'}   // zéro seul lu comme la lettre O
@@ -1662,7 +1663,10 @@ function dxoResultat(job,r){const D=DXI,z=job.z,A=CPI.nomenclatures.analyser({fi
   rows.forEach(w=>Object.keys(w.cells).forEach(k=>{w.cells[k]=String(w.cells[k]).replace(/\n/g,' ')}));
   const E=A.ecartes.map(e=>`${e.titre?'« '+e.titre.replace(/\n/g,' ')+' » ':''}${e.raison}`);
   if(!rows.length){msg.innerHTML=`Reconnaissance terminée (${s} s, ${r.textes.length} texte(s) lu(s)) : <b>aucune nomenclature de réservations reconnue</b> dans la zone${E.length?' ; écarté : '+esc(E.join(' ; ')):''}. Rien n'est ajouté.
-    <details class="mu"><summary>Textes reconnus</summary>${esc(r.textes.map(t=>t.texte).join(' · '))}</details>`;return}
+    <details class="mu"><summary>Textes reconnus</summary>${esc(r.textes.map(t=>t.texte).join(' · '))}</details>`;
+    if(D.OC){const n=D.OC.rows.filter(w=>w.edite.length||!w.src).length;D.OC.ancienne=true;   // grille précédente gardée (corrections), mais marquée comme telle
+      msg.innerHTML+=`<div style="color:var(--acct)">La grille ci-dessous est celle de la reconnaissance précédente (page ${D.OC.page}, ${D.OC.rows.length} ligne(s)${n?`, ${n} modifiée(s) ou ajoutée(s) par vous`:''}) : elle n'est pas le résultat de cette zone. Gardez-la pour l'ajouter, ou « Fermer la grille ».</div>`;dxoGrille()}
+    return}
   const O=D.OC&&dxoChevauche(D.OC.zone,z)?D.OC:null;let gard=0;
   if(O){rows.forEach(w=>{const o=O.rows.find(o=>o.edite.length&&o.src&&o.cle0&&o.cle0===w.cle0);if(o){o.edite.forEach(k=>{w.cells[k]=o.cells[k]});w.edite=o.edite.slice();w.notes=(o.notes||[]).slice();gard++}});
     O.rows.filter(o=>!o.src).forEach(o=>rows.push(o))}
@@ -1679,6 +1683,7 @@ function dxoGrille(){const D=DXI,G=el('dxoG');if(!G||!D)return;const O=D.OC;if(!
   const C=CPI.ocr.colonnes(O.rows),lg=k=>k==='description'||k==='observations'||k==='autre';
   const tip=(w,k)=>[w.brut[k]?`OCR brut : « ${w.brut[k]} »`:'',w.conf[k]!=null?`confiance ${w.conf[k]} %`:'',...(w.corr[k]||[]),w.edite.includes(k)?'corrigé par vous':''].filter(Boolean).join('\n');
   G.innerHTML=`<fieldset class="dxo"><legend>Vérification de la reconnaissance (OCR) · page ${O.page}${O.titre?' · « '+esc(O.titre.replace(/\n/g,' '))+' »':''}</legend>
+    ${O.ancienne?`<div id="dxoA" style="color:var(--acct);font-weight:600;margin-bottom:6px">⚠ Grille de la reconnaissance précédente : la dernière zone analysée n'a donné aucune nomenclature.</div>`:''}
     <div class="mu" style="margin-bottom:6px">Chaque cellule est modifiable. <span style="color:var(--acct)">Orange</span> : lecture incertaine ou corrigée automatiquement (survol : texte brut,
     confiance) ; cliquer une cellule l'encadre sur la page. Ligne en trop : ✕ ; ligne coupée en deux : ⇣ (fusion avec la suivante) ; ligne manquante : ＋. Rien n'est coché pour la création.</div>
     <div class="dxp-b" style="margin-bottom:6px">Unité des dimensions : <select class="fi" id="dxoU" style="width:auto" onchange="DXI.OC.unite=this.value">${['','mm','cm','m'].map(u=>`<option value="${u}"${O.unite===u?' selected':''}>${u||'— à choisir —'}</option>`).join('')}</select>

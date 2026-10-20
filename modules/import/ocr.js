@@ -148,7 +148,7 @@ const BASE=['repere','description','type','ouverture','niveau','observations'];
 const VERS={repere:'repere',description:'description',type:'type',ouverture:'ouverture',diametre:'ouverture',largeur:'ouverture',hauteur:'ouverture',reseau:'reseau',
   niveau:'niveau',angle:'angle',observations:'observations',lot:'lot',quantite:'quantite'};
 const unionBox=B=>B.length?{page:B[0].page,x0:Math.min(...B.map(b=>b.x0)),y0:Math.min(...B.map(b=>b.y0)),x1:Math.max(...B.map(b=>b.x1)),y1:Math.max(...B.map(b=>b.y1))}:null;
-// Ø mal lu devant un nombre seul (« 2250 », « 0250 », « @16 », « D120 ») dans la colonne des dimensions, mot incertain seulement
+// Ø peut-être mal lu devant un nombre seul (« 2250 », « 0250 », « D120 ») dans la colonne des dimensions, mot incertain : signalé seulement
 const OMAL=/^[2@©®0OoDGQ%9]\s?(\d{2,4})$/;
 function grille(N,textes){const tid=new Map(textes.map(t=>[t.id,t]));
   const reps=N.lignes.map(L=>L.repere.trim()),pref={};
@@ -160,7 +160,8 @@ function grille(N,textes){const tid=new Map(textes.map(t=>[t.id,t]));
       const corr=O.flatMap(o=>o.corrections||[]),conf=O.length?Math.min(...O.map(o=>o.conf)):null;
       if(k==='ouverture'&&!A.some(a=>a.c.cle==='ouverture')&&L.dims){   // colonne Diamètre ou Largeur + Hauteur : cote reconstituée, à confirmer
         v=L.dims.type==='circ'?'Ø'+L.dims.D:L.dims.a+'x'+L.dims.b;corr.push(`cote reprise de la colonne « ${L.dims.colonne.replace(/\n/g,' ')} » : ${v}`)}
-      if(k==='ouverture'&&conf!=null&&conf<SEUIL){const m=v.trim().match(OMAL);if(m){corr.push(`« ${v.trim()} » interprété Ø${m[1]} (symbole Ø mal lu ?)`);v='Ø'+m[1]}}
+      if(k==='ouverture'&&conf!=null&&conf<SEUIL&&OMAL.test(v.trim()))   // jamais converti : 250 peut être Ø50 ou 250 ; l'utilisateur précise Ø
+        corr.push(`« ${v.trim()} » : nombre seul ambigu (symbole Ø mal lu ?), à préciser — valeur gardée telle quelle`);
       if(k==='ouverture'&&/\d[+'`´]\d/.test(v)){const u=v.replace(/(?<=\d)[+'`´](?=\d)/g,'');   // « 4+00x400 » : signe parasite dans un nombre
         if(u!==v&&root.CPI.nomenclatures.cotes(u).etat==='rect'){corr.push(`« ${v} » lu comme ${u}`);v=u}}
       if((k==='angle'||k==='niveau')&&/^[Oo]$/.test(v.trim())){corr.push(`« ${v.trim()} » lu comme 0`);v='0'}   // zéro seul lu comme la lettre O

@@ -463,7 +463,10 @@ function dxoResultat(job,r){const D=DXI,z=job.z,A=CPI.nomenclatures.analyser({fi
   rows.forEach(w=>Object.keys(w.cells).forEach(k=>{w.cells[k]=String(w.cells[k]).replace(/\n/g,' ')}));
   const E=A.ecartes.map(e=>`${e.titre?'« '+e.titre.replace(/\n/g,' ')+' » ':''}${e.raison}`);
   if(!rows.length){msg.innerHTML=`Reconnaissance terminée (${s} s, ${r.textes.length} texte(s) lu(s)) : <b>aucune nomenclature de réservations reconnue</b> dans la zone${E.length?' ; écarté : '+esc(E.join(' ; ')):''}. Rien n'est ajouté.
-    <details class="mu"><summary>Textes reconnus</summary>${esc(r.textes.map(t=>t.texte).join(' · '))}</details>`;return}
+    <details class="mu"><summary>Textes reconnus</summary>${esc(r.textes.map(t=>t.texte).join(' · '))}</details>`;
+    if(D.OC){const n=D.OC.rows.filter(w=>w.edite.length||!w.src).length;D.OC.ancienne=true;   // grille précédente gardée (corrections), mais marquée comme telle
+      msg.innerHTML+=`<div style="color:var(--acct)">La grille ci-dessous est celle de la reconnaissance précédente (page ${D.OC.page}, ${D.OC.rows.length} ligne(s)${n?`, ${n} modifiée(s) ou ajoutée(s) par vous`:''}) : elle n'est pas le résultat de cette zone. Gardez-la pour l'ajouter, ou « Fermer la grille ».</div>`;dxoGrille()}
+    return}
   const O=D.OC&&dxoChevauche(D.OC.zone,z)?D.OC:null;let gard=0;
   if(O){rows.forEach(w=>{const o=O.rows.find(o=>o.edite.length&&o.src&&o.cle0&&o.cle0===w.cle0);if(o){o.edite.forEach(k=>{w.cells[k]=o.cells[k]});w.edite=o.edite.slice();w.notes=(o.notes||[]).slice();gard++}});
     O.rows.filter(o=>!o.src).forEach(o=>rows.push(o))}
@@ -480,6 +483,7 @@ function dxoGrille(){const D=DXI,G=el('dxoG');if(!G||!D)return;const O=D.OC;if(!
   const C=CPI.ocr.colonnes(O.rows),lg=k=>k==='description'||k==='observations'||k==='autre';
   const tip=(w,k)=>[w.brut[k]?`OCR brut : « ${w.brut[k]} »`:'',w.conf[k]!=null?`confiance ${w.conf[k]} %`:'',...(w.corr[k]||[]),w.edite.includes(k)?'corrigé par vous':''].filter(Boolean).join('\n');
   G.innerHTML=`<fieldset class="dxo"><legend>Vérification de la reconnaissance (OCR) · page ${O.page}${O.titre?' · « '+esc(O.titre.replace(/\n/g,' '))+' »':''}</legend>
+    ${O.ancienne?`<div id="dxoA" style="color:var(--acct);font-weight:600;margin-bottom:6px">⚠ Grille de la reconnaissance précédente : la dernière zone analysée n'a donné aucune nomenclature.</div>`:''}
     <div class="mu" style="margin-bottom:6px">Chaque cellule est modifiable. <span style="color:var(--acct)">Orange</span> : lecture incertaine ou corrigée automatiquement (survol : texte brut,
     confiance) ; cliquer une cellule l'encadre sur la page. Ligne en trop : ✕ ; ligne coupée en deux : ⇣ (fusion avec la suivante) ; ligne manquante : ＋. Rien n'est coché pour la création.</div>
     <div class="dxp-b" style="margin-bottom:6px">Unité des dimensions : <select class="fi" id="dxoU" style="width:auto" onchange="DXI.OC.unite=this.value">${['','mm','cm','m'].map(u=>`<option value="${u}"${O.unite===u?' selected':''}>${u||'— à choisir —'}</option>`).join('')}</select>

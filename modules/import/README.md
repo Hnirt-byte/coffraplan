@@ -229,15 +229,16 @@ automatique), unite_tableau}, corrige:['cotes','ref'], a_verifier, h_saisie, ind
 - Tableau : `nomenclatures.analyser` tel quel sur ces textes et traits (avec ou sans bordures, cellules sur plusieurs lignes,
   tableaux d'aciers écartés : colonne `acier`). Aucun second moteur métier.
 - Corrections automatiques (`corriger`, puis `grille` selon la colonne) : O/o → 0, I/l/| → 1, S → 5, B → 8 dans une suite de
-  chiffres seulement (1re lettre d'un repère gardée), @ © ® → Ø devant des chiffres, Ø mal lu dans une ouverture peu sûre,
-  « (rnm) » → « (mm) ». Valeur brute toujours gardée ; toute correction autre que casse / espaces est signalée. Repères
+  chiffres seulement (1re lettre d'un repère gardée), @ © ® → Ø devant des chiffres, « (rnm) » → « (mm) ». Un nombre seul peu sûr dans une ouverture (« 250 », « 900 », « 2500 » :
+  Ø peut-être mal lu) n'est jamais converti en diamètre : valeur gardée, ambiguïté signalée, Ø à préciser par l'utilisateur. Valeur brute toujours gardée ; toute correction autre que casse / espaces est signalée. Repères
   en double ou hors de la suite des voisins signalés. Rien n'est inventé : cellule illisible = vide signalée ; DN laissé
   dans « Réseau », jamais converti en cote ; altitude laissée dans « Niveau », jamais prise pour une hauteur de coffrage.
 - Grille de vérification (sous l'aperçu) : Repère, Désignation, Type ou nature, Dimensions d'ouverture, Réseau, Niveau ou
   altitude, Observations, autres colonnes non vides, État ; toutes les cellules éditables, cellules douteuses en orange avec
   le texte brut et la confiance en infobulle, cellule montrée sur la page quand elle a le focus ; insérer, fusionner, retirer
   (rétablissable) une ligne ; une ligne au repère douteux n'est jamais retirée sans action de l'utilisateur. OCR relancé :
-  corrections et lignes ajoutées gardées (clé = repère lu à l'origine `cle0`).
+  corrections et lignes ajoutées gardées (clé = repère lu à l'origine `cle0`). Nouvelle zone sans nomenclature : la grille précédente reste affichée avec ses corrections,
+  marquée « reconnaissance précédente » (jamais présentée comme résultat de la nouvelle zone).
 - « Ajouter à la nomenclature » (`versNomenclature`, via `nomenclatures.ligne`) : `N.ocr = true`, `N.id` = `O1`, `O2`… ;
   lignes déjà lues par le texte sur la même page non ajoutées (pas de doublon) ; nouvel OCR d'une même zone : remplace le
   précédent sans perdre les coches ; rien n'est coché d'office. Création : même chemin que DXF / PDF.
@@ -245,7 +246,9 @@ automatique), unite_tableau}, corrige:['cotes','ref'], a_verifier, h_saisie, ind
   `a_verifier` (lectures incertaines, ligne ajoutée à la main) et `ocr:{brut, confiance, corrections, corrige (valeurs
   saisies par l'utilisateur), incertain, ajoutee, moteur}`. Ni image ni PDF stockés ; jamais lue par le moteur.
 - Limites : précision dépendante du rendu (petits corps, nuages de révision, textes barrés) ; une seule zone à la fois ;
-  textes tournés non lus dans le tableau ; ≈ 1 à 8 s par tableau sur la machine de test ; Chromium seulement.
+  textes tournés non lus dans le tableau ; ≈ 1 à 8 s par tableau sur la machine de test ; Chromium seulement (Firefox, Safari
+  non testés) ; vrais scans non testés (seul un scan fictif l'est). Test réseau de t_ocr : les requêtes Google Fonts de
+  l'interface (héritées, hors OCR) sont bloquées mais ignorées ; toute autre requête fait échouer le test.
 
 ## 3. Fichiers séparés et HTML autonome (en place)
 

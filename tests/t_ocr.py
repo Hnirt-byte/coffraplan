@@ -7,6 +7,7 @@ texte extractible). Demande de Kévin du 19/10/2026 (phase 3) :
   création : confirmation, rectangle, fourreau, à compléter, références sans doublon, provenance OCR, sauvegarde et
   rechargement, débit = saisie manuelle, annulation ; technique : HTML autonome en file://, aucune requête réseau, worker et
   wasm, arrêt de la reconnaissance, aciers écartés.
+Réseau : les requêtes Google Fonts de l'interface (héritées, hors OCR) sont bloquées et ignorées ; toute autre requête échoue le test.
 Les valeurs reconnues dépendent du rendu des polices : les contrôles portent sur la structure (lignes, colonnes, signalements)
 et sur des cellules choisies, pas sur chaque caractère."""
 import json, os, re, subprocess, sys, tempfile
@@ -41,6 +42,14 @@ def t(s):
         s.check(C == {'RO1': 'R01', 'B18': 'B18', 'PS2': 'PS2', '6S0x8OO': '650x800', '@250': 'Ø250', 'DN2O0': 'DN200', '+12,5O': '+12,50', '(rnm)': '(mm)',
                       'évacuation': 'évacuation', 'O250': 'O250'},
                 'corrections : O/0, S/5, B/8 dans les nombres seulement ; 1re lettre d\'un repère gardée ; @ → Ø ; mots ordinaires intacts', json.dumps(C, ensure_ascii=False))
+
+        # ---- nombre seul à faible confiance dans les dimensions : jamais converti en diamètre (250 ≠ Ø50), ambiguïté signalée
+        A = J('''()=>{const V=['250','900','2500'],T=V.flatMap((v,i)=>[{id:'r'+i,texte:'A'+i,ocr:{brut:'A'+i,conf:95}},{id:'o'+i,texte:v,ocr:{brut:v,conf:40}}]);
+          const N={colonnes:[{cle:'repere',titre:'Repère'},{cle:'ouverture',titre:'Ouverture'}],lignes:V.map((v,i)=>({id:'x'+i,repere:'A'+i,cellules:['A'+i,v],idsCellules:[['r'+i],['o'+i]]}))};
+          const R=CPI.ocr.grille(N,T),M=CPI.ocr.versNomenclature(R,{id:'T',fichier:'t.pdf',page:1,zone:null,unite:'mm',mesures:{}});
+          return R.map((w,i)=>({v:w.cells.ouverture,doute:w.doute.ouverture,corr:w.corr.ouverture.join(' '),etat:CPI.nomenclatures.cotes(w.cells.ouverture).etat,dims:M.lignes[i].dims}))}''')
+        s.check(all(x['v'] == v and x['doute'] and 'ambigu' in x['corr'] and x['etat'] != 'circ' and not (x['dims'] or {}).get('D') for x, v in zip(A, ['250', '900', '2500'])),
+                'ouverture 250 / 900 / 2500 à faible confiance : valeur gardée, ambiguïté signalée, aucune dimension circulaire exploitable', json.dumps(A, ensure_ascii=False))
 
         # ---- moteur : worker + wasm + modèle français, en file://, sans réseau
         m = J('''async()=>{const t=performance.now();await CPI.ocr.charger();const c=document.createElement('canvas');c.width=900;c.height=90;const g=c.getContext('2d');
@@ -81,7 +90,9 @@ def t(s):
         byd = dict(zip(['tremie', 'fourreau', 'dn', 'so', 'vide', 'longue', 'carottage'], R))
         s.check(byd['tremie'].get('ouverture') == '650x800' and byd['longue'].get('ouverture') == '1200x500', 'dimensions rectangulaires reconnues (650x800, 1200x500)',
                 json.dumps([w.get('ouverture') for w in R]))
-        s.check(sum(1 for w in R if re.fullmatch(r'Ø\s?(250|120)', w.get('ouverture', ''))) >= 1, 'dimension circulaire Ø reconnue ou interprétée (signalée)', json.dumps([w.get('ouverture') for w in R]))
+        s.check(all(re.fullmatch(r'Ø\s?' + d, w.get('ouverture', '')) or (re.fullmatch(r'\d+', w.get('ouverture', '')) and d in w['ouverture'] and 'ouverture' in w['_d'])
+                    for w, d in ((byd['fourreau'], '250'), (byd['carottage'], '120'))),
+                'dimension circulaire : Ø reconnu, sinon nombre brut gardé et signalé (jamais converti en Ø)', json.dumps([w.get('ouverture') for w in R]))
         s.check('DN160' in byd['dn'].get('reseau', '') and not byd['dn'].get('ouverture'), 'DN seul : dans « Réseau », ouverture vide (non inventée)')
         s.check(byd['so'].get('ouverture', '').upper() == 'SO' and not byd['vide'].get('ouverture'), 'cellule SO gardée, cellule vide laissée vide')
         s.check('désenfumage' in byd['longue'].get('description', '') and 'palier' in byd['longue'].get('description', ''), 'description longue sur deux lignes réunie')
@@ -143,6 +154,13 @@ def t(s):
         s.check(len(R3) == 3 and [cle(w.get('repere')) for w in R3] == ['P1', 'P2', 'P3'] and R3[1].get('ouverture') == '500x500' and 'DN100' in json.dumps(R3[2]),
                 'page tournée (/Rotate 90), tableau sans bordures : 3 lignes, repères et cotes', json.dumps(R3, ensure_ascii=False)[:500])
         s.check(J('DXI.NL.length') == 8, 'nouvelle zone : la nomenclature déjà ajoutée n\'est pas touchée avant « Ajouter »')
+        # tableau A reconnu (corrigé), puis zone B sans résultat : la grille A n'est pas présentée comme résultat de B, corrections gardées
+        pg.fill('#dxoT tr[data-o="0"] [data-k=description]', 'corrigé avant zone B')
+        zone(inf['za'])
+        r = ocr()
+        s.check('aucune nomenclature de réservations reconnue' in r and 'reconnaissance précédente' in r and pg.is_visible('#dxoA')
+                and J('DXI.OC.ancienne&&DXI.OC.rows.length===3&&DXI.OC.rows[0].cells.description==="corrigé avant zone B"&&DXI.OC.rows[0].edite.includes("description")'),
+                'zone B sans résultat après le tableau A : grille A signalée « reconnaissance précédente », corrections gardées', r)
         pg.click('#dxoV')
         s.check(J('DXI.NL.length') == 11, 'deuxième tableau OCR ajouté (11 lignes)')
         # arrêt d'une reconnaissance en cours
