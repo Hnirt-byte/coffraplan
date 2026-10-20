@@ -3,6 +3,44 @@
 Détail complet de chaque version (demandes, écarts voulus, tests, non validé) : `docs/historique/HANDOFF_<version>.md`.
 Chaque version est un tag git (`git diff v2.4 v2.5 -- app/` pour voir les changements).
 
+## Phase 5 — lecture des nomenclatures, vues techniques, occurrences (non publiée, sans numéro de version)
+**Demande (Kévin, 20/10/2026)** : améliorer la lecture des nomenclatures, reconnaître les vues techniques d'un plan PDF et
+dédoublonner les occurrences d'une réservation, avec un gain mesurable sur le PDF de référence ; structures JSON pour une
+future IA locale (aucune IA ici) ; `#appVer` reste v3.1 ; moteur, 3D et exports inchangés.
+**Décision de Kévin** : quantité > 1 au tableau → un seul ouvrage, `nb` = quantité.
+
+**Fait**
+- Nomenclatures : colonnes Nb, Nb., Nombre, Qté, Quantité, Fonction, Largeur, Hauteur, Ø, Diamètre (unité dans le titre ou
+  dessous) ; ordre des cotes : ouverture écrite, Ø, Ø vide ou « - » → Largeur × Hauteur, sinon ambiguïté signalée ; tiret ou
+  vide = absent ; DN jamais pris pour le Ø ; tableaux tournés de 90°, 180°, 270° ; en-tête cherché sous un cartouche.
+- OCR : lecture cellule par cellule sur la grille de traits (24 ou 36 px de lettre), variantes niveaux de gris et couleur
+  d'encre dominante (nuages de révision effacés), colonnes réaffectables, corrections gardées à la relance ; repères encadrés
+  lus ; « 53 » → S3 dans une colonne S1, S2… (signalé).
+- Vues techniques (`vues.js`) : plan, coupe, élévation, détail, ferraillage supérieur / inférieur, autre ; id stable, page,
+  région, titre, type, partie, échelle, niveau, confiance ; contours et repères rattachés à leur vue ; proximité repère ↔
+  contour cherchée dans une même vue.
+- Occurrences : quantité attendue (tableau = référence), localisées (une seule vue comptée : plan, sinon ferraillage),
+  représentations, restantes ; jamais de multiplication par le nombre de vues ; provenance `occurrences`, `vue`, `role`.
+- Formes hors nomenclature : section repliée sous la nomenclature, classées à examiner / représentation / parasite probable,
+  chacune avec sa raison ; rien supprimé.
+- Export « ⬇ Analyse (JSON) » : tables, tableRows, views, graphicalObservations, physicalOccurrences, associations,
+  evidence, uncertainties.
+
+**Écarts voulus (tests)** : t_detection et t_rapprochement ouvrent la section repliée « Formes du dessin hors nomenclature »
+avant de la lire ; t_pdf lit la colonne Source en 11e position (colonne Nb ajoutée). Nouvelle suite `t_vues` (plans fictifs anonymes).
+
+**Essai sur le PDF de référence (hors dépôt, 20/10/2026, Chromium)** — v3.1 → phase 5 :
+- tableau (OCR de la zone) : 0/7 ligne lue → 7/7 lignes, 7/7 quantités, 7/7 cotes ; R4 Ø65 (Ø50 de la désignation non pris) ;
+- vues : 24 reconnues (plan, coupe, détail, ferraillage sup / inf…) ;
+- occurrences : 7 localisées sur 9 attendues (R1 1/2, R4 0/1 : repères mal lus par l'OCR) ; aucune multiplication par les vues ;
+- formes : 44 proposées au même niveau → 5 rattachées à leur ligne, 41 classées « parasite probable » dans la section repliée.
+
+**Tests** : campagne complète `python tests/run.py complet -j 4` : 31/31 suites vertes (20/10/2026, Chromium), dont t_avap
+(moteur, feuilles, DXF, CSV identiques).
+
+**Non validé** : Firefox, Safari, tablette ; autres plans réels que celui de référence ; une vue de ferraillage peut
+s'étendre à tort sur une grande partie de la page (régions qui se touchent) ; titres de vue tournés non lus.
+
 ## v3.1 — importer un plan DXF ou PDF
 **Demande (Kévin, 20/10/2026)** : préparer la version v3.1 à partir des travaux faits depuis v3.0, sans fonction nouvelle.
 Détail technique de chaque étape (demandes, écarts voulus, tests) : sections « Détail v3.1 » de `CHANGELOG.md`.

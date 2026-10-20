@@ -347,6 +347,38 @@ automatique), unite_tableau}, corrige:['cotes','ref'], a_verifier, h_saisie, ind
   non testés) ; vrais scans non testés (seul un scan fictif l'est). Test réseau de t_ocr : les requêtes Google Fonts de
   l'interface (héritées, hors OCR) sont bloquées mais ignorées ; toute autre requête fait échouer le test.
 
+## Phase 5 : lecture des tableaux, vues techniques, occurrences (`vues.js`)
+- Tableaux (`nomenclatures.js`) : titres de colonnes Nb, Nb., Nombre, Qté, Quantité, Fonction, Largeur, Hauteur, Ø,
+  Diamètre, unité dans le titre (« Largeur (mm) », « Hauteur mm ») ou en 2e ligne ; `dimsLigne` : ouverture écrite, puis Ø,
+  puis Ø vide ou « - » → Largeur × Hauteur, sinon ambiguïté signalée (Ø et L × H remplis : aucune cote choisie) ; un tiret
+  ou une cellule vide = absent ; un DN ne remplace jamais le Ø ; `L.nb` = quantité entière (création : un ouvrage, `nb`).
+  Tableau tourné de 90°, 180° ou 270° : orientation choisie par score de lecture (`tourne`, `textesEnGrille`).
+- OCR (`ocr.js`) : grille de traits reconnue → une lecture par cellule, résolution choisie entre 24 et 36 px de lettre ;
+  variantes niveaux de gris et couleur d'encre dominante (grille, nuages de révision d'une autre couleur effacés) ; zone
+  manuelle : la grille identifiable est gardée, titres et rôles des colonnes corrigeables, corrections gardées à la relance.
+- Vues (`CPI.vues.detecter(geo, textes, {cadres})` → `{vues, carte}`) : titres = textes ≥ 1,8 × la hauteur médiane avec un
+  mot-clé (plan, vue, coupe, élévation, façade, détail, ferraillage, armatures, renfort ; lecture OCR approchée acceptée à
+  2 lettres près pour les mots longs) ; « Partie supérieure / inférieure » seul = sous-titre du ferraillage le plus proche ;
+  partie d'ouvrage (dalle, radier, voile, poutre…) ; échelle « 1/n » et niveau écrits près du titre. Régions : grille
+  d'occupation des tracés (cases de 0,8 % de la page, tableaux exclus), composantes connexes rattachées au titre le plus
+  proche ; composante sans titre assez grande = vue `autre`. Champs : `id` stable `V<page>-<n>` (ordre de lecture), `page`,
+  `region` (pt), `titre`, `type` (plan, coupe, elevation, detail, ferraillage_superieur, ferraillage_inferieur, ferraillage,
+  autre), `partie`, `echelle`, `niveau`, `confiance` + `motifs`. `situer(carte, x, y)` → id de vue ou `null`.
+- Rapprochement : option `vue(page, x, y)` ; contour et cotes voisines cherchés dans la vue du repère seulement.
+- `CPI.vues.consolider(ligne, résultat, vues)` : quantité du tableau = référence ; occurrences physiques comptées dans la
+  meilleure vue (plan, sinon ferraillage, sinon autre ; lecture incertaine comptée seulement en plan) ; les repères des autres
+  vues de même partie à la même position relative (± 10 %) sont des représentations de ces occurrences ; coupe, élévation,
+  détail : représentations seulement. → `{attendue, localisees, representations, restantes, depasse, physiques, roles, notes}`.
+- `CPI.vues.classer(contour, vue, repères)` (formes hors nomenclature, section repliée `#dxrH`) : `examiner` (repère, cote
+  écrite, diagonales), `representation` (repère du tableau), `parasite` (vue de ferraillage, coupe / élévation / détail sans
+  indice, forme isolée) avec sa raison ; rien n'est supprimé.
+- Export « ⬇ Analyse (JSON) » (`dxrJSON`, `format: 'coffraplan-analyse-plan', v: 1`) : `tables`, `tableRows`, `views`,
+  `graphicalObservations` (contours et repères), `physicalOccurrences`, `associations`, `evidence` (preuves des cotes),
+  `uncertainties`. Structure prévue pour une future IA locale ; aucune IA dans cette phase.
+- Provenance : `origineImport.rapprochement.localisations[].vue` / `.role`, `origineImport.rapprochement.occurrences`.
+- Banc `t_vues.py` (plans fictifs de `tests/vues_fictifs.py`). Limites : titres de vue tournés non lus ; deux vues collées
+  sans blanc entre elles peuvent se confondre ; position relative entre vues = vues de même cadrage.
+
 ## 3. Fichiers séparés et HTML autonome (en place)
 
 - `python modules/import/assembler.py` remplace le bloc `<script id="cpi-src">…</script>` de `app/CoffraPlan.html` (placé

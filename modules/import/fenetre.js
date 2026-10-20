@@ -838,8 +838,9 @@ function dxrRender(){const D=DXI,Z=el('dxrZ');if(!Z||!D)return;if(!D.C.length){Z
     <details id="dxrNP"><summary></summary><table class="ser"><thead><tr><th>#</th><th>Page</th><th>Forme</th><th>Dessin</th><th>Raison</th></tr></thead><tbody></tbody></table></details></fieldset>`;
   dxrRows();dxiUpd()}
 // Classement d'un contour hors nomenclature (à examiner ou parasite probable, avec sa raison) ; à examiner en tête
-const dxrCl=i=>CPI.vues.classer(DXI.C[i],DXI.C[i].vue?dxrVueDe(DXI.C[i].vue):null);
-const dxrVis=()=>{const I=DXI.C.map((c,i)=>i).filter(i=>DXI.C[i].statut==='a_confirmer'&&!DXI.lk.has(i)),p=I.filter(i=>dxrCl(i).niveau==='parasite');return I.filter(i=>!p.includes(i)).concat(p)};
+const dxrCl=i=>CPI.vues.classer(DXI.C[i],DXI.C[i].vue?dxrVueDe(DXI.C[i].vue):null,new Set(DXI.NL.map(({L})=>CPI.nomenclatures.cleRep(L.repere||'')).filter(Boolean)));
+const DXR_NIV={examiner:0,representation:1,parasite:2};
+const dxrVis=()=>{const I=DXI.C.map((c,i)=>i).filter(i=>DXI.C[i].statut==='a_confirmer'&&!DXI.lk.has(i)),n=new Map(I.map(i=>[i,DXR_NIV[dxrCl(i).niveau]]));return I.sort((a,b)=>n.get(a)-n.get(b)||a-b)};
 function dxrRows(){const D=DXI,T=el('dxrT');if(!T)return;const V=dxrVis(),np=D.C.map((c,i)=>i).filter(i=>D.C[i].statut!=='a_confirmer');T.dataset.v=V.join();
   T.tBodies[0].innerHTML=V.length?V.map(i=>{const c=D.C[i],r=D.R[i],A=c.annot||{},cl=dxrCl(i);
     return `<tr data-r="${i}" onclick="dxrSel(${i})"${i===D.rsel?' class="on"':''}><td><input type="checkbox" data-k="conf"${r.conf?' checked':''} aria-label="Créer ${esc(c.id)}" onchange="DXI.R[${i}].conf=this.checked;dxiUpd()"></td>
@@ -869,8 +870,9 @@ function dxrUpd(){const D=DXI,T=el('dxrT');if(!T)return;if(T.dataset.v!==dxrVis(
     const s=t.querySelector('.st');s.className='st '+(et==='rep'?'ok':et==='er'?'er':'wn');
     s.innerHTML=esc(et==='rep'?'✓ repérée':et==='conf'?'≈ à confirmer':et==='ac'?'… '+r.msg:'⛔ non créé — '+r.msg)+(pr&&(doute.length||r.msg)?`<div class="mu">${esc(doute.concat(r.msg?[r.msg]:[]).join(' · '))}</div>`:'')});
   const V=dxrVis(),cf=V.filter(i=>D.R[i].conf).length,nE=D.C.filter(c=>c.statut!=='a_confirmer').length;
-  const nP=V.filter(i=>dxrCl(i).niveau==='parasite').length;
-  if(el('dxrHs'))el('dxrHs').textContent=`Formes hors nomenclature (${V.length}) : ${V.length-nP} à examiner, ${nP} parasite(s) probable(s) · ${V.filter(i=>D.R[i].conf).length} cochée(s)`;
-  el('dxrS').innerHTML=`<b>${V.length} réservation(s) proposée(s)</b> (${V.length-nP} à examiner, ${nP} parasite(s) probable(s)) : ${n.rep} repérée(s), ${n.conf} à confirmer, ${n.ac} à compléter${n.er?`, ${n.er} refusée(s)`:''} · ${nE} non exploitable(s)`
+  const nv={examiner:0,representation:0,parasite:0};V.forEach(i=>nv[dxrCl(i).niveau]++);
+  const cl=`${nv.examiner} à examiner, ${nv.representation} représentation(s) d'une ligne du tableau, ${nv.parasite} parasite(s) probable(s)`;
+  if(el('dxrHs'))el('dxrHs').textContent=`Formes hors nomenclature (${V.length}) : ${cl} · ${V.filter(i=>D.R[i].conf).length} cochée(s)`;
+  el('dxrS').innerHTML=`<b>${V.length} réservation(s) proposée(s)</b> (${cl}) : ${n.rep} repérée(s), ${n.conf} à confirmer, ${n.ac} à compléter${n.er?`, ${n.er} refusée(s)`:''} · ${nE} non exploitable(s)`
     +(D.lk.size?` · ${D.lk.size} rattachée(s) à la nomenclature`:'')+` · ${cf} cochée(s) · <b>${dxiReady().length} à créer</b>`;
   dxpOver()}
