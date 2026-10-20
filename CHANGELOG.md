@@ -3,6 +3,68 @@
 Détail complet de chaque version (demandes, écarts voulus, tests, non validé) : `docs/historique/HANDOFF_<version>.md`.
 Chaque version est un tag git (`git diff v2.4 v2.5 -- app/` pour voir les changements).
 
+## Non publié — finalisation du rapprochement nomenclature ↔ dessin (phase 4)
+**Demande (Kévin, 20/10/2026)** : rapprochement automatique et déterministe nomenclature ↔ dessin (repère, fiabilité,
+proximité, lignes de rappel, forme, cotes, page / vue, quantité) ; cotes du tableau prioritaires, concordance partielle
+admise, conflit seulement sur la même dimension ; OCR ciblé des repères dessinés en traits ; multipage par repère seulement,
+plusieurs vues = une ligne, quantité jamais inventée ; états forte / partielle / probable / conflit / non retrouvée / hors
+nomenclature ; corrections gardées à la relance ; correctifs de relecture (critères multipages, identité stable, plus de
+`Math.min/max(...tableau)` dans `detecteur.js`, erreur lisible sans fenêtre bloquée).
+
+**Fait** : `pdf.js` : petits tracés (`petits`) relevés par `chemins`. `geometrie.js` : `blocsTexte` (repères dessinés
+regroupés), `rappels` (lignes de rappel, un coude), `index`, `emprise` (bornes sans décomposition de tableau). `ocr.js` :
+`lireBlocs` (mosaïque des blocs, tuiles de rendu, relecture ligne des repères douteux, brut / confiance / corrections /
+zone conservés). `rapprochement.js` (nouveau) : occurrences du repère (clé exacte ou approchée → incertaine, confiance < 30 %
+ignorée, listes en colonne écartées), contour et cotes écrites voisins, vérification cote par cote (unité essayée si non
+écrite), états, quantité (source tableau, localisations, cohérence), contour principal unique ou un par page.
+`detecteur.js` : bornes par boucle (`bornes`). Fenêtre : « 🔎 Analyser le dessin » (toutes les pages ou la zone, option OCR,
+Arrêter), état et détail par ligne, localisations cliquables, « ✕ rejeter le rapprochement », bilan, formes « hors
+nomenclature » ; identité stable des contours (`dxrCle`, mémoire `D.RK`) ; erreur affichée et fenêtre rendue. Provenance
+`origineImport.rapprochement`. Mode d'emploi § 7.22 réécrit.
+
+**Écarts voulus** : `t_detection.py` : message attendu « 2 page(s) : 10 forme(s) possible(s) » (l'analyse couvre désormais
+toutes les pages au lieu de la page affichée) et attente sur `!DXI.rJob` (analyse asynchrone). Nouvelle suite
+`t_rapprochement.py` (34 vérifications, `tests/rapprochement_fictifs.py`) dans les suites rapides. Moteur, débit, feuilles
+et exports inchangés.
+
+**Essai local sur le PDF et le DXF réels (20/10/2026, hors dépôt, comptes seulement)** : PDF (2 pages A0, textes vectorisés) :
+nomenclature lue par OCR, 23 lignes ; analyse ≈ 28 s, 1 425 textes dessinés lus ; 0 forte, 16 partielles, 5 probables,
+0 conflit, 2 non retrouvées (une absente du plan, une mal lue au tableau), 21 lignes localisées (31 localisations, 8 en plan
+et en détail), 3 contours rattachés, 17 formes hors nomenclature (surtout des cadres de ferraillage). Aucune cote vérifiable
+(pas de cote écrite près des repères, pas d'échelle). Version précédente : 23 non retrouvées. DXF : inchangé (5 rectangles
+en `LINE`), pas de rapprochement détaillé.
+
+**Non validé** : Chromium seul ; réservations à côtés courbes non reconnues ; faux positifs possibles (listes et notes
+contenant un repère) ; durée de l'OCR sur grands plans ; DXF sans rapprochement détaillé.
+
+## Non publié — repérage géométrique des réservations (PDF vectoriel et DXF)
+**Demande (Kévin, 20/10/2026, phase 4)** : repérer les réservations directement dans le dessin d'un PDF vectoriel (page ou
+zone), en proposer les dimensions (échelle jamais supposée : calibration simple ou cote écrite), les rapprocher des
+nomenclatures sans doublon, les créer après validation par l'adaptateur existant, provenance complète ; DXF : rectangles en
+4 `LINE` indépendantes. Sans nouvelle bibliothèque, hors connexion, rien de coché ni créé d'office.
+
+**Fait** : `geometrie.js` (nouveau, intégré par `assembler.py`) : rectangles et cercles d'une page, parasites écartés avec leur
+raison (cadre de feuille, cartouche subdivisé, cellules, tableaux, cadres de détail, très grands contours), repères et cotes
+écrites voisins. `pdf.js` : parcours des tracés commun (`cheminsPage`), `CPI.pdf.chemins` (relu à la demande). `detecteur.js` :
+`rectSegments` (graphe d'extrémités, côtés en morceaux réunis) et rectangles en `LINE` d'un même calque, sans ambiguïté, sans
+doubler une polyligne ; `dxf.js` garde les extrémités des `LINE`. `nomenclatures.associer` : contours et repères d'une même page
+PDF, cotes comparées à l'échelle de la page. Fenêtre (`dxr*`) : « 🔎 Repérer les réservations », contours cliquables, échelle
+(2 points ou « Éch. 1/50 » lue sur la page), tableau éditable (forme, cotes, h, référence), états repérée / à confirmer /
+à compléter / non exploitable, création par `adaptateur.versPlan`, provenance `type:'detection'`. Mode d'emploi § 7.22.
+Banc `tests/t_detection.py` (38 vérifications) sur `tests/detection_fictifs.py` (PDF 2 pages dont une tournée, DXF).
+
+**Écarts voulus** : aucun test existant modifié. PDF : la nomenclature peut désormais être rattachée à un contour du dessin
+(seulement après « Repérer ») ; DXF : 4 `LINE` formant un rectangle sans ambiguïté deviennent un candidat de plus (les fichiers
+des bancs existants n'en contiennent pas). Moteur, débit, feuilles et exports inchangés.
+
+**Essai local sur le PDF et le DXF réels (20/10/2026, hors dépôt, comptes seulement)** : PDF (plan de ferraillage, 2 pages A0,
+textes en grande partie vectorisés, pas d'échelle écrite lisible) : page 1, 5 contours proposés, 52 écartés ; page 2,
+15 proposés, 45 écartés ; 0 repère lu (textes dessinés en traits) ; < 2,5 s par page. Les réservations du voile circulaire
+(côtés en arc) ne sont pas reconnues ; une partie des propositions sont des cadres d'étiquettes : la vérification ligne à
+ligne reste indispensable. DXF réel : 5 rectangles en `LINE` assemblés (2 calques), lecture + détection ≈ 1,3 s.
+
+**Non validé** : Chromium seulement ; aucun PDF de plan de réservations réel avec repères en texte ; tablette ; impression.
+
 ## Non publié — reconnaissance OCR locale des nomenclatures PDF
 **Demande (Kévin, 19/10/2026, phase 3)** : lire les nomenclatures de réservations dont les textes sont dessinés en tracés ou
 numérisés, sur une zone de l'aperçu, en local (aucune API, aucun CDN, aucun modèle téléchargé, `file://`, HTML autonome) ;

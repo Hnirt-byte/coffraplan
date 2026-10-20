@@ -119,6 +119,51 @@ async function lireZone(pdf,z,o){o=o||{};const t0=Date.now(),pr=o.progres||(()=>
   const nR=await relireCellules(best,pr,stop),{T,S}=versTextes(best.M,best.P,z,best.k,z.page,o.run||'o1');
   return{textes:T,traits:S,mesures:{passes,retenue:R.indexOf(best)+1,cellulesRelues:nR,ms:Date.now()-t0,moteur:VERSION}}}
 
+// ==== Textes dessinés sur le plan (repères, annotations) : lecture ciblée de petits blocs (CPI.geometrie.blocsTexte) ====
+// La page est rendue par tuiles (seules celles qui contiennent des blocs), chaque bloc est découpé, mis à ~32 px de hauteur de
+// lettre et collé dans une mosaïque (fond blanc, larges marges) : une reconnaissance par mosaïque au lieu d'une par bloc ou d'une
+// OCR de toute la page A0. Chaque mot est rendu à son bloc ; le texte garde valeur brute, confiance, corrections et emprise.
+// o = {progres(texte, fraction), annule(), run} → {textes (format de lireZone, ocr.bloc = emprise du bloc lu), mesures}
+const BL_PX=32,BL_W=2000,BL_H=2400,TUILE=3000,RELU_MAX=200;   // shortcut: au plus 200 relectures de repères douteux par page
+async function lireBlocs(pdf,n,blocs,o){o=o||{};const t0=Date.now(),pr=o.progres||(()=>{}),stop=()=>{if(o.annule&&o.annule())throw new Error('annulé')};
+  if(!blocs.length)return{textes:[],mesures:{blocs:0,mosaiques:0,ms:0,moteur:VERSION}};
+  const hm=med(blocs.map(b=>b.h)),k=Math.min(6,Math.max(1.5,1.4*BL_PX/hm)),ts=TUILE/k,mg=b=>0.5*b.h,ov=Math.min(ts/2,Math.max(...blocs.map(b=>b.x1-b.x0+2*mg(b)),...blocs.map(b=>b.y1-b.y0+2*mg(b))));
+  // tuiles qui se recouvrent de ov : chaque bloc (marges comprises) tient entier dans au moins une
+  const X0=Math.min(...blocs.map(b=>b.x0-mg(b))),Y0=Math.min(...blocs.map(b=>b.y0-mg(b))),pas=ts-ov,T=new Map();
+  blocs.forEach((b,i)=>{const cx=Math.max(0,Math.floor((b.x0-mg(b)-X0)/pas)),cy=Math.max(0,Math.floor((b.y0-mg(b)-Y0)/pas)),key=cx+','+cy;(T.get(key)||T.set(key,[]).get(key)).push(i)});
+  const C=[];let nt=0;   // découpes : {i, cv (canvas), w, h}
+  for(const [key,I] of T){stop();const [cx,cy]=key.split(',').map(Number),z={x0:X0+cx*pas,y0:Y0+cy*pas,x1:X0+cx*pas+ts,y1:Y0+cy*pas+ts};
+    pr(`Rendu de la page ${n} (tuile ${++nt}/${T.size})`,nt/T.size);const cv=await root.CPI.pdf.rendreZone(pdf,n,z,k);
+    I.forEach(i=>{const b=blocs[i],m=mg(b),s=BL_PX/b.h,w=Math.ceil((b.x1-b.x0+2*m)*s),h=Math.ceil((b.y1-b.y0+2*m)*s),c=root.document.createElement('canvas');c.width=w;c.height=h;
+      c.getContext('2d').drawImage(cv,(b.x0-m-z.x0)*k,(z.y1-b.y1-m)*k,(b.x1-b.x0+2*m)*k,(b.y1-b.y0+2*m)*k,0,0,w,h);C.push({i,cv:c,w,h})})}
+  // mosaïques : rangées de découpes séparées d'une hauteur de ligne ; gris puis seuil (lettres de couleur → noir)
+  // écart horizontal de 3 hauteurs de lettre : en dessous, Tesseract soude parfois les mots de deux découpes voisines
+  const M=[];let cur=null,x=0,y=0,rh=0;const gx=3*BL_PX,gy=Math.round(1.5*BL_PX);
+  C.forEach(c=>{if(!cur||x+c.w+gx>BL_W&&x>gx){y+=rh+gy;x=gx;rh=0}if(!cur||y+c.h+gy>BL_H){cur={P:[],h:0};M.push(cur);x=gx;y=gy;rh=0}
+    cur.P.push(Object.assign(c,{x,y}));x+=c.w+gx;rh=Math.max(rh,c.h);cur.h=Math.max(cur.h,y+c.h+gy)});
+  const R=new Map();let nm=0;
+  for(const m of M){stop();const cv=root.document.createElement('canvas');cv.width=BL_W;cv.height=m.h;const g=cv.getContext('2d',{willReadFrequently:true});
+    g.fillStyle='#fff';g.fillRect(0,0,BL_W,m.h);m.P.forEach(c=>g.drawImage(c.cv,c.x,c.y));
+    const im=g.getImageData(0,0,BL_W,m.h),d=im.data;for(let j=0;j<d.length;j+=4){const v=(d[j]*77+d[j+1]*150+d[j+2]*29)>>8<170?0:255;d[j]=d[j+1]=d[j+2]=v}g.putImageData(im,0,0);
+    const W=await reconnaitre(cv,{psm:11,dpi:300,progres:q=>{if(q&&q.status==='recognizing text')pr(`Lecture des repères dessinés, page ${n} (${nm+1}/${M.length})`,q.progress)}});nm++;
+    W.forEach(w=>{const xc=(w.x0+w.x1)/2,yc=(w.y0+w.y1)/2,c=m.P.find(c=>xc>=c.x&&xc<=c.x+c.w&&yc>=c.y&&yc<=c.y+c.h);if(c)(R.get(c.i)||R.set(c.i,[]).get(c.i)).push(w)})}
+  // 2e lecture, seule et en une ligne (psm 7), des courtes lectures douteuses qui ressemblent à un repère (« D4 » à 37 %,
+  // « |D16 », « D 7 ») : gardée si sa confiance est meilleure ; la 1re lecture reste dans brut1
+  const RL=/^[^A-Za-z0-9]{0,3}[A-Za-z]{1,4}\s?[0-9OoSIlBZG]{1,4}[A-Za-z]?[^A-Za-z0-9]{0,3}$/,cv1=new Map(C.map(c=>[c.i,c])),relu=new Map();let nr=0;
+  for(const [i,W0] of R){const W=W0.slice().sort((a,b)=>a.x0-b.x0),t=W.map(w=>w.texte).join(' '),cf=Math.min(...W.map(w=>w.conf));
+    if(cf>=SEUIL||!RL.test(t)||nr>=RELU_MAX)continue;stop();nr++;const c=cv1.get(i),p=24,cv=root.document.createElement('canvas');cv.width=c.w+2*p;cv.height=c.h+2*p;
+    const g=cv.getContext('2d',{willReadFrequently:true});g.fillStyle='#fff';g.fillRect(0,0,cv.width,cv.height);g.drawImage(c.cv,p,p);
+    const im=g.getImageData(0,0,cv.width,cv.height),d=im.data;for(let j=0;j<d.length;j+=4){const v=(d[j]*77+d[j+1]*150+d[j+2]*29)>>8<170?0:255;d[j]=d[j+1]=d[j+2]=v}g.putImageData(im,0,0);
+    pr(`Relecture des repères douteux, page ${n} (${nr})`,null);const W2=(await reconnaitre(cv,{psm:7,dpi:300})).filter(w=>w.texte.trim());
+    if(W2.length&&Math.min(...W2.map(w=>w.conf))>cf+5)relu.set(i,{W:W2,brut1:t,conf1:cf})}
+  const out=[],run=o.run||'b';
+  R.forEach((W,i)=>{const rl=relu.get(i);if(rl)W=rl.W.map(w=>Object.assign({},w,{x0:w.x0,x1:w.x1}));
+    W=W.filter(w=>!(/^[|_\-—–~.,'`:;]+$/.test(w.texte)&&w.conf<50));if(!W.length)return;W.sort((a,b)=>a.x0-b.x0);
+    const b=blocs[i],brut=W.map(w=>w.texte).join(' '),c=corriger(brut),conf=Math.min(...W.map(w=>w.conf));
+    out.push({id:`${run}-p${n}-b${i}`,calque:'',espace:'papier',presentation:'Page '+n,page:n,nature:'texte OCR',texte:c.texte,x:(b.x0+b.x1)/2,y:(b.y0+b.y1)/2,h:b.h,w:b.x1-b.x0,rot:0,
+      ocr:{brut,conf,corrections:c.corrections,incertain:conf<SEUIL||c.corrections.length>0,box:{page:n,x0:b.x0,y0:b.y0,x1:b.x1,y1:b.y1},bloc:true,mots:W.map(w=>({t:w.texte,c:w.conf})),...(rl?{relu:{brut1:rl.brut1,conf1:rl.conf1}}:{})}})});
+  return{textes:out,mesures:{blocs:blocs.length,lus:out.length,relus:nr,ameliores:relu.size,tuiles:T.size,mosaiques:M.length,px_par_pt:Math.round(k*100)/100,ms:Date.now()-t0,moteur:VERSION}}}
+
 // Cellules de la grille encrées mais sans mot reconnu (un « 0 » ou un « / » isolé que le découpage de la page a ignoré) :
 // relues une à une comme une ligne de texte (psm 7). → nombre de cellules relues
 const CEL_MAX=400;   // shortcut: au-delà de 400 cellules encrées vides, les suivantes ne sont pas relues (tableau géant) ; à relever si besoin
@@ -198,5 +243,5 @@ function versNomenclature(rows,m){const C=colonnes(rows),cols=C.map(([k,t])=>({t
     cadre:m.zone?[m.zone.x0,m.zone.y0,m.zone.x1,m.zone.y1]:null,zone:m.zone,ids:[],calques:[],lignes,unite:m.unite||null,mesures:m.mesures||null,
     qualite:{niveau:'OCR vérifiée',motifs:[`reconnaissance optique (${VERSION}), lignes vérifiées par l'utilisateur`,nI?`${nI} cellule(s) incertaine(s) non corrigée(s)`:'aucune cellule incertaine laissée']}}}
 
-root.CPI=Object.assign(root.CPI||{},{ocr:{VERSION,SEUIL,COLONNES,charger,arreter,reconnaitre,pretraiter,corriger,lireZone,grille,colonnes,versNomenclature}});
+root.CPI=Object.assign(root.CPI||{},{ocr:{VERSION,SEUIL,COLONNES,charger,arreter,reconnaitre,pretraiter,corriger,lireZone,lireBlocs,grille,colonnes,versNomenclature}});
 })(typeof globalThis!=='undefined'?globalThis:this);
