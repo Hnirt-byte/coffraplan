@@ -700,7 +700,8 @@ async function reconnaitre(canvas,o){const p=charger(),w=await p,opt=o||{},vivan
 // un 9 ou un 2 n'ont pas d'anneau complet). Mot réécrit, note gardée (le brut de la cellule reste celui de Tesseract).
 const OSL=/^[0OoQ@©®%92DGøØ]/;
 function oslash(cv,M){let d=null,W=0;
-  M.forEach(m=>{const s=m.sym&&m.sym[0];if(!s||!s.b||!OSL.test(m.texte)||s.t==='Ø'||!(m.texte.length===1||/^.\d/.test(m.texte)))return;
+  // « 90x70 » : une cote l × h n'est jamais précédée d'un Ø (le 9 d'un scan flou a l'air barré)
+  M.forEach(m=>{const s=m.sym&&m.sym[0];if(!s||!s.b||!OSL.test(m.texte)||s.t==='Ø'||!(m.texte.length===1||/^.\d/.test(m.texte))||/^.\d*\s*[x×X*]\s*\d/.test(m.texte))return;
     if(!d){W=cv.width;d=cv.getContext('2d',{willReadFrequently:true}).getImageData(0,0,W,cv.height).data}
     const b=s.b,w=b.x1-b.x0,h=b.y1-b.y0,H=d.length/4/W;if(w<6||h<6)return;
     const ink=(x,y)=>{for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){const X=Math.round(x+dx),Y=Math.round(y+dy);if(X>=0&&Y>=0&&X<W&&Y<H&&d[4*(Y*W+X)]<128)return true}return false};
@@ -793,6 +794,11 @@ async function lireZone(pdf,z,o){o=o||{};const t0=Date.now(),pr=o.progres||(()=>
 // lettre et collé dans une mosaïque (fond blanc, larges marges) : une reconnaissance par mosaïque au lieu d'une par bloc ou d'une
 // OCR de toute la page A0. Chaque mot est rendu à son bloc ; le texte garde valeur brute, confiance, corrections et emprise.
 // o = {progres(texte, fraction), annule(), run} → {textes (format de lireZone, ocr.bloc = emprise du bloc lu), mesures}
+// Mot réduit aux caractères dont le centre est dans le bloc lui-même (x0..x1, pixels) : la marge autour du bloc ne sert que de
+// contexte (le trait du symbole voisin d'une étiquette encadrée, lu « | » ou « 1 », n'est pas une lettre du repère) ; null si vide
+function noyau(w,x0,x1){const S=w.sym||[];if(!S.length||!S.every(s=>s.b))return w;const K=S.filter(s=>{const c=(s.b.x0+s.b.x1)/2;return c>=x0&&c<=x1});
+  if(K.length===S.length)return w;if(!K.length)return null;
+  return Object.assign({},w,{texte:K.map(s=>s.t).join(''),conf:Math.min(w.conf,...K.map(s=>s.c)),sym:K,x0:Math.min(...K.map(s=>s.b.x0)),x1:Math.max(...K.map(s=>s.b.x1))})}
 const BL_PX=32,BL_W=2000,BL_H=2400,TUILE=3000,RELU_MAX=200;   // shortcut: au plus 200 relectures de repères douteux par page
 async function lireBlocs(pdf,n,blocs,o){o=o||{};const t0=Date.now(),pr=o.progres||(()=>{}),stop=()=>{if(o.annule&&o.annule())throw new Error('annulé')};
   if(!blocs.length)return{textes:[],mesures:{blocs:0,mosaiques:0,ms:0,moteur:VERSION}};
@@ -815,16 +821,24 @@ async function lireBlocs(pdf,n,blocs,o){o=o||{};const t0=Date.now(),pr=o.progres
     g.fillStyle='#fff';g.fillRect(0,0,BL_W,m.h);m.P.forEach(c=>g.drawImage(c.cv,c.x,c.y));
     const im=g.getImageData(0,0,BL_W,m.h),d=im.data;for(let j=0;j<d.length;j+=4){const v=(d[j]*77+d[j+1]*150+d[j+2]*29)>>8<170?0:255;d[j]=d[j+1]=d[j+2]=v}g.putImageData(im,0,0);
     const W=await reconnaitre(cv,{psm:11,dpi:300,progres:q=>{if(q&&q.status==='recognizing text')pr(`Lecture des repères dessinés, page ${n} (${nm+1}/${M.length})`,q.progress)}});nm++;
-    W.forEach(w=>{const xc=(w.x0+w.x1)/2,yc=(w.y0+w.y1)/2,c=m.P.find(c=>xc>=c.x&&xc<=c.x+c.w&&yc>=c.y&&yc<=c.y+c.h);if(c)(R.get(c.i)||R.set(c.i,[]).get(c.i)).push(w)})}
+    W.forEach(w=>{const xc=(w.x0+w.x1)/2,yc=(w.y0+w.y1)/2,c=m.P.find(c=>xc>=c.x&&xc<=c.x+c.w&&yc>=c.y&&yc<=c.y+c.h);if(!c)return;
+      const v=noyau(w,c.x+0.4*BL_PX,c.x+c.w-0.4*BL_PX);if(v)(R.get(c.i)||R.set(c.i,[]).get(c.i)).push(v)})}
   // 2e lecture, seule et en une ligne (psm 7), des courtes lectures douteuses qui ressemblent à un repère (« D4 » à 37 %,
   // « |D16 », « D 7 ») : gardée si sa confiance est meilleure ; la 1re lecture reste dans brut1
-  const RL=/^[^A-Za-z0-9]{0,3}[A-Za-z]{1,4}\s?[0-9OoSIlBZG]{1,4}[A-Za-z]?[^A-Za-z0-9]{0,3}$/,cv1=new Map(C.map(c=>[c.i,c])),relu=new Map();let nr=0;
-  for(const [i,W0] of R){const W=W0.slice().sort((a,b)=>a.x0-b.x0),t=W.map(w=>w.texte).join(' '),cf=Math.min(...W.map(w=>w.conf));
-    if(cf>=SEUIL||!RL.test(t)||nr>=RELU_MAX)continue;stop();nr++;const c=cv1.get(i),p=24,cv=root.document.createElement('canvas');cv.width=c.w+2*p;cv.height=c.h+2*p;
-    const g=cv.getContext('2d',{willReadFrequently:true});g.fillStyle='#fff';g.fillRect(0,0,cv.width,cv.height);g.drawImage(c.cv,p,p);
-    const im=g.getImageData(0,0,cv.width,cv.height),d=im.data;for(let j=0;j<d.length;j+=4){const v=(d[j]*77+d[j+1]*150+d[j+2]*29)>>8<170?0:255;d[j]=d[j+1]=d[j+2]=v}g.putImageData(im,0,0);
-    pr(`Relecture des repères douteux, page ${n} (${nr})`,null);const W2=(await reconnaitre(cv,{psm:7,dpi:300})).filter(w=>w.texte.trim());
-    if(W2.length&&Math.min(...W2.map(w=>w.conf))>cf+5)relu.set(i,{W:W2,brut1:t,conf1:cf})}
+  const RL=/^[^A-Za-z0-9]{0,3}[A-Za-z]{1,4}\s?[0-9OoSIlBZGAÀ]{1,4}[A-Za-z]?[^A-Za-z0-9]{0,3}$/,cv1=new Map(C.map(c=>[c.i,c])),relu=new Map();let nr=0;
+  // o.prefixes (lettres des repères du tableau, « R ») : ces blocs sont relus en premier (RELU_MAX)
+  const PX=o.prefixes&&o.prefixes.length?new RegExp('^[^A-Za-z0-9]{0,3}('+o.prefixes.join('|')+')','i'):null,ord=[...R].sort((a,b)=>PX?(a[1].some(w=>PX.test(w.texte))?0:1)-(b[1].some(w=>PX.test(w.texte))?0:1):0);
+  for(const [i,W0] of ord){const W=W0.slice().sort((a,b)=>a.x0-b.x0),t=W.map(w=>w.texte).join(' '),cf=Math.min(...W.map(w=>w.conf));
+    // repère seul ou l'un des mots (« o RÀ ») ; lettres ramenées à 24 px et traits épaissis d'un pixel : polices de DAO à un trait, mieux lues (mesuré sur un plan réel)
+    if(cf>=SEUIL||!RL.test(t)&&!W.some(w=>RL.test(w.texte))||nr>=RELU_MAX)continue;stop();nr++;const c=cv1.get(i),p=24,e=0.75;
+    pr(`Relecture des repères douteux, page ${n} (${nr})`,null);let best=null;
+    for(const ep of [0,1]){const cv=root.document.createElement('canvas');cv.width=Math.ceil(c.w*e)+2*p;cv.height=Math.ceil(c.h*e)+2*p;   // sans puis avec épaississement
+      const g=cv.getContext('2d',{willReadFrequently:true});g.fillStyle='#fff';g.fillRect(0,0,cv.width,cv.height);g.drawImage(c.cv,p,p,c.w*e,c.h*e);
+      const im=g.getImageData(0,0,cv.width,cv.height),d=im.data,W_=cv.width,K=new Uint8Array(W_*cv.height);for(let j=0;j<K.length;j++)K[j]=(d[4*j]*77+d[4*j+1]*150+d[4*j+2]*29)>>8<170?1:0;
+      for(let j=0;j<K.length;j++){const x=j%W_,v=K[j]||ep&&(x>0&&K[j-1]||j>=W_&&(K[j-W_]||x>0&&K[j-W_-1]))?0:255;d[4*j]=d[4*j+1]=d[4*j+2]=v}g.putImageData(im,0,0);
+      const W2=(await reconnaitre(cv,{psm:7,dpi:300})).map(w=>noyau(w,p+0.4*BL_PX*e,p+(c.w-0.4*BL_PX)*e)).filter(w=>w&&w.texte.trim()),q=W2.length?Math.min(...W2.map(w=>w.conf)):-1;
+      if(q>cf+5&&(!best||q>best.q))best={W:W2,q}}
+    if(best)relu.set(i,{W:best.W,brut1:t,conf1:cf})}
   const out=[],run=o.run||'b';
   R.forEach((W,i)=>{const rl=relu.get(i);if(rl)W=rl.W.map(w=>Object.assign({},w,{x0:w.x0,x1:w.x1}));
     W=W.filter(w=>!(/^[|_\-—–~.,'`:;]+$/.test(w.texte)&&w.conf<50));if(!W.length)return;W.sort((a,b)=>a.x0-b.x0);
@@ -864,7 +878,7 @@ async function relireCellules(b,pr,stop){const {P,M}=b,c=P.canvas,W=c.width,f=(A
 //    relecture une à une des cellules vides, douteuses ou lues différemment par les deux variantes. Les rangées viennent de la
 //    géométrie, jamais de l'ordre des mots de Tesseract. Une cellule illisible reste vide (rien n'est inventé) ; brut et confiance
 //    gardés. → null (pas de grille) | {G (pour CPI.nomenclatures.depuisGrille), textes (un par cellule lue), mesures}
-const G_PX=24,G_RELU=300;   // shortcut: au plus 300 cellules relues une à une (tableau géant : les suivantes gardent la 1re lecture)
+const G_PX=[24,36],G_RELU=300;   // px de hauteur de lettre essayés : 24 (polices de DAO à un trait), 36 (polices pleines) ; shortcut: au plus 300 cellules relues une à une (tableau géant : les suivantes gardent la 1re lecture)
 const rotZ=(z,q)=>{const P=[[z.x0,z.y0],[z.x1,z.y1],[z.x0,z.y1],[z.x1,z.y0]].map(p=>root.CPI.nomenclatures.tourne(p,-q));
   return{x0:Math.min(...P.map(p=>p[0])),y0:Math.min(...P.map(p=>p[1])),x1:Math.max(...P.map(p=>p[0])),y1:Math.max(...P.map(p=>p[1]))}};
 const boiteRetour=(b,q)=>{const P=[[b[0],b[1]],[b[2],b[3]],[b[0],b[3]],[b[2],b[1]]].map(p=>root.CPI.nomenclatures.tourne(p,q));
@@ -920,12 +934,13 @@ async function lireGrille(pdf,z,o){o=o||{};const t0=Date.now(),pr=o.progres||(()
   const asp=med(GQ[0].rangs.flatMap(r=>r.cellules.map(c=>(r.y0-r.y1)/Math.max(0.1,c.x1-c.x0))));
   const Q=o.rot!=null?[o.rot%4]:asp>1.3?[1,3,0]:[0,1,3];
   const hq=g=>med(g.rangs.map(r=>r.y0-r.y1)),Qv=Q.filter(q=>GQ[q]);if(!Qv.length)return null;
-  const k=plafond(z,Math.min(10,Math.max(3,G_PX/(0.55*Math.min(...Qv.map(q=>hq(GQ[q])))))));   // hauteur de lettre ≈ 0,55 rangée (rangées du sens de lecture : les plus basses)
-  pr(`Rendu de la zone (${Math.round(k*72)} dpi)`,null);const cv=await root.CPI.pdf.rendreZone(pdf,z.page,z,k);stop();
-  const px=b=>{const x0=(b[0]-z.x0)*k,x1=(b[2]-z.x0)*k,y0=(z.y1-b[3])*k,y1=(z.y1-b[1])*k;return[x0,y0,x1-x0,y1-y0]};
+  // rendu de la zone pour une hauteur de lettre de P px (hauteur de lettre ≈ 0,55 rangée ; rangées du sens de lecture : les plus basses)
+  const hmin=0.55*Math.min(...Qv.map(q=>hq(GQ[q]))),RD={};
+  const rendu=async P=>{if(!RD[P]){const k=plafond(z,Math.min(10,Math.max(3,P/hmin)));pr(`Rendu de la zone (${Math.round(k*72)} dpi)`,null);RD[P]={P,k,cv:await root.CPI.pdf.rendreZone(pdf,z.page,z,k)};stop()}return RD[P]};
+  const px=(r,b)=>{const k=r.k,x0=(b[0]-z.x0)*k,x1=(b[2]-z.x0)*k,y0=(z.y1-b[3])*k,y1=(z.y1-b[1])*k;return[x0,y0,x1-x0,y1-y0]};
   // cellules d'une grille (repère q) : boîte page, découpe redressée en retrait des traits
-  const cellules=g=>{const ins=2,out=[];g.rangs.forEach((r,i)=>r.cellules.forEach(c=>{const b=boiteRetour([c.x0,r.y1,c.x1,r.y0],g.q),[x,y,w,h]=px(b);
-      if(w-2*ins<4||h-2*ins<4)return;out.push({i,j:c.j0,b,crop:decoupe(cv,x+ins,y+ins,w-2*ins,h-2*ins,g.q)})}));return out};
+  const cellules=(g,r)=>{const ins=2,out=[];g.rangs.forEach((rg,i)=>rg.cellules.forEach(c=>{const b=boiteRetour([c.x0,rg.y1,c.x1,rg.y0],g.q),[x,y,w,h]=px(r,b);
+      if(w-2*ins<4||h-2*ins<4)return;out.push({i,j:c.j0,b,crop:decoupe(r.cv,x+ins,y+ins,w-2*ins,h-2*ins,g.q)})}));return out};
   // couleur d'encre dominante (teintes voisines gardées), d'après toutes les cellules d'une grille
   const dominante=Cl=>{const hs=new Float64Array(13);Cl.forEach(c=>{const W=c.crop.width,H=c.crop.height,d=c.crop.getContext('2d',{willReadFrequently:true}).getImageData(0,0,W,H).data;
       for(let i=0;i<W*H;i+=2){const p=pix(d[4*i],d[4*i+1],d[4*i+2]);if(p)hs[p.t+1]++}});
@@ -933,15 +948,14 @@ async function lireGrille(pdf,z,o){o=o||{};const t0=Date.now(),pr=o.progres||(()
     return{t:m-1,autres:tot-dom>=0.03*tot&&tot>0}};
   const variantes=(c,D)=>{const A=nb(c.crop,()=>true),V=[{nom:'gris',...A}];
     if(D.autres){const t=D.t,B=nb(c.crop,u=>u===-1||t>=0&&Math.min((u-t+12)%12,(t-u+12)%12)<=1);V.push({nom:'couleur',...B})}return V};
-  let choix=GQ[Qv[0]],mesQ=null;
-  if(Qv.length>1){const E=[];for(const q of Qv){const g=GQ[q];if(!g)continue;const Cl=cellules(g),D=dominante(Cl),V=Cl.map(c=>variantes(c,D)[D.autres?1:0]).filter(v=>v.n>=12).slice(0,10);
-      // score : caractères lus dans des mots d'au moins 2 lettres ou chiffres, pondérés par la confiance (un texte lu de travers
-      // donne des signes isolés, parfois à forte confiance)
-      pr(`Orientation du tableau : essai à ${q*90}°`,null);const R=await mosaique(V.map(v=>v.c),{stop,progres:null});
-      const sc=R.reduce((s,W)=>s+W.reduce((a,m)=>{const n=(m.texte.match(/[\p{L}\p{N}]/gu)||[]).length;return a+(n>=2?n*m.conf/100:0)},0),0)/Math.max(1,V.length);
-      E.push({q,g,c:sc})}
-    E.sort((a,b)=>b.c-a.c);if(E.length){choix=E[0].g;mesQ=E.map(e=>({rotation:e.q*90,score:Math.round(e.c*10)/10}))}}
-  const g=choix,hr=hq(g),Cl=cellules(g),D=dominante(Cl),V=Cl.map(c=>variantes(c,D)),enc=V.map(v=>v.some(x=>x.n>=Math.max(12,0.002*x.c.width*x.c.height)));
+  // orientation et résolution : essais sur 10 cellules, chaque sens à 24 puis 36 px de lettre ; score : caractères lus dans des
+  // mots d'au moins 2 lettres ou chiffres, pondérés par la confiance (un texte lu de travers donne des signes isolés, parfois à forte confiance)
+  const E=[];for(const P of G_PX)for(const q of Qv){const g=GQ[q],r=await rendu(P),Cl=cellules(g,r),D=dominante(Cl),V=Cl.map(c=>variantes(c,D)[D.autres?1:0]).filter(v=>v.n>=12).slice(0,10);
+    pr(`Orientation du tableau : essai à ${q*90}°`,null);const R=await mosaique(V.map(v=>v.c),{stop,progres:null});
+    const sc=R.reduce((s,W)=>s+W.reduce((a,m)=>{const n=(m.texte.match(/[\p{L}\p{N}]/gu)||[]).length;return a+(n>=2?n*m.conf/100:0)},0),0)/Math.max(1,V.length);
+    E.push({q,P,g,c:sc})}
+  E.sort((a,b)=>b.c-a.c);const mesQ=Qv.length>1?Qv.map(q=>({rotation:q*90,score:Math.round(Math.max(...E.filter(e=>e.q===q).map(e=>e.c))*10)/10})):null;
+  const g=E[0].g,RZ=await rendu(E[0].P),k=RZ.k,cv=RZ.cv,hr=hq(g),Cl=cellules(g,RZ),D=dominante(Cl),V=Cl.map(c=>variantes(c,D)),enc=V.map(v=>v.some(x=>x.n>=Math.max(12,0.002*x.c.width*x.c.height)));
   const L=V.map(()=>[]),tir=new Set();
   V.forEach((v,i)=>{const t=v[v.length-1];if(enc[i]&&t.tiret){tir.add(i);L[i]=v.map((x,j)=>j===v.length-1?{texte:'-',conf:90,moy:90,notes:[],tiret:true}:null)}});
   const I=Cl.map((c,i)=>i).filter(i=>enc[i]&&!tir.has(i)),nv=V[0]?V[0].length:1;
@@ -955,10 +969,10 @@ async function lireGrille(pdf,z,o){o=o||{};const t0=Date.now(),pr=o.progres||(()
     if(nr>=G_RELU||A.length&&!dif&&Math.min(...A.map(a=>a.conf))>=SEUIL)continue;stop();nr++;pr('Relecture des cellules douteuses',nr/Math.max(1,I.length));
     for(let v=0;v<nv;v++){if(V[i][v].n<12)continue;const c=V[i][v].c,p=Math.round(Math.min(c.width,c.height)/3)+8,cc=root.document.createElement('canvas');cc.width=c.width+2*p;cc.height=c.height+2*p;
       const x2=cc.getContext('2d');x2.fillStyle='#fff';x2.fillRect(0,0,cc.width,cc.height);x2.drawImage(c,p,p);
-      const r=texteMots(await reconnaitre(cc,{psm:c.height>1.6*G_PX*1.5?6:7,dpi:300,oslash:true}));if(r&&(!L[i][v]||r.moy>L[i][v].moy))L[i][v]=r}}
+      const r=texteMots(await reconnaitre(cc,{psm:c.height>1.6*RZ.P*1.5?6:7,dpi:300,oslash:true}));if(r&&(!L[i][v]||r.moy>L[i][v].moy))L[i][v]=r}}
   // titre : bande au-dessus du tableau (dans son sens de lecture), jusqu'à 4 hauteurs de rangée
   let titre='';const zq=rotZ(z,g.q),top=g.cadre[3],hT=Math.min(4*hr,zq.y1-top);
-  if(hT>=0.6*hr){const b=boiteRetour([g.cadre[0],top+0.2*g.t,g.cadre[2],top+hT],g.q),[x,y,w,h]=px(b);if(w>8&&h>8){stop();const B=nb(decoupe(cv,x,y,w,h,g.q),()=>true);   // gris : le titre n'a pas toujours la couleur des cellules
+  if(hT>=0.6*hr){const b=boiteRetour([g.cadre[0],top+0.2*g.t,g.cadre[2],top+hT],g.q),[x,y,w,h]=px(RZ,b);if(w>8&&h>8){stop();const B=nb(decoupe(cv,x,y,w,h,g.q),()=>true);   // gris : le titre n'a pas toujours la couleur des cellules
     if(o.trace)o.trace.push({titre:true,v:[B.c.toDataURL()]});
     if(B.n>=12){const r=texteMots(await reconnaitre(B.c,{psm:6,dpi:300}));if(o.trace)o.trace.push({titreLu:r});if(r&&r.moy>=50)titre=corriger(r.texte).texte}}}
   // textes au contrat de lireZone (un par cellule lue) et matrice de la grille
@@ -1003,6 +1017,8 @@ function grille(N,textes){const tid=new Map(textes.map(t=>[t.id,t]));
       if((k==='angle'||k==='niveau')&&/^[Oo]$/.test(v.trim())){corr.push(`« ${v.trim()} » lu comme 0`);v='0'}   // zéro seul lu comme la lettre O
       if(k==='repere'&&v){let u=v.replace(/\s+/g,'').toUpperCase();const m=u.match(/^([A-Z]+?)([IL1|O0SBZG]+)$/);
         if(!/\d/.test(u)&&m&&pref[m[1]]){u=m[1]+m[2].replace(/[IL|]/g,'1').replace(/O/g,'0').replace(/S/g,'5').replace(/B/g,'8').replace(/Z/g,'2').replace(/G/g,'6')}
+        // « 53 » dans une colonne de repères S1, S2… : 1re lettre lue comme le chiffre qui lui ressemble (signalé)
+        const LD={S:'5',B:'8',O:'0',I:'1',Z:'2',G:'6'},px=/^\d{2,}$/.test(u)&&Object.keys(pref).find(p=>p.length===1&&pref[p]>=2&&LD[p]===u[0]);if(px)u=px+u.slice(1);
         if(u!==v.replace(/\s+/g,'').toUpperCase())corr.push(`repère « ${v} » lu comme ${u}`);v=u}   // espaces et minuscules : sans signalement
       R.cells[k]=v;R.brut[k]=O.map(o=>o.brut).join(' ');R.conf[k]=conf;R.corr[k]=corr;R.doute[k]=conf!=null&&conf<SEUIL||corr.length>0;R.box[k]=unionBox(O.map(o=>o.box).filter(Boolean))});
     R.cle0=root.CPI.nomenclatures.cleRep(R.cells.repere||'');   // repère tel que reconnu : retrouve la ligne quand l'OCR est relancé
@@ -1211,7 +1227,6 @@ function cotes(s,u0,saisie){
 // Hauteur (rectangle). Vide, « - », SO… = valeur absente, jamais une cote contradictoire : on passe à la colonne suivante.
 // Diamètre et Largeur × Hauteur tous deux renseignés : ambiguïté signalée, rien n'est choisi. DN du réseau ≠ diamètre.
 // « Hauteur » d'un tableau = 2e cote de l'ouverture, jamais la hauteur de coffrage (h reste à saisir).
-const DIAM_SEUL=/^(ø|diam(etre|\.)?)\s*(\(?\s*(mm|cm|m)\s*\)?)?$/;   // titre de colonne qui n'est qu'un diamètre (Ø mm, Diamètre (mm))
 function dimsLigne(cols,cells,av){
   const get=k=>cols.map((c,j)=>c.cle===k&&cells[j]?{c,v:cells[j]}:null).filter(Boolean),q=v=>`« ${v.replace(/\n/g,' ')} »`;
   const dd=(r,c,v)=>r.etat==='rect'?{type:'rect',a:r.a,b:r.b,unite:r.unite,texte:v,colonne:c.titre}:{type:'circ',D:r.D,unite:r.unite,texte:v,colonne:c.titre};
@@ -1225,7 +1240,7 @@ function dimsLigne(cols,cells,av){
   const Dm=get('diametre');
   if(Dm.length){const {c,v}=Dm[0],r=cotes(v,c.unite);
     if(r.etat==='rect'||r.etat==='circ'||r.etat==='seul'){circ=dd(r.etat==='seul'?{etat:'circ',D:r.v,unite:r.unite}:r,c,v);
-      if(!DIAM_SEUL.test(norm(c.titre)))av.push(`cote prise dans la colonne « ${c.titre.replace(/\n/g,' ')} » : à confirmer comme cote de la réservation`)}
+      av.push(`cote prise dans la colonne « ${c.titre.replace(/\n/g,' ')} » : à confirmer comme cote de la réservation`)}
     else if(!absent(r))av.push(`colonne « ${c.titre.replace(/\n/g,' ')} » ${q(v)} : `+(r.etat==='dn'?dn:'cotes non lues'))}
   let rect=null;
   const La=get('largeur'),Ha=get('hauteur');
@@ -1584,16 +1599,18 @@ function detecterPage(geo,ctx){const n=geo.page,W=Math.min(geo.w,geo.h),z=ctx.zo
   // classement : ce qui ne peut pas être une réservation est écarté avec sa raison ; le reste est proposé, doutes notés
   C.forEach(c=>{const g=c.geometrie,P=g.type==='cercle'?[[g.centre[0]-g.r,g.centre[1]-g.r],[g.centre[0]+g.r,g.centre[1]+g.r]]:g.points,
       bx=emprise(P),L=c.type==='circ'?c.dims.D:c.dims.L,x=c.cas;
-    c.bbox=bx;const nT=T.filter(t=>dForme([t.x,t.y],g)===0).length,np=m=>{c.statut='non_pris_en_charge';c.remarques.push(m)};
+    c.bbox=bx;const Ti=T.filter(t=>dForme([t.x,t.y],g)===0),nT=Ti.length,np=m=>{c.statut='non_pris_en_charge';c.remarques.push(m)};
+    // repère écrit à l'intérieur (« R5 » dans sa réservation) : ses lettres et le trait du symbole ne font ni une subdivision ni un dessin
+    const rep=nT>=1&&nT<=2&&Ti.some(t=>REP.test(String(t.texte).trim().replace(/^[^A-Za-z0-9]+|[^A-Za-z0-9]+$/g,'')));
     if(z&&!(bx[0]>=z.x0-eps&&bx[1]>=z.y0-eps&&bx[2]<=z.x1+eps&&bx[3]<=z.y1+eps))np('dépasse la zone choisie');
     else if((ctx.cadres||[]).some(b=>dans(b,c.centre,2)))np('dans un tableau (nomenclature, aciers, indices…)');
     else if(L>=0.6*W||c.type==='rect'&&(bx[2]-bx[0]>=0.6*geo.w||bx[3]-bx[1]>=0.6*geo.h))np('cadre de feuille ou de vue');
-    else if(x.te)np('contour subdivisé par d\'autres traits (tableau, cartouche ou légende)');
+    else if(x.te&&!rep)np('contour subdivisé par d\'autres traits (tableau, cartouche ou légende)');
     else if(x.accole>=3)np('cellule d\'un quadrillage (sommets partagés avec d\'autres traits)');
     else if(nT>=3)np(nT+' textes à l\'intérieur (cartouche, légende ou tableau)');
     else if(L>=0.4*W)np('très grand contour (ouvrage, local ou vue) : pas une réservation');
-    else if(x.int>30)np('contient un dessin (cadre de détail, de vue ou de légende, texte dessiné en traits)');
-    else{if(x.accole)c.remarques.push('sommet(s) raccordé(s) à d\'autres traits : contour accolé à un mur ou à une autre forme ?');
+    else if(x.int>30&&!rep)np('contient un dessin (cadre de détail, de vue ou de légende, texte dessiné en traits)');
+    else{if(rep&&(x.te||x.int>4))c.remarques.push('repère écrit à l\'intérieur, traits raccordés (symbole de réservation, lignes de cote ?)');if(x.accole)c.remarques.push('sommet(s) raccordé(s) à d\'autres traits : contour accolé à un mur ou à une autre forme ?');
       if(L>=0.25*W)c.remarques.push('grand contour : pièce, local ou élément architectural ?');
       if(x.int>4)c.remarques.push('traits à l\'intérieur (hachures, symbole ?)');
       if(x.diag)c.remarques.push('diagonales dessinées (réservation traversante probable)')}});
@@ -1612,20 +1629,31 @@ function detecterPage(geo,ctx){const n=geo.page,W=Math.min(geo.w,geo.h),z=ctx.zo
 // o = {cadres:[[x0,y0,x1,y1]] (tableaux : exclus)} → [{x0,y0,x1,y1,h,n}] ; écarte les groupes trop hauts, trop longs ou trop
 // fins (hachures, quadrillages, traits) : seuls des repères et de courtes annotations horizontales restent, à lire par OCR
 const BT_H=[2.5,30],BT_W=200;   // pt : hauteur de lettre admise, longueur maximale d'une ligne de texte
-function blocsTexte(geo,o){o=o||{};const B=geo.petits||[],N=B.length>>2,par=new Int32Array(N),CS=10,G=new Map();
-  for(let i=0;i<N;i++)par[i]=i;const f=i=>{while(par[i]!==i)i=par[i]=par[par[i]];return i};
-  for(let i=0;i<N;i++){const x0=B[4*i],y0=B[4*i+1],x1=B[4*i+2],y1=B[4*i+3],hi=Math.max(y1-y0,1);if(x1-x0<0.2&&y1-y0<0.2)continue;   // points
-    const m=1.2*hi,c0=Math.floor((x0-m)/CS),c1=Math.floor((x1+m)/CS),r0=Math.floor(y0/CS),r1=Math.floor(y1/CS);
-    for(let c=c0;c<=c1;c++)for(let r=r0;r<=r1;r++){const k=c*1e6+r,L=G.get(k);
-      if(L){for(const j of L){const h=Math.max(hi,B[4*j+3]-B[4*j+1],1),gx=Math.max(B[4*j]-x1,x0-B[4*j+2]),gy=Math.max(B[4*j+1]-y1,y0-B[4*j+3]);
-        if(gx<=1.2*h&&gy<=0.12*h){const a=f(i),b=f(j);if(a!==b)par[a]=b}}L.push(i)}else G.set(k,[i])}}
-  const R=new Map();for(let i=0;i<N;i++){const x0=B[4*i],y0=B[4*i+1],x1=B[4*i+2],y1=B[4*i+3];if(x1-x0<0.2&&y1-y0<0.2)continue;
-    const r=f(i),b=R.get(r);if(b){b.x0=Math.min(b.x0,x0);b.y0=Math.min(b.y0,y0);b.x1=Math.max(b.x1,x1);b.y1=Math.max(b.y1,y1);b.n++}else R.set(r,{x0,y0,x1,y1,n:1})}
-  const cad=o.cadres||[],out=[];
+function blocsTexte(geo,o){o=o||{};const B=geo.petits||[],N=B.length>>2,pt=i=>B[4*i+2]-B[4*i]<0.2&&B[4*i+3]-B[4*i+1]<0.2;   // points
+  const tous=[];for(let i=0;i<N;i++)if(!pt(i))tous.push(i);
+  const R=grouper(B,tous),cad=o.cadres||[],out=[];
+  // étiquette encadrée (« R1 » dans un petit carré) : le cadre relie les lettres aux traits voisins (cotes, flèches) ; les petits
+  // tracés strictement à l'intérieur d'un petit tracé d'au moins 6 pt sont regroupés à part, en plus des groupes ordinaires
+  const G=new Map(),CS=10;tous.forEach(i=>{const k=Math.floor(B[4*i]/CS)*1e6+Math.floor(B[4*i+1]/CS);(G.get(k)||G.set(k,[]).get(k)).push(i)});
+  tous.forEach(i=>{const x0=B[4*i],y0=B[4*i+1],x1=B[4*i+2],y1=B[4*i+3];if(x1-x0<6||y1-y0<6)return;const I=[];
+    for(let c=Math.floor(x0/CS);c<=Math.floor(x1/CS);c++)for(let r=Math.floor(y0/CS);r<=Math.floor(y1/CS);r++)(G.get(c*1e6+r)||[]).forEach(j=>{
+      if(j!==i&&B[4*j]>x0+0.3&&B[4*j+1]>y0+0.3&&B[4*j+2]<x1-0.3&&B[4*j+3]<y1-0.3&&B[4*j+3]-B[4*j+1]<=0.6*(y1-y0))I.push(j)});   // lettres : pas le trait de symbole qui traverse le cadre
+    if(I.length>=2)grouper(B,I).forEach(b=>{if(!R.some(q=>Math.abs(q.x0-b.x0)<0.5&&Math.abs(q.y0-b.y0)<0.5&&Math.abs(q.x1-b.x1)<0.5&&Math.abs(q.y1-b.y1)<0.5))R.push(Object.assign(b,{cadre:true}))})});
   R.forEach(b=>{const h=b.y1-b.y0,w=b.x1-b.x0;b.h=h;
-    if(b.n<2||h<BT_H[0]||h>BT_H[1]||w>BT_W||w>12*h||w<0.5*h)return;
+    if(b.n<2||h<BT_H[0]||h>BT_H[1]||w>(o.wmax||BT_W)||w>(o.rmax||12)*h||w<0.5*h)return;
     if(cad.some(c=>dans(c,[(b.x0+b.x1)/2,(b.y0+b.y1)/2],0)))return;out.push(b)});
   return out}
+// Petits tracés I (indices dans B) réunis en groupes (union-find sur une grille) → [{x0,y0,x1,y1,n}] ; écart admis à la mesure du
+// plus petit des deux tracés quand l'un est 2,5 fois plus haut (trait de cote, ligne de rappel : ils n'attirent pas les lettres voisines)
+function grouper(B,I){const par=new Map(),CS=10,G=new Map();I.forEach(i=>par.set(i,i));const f=i=>{while(par.get(i)!==i){par.set(i,par.get(par.get(i)));i=par.get(i)}return i};
+  for(const i of I){const x0=B[4*i],y0=B[4*i+1],x1=B[4*i+2],y1=B[4*i+3],hi=Math.max(y1-y0,1);
+    const m=1.2*hi,c0=Math.floor((x0-m)/CS),c1=Math.floor((x1+m)/CS),r0=Math.floor(y0/CS),r1=Math.floor(y1/CS);
+    for(let c=c0;c<=c1;c++)for(let r=r0;r<=r1;r++){const k=c*1e6+r,L=G.get(k);
+      if(L){for(const j of L){const hj=Math.max(B[4*j+3]-B[4*j+1],1),h=Math.max(hi,hj)>2.5*Math.min(hi,hj)?Math.min(hi,hj):Math.max(hi,hj),gx=Math.max(B[4*j]-x1,x0-B[4*j+2]),gy=Math.max(B[4*j+1]-y1,y0-B[4*j+3]);
+        if(gx<=1.2*h&&gy<=0.12*h){const a=f(i),b=f(j);if(a!==b)par.set(a,b)}}L.push(i)}else G.set(k,[i])}}
+  const R=new Map();for(const i of I){const x0=B[4*i],y0=B[4*i+1],x1=B[4*i+2],y1=B[4*i+3];
+    const r=f(i),b=R.get(r);if(b){b.x0=Math.min(b.x0,x0);b.y0=Math.min(b.y0,y0);b.x1=Math.max(b.x1,x1);b.y1=Math.max(b.y1,y1);b.n++}else R.set(r,{x0,y0,x1,y1,n:1})}
+  return[...R.values()]}
 
 // Lignes de rappel d'un texte : traits droits (≥ 2 hauteurs de texte) partant à moins d'une hauteur du texte ; l'autre bout est
 // suivi sur un 2e trait s'il s'y raccorde (rappel coudé). → pointes [[x,y]] (là où le rappel désigne quelque chose)
@@ -1663,8 +1691,8 @@ root.CPI=Object.assign(root.CPI||{},{geometrie:{detecterPage,cercle,blocsTexte,r
 const MM={mm:1,cm:10,m:1000};
 const OCR_MIN=30;   // % : en dessous, un mot lu par OCR n'est pas proposé comme repère, même incertain (bruit de traits, flèches, cotes tournées)
 const NB=n=>(n.match(/\d+/)||[''])[0];
-// Clé de repère tolérante aux confusions de lecture (S/5, O/0, I/1, L/1, B/8, Z/2, G/6 après les lettres du début) : rapprochement « incertain »
-const CONF={S:'5',O:'0',I:'1',L:'1',B:'8',Z:'2',G:'6'};
+// Clé de repère tolérante aux confusions de lecture (S/5, O/0, I/1, L/1, B/8, Z/2, G/6, A/4 après les lettres du début) : rapprochement « incertain »
+const CONF={S:'5',O:'0',I:'1',L:'1',B:'8',Z:'2',G:'6',A:'4'};
 const cleFloue=k=>k.replace(/^([A-Z]+?)([A-Z0-9]*)$/,(m,a,b)=>a+[...b].map(c=>/\d/.test(c)?c:CONF[c]||c).join('')).replace(/(^|[^0-9])0+(?=\d)/g,'$1');
 
 // Confiance OCR du repère lui-même : mots du bloc qui le composent (un trait de rappel lu « | » ou « / » à côté ne le dégrade pas)
@@ -1689,13 +1717,14 @@ const comparable=(vT,uT,vA,uA)=>!!uA||(()=>{const r=vA*(MM[uA]||MM[uT]||1)/(vT*(
 
 // L = {id, repere, dims ({type:'rect',a,b}|{type:'circ',D}|null), unite, quantite, page (page du tableau), ids}
 // textes : textes du dessin (PDF et OCR ; ceux des tableaux déjà retirés) ; C : candidats de CPI.geometrie (toutes pages)
-// o = {mm: candidat → mm par point | null, rappels: texte → pointes [[x,y]] (lignes de rappel), exclus: Set d'ids de textes}
+// o = {mm: candidat → mm par point | null, rappels: texte → pointes [[x,y]] (lignes de rappel), exclus: Set d'ids de textes,
+//      vue: (page, x, y) → id de vue | null (CPI.vues.situer) : contours et cotes voisines cherchés dans la vue du repère seulement}
 // → {lignes: {idLigne: résultat}, hors: [{texte, page, x, y, conf}], colonnes: nb de textes écartés (colonnes de tableau)}
 function rapprocher(lignes,textes,C,o){o=o||{};const N=root.CPI.nomenclatures,cleRep=N.cleRep,cotes=N.cotes,dGeo=N.dGeo,ex=o.exclus||new Set();
   const T0=textes.filter(t=>!ex.has(t.id)&&t.page),col=colonnes(T0),T=T0.filter(t=>!col.has(t.id));
   const K=new Map(T.map(t=>[t.id,cles(t,cleRep)])),OK=C.map((c,i)=>({c,i})).filter(x=>x.c.statut==='a_confirmer'&&x.c.source&&x.c.source.page);
   const kLigne=new Map(lignes.map(L=>[L.id,cleRep(L.repere||'')])),toutes=new Set([...kLigne.values()].filter(Boolean));
-  const R={};
+  const R={},vue=o.vue||(()=>null),vC=new Map(OK.map(({c,i})=>[i,vue(c.source.page,c.centre[0],c.centre[1])]));
   lignes.forEach(L=>{const k=kLigne.get(L.id),num=/^\d+$/.test(k),occ=[];
     if(k)T.forEach(t=>{const ks=K.get(t.id);let flou=false;
       if(num){if(cleRep(String(t.texte).replace(/[^\p{L}\p{N}]+/gu,''))!==k)return}   // repère numérique : texte entier seulement
@@ -1705,12 +1734,12 @@ function rapprocher(lignes,textes,C,o){o=o||{};const N=root.CPI.nomenclatures,cl
       if(flou)pq.push(`lu « ${t.texte} » : rapproché par confusion de lettres et de chiffres`);if(num)pq.push('repère purement numérique');
       occ.push({t,fiable:!pq.length,doutes:pq,conf:cf})});
     // contour désigné par chaque localisation : le plus proche du repère ou du bout de sa ligne de rappel (≤ 4 hauteurs de texte)
-    occ.forEach(x=>{const t=x.t,P=[[t.x,t.y]],h=Math.max(t.h||2,1);if(o.rappels)try{x.rappels=o.rappels(t)}catch(e){x.rappels=[]}else x.rappels=[];P.push(...x.rappels);
-      const V=OK.filter(({c})=>c.source.page===t.page).map(({c,i})=>{let d=Infinity;for(const p of P)d=Math.min(d,dGeo(p,c.geometrie));return{i,d}}).filter(v=>v.d<=4*h).sort((a,b)=>a.d-b.d);
+    occ.forEach(x=>{const t=x.t,P=[[t.x,t.y]],h=Math.max(t.h||2,1),vt=x.vue=vue(t.page,t.x,t.y);if(o.rappels)try{x.rappels=o.rappels(t)}catch(e){x.rappels=[]}else x.rappels=[];P.push(...x.rappels);
+      const V=OK.filter(({c,i})=>c.source.page===t.page&&vC.get(i)===vt).map(({c,i})=>{let d=Infinity;for(const p of P)d=Math.min(d,dGeo(p,c.geometrie));return{i,d}}).filter(v=>v.d<=4*h).sort((a,b)=>a.d-b.d);
       x.contours=V;x.contour=V.length===1||V.length>1&&V[1].d>1.25*V[0].d+0.5*h?V[0].i:null;
       // cotes écrites voisines : près du repère (6 hauteurs) ou du contour désigné (4 hauteurs)
       const cc=x.contour!=null?C[x.contour].geometrie:null;x.cotes=[];
-      T.forEach(u=>{if(u===t||u.page!==t.page||[...K.get(u.id)].some(z=>toutes.has(z)))return;const q=cotes(u.texte,null);if(!/^(rect|circ|seul)$/.test(q.etat))return;
+      T.forEach(u=>{if(u===t||u.page!==t.page||[...K.get(u.id)].some(z=>toutes.has(z))||vue(u.page,u.x,u.y)!==vt)return;const q=cotes(u.texte,null);if(!/^(rect|circ|seul)$/.test(q.etat))return;
         const d=Math.hypot(u.x-t.x,u.y-t.y),dc=cc?dGeo([u.x,u.y],cc):Infinity;if(d<=6*h||dc<=4*Math.max(u.h||h,1))x.cotes.push(Object.assign({texte:u.texte,id:u.id,d:Math.min(d,dc),ocr:!!u.ocr},q))});
       x.cotes.sort((a,b)=>a.d-b.d);x.cotes=x.cotes.slice(0,4)});
     R[L.id]=verifier(L,occ,C,o)});
@@ -1774,11 +1803,154 @@ function verifier(L,occ,C,o){const d=L.dims,uT=L.unite||null,D={},notes=[];
   if(princ.length>1)notes.push(unique?`${princ.length} contours désignés, un par page (vues) : celui de la 1re page est proposé`:`${princ.length} contours désignés sur une même page (occurrences ?) : à choisir`);
   return{concordance:cc,libelle:LB[cc],statut,options,principal:princ.length?princ.slice().sort((a,b)=>C[a].source.page-C[b].source.page)[0]:null,preuves:ctr,
     occurrences:occ.map(x=>({id:x.t.id,texte:x.t.texte,page:x.t.page,x:x.t.x,y:x.t.y,h:x.t.h,source:x.t.ocr?'ocr':'pdf',conf:x.t.ocr?x.conf:null,brut:x.t.ocr?x.t.ocr.brut:null,
-      corrections:x.t.ocr?x.t.ocr.corrections:[],box:x.t.ocr?x.t.ocr.box:null,fiable:x.fiable,doutes:x.doutes,rappels:x.rappels,contour:x.contour!=null?C[x.contour].id:null,
+      corrections:x.t.ocr?x.t.ocr.corrections:[],box:x.t.ocr?x.t.ocr.box:null,vue:x.vue||null,fiable:x.fiable,doutes:x.doutes,rappels:x.rappels,contour:x.contour!=null?C[x.contour].id:null,
       cotes:x.cotes.map(q=>q.texte)})),
     reperes:occ.map(x=>({x:x.t.x,y:x.t.y,id:x.t.id})),dims:D,quantite,note:notes.concat(lecture?[lecture]:[]).join(' ; ')}}
 
 root.CPI=Object.assign(root.CPI||{},{rapprochement:{rapprocher,colonnes,cleFloue,mesure}});
+})(typeof globalThis!=='undefined'?globalThis:this);
+// ==== modules/import/vues.js ====
+// CoffraPlan — module d'import de plans : vues techniques d'une page PDF (phase 5). Une planche réunit plusieurs vues (plan,
+// coupe, élévation, détail, ferraillage supérieur / inférieur) : un repère et un contour ne se rapprochent qu'à l'intérieur d'une
+// même vue, et une réservation dessinée dans plusieurs vues reste UNE réservation (quantité du tableau = référence).
+// Vues : titres (textes nettement plus hauts que la médiane de la page, avec un mot-clé : vue, coupe, élévation, détail,
+// ferraillage, renfort, plan…), puis région de chaque titre = tracés atteints depuis lui sur une grille d'occupation, sans
+// franchir un vide de plus de DV_GAP cases (le plus proche des titres l'emporte quand deux dessins se touchent). Tracés sans
+// titre atteignable : vue « autre » sans titre. Tout est déterministe ; aucun texte ni aucune cote n'est inventé.
+// Indépendant de l'interface et du moteur. Charger après nomenclatures.js et rapprochement.js.
+(function(root){'use strict';
+const sansAcc=s=>String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'');
+const DV_GAP=8,DV_MIN=30;   // cases : vide franchissable entre un titre et son dessin ; dessin sans titre retenu comme vue à partir de 30 cases
+const TYPES={plan:'plan',coupe:'coupe',elevation:'élévation',detail:'détail',ferraillage:'ferraillage',ferraillage_superieur:'ferraillage supérieur',ferraillage_inferieur:'ferraillage inférieur',autre:'autre'};
+const CLES=['ferraillage','renfort','armatures','elevation','facade','detail','coupe','dessus','plan','vue','partie'];
+const PARTIES=['dalle','radier','voile','poutre','puisard','longrine','semelle','plancher','acrotere','escalier','fosse','regard','cuve','mur'];
+// distance d'édition bornée (mots lus par OCR : « FERRKAILTAGE »)
+function lev(a,b){const m=a.length,n=b.length;if(Math.abs(m-n)>2)return 9;let p=Array.from({length:n+1},(x,j)=>j);
+  for(let i=1;i<=m;i++){const q=[i];for(let j=1;j<=n;j++)q[j]=Math.min(p[j]+1,q[j-1]+1,p[j-1]+(a[i-1]===b[j-1]?0:1));p=q}return p[n]}
+// mots-clés d'un titre : exacts, ou à 2 erreurs près pour les mots-clés d'au moins 8 lettres (ferraillage, élévation…) → {K, approx, W}
+// « plan » : premier mot ou « vue en plan » (pas « n° du plan » d'un cartouche) ; « partie » : avec supérieure / inférieure
+function motsCles(s){const W=sansAcc(s).toLowerCase().split(/[^a-z]+/).filter(Boolean),K=new Set();let approx=false;
+  W.forEach((w,i)=>CLES.forEach(k=>{let ok=w===k||w===k+'s';if(!ok&&k.length>=8&&w.length>=6&&lev(w,k)<=2){ok=true;approx=true}if(!ok)return;
+    if(k==='plan'&&!(i===0||W[i-1]==='en'))return;if(k==='dessus'&&!W.includes('vue'))return;if(k==='partie'&&!W.some(x=>/^(sup|inf)/.test(x)))return;K.add(k)}));
+  return{K,approx,W}}
+function typeVue(K,W){const sup=W.some(w=>/^sup/.test(w)),inf=W.some(w=>/^inf/.test(w));
+  if(K.has('ferraillage')||K.has('renfort')||K.has('armatures')||K.has('partie')&&(sup||inf))return sup?'ferraillage_superieur':inf?'ferraillage_inferieur':'ferraillage';
+  if(K.has('coupe'))return'coupe';if(K.has('elevation')||K.has('facade'))return'elevation';if(K.has('detail'))return'detail';
+  if(K.has('plan')||K.has('dessus'))return'plan';return'autre'}
+const partieDe=W=>PARTIES.find(p=>W.includes(p)||W.includes(p+'s'))||null;
+const med=a=>{const s=a.slice().sort((x,y)=>x-y);return s.length?s[s.length>>1]:0};
+const boite=t=>{const w=t.w||String(t.texte).length*0.7*t.h;return[t.x-w/2,t.y-t.h/2,t.x+w/2,t.y+t.h/2]};
+
+// Titres de vue d'une page : grands textes réunis en lignes puis en blocs de 2 lignes au plus, avec un mot-clé
+function titres(textes){const T=textes.filter(t=>t.h>0&&String(t.texte).trim()),hm=med(T.map(t=>t.h)),
+    G=T.filter(t=>t.h>=1.8*hm&&!t.rot&&(!t.ocr||t.ocr.conf>=60||motsCles(t.texte).K.size)&&/\p{L}.*\p{L}|\d/u.test(t.texte));   // mot lu à moins de 60 % : bruit, sauf mot-clé reconnu
+  const par=G.map((t,i)=>i),f=i=>par[i]===i?i:(par[i]=f(par[i]));
+  G.forEach((a,i)=>G.forEach((b,j)=>{if(j<=i||Math.max(a.h,b.h)>1.3*Math.min(a.h,b.h))return;const A=boite(a),B=boite(b),h=Math.max(a.h,b.h);
+    const ligne=Math.abs(a.y-b.y)<=0.4*h&&Math.max(B[0]-A[2],A[0]-B[2])<=2.5*h,
+      dessous=Math.abs(a.y-b.y)>0.4*h&&Math.abs(a.y-b.y)<=2.6*h&&(Math.min(A[2],B[2])-Math.max(A[0],B[0])>-h||Math.abs(a.x-b.x)<=3*h);
+    if(ligne||dessous)par[f(i)]=f(j)}));
+  const R=new Map();G.forEach((t,i)=>{const r=f(i);(R.get(r)||R.set(r,[]).get(r)).push(t)});
+  const out=[];R.forEach(L=>{L.sort((a,b)=>b.y-a.y||a.x-b.x);
+    // lignes de haut en bas, mots de gauche à droite
+    const lignes=[];L.forEach(t=>{const l=lignes.find(l=>Math.abs(l[0].y-t.y)<=0.4*t.h);l?l.push(t):lignes.push([t])});
+    const texte=lignes.map(l=>l.sort((a,b)=>a.x-b.x).map(t=>t.texte).join(' ')).join(' ').replace(/\s+/g,' ').trim(),m=motsCles(texte);
+    if(!m.K.size||m.K.size===1&&m.K.has('vue')&&m.W.length<2)return;
+    const bx=L.map(boite),b=[Math.min(...bx.map(x=>x[0])),Math.min(...bx.map(x=>x[1])),Math.max(...bx.map(x=>x[2])),Math.max(...bx.map(x=>x[3]))];
+    const cf=Math.min(...L.map(t=>t.ocr?t.ocr.conf:100));
+    out.push({texte,b,h:Math.max(...L.map(t=>t.h)),ids:L.map(t=>t.id),type:typeVue(m.K,m.W),partie:partieDe(m.W),approx:m.approx,conf:cf,
+      sous:m.K.size===1&&m.K.has('partie')})});
+  return out}
+
+// geo : CPI.pdf.chemins ; textes : textes de la page (PDF et OCR) ; o = {cadres:[[x0,y0,x1,y1]] (tableaux : ignorés)}
+// → {vues:[{id,page,region,titre,type,libelle,partie,echelle,niveau,confiance,motifs}], carte} ; carte : pour situer()
+function detecter(geo,textes,o){o=o||{};const n=geo.page,W=geo.w,H=geo.h,C=Math.max(4,0.008*Math.min(W,H)),nx=Math.ceil(W/C)+1,ny=Math.ceil(H/C)+1,N=nx*ny;
+  const occ=new Uint8Array(N),cad=o.cadres||[],hors=p=>cad.some(b=>p[0]>=b[0]&&p[0]<=b[2]&&p[1]>=b[1]&&p[1]<=b[3]);
+  const cel=(x,y)=>{const i=Math.floor(x/C),j=Math.floor(y/C);return i<0||j<0||i>=nx||j>=ny?-1:j*nx+i};
+  const marque=(x,y)=>{if(hors([x,y]))return;const k=cel(x,y);if(k>=0)occ[k]=1};
+  const Lmax=0.35*Math.min(W,H);
+  (geo.segments||[]).forEach(s=>{const l=Math.hypot(s.b[0]-s.a[0],s.b[1]-s.a[1]);if(l>Lmax)return;const m=Math.max(1,Math.ceil(2*l/C));
+    for(let q=0;q<=m;q++)marque(s.a[0]+(s.b[0]-s.a[0])*q/m,s.a[1]+(s.b[1]-s.a[1])*q/m)});
+  (geo.contours||[]).forEach(k=>{(k.pts||[]).forEach(p=>marque(p[0],p[1]));(k.courbes||[]).forEach(c=>c.forEach(p=>marque(p[0],p[1])))});
+  const B=geo.petits||[];for(let i=0;i<B.length;i+=4)marque((B[i]+B[i+2])/2,(B[i+1]+B[i+3])/2);
+  // titres (hors tableaux) ; un sous-titre seul (« Partie supérieure ») prend le titre de ferraillage le plus proche comme parent
+  const TT=titres(textes.filter(t=>!hors([t.x,t.y]))),pr=TT.filter(t=>!t.sous&&/^ferraillage/.test(t.type));
+  TT.forEach(t=>{if(!t.sous)return;const c=[(t.b[0]+t.b[2])/2,(t.b[1]+t.b[3])/2];let best=null,bd=Infinity;
+    pr.forEach(p=>{const d=Math.hypot((p.b[0]+p.b[2])/2-c[0],(p.b[1]+p.b[3])/2-c[1]);if(d<bd){bd=d;best=p}});
+    if(best){t.parent=best;best.enfants=(best.enfants||0)+1;t.partie=t.partie||best.partie;t.texte=best.texte+' — '+t.texte}});
+  const S=TT.filter(t=>!t.enfants);   // un titre principal découpé en sous-vues ne prend pas de région à lui seul
+  // propagation depuis chaque titre (coût 1 par case dessinée, 4 par case vide, au plus DV_GAP cases vides de suite)
+  const own=new Int16Array(N).fill(-1),dist=new Float64Array(N).fill(Infinity),run=new Uint8Array(N),Q=[];
+  S.forEach((t,v)=>{for(let x=t.b[0];x<=t.b[2]+C/2;x+=C/2)for(let y=t.b[1];y<=t.b[3]+C/2;y+=C/2){const k=cel(Math.min(x,t.b[2]),Math.min(y,t.b[3]));if(k>=0&&dist[k]>0){dist[k]=0;own[k]=v;Q.push(k)}}});
+  // file à seaux (coûts entiers 1 et 4)
+  const seaux=[Q.slice()];for(let d=0;d<seaux.length;d++){const L=seaux[d];if(!L)continue;for(const k of L){if(dist[k]!==d)continue;const i=k%nx,j=(k-i)/nx;
+    for(let di=-1;di<=1;di++)for(let dj=-1;dj<=1;dj++){if(!di&&!dj)continue;const a=i+di,b=j+dj;if(a<0||b<0||a>=nx||b>=ny)continue;const q=b*nx+a,r=occ[q]?0:run[k]+1;
+      if(r>DV_GAP)continue;const nd=d+(occ[q]?1:4);if(nd<dist[q]){dist[q]=nd;own[q]=own[k];run[q]=r;(seaux[nd]||(seaux[nd]=[])).push(q)}}}}
+  // dessins sans titre atteignable : composantes connexes (voisins à 2 cases) ; retenues à partir de DV_MIN cases
+  const V=S.map(t=>({t,cases:0,b:[Infinity,Infinity,-Infinity,-Infinity]}));
+  for(let k=0;k<N;k++){if(!occ[k]||own[k]<0)continue;const v=V[own[k]],i=k%nx,j=(k-i)/nx;v.cases++;v.b=[Math.min(v.b[0],i*C),Math.min(v.b[1],j*C),Math.max(v.b[2],(i+1)*C),Math.max(v.b[3],(j+1)*C)]}
+  const vu=new Uint8Array(N);
+  for(let k0=0;k0<N;k0++){if(!occ[k0]||own[k0]>=0||vu[k0])continue;const P=[k0];vu[k0]=1;
+    for(let p=0;p<P.length;p++){const k=P[p],i=k%nx,j=(k-i)/nx;for(let di=-2;di<=2;di++)for(let dj=-2;dj<=2;dj++){const a=i+di,b=j+dj;if(a<0||b<0||a>=nx||b>=ny)continue;const q=b*nx+a;if(occ[q]&&own[q]<0&&!vu[q]){vu[q]=1;P.push(q)}}}
+    if(P.length<DV_MIN)continue;const v={t:null,cases:P.length,b:[Infinity,Infinity,-Infinity,-Infinity]},id=V.length;V.push(v);
+    P.forEach(k=>{own[k]=id;const i=k%nx,j=(k-i)/nx;v.b=[Math.min(v.b[0],i*C),Math.min(v.b[1],j*C),Math.max(v.b[2],(i+1)*C),Math.max(v.b[3],(j+1)*C)]})}
+  // vues : région = cases dessinées et titre ; échelle « 1/50 » écrite près du titre ; identifiant dans l'ordre de lecture
+  const ech=textes.map(t=>{const m=sansAcc(t.texte).match(/(?:^|[^0-9.,\/])1\s*[\/:]\s*(\d{1,4})(?![0-9.,])/);return m&&+m[1]>1?{t,v:+m[1]}:null}).filter(Boolean);
+  const out=V.map((v,k)=>{const t=v.t,b=t?[Math.min(v.b[0],t.b[0]),Math.min(v.b[1],t.b[1]),Math.max(v.b[2],t.b[2]),Math.max(v.b[3],t.b[3])]:v.b;
+    if(!(b[2]>b[0]))return null;const motifs=[];let conf=t?(t.conf>=80&&!t.approx?'forte':t.conf>=50?'moyenne':'faible'):'faible';
+    if(!t)motifs.push('dessin sans titre reconnu');else{if(t.approx)motifs.push('titre lu avec des erreurs (mot-clé rapproché)');if(t.conf<80)motifs.push(`titre lu par OCR à ${t.conf} %`);
+      if(!v.cases){motifs.push('aucun tracé rattaché au titre');conf='faible'}}
+    const e=t&&ech.find(x=>x.t.x>=t.b[0]-4*t.h&&x.t.x<=t.b[2]+4*t.h&&x.t.y>=t.b[1]-3*t.h&&x.t.y<=t.b[3]+1.5*t.h);
+    const nv=t&&sansAcc(t.texte).match(/\bniv(?:eau)?\.?\s*:?\s*([+\-]?\d+[.,]?\d*|R\s*\+?\s*\d+|r\s*d\s*c|sous[- ]sol)/i);
+    return{k,page:n,region:b.map(x=>Math.round(x*100)/100),titre:t?t.texte:null,titreIds:t?t.ids:[],type:t?t.type:'autre',partie:t?t.partie:null,
+      echelle:e?{valeur:e.v,texte:e.t.texte}:null,niveau:nv?nv[1].replace(/\s+/g,''):null,confiance:conf,motifs,cases:v.cases}}).filter(Boolean);
+  out.sort((a,b)=>b.region[3]-a.region[3]||a.region[0]-b.region[0]).forEach((v,i)=>{v.id='V'+n+'-'+(i+1);v.libelle=TYPES[v.type]});
+  const ids=[];out.forEach(v=>ids[v.k]=v.id);out.forEach(v=>delete v.k);
+  return{vues:out,carte:{page:n,C,nx,ny,own,ids}}}
+
+// Vue d'un point de la page (carte de detecter) : case du point, sinon la vue la plus présente à 2 cases ; null hors de toute vue
+function situer(carte,x,y){if(!carte)return null;const{C,nx,ny,own,ids}=carte,i=Math.floor(x/C),j=Math.floor(y/C);
+  if(i>=0&&j>=0&&i<nx&&j<ny&&own[j*nx+i]>=0)return ids[own[j*nx+i]]||null;const n={};
+  for(let di=-2;di<=2;di++)for(let dj=-2;dj<=2;dj++){const a=i+di,b=j+dj;if(a<0||b<0||a>=nx||b>=ny)continue;const o=own[b*nx+a];if(o>=0&&ids[o])n[ids[o]]=(n[ids[o]]||0)+1}
+  const K=Object.keys(n).sort((a,b)=>n[b]-n[a]);return K.length?K[0]:null}
+
+// Occurrences physiques d'une ligne : la quantité du tableau est la référence, jamais multipliée par les vues. Vues « physiques »
+// (plan, puis ferraillage, puis vue sans titre) : la plus fournie donne les occurrences localisées ; les repères des autres vues
+// physiques de même partie, à la même position relative (± 10 % de la vue), sont des représentations de ces occurrences ;
+// coupes, élévations, détails : représentations seulement. → {attendue, localisees, representations, restantes, physiques, notes}
+const RANG={plan:0,ferraillage_superieur:1,ferraillage_inferieur:1,ferraillage:1,autre:2};
+function consolider(L,r,vues){const Vx=new Map(vues.map(v=>[v.id,v])),Q=/^\s*\d+\s*$/.test(String(L.quantite==null?'':L.quantite))?parseInt(L.quantite,10):null;
+  const O=(r&&r.occurrences||[]).map((o,j)=>Object.assign({j},o,{v:Vx.get(o.vue)||null})),notes=[];
+  // lecture incertaine du repère : comptée seulement dans une vue en plan (ailleurs : représentation)
+  const par=new Map();O.forEach(o=>{if(o.v&&o.v.type in RANG&&(o.fiable||o.v.type==='plan'))(par.get(o.v.id)||par.set(o.v.id,[]).get(o.v.id)).push(o)});
+  const cand=[...par.entries()].map(([id,X])=>({v:Vx.get(id),X})).sort((a,b)=>RANG[a.v.type]-RANG[b.v.type]||b.X.length-a.X.length||b.X.filter(o=>o.fiable).length-a.X.filter(o=>o.fiable).length);
+  const meilleur=cand.length?cand.filter(c=>RANG[c.v.type]===RANG[cand[0].v.type]).sort((a,b)=>b.X.length-a.X.length)[0]:null;
+  const rel=(o,v)=>[(o.x-v.region[0])/Math.max(1,v.region[2]-v.region[0]),(o.y-v.region[1])/Math.max(1,v.region[3]-v.region[1])];
+  const phys=meilleur?meilleur.X.slice().sort((a,b)=>b.y-a.y||a.x-b.x).map((o,k)=>({n:k+1,vue:meilleur.v.id,page:o.page,x:o.x,y:o.y,occurrence:o.j,representations:[o.j],fiable:o.fiable})):[];
+  O.forEach(o=>{if(phys.some(p=>p.occurrence===o.j))return;o.role='representation';
+    if(!o.v){notes.push(`localisation p. ${o.page} hors de toute vue reconnue : représentation, non comptée`);return}
+    if(meilleur&&o.v.type in RANG&&o.v.id!==meilleur.v.id&&(o.v.partie||null)===(meilleur.v.partie||null)){const q=rel(o,o.v);let best=null,bd=0.1;
+      phys.forEach(p=>{const s=rel(p,meilleur.v),d=Math.max(Math.abs(s[0]-q[0]),Math.abs(s[1]-q[1]));if(d<=bd){bd=d;best=p}});if(best)best.representations.push(o.j)}});
+  O.forEach(o=>{if(!o.role)o.role='physique'});
+  const loc=phys.length;
+  if(meilleur&&cand.length>1)notes.push(`${O.length} représentation(s) dans ${new Set(O.map(o=>o.vue||'?')).size} vue(s) ; occurrences comptées dans la vue ${meilleur.v.id} (${TYPES[meilleur.v.type]}${meilleur.v.partie?' '+meilleur.v.partie:''}) seulement`);
+  if(!meilleur&&O.length)notes.push('repère vu seulement en coupe, élévation, détail, hors vue ou en lecture incertaine hors d\'une vue en plan : aucune occurrence physique comptée');
+  if(meilleur&&meilleur.v.type==='autre')notes.push('occurrences comptées dans une vue sans titre reconnu : à vérifier');
+  if(Q!=null&&loc>Q)notes.push(`${loc} occurrences localisées pour une quantité de ${Q} au tableau : vues superposées ou repère réutilisé ? (la quantité du tableau est gardée)`);
+  return{attendue:Q,localisees:loc,representations:O.length,restantes:Q==null?null:Math.max(0,Q-loc),depasse:Q!=null&&loc>Q,
+    physiques:phys,roles:O.map(o=>({occurrence:o.j,vue:o.vue||null,type:o.v?o.v.type:null,role:o.role})),notes}}
+
+// Contour du dessin hors nomenclature : à examiner (repère, cote écrite, diagonales) ou parasite probable (cadre de ferraillage,
+// forme isolée sans indice) ; jamais supprimé → {niveau:'examiner'|'parasite', raison}
+function classer(c,v){const A=c.annot||{},I=[];
+  if(A.repere)I.push(`repère « ${A.repere.texte} » voisin`);if(A.cotes)I.push(`cote écrite « ${A.cotes.texte} » voisine`);
+  if((c.remarques||[]).some(m=>/diagonales/.test(m)))I.push('diagonales dessinées (réservation traversante ?)');
+  const dv=v?`vue ${v.id}${v.titre?' « '+v.titre+' »':' (sans titre)'}`:'hors des vues reconnues';
+  if(I.length)return{niveau:'examiner',raison:I.join(' ; ')+' · '+dv};
+  if(v&&/^ferraillage/.test(v.type))return{niveau:'parasite',raison:`parasite probable : dans une vue de ferraillage (cadre, armature), sans repère ni cote · ${dv}`};
+  if(v&&/^(coupe|elevation|detail)$/.test(v.type))return{niveau:'parasite',raison:`parasite probable : forme de ${TYPES[v.type]}, sans repère ni cote · ${dv}`};
+  return{niveau:'parasite',raison:`parasite probable : aucun repère, aucune cote, aucune diagonale · ${dv}`}}
+
+root.CPI=Object.assign(root.CPI||{},{vues:{detecter,situer,consolider,classer,titres,TYPES}});
 })(typeof globalThis!=='undefined'?globalThis:this);
 // ==== modules/import/adaptateur.js ====
 // CoffraPlan — module d'import de plans, composant C : adaptateur CoffraPlan.
@@ -1885,6 +2057,7 @@ function dxiCss(){if(el('dxiCss'))return;document.head.insertAdjacentHTML('befor
 #dxpO .rs.cf{stroke:var(--okt);fill:rgba(46,204,113,.22)}#dxpO .rs.on{stroke:var(--accent);stroke-width:3px;fill:rgba(232,130,12,.30)}
 #dxpO .rs.lk{stroke:var(--okt);stroke-dasharray:4 2;fill:none;cursor:default}#dxpO .rs.pr{stroke:var(--accent);stroke-dasharray:5 2;stroke-width:2.5px}
 #dxpO .rl{fill:#7b4dff;pointer-events:none}#dxpO .ca{fill:var(--redt)}#dxpO .cl{stroke:var(--redt);stroke-width:1.5px;vector-effect:non-scaling-stroke}#dxpO.cm{cursor:crosshair}
+#dxpO .vu{fill:none;stroke:#1f77b4;stroke-width:1.2px;vector-effect:non-scaling-stroke;stroke-dasharray:8 4;pointer-events:none}#dxpO .vl{fill:#1f77b4;pointer-events:none}
 #dxpO .oc{fill:rgba(232,130,12,.12);stroke:var(--accent);stroke-width:1.5px;vector-effect:non-scaling-stroke;stroke-dasharray:3 2}#dxpO .ot{stroke:var(--accent);stroke-width:1.2px;vector-effect:non-scaling-stroke;stroke-dasharray:4 3}
 #dxnT .rp{font-size:11px;margin-top:3px;line-height:1.35}#dxnT .rp .btn{padding:1px 5px;font-size:11px;margin:1px 2px 1px 0}#dxnT .cc-forte{color:var(--okt)}#dxnT .cc-partielle{color:var(--okt)}
 #dxnT .cc-probable,#dxnT .cc-conflit{color:var(--acct)}#dxnT .cc-conflit{font-weight:600}#dxnT .cc-absente,#dxnT .cc-rejete{color:var(--muted)}
@@ -2079,7 +2252,9 @@ function dxnAssoc(){const D=DXI;if(!D.NL.length)return;
   // PDF : seulement après « Analyser le dessin » : rapprochement multi-indices (rapprochement.js), toutes pages
   const ex=D.NA.ecartes.flatMap(e=>e.ids);
   if(D.fmt==='pdf'){D.AS={};D.HR=[];if(D.ana){const RP=CPI.rapprochement.rapprocher(D.NL.map(({N,L})=>({id:L.id,repere:L.repere,dims:L.dims,unite:dxnU(N,L)||null,quantite:L.quantite,page:N.page})),
-      dxrTextes(),D.C,{mm:dxrK,rappels:dxrRappels,exclus:new Set(ex.concat(D.NA.nomenclatures.flatMap(N=>N.ids)))});D.AS=RP.lignes;D.HR=RP.hors;D.ana.colonnes=RP.colonnes}}
+      dxrTextes(),D.C,{mm:dxrK,rappels:dxrRappels,vue:dxrVue,exclus:new Set(ex.concat(D.NA.nomenclatures.flatMap(N=>N.ids)))});D.AS=RP.lignes;D.HR=RP.hors;D.ana.colonnes=RP.colonnes;
+      // occurrences physiques : quantité du tableau = référence, vues comptées une fois
+      D.CS={};D.NL.forEach(({L})=>D.CS[L.id]=CPI.vues.consolider(L,D.AS[L.id],dxrVues()))}}
   else D.AS=CPI.nomenclatures.associer(D.NA.nomenclatures,D.C,D.doc,{uniteDessin:D.u,unites:D.NU,exclus:ex});
   D.NL.forEach(({L},k)=>{const r=D.NR[k],a=dxnAS(L);if(!r.cotesT)r.cotes=dxnPre(k);if(!r.geoT)r.geo=a.statut==='trouvee'&&!r.rej?String(a.principal!=null?a.principal:a.options[0].c):''});dxnLinks()}
 const DXN_AS0={statut:'absente',options:[],reperes:[],note:''};
@@ -2147,7 +2322,7 @@ function dxnEval(moteur,hc){const D=DXI;if(!D.NL||!D.NL.length)return;
     r.x=x;r.st=x.alertes.length?'wn':'ok';r.msg=x.alertes.join(' · ')})}
 function dxnProv(k){const D=DXI,{N,L}=D.NL[k],r=D.NR[k],a=dxnAS(L),g=r.geo!==''?D.C[+r.geo]:null,u=dxnU(N,L);
   return CPI.nomenclatures.provenance(N,L,{forme:r.x.plan.forme,nb:r.x.plan.nb,cotes:r.cotes,dims:dxnDims(r),ref:r.ref.trim().toUpperCase(),uniteTableau:u||null,uniteDessin:D.fmt==='pdf'?'pt':D.u||null,
-    uniteChoisie:!!(u&&!(L.dims&&L.dims.unite)&&!N.unite),geo:g?{c:g,statut:!r.geoT&&a.statut==='trouvee'?'trouvee':'choisie'}:null,rapprochement:D.fmt==='pdf'&&D.ana?dxrRapProv(a,r):null})}
+    uniteChoisie:!!(u&&!(L.dims&&L.dims.unite)&&!N.unite),geo:g?{c:g,statut:!r.geoT&&a.statut==='trouvee'?'trouvee':'choisie'}:null,rapprochement:D.fmt==='pdf'&&D.ana?dxrRapProv(a,r,D.CS[L.id]):null})}
 // Statuts, formes possibles, géométries proposées, bilan (sans reconstruire la liste : garde la saisie en cours)
 function dxnUpd(){const D=DXI;if(!D||!el('dxnT'))return;const lb={ok:'✓ prêt',wn:'⚠ prêt — ',ac:'… ',er:'⛔ non créé — '};
   document.querySelectorAll('#dxnT tr[data-n]').forEach(t=>{const k=+t.dataset.n,r=D.NR[k],{L}=D.NL[k],a=dxnAS(L),dm=dxnDims(r),F=dxnFormes(dm);
@@ -2195,7 +2370,7 @@ async function dxpFile(nom,b){if(el('dxiZ')){el('dxiN').innerHTML=`<b>${esc(nom)
   dxiQuit();const doc=lu.document,cur=coll(),NA=CPI.nomenclatures.analyser(doc),NL=NA.nomenclatures.flatMap(N=>N.lignes.map(L=>({N,L})));
   DXI={fmt:'pdf',nom,doc,pdf:lu.pdf,C:[],R:[],lay:{},u:'',ch:cur.ch,ouv:cur.ouv,ind:'',hCom:'',sel:-1,M:null,NA,NL,NR:NL.map(({L})=>dxnNR(L)),NU:{},nsel:-1,
     vue:NL.length?'n':'p',lk:new Set(),page:NL.length?NL[0].N.page:1,zoom:1,zone:null,zm:false,hl:-1,nz:0,ns:0,tok:0,OC:null,ocJob:null,no:0,ohl:null,
-    cal:{},GP:{},GI:{},OT:{},OM:{},calm:null,rsel:-1,rn:0,ana:null,rJob:null,HR:[]};
+    cal:{},GP:{},GI:{},OT:{},OM:{},VU:{},CS:{},calm:null,rsel:-1,rn:0,ana:null,rJob:null,HR:[]};
   dxnAssoc();if(el('dxiZ'))dxiRender()}
 // Nomenclature reconstruite (zone analysée, ligne saisie ou retirée) sans toucher à l'aperçu
 function dxnRefresh(){const z=el('dxiPN');if(!z)return;const v=z.style.display;z.outerHTML=dxnPane();el('dxiPN').style.display=v;dxnRows();dxiHead()}
@@ -2211,7 +2386,7 @@ function dxpPane(){
     <fieldset><legend>Réservations dessinées</legend><div class="mu">Toutes les pages (ou la zone choisie) : repères lus (texte du PDF, ou OCR des repères dessinés en traits),
       rectangles et cercles, rapprochés de la nomenclature. Simples propositions : rien n'est coché ni créé.</div>
       <label style="display:block;margin-top:4px"><input type="checkbox" id="dxrOcr" checked> lire les repères dessinés en traits (OCR local, quelques secondes par page)</label>
-      <div class="dxp-b" style="margin-top:6px"><button class="btn bs bpr" id="dxrGo" onclick="dxrGo()">🔎 Analyser le dessin</button><button class="btn bs bo" id="dxrStop" onclick="dxrStop()" style="display:none">Arrêter</button></div><div id="dxrM" style="margin-top:4px"></div>
+      <div class="dxp-b" style="margin-top:6px"><button class="btn bs bpr" id="dxrGo" onclick="dxrGo()">🔎 Analyser le dessin</button><button class="btn bs bo" id="dxrStop" onclick="dxrStop()" style="display:none">Arrêter</button><button class="btn bs bo" id="dxrJ" onclick="dxrExport()" disabled title="Tableaux, vues, observations, occurrences, associations, preuves et incertitudes, en JSON (fichier local)">⬇ Analyse (JSON)</button></div><div id="dxrM" style="margin-top:4px"></div>
       <div id="dxrE" style="margin-top:6px"></div></fieldset>
     <fieldset><legend>Zone du tableau</legend><div id="dxpZi" class="mu">Aucune zone choisie.</div>
       <div class="dxp-b" style="margin-top:6px"><button class="btn bs bo" id="dxpZa" onclick="dxpAnalyse()" disabled title="Textes extractibles du PDF : rapide, sans erreur de lecture">Analyser la zone</button>
@@ -2269,7 +2444,7 @@ function dxpZoneTS(z){const D=DXI,cl=(v,a,b)=>Math.min(b,Math.max(a,v)),T=D.doc.
       .map(s=>Object.assign({},s,{a:[cl(s.a[0],z.x0,z.x1),cl(s.a[1],z.y0,z.y1)],b:[cl(s.b[0],z.x0,z.x1),cl(s.b[1],z.y0,z.y1)]}));
   return{T,S,A:CPI.nomenclatures.analyser({fichier:D.doc.fichier,format:'pdf',textes:T,traits:S,signalements:[]})}}
 function dxpAnalyse(){const D=DXI,z=D&&D.zone;if(!z)return;const msg=el('dxpZr'),{T,S,A}=dxpZoneTS(z);
-  if(!A.nomenclatures.length&&T.length){const G=CPI.nomenclatures.textesEnGrille(S,z,T);   // en-tête non reconnu : la grille de traits suffit à ranger les textes
+  if(!A.nomenclatures.length&&!A.ecartes.length&&T.length){const G=CPI.nomenclatures.textesEnGrille(S,z,T);   // en-tête non reconnu (tableau écarté : non) : la grille de traits suffit à ranger les textes
     if(G&&G.textes.length>=3)return dxoGrilleLue({z:Object.assign({},z)},{G,textes:G.textes,mesures:{ms:0,rangees:G.rangees,colonnes:G.lignes[0].length,source:'textes et traits du PDF',dpi:null}},true)}
   if(!A.nomenclatures.length){msg.innerHTML=T.length?`Aucune nomenclature de réservations reconnue dans la zone (${T.length} texte(s) lu(s)${A.ecartes.length?' ; écarté : '+esc(A.ecartes.map(e=>e.raison).join(' ; ')):''}). Rien n'est ajouté : essayer « Reconnaître le tableau (OCR) » ou saisir les lignes ci-dessous.`
     :'La zone ne contient aucun texte extractible (tableau probablement dessiné en tracés ou numérisé). Rien n\'est ajouté : utiliser « Reconnaître le tableau (OCR) » ou saisir les lignes ci-dessous.';return}
@@ -2333,11 +2508,7 @@ function dxoResultat(job,r){const D=DXI,z=job.z,msg=el('dxpZr'),s=Math.round(r.m
   const rows=A.nomenclatures.flatMap(N=>CPI.ocr.grille(N,r.textes)),p=r.mesures.passes[r.mesures.retenue-1];
   rows.forEach(w=>Object.keys(w.cells).forEach(k=>{w.cells[k]=String(w.cells[k]).replace(/\n/g,' ')}));
   const E=A.ecartes.map(e=>`${e.titre?'« '+e.titre.replace(/\n/g,' ')+' » ':''}${e.raison}`);
-  if(!rows.length){msg.innerHTML=`Reconnaissance terminée (${s} s, ${r.textes.length} texte(s) lu(s)) : <b>aucune nomenclature de réservations reconnue</b> dans la zone${E.length?' ; écarté : '+esc(E.join(' ; ')):''}. Rien n'est ajouté.
-    <details class="mu"><summary>Textes reconnus</summary>${esc(r.textes.map(t=>t.texte).join(' · '))}</details>`;
-    if(D.OC){const n=D.OC.rows.filter(w=>w.edite.length||!w.src).length;D.OC.ancienne=true;   // grille précédente gardée (corrections), mais marquée comme telle
-      msg.innerHTML+=`<div style="color:var(--acct)">La grille ci-dessous est celle de la reconnaissance précédente (page ${D.OC.page}, ${D.OC.rows.length} ligne(s)${n?`, ${n} modifiée(s) ou ajoutée(s) par vous`:''}) : elle n'est pas le résultat de cette zone. Gardez-la pour l'ajouter, ou « Fermer la grille ».</div>`;dxoGrille()}
-    return}
+  if(!rows.length)return dxoRien(s,r,E);
   const O=D.OC&&dxoChevauche(D.OC.zone,z)?D.OC:null,{R2,sup,gard}=dxoGarder(rows,O,'cle0');
   D.OC={page:z.page,zone:z,mesures:r.mesures,titre:A.nomenclatures.map(N=>N.titre).filter(Boolean).join(' · '),unite:(A.nomenclatures.find(N=>N.unite)||{}).unite||'',
     uniteLue:(A.nomenclatures.find(N=>N.unite)||{}).unite||'',rows:R2,suppr:sup,ecartes:E,nT:r.textes.length,sel:-1};
@@ -2354,10 +2525,16 @@ function dxoGarder(rows,O,par){let gard=0;if(!O)return{R2:rows,sup:[],gard};
 // Tableau lu cellule par cellule (grille de traits : OCR, ou textes du PDF) → nomenclature (depuisGrille : en-tête lu, ou colonnes
 // à affecter) → grille de vérification. Colonnes réaffectées par l'utilisateur gardées pour une nouvelle lecture de la même zone.
 // Un tableau d'aciers est écarté ; un tableau sans en-tête reconnu est montré quand même (jamais « aucune nomenclature » seul).
+// Zone sans nomenclature de réservations : rien n'est ajouté ; la grille précédente reste (corrections), marquée comme telle
+function dxoRien(s,r,E){const D=DXI,msg=el('dxpZr');
+  msg.innerHTML=`Reconnaissance terminée (${s} s, ${r.textes.length} texte(s) lu(s)) : <b>aucune nomenclature de réservations reconnue</b> dans la zone${E.length?' ; écarté : '+esc(E.join(' ; ')):''}. Rien n'est ajouté.
+    <details class="mu"><summary>Textes reconnus</summary>${esc(r.textes.map(t=>t.texte).join(' · '))}</details>`;
+  if(D.OC){const n=D.OC.rows.filter(w=>w.edite.length||!w.src).length;D.OC.ancienne=true;
+    msg.innerHTML+=`<div style="color:var(--acct)">La grille ci-dessous est celle de la reconnaissance précédente (page ${D.OC.page}, ${D.OC.rows.length} ligne(s)${n?`, ${n} modifiée(s) ou ajoutée(s) par vous`:''}) : elle n'est pas le résultat de cette zone. Gardez-la pour l'ajouter, ou « Fermer la grille ».</div>`;dxoGrille()}}
 function dxoGrilleLue(job,r,pdfTexte){const D=DXI,z=job.z,msg=el('dxpZr'),s=Math.round(r.mesures.ms/100)/10,O0=D.OC&&dxoChevauche(D.OC.zone,z)?D.OC:null;
   const G=Object.assign({fichier:D.doc.fichier,format:'pdf',id:'G'},r.G),cles=O0&&O0.src&&O0.src.nc===Math.max(0,...r.G.lignes.map(l=>l.length))?O0.src.cles:null;
   const {N,entete}=CPI.nomenclatures.depuisGrille(G,cles);
-  if(N.nature==='aciers'){msg.innerHTML=`Lecture terminée (${s} s) : tableau${N.titre?' « '+esc(N.titre.replace(/\n/g,' '))+' »':''} reconnu comme <b>nomenclature d'aciers (ferraillage)</b> : écarté, rien n'est ajouté.`;return}
+  if(N.nature==='aciers')return dxoRien(s,r,[`${N.titre?'« '+N.titre.replace(/\n/g,' ')+' » ':''}tableau reconnu comme nomenclature d'aciers (ferraillage)`]);
   if(!N.lignes.length){msg.innerHTML=`Lecture terminée (${s} s) : grille de ${r.mesures.rangees} rangée(s) × ${r.mesures.colonnes} colonne(s) trouvée(s), mais aucune cellule lisible sous l'en-tête. Rien n'est ajouté : saisie assistée possible ci-dessous.`;return}
   const rows=dxoLignesGrille(N,r.textes),{R2,sup,gard}=dxoGarder(rows,O0,'cle0');
   D.OC={page:z.page,zone:z,mesures:r.mesures,titre:N.titre,unite:N.unite||'',uniteLue:N.unite||'',rows:R2,suppr:sup,ecartes:[],nT:r.textes.length,sel:-1,pdfTexte:!!pdfTexte,
@@ -2450,6 +2627,10 @@ const dxrDans=(b,t)=>t.x>=b[0]&&t.x<=b[2]&&t.y>=b[1]&&t.y<=b[3];
 function dxrTextes(n){const D=DXI,P=n?[n]:D.doc.pages.map(p=>p.n),T=[];
   P.forEach(m=>{const cad=dxrCad(m);D.doc.textes.filter(t=>t.page===m).concat(D.OT[m]||[]).forEach(t=>{if(!cad.some(b=>dxrDans(b,t)))T.push(t)})});return T}
 function dxrRappels(t){const D=DXI,g=D.GP[t.page];if(!g)return[];if(!D.GI[t.page])D.GI[t.page]=CPI.geometrie.index(g);return CPI.geometrie.rappels(g,t,D.GI[t.page])}
+// Vues techniques (toutes pages analysées) et vue d'un point
+const dxrVues=()=>Object.values(DXI.VU).flatMap(x=>x.vues);
+const dxrVue=(p,x,y)=>{const v=DXI.VU[p];return v?CPI.vues.situer(v.carte,x,y):null};
+const dxrVueDe=id=>dxrVues().find(v=>v.id===id)||null;
 function dxrStop(){const D=DXI;if(!D||!D.rJob)return;D.rJob.stop=true;CPI.ocr.arreter()}
 async function dxrGo(){const D=DXI;if(!D||!D.pdf||D.rJob||D.ocJob)return;const z=D.zone&&D.zone.page===D.page?Object.assign({},D.zone):null,
     pages=z?[z.page]:D.doc.pages.filter(p=>!p.erreur).map(p=>p.n),M=el('dxrM'),b=el('dxrGo'),job=D.rJob={stop:false},ocr=!el('dxrOcr')||el('dxrOcr').checked,B=[];
@@ -2459,9 +2640,12 @@ async function dxrGo(){const D=DXI;if(!D||!D.pdf||D.rJob||D.ocJob)return;const z
       const cad=dxrCad(n);
       if(ocr&&!D.OT[n]){const K=CPI.geometrie.blocsTexte(g,{cadres:cad});
         msg(`Page ${n} : ${K.length} bloc(s) de texte dessiné à lire…`);
-        const r=await CPI.ocr.lireBlocs(D.pdf,n,K.slice(0,DXR_BL),{run:'b'+n,annule:()=>job.stop||!ici(),progres:(t,f)=>msg(`Page ${n} : ${t}${f?' ('+Math.round(f*100)+' %)':''}`)});
+        const pf=[...new Set(D.NL.map(({L})=>(CPI.nomenclatures.cleRep(L.repere||'').match(/^[A-Z]{1,4}/)||[''])[0]).filter(Boolean))];
+        const r=await CPI.ocr.lireBlocs(D.pdf,n,K.slice(0,DXR_BL),{run:'b'+n,prefixes:pf,annule:()=>job.stop||!ici(),progres:(t,f)=>msg(`Page ${n} : ${t}${f?' ('+Math.round(f*100)+' %)':''}`)});
         if(!ici())return fin();D.OT[n]=r.textes;D.OM[n]=Object.assign(r.mesures,{trouves:K.length})}
       const res=CPI.geometrie.detecterPage(g,{fichier:D.doc.fichier,textes:dxrTextes(n),cadres:cad,zone:z});
+      // vues techniques de la page (titres, régions) : contours rattachés à leur vue
+      D.VU[n]=CPI.vues.detecter(g,dxrTextes(n),{cadres:cad});res.candidats.forEach(c=>c.vue=CPI.vues.situer(D.VU[n].carte,c.centre[0],c.centre[1]));
       dxrFusion(n,res,z);B.push({n,res})}}
   catch(e){const a=job.stop||String(e&&e.message||e)==='annulé';   // arrêt : le moteur OCR est détruit, son erreur n'en est pas une
     fin(a?'Analyse arrêtée : résultats des pages déjà analysées gardés.':'⛔ Analyse impossible : '+esc(String(e&&e.message||e))+'. Les résultats précédents sont gardés.');
@@ -2474,7 +2658,7 @@ async function dxrGo(){const D=DXI;if(!D||!D.pdf||D.rJob||D.ocJob)return;const z
   fin(`✓ ${z?'Zone de la page '+z.page:pages.length+' page(s)'} : <b>${ok.length} forme(s) possible(s)</b> (${ok.length-nc} rectangle(s), ${nc} cercle(s)) · ${nE} contour(s) écarté(s)`
     +(ocr?` · ${nO} texte(s) dessiné(s) lu(s) par OCR`:'')+(cp?' · <span style="color:var(--acct)">page très chargée : une partie des traits n\'est pas lue</span>':'')
     +(D.NL.length?` · <b>rapprochement : ${dxrBilan().txt}</b>`:'')+(pages.some(n=>!dxrK(n))?' · <span style="color:var(--acct)">page(s) sans échelle : cotes des formes hors nomenclature à saisir</span>':''));
-  dxnRefresh();dxrRender();dxpOver()}
+  if(el('dxrJ'))el('dxrJ').disabled=false;dxnRefresh();dxrRender();dxpOver()}
 // Identité stable d'un contour (page, forme, emprise à 0,5 pt) : une nouvelle analyse garde les corrections du même contour
 // (cotes, hauteur, forme, référence, coche, rattachement à une ligne) ; un contour disparu ne les transmet à aucun autre
 const dxrCle=c=>[c.source.page,c.type].concat(c.bbox.map(v=>Math.round(v*2)/2)).join('|');
@@ -2491,21 +2675,51 @@ function dxrFusion(n,res,z){const D=DXI,old=D.RK||(D.RK=new Map()),run=++D.rn;D.
 // Détail du rapprochement d'une ligne (onglet Nomenclature) : localisations cliquables, cotes vérifiées, quantité, doutes
 function dxrRap(k,a,r){const D=DXI,O=a.occurrences||[],dm=a.dims||{},f=dxiNum;let h='';
   if(r.perdu)h+=`<div class="av">${esc(r.perdu)}</div>`;
-  if(O.length)h+='<div>'+O.map((o,j)=>`<button class="btn bs bo" onclick="event.stopPropagation();dxrLoc(${k},${j})" title="${esc((o.source==='ocr'?`lu par OCR « ${o.brut} », confiance ${o.conf} %`:'texte du PDF')+(o.contour?' · contour '+o.contour:'')+(o.doutes.length?' · '+o.doutes.join(' ; '):''))}">${o.fiable?'':'? '}p. ${o.page} · ${esc(o.texte)}${o.source==='ocr'?' (OCR)':''} ↗</button>`).join('')+'</div>';
+  const cs=D.CS[D.NL[k].L.id],role=j=>cs&&(cs.roles.find(x=>x.occurrence===j)||{}).role;
+  if(O.length)h+='<div>'+O.map((o,j)=>{const v=o.vue&&dxrVueDe(o.vue),lv=v?`${v.id} ${v.libelle}${v.partie?' '+v.partie:''}`:'hors vue';
+    return `<button class="btn bs bo" onclick="event.stopPropagation();dxrLoc(${k},${j})" title="${esc((o.source==='ocr'?`lu par OCR « ${o.brut} », confiance ${o.conf} %`:'texte du PDF')+' · vue : '+(v?v.id+(v.titre?' « '+v.titre+' »':' (sans titre)'):'aucune')+(role(j)==='physique'?' · occurrence comptée':' · représentation (non comptée)')+(o.contour?' · contour '+o.contour:'')+(o.doutes.length?' · '+o.doutes.join(' ; '):''))}">${o.fiable?'':'? '}${role(j)==='physique'?'●':'○'} p. ${o.page} · ${esc(o.texte)}${o.source==='ocr'?' (OCR)':''} · ${esc(lv)} ↗</button>`}).join('')+'</div>';
   const E={confirmee:'✓ confirmée',mesuree:'≈ mesurée',conflit:'⚠ contredite',non_verifiable:'non vérifiable'},V=Object.values(dm);
   if(V.length)h+='<div>Cotes du tableau : '+V.map(x=>`<span title="${esc(x.preuves.join(' ; '))}">${esc(x.libelle)} ${E[x.etat]}</span>`).join(' · ')+'</div>';
   else if(O.length)h+='<div class="mu">pas de cotes l × h ou Ø dans le tableau : rien à vérifier sur le dessin</div>';
-  const q=a.quantite;if(q&&(q.valeur>1||q.localisations>1))h+=`<div class="mu">${q.source?'quantité du tableau : '+esc(q.source)+(q.coherente===true?' (cohérente)':q.coherente===false?' (plus de localisations que de quantité : vues multiples ?)':''):'quantité non indiquée'}${q.lecture?' · '+esc(q.lecture):''}</div>`;
-  const dt=[...new Set(O.flatMap(o=>o.doutes))];if(a.note&&!q.lecture||dt.length)h+=`<div class="mu">${esc([a.note].concat(dt).filter(Boolean).join(' ; '))}</div>`;
+  if(cs)h+=`<div><b>Quantité attendue ${cs.attendue==null?'non indiquée':cs.attendue}</b> · localisée(s) : ${cs.localisees} · représentation(s) : ${cs.representations}${cs.restantes==null?'':' · restante(s) : <b>'+cs.restantes+'</b>'}${cs.depasse?' <span style="color:var(--acct)">⚠ plus que la quantité</span>':''}</div>`;
+  // la lecture de la quantité par page (rapprochement) est remplacée par le décompte par vue
+  const old=(a.quantite||{}).lecture,M=String(a.note||'').split(' ; ').filter(x=>x&&x!==old).concat(cs?cs.notes:[],[...new Set(O.flatMap(o=>o.doutes))]);
+  if(M.length)h+=`<div class="mu">${esc(M.join(' ; '))}</div>`;
   return h}
 function dxrLoc(k,j){const D=DXI,o=(dxnAS(D.NL[k].L).occurrences||[])[j];if(!o)return;D.hl=-1;D.hlo={k,j};D.page=o.page;D.scroll=true;dxnSel(k);dxiVue('p')}
 // Provenance du rapprochement (clé origineImport.rapprochement) : concordance, localisations (page, position, texte brut OCR,
 // confiance, corrections, contour), état de chaque cote du tableau, quantité, rejet par l'utilisateur ; les cotes créées restent celles retenues
-function dxrRapProv(a,r){const q=x=>Math.round(x*100)/100;
+function dxrRapProv(a,r,cs){const q=x=>Math.round(x*100)/100,vu=id=>{const v=id&&dxrVueDe(id);return v?{id:v.id,type:v.type,titre:v.titre,partie:v.partie}:null};
   return{concordance:r.rej?'rejete':a.concordance||'absente',rejete:!!r.rej,note:a.note||'',
-    localisations:(a.occurrences||[]).map(o=>({page:o.page,x:q(o.x),y:q(o.y),texte:o.texte,source:o.source,brut:o.brut,confiance:o.conf,corrections:o.corrections.slice(),
-      zone:o.box?{page:o.box.page,x0:q(o.box.x0),y0:q(o.box.y0),x1:q(o.box.x1),y1:q(o.box.y1),unite:'pt'}:null,fiable:o.fiable,doutes:o.doutes.slice(),contour:o.contour,cotes_voisines:o.cotes.slice()})),
-    cotes:Object.fromEntries(Object.entries(a.dims||{}).map(([n,x])=>[n,{valeur:x.valeur,etat:x.etat,preuves:x.preuves.slice()}])),quantite:a.quantite?JSON.parse(JSON.stringify(a.quantite)):null}}
+    localisations:(a.occurrences||[]).map((o,j)=>({page:o.page,x:q(o.x),y:q(o.y),texte:o.texte,source:o.source,brut:o.brut,confiance:o.conf,corrections:o.corrections.slice(),
+      zone:o.box?{page:o.box.page,x0:q(o.box.x0),y0:q(o.box.y0),x1:q(o.box.x1),y1:q(o.box.y1),unite:'pt'}:null,vue:vu(o.vue),role:cs?(cs.roles.find(x=>x.occurrence===j)||{}).role||null:null,fiable:o.fiable,doutes:o.doutes.slice(),contour:o.contour,cotes_voisines:o.cotes.slice()})),
+    cotes:Object.fromEntries(Object.entries(a.dims||{}).map(([n,x])=>[n,{valeur:x.valeur,etat:x.etat,preuves:x.preuves.slice()}])),quantite:a.quantite?JSON.parse(JSON.stringify(a.quantite)):null,
+    occurrences:cs?{attendue:cs.attendue,localisees:cs.localisees,representations:cs.representations,restantes:cs.restantes,notes:cs.notes.slice()}:null}}
+// Analyse du plan en JSON (préparée pour une future IA locale : aucune IA ici) : tableaux, lignes, vues, observations
+// graphiques (contours, repères localisés), occurrences physiques, associations, preuves des cotes, incertitudes
+function dxrJSON(){const D=DXI,q=x=>Math.round(x*100)/100,bx=b=>b?b.map(q):null,J={format:'coffraplan-analyse-plan',v:1,fichier:D.doc.fichier,
+    tables:D.NA.nomenclatures.map(N=>({id:N.id,page:N.page,titre:N.titre||null,cadre:bx(N.cadre||(N.zone?[N.zone.x0,N.zone.y0,N.zone.x1,N.zone.y1]:null)),rotation:N.rotation||0,
+      source:N.saisie?'saisie':N.ocr?'ocr':N.grilleTexte?'grille':'pdf',colonnes:N.colonnes.map(c=>({titre:c.titre,cle:c.cle,unite:c.unite||null})),qualite:N.qualite})),
+    tableRows:D.NL.map(({N,L},k)=>({id:L.id,table:N.id,rang:L.rang,repere:L.repere||null,designation:L.description||null,quantite:{texte:L.quantite||null,valeur:L.nb||null},
+      dims:L.dims?{type:L.dims.type,texte:L.dims.texte,unite:dxnU(N,L)||null}:null,cellules:L.cellules.slice(),a_verifier:(L.a_verifier||[]).slice()})),
+    views:dxrVues().map(v=>({id:v.id,page:v.page,region:v.region,titre:v.titre,type:v.type,partie:v.partie,echelle:v.echelle,niveau:v.niveau,confiance:v.confiance,motifs:v.motifs})),
+    graphicalObservations:[],physicalOccurrences:[],associations:[],evidence:[],uncertainties:[]};
+  D.C.forEach((c,i)=>{const cl=c.statut==='a_confirmer'&&!D.lk.has(i)?dxrCl(i):null;
+    J.graphicalObservations.push({id:c.id,type:'contour',forme:c.type,page:c.source.page,vue:c.vue||null,bbox:bx(c.bbox),statut:c.statut,rattache:D.lk.has(i),
+      classement:cl,repere:c.annot&&c.annot.repere?c.annot.repere.texte:null,cotes:c.annot&&c.annot.cotes?c.annot.cotes.texte:null,remarques:c.remarques.slice()})});
+  D.NL.forEach(({L},k)=>{const a=dxnAS(L),cs=D.CS[L.id],r=D.NR[k];
+    (a.occurrences||[]).forEach((o,j)=>{const id=`${L.id}/O${j+1}`,role=cs?(cs.roles.find(x=>x.occurrence===j)||{}).role:null;
+      J.graphicalObservations.push({id,type:'repere',page:o.page,vue:o.vue||null,x:q(o.x),y:q(o.y),texte:o.texte,source:o.source,brut:o.brut,confiance:o.conf,fiable:o.fiable});
+      J.associations.push({ligne:L.id,observation:id,type:'repere',role,contour:o.contour});if(o.contour)J.associations.push({ligne:L.id,observation:o.contour,type:'contour',via:id});
+      o.doutes.forEach(m=>J.uncertainties.push({ligne:L.id,observation:id,message:m}))});
+    if(cs){cs.physiques.forEach(p=>J.physicalOccurrences.push({id:`${L.id}#${p.n}`,ligne:L.id,n:p.n,vue:p.vue,page:p.page,x:q(p.x),y:q(p.y),fiable:p.fiable,
+        representations:p.representations.map(j=>`${L.id}/O${j+1}`)}));
+      J.tableRows[k].occurrences={attendue:cs.attendue,localisees:cs.localisees,representations:cs.representations,restantes:cs.restantes};
+      cs.notes.forEach(m=>J.uncertainties.push({ligne:L.id,message:m}))}
+    Object.entries(a.dims||{}).forEach(([n,x])=>J.evidence.push({ligne:L.id,dimension:n,valeur:x.valeur,etat:x.etat,preuves:x.preuves.slice()}));
+    if(r.rej)J.uncertainties.push({ligne:L.id,message:'rapprochement rejeté par l\'utilisateur'})});
+  return J}
+function dxrExport(){const D=DXI;if(!D||!D.ana)return;dlBlob(new Blob([JSON.stringify(dxrJSON(),null,1)],{type:'application/json'}),String(D.nom||'plan').replace(/\.[^.]+$/,'').replace(/[^\w\-]+/g,'_')+'_analyse.json')}
 // Bilan du rapprochement (comptes des concordances, repères lus, doublons évités, formes hors nomenclature)
 function dxrBilan(){const D=DXI,n={forte:0,partielle:0,probable:0,conflit:0,absente:0,rejete:0};let vues=0;
   D.NL.forEach(({L},k)=>{const a=dxnAS(L);n[D.NR[k].rej?'rejete':a.concordance||'absente']++;vues+=Math.max(0,(a.preuves||[]).length-1)});
@@ -2549,7 +2763,7 @@ function dxrProv(i,dm,fo){const D=DXI,c=D.C[i],r=D.R[i],n=c.source.page,e=D.cal[
   if(r.ref.trim().toUpperCase()!==String(A.repere?A.repere.texte:'').toUpperCase().replace(/\s+/g,''))corrige.push('ref');
   const dims={};Object.keys(c.dims).forEach(k=>dims[k]=q(c.dims[k]));
   return{fichier:D.doc.fichier,format:'pdf',type:'detection',page:n,presentation:'Page '+n,id:c.source.id,candidat:c.id,forme_detectee:c.type,
-    unite_source:'pt',unite:'mm',centre:c.centre.map(q),boite:{page:n,x0:q(c.bbox[0]),y0:q(c.bbox[1]),x1:q(c.bbox[2]),y1:q(c.bbox[3]),unite:'pt'},dims_source:dims,zone:c.zone||null,
+    unite_source:'pt',unite:'mm',vue:c.vue||null,centre:c.centre.map(q),boite:{page:n,x0:q(c.bbox[0]),y0:q(c.bbox[1]),x1:q(c.bbox[2]),y1:q(c.bbox[3]),unite:'pt'},dims_source:dims,zone:c.zone||null,
     echelle:e?Object.assign({mm_par_pt:e.k},e.mode==='points'?{mode:'points',a:e.a.map(q),b:e.b.map(q),distance_pt:q(e.pt),distance_mm:e.mm}:{mode:'echelle',echelle:e.ech,texte:e.texte}):null,
     repere:A.repere?A.repere.texte:null,annotation:A.cotes?A.cotes.texte:null,
     cotes:{origine:r.cotesT?'saisie':p.origine||null,proposees:p.cotes||'',retenues:r.cotes.trim()},choix:{forme:fo,ref:r.ref.trim().toUpperCase()},
@@ -2583,6 +2797,8 @@ function dxrEchEff(){const D=DXI;delete D.cal[D.page];dxrApres()}
 // Superposition : contours repérés de la page (violet ; vert : coché ; tirets verts : rattaché à une ligne de nomenclature ;
 // tirets orange : proposés pour la ligne de nomenclature choisie) et points de la calibration
 function dxrOver(H,f){const D=DXI;let h='';const P=D.nsel>=0&&D.NL[D.nsel]?new Set(dxnAS(D.NL[D.nsel].L).options.map(o=>o.c)):new Set();
+  // vues techniques de la page : cadre bleu en tirets et identifiant
+  ((D.VU[D.page]||{}).vues||[]).forEach(v=>{const r=v.region;h+=`<rect class="vu" x="${r[0]}" y="${H-r[3]}" width="${r[2]-r[0]}" height="${r[3]-r[1]}"><title>${esc(v.id+(v.titre?' « '+v.titre+' »':' (sans titre)'))}</title></rect><text class="vl" x="${r[0]+2}" y="${H-r[3]+f}" font-size="${f}">${esc(v.id+' '+v.libelle+(v.partie?' '+v.partie:''))}</text>`});
   // localisations (repères) de la ligne de nomenclature choisie : cadre orange, lignes de rappel suivies en tirets ; repère demandé : surligné
   if(D.nsel>=0&&D.NL[D.nsel])(dxnAS(D.NL[D.nsel].L).occurrences||[]).forEach((o,j)=>{if(o.page!==D.page)return;const w=o.box?o.box.x1-o.box.x0:(o.h||4)*2,m=(o.h||4)*0.4,x0=o.x-w/2-m,y1=o.y+(o.h||4)/2+m;
     h+=`<rect class="${D.hlo&&D.hlo.k===D.nsel&&D.hlo.j===j?'hl':'oc'}" x="${x0}" y="${H-y1}" width="${w+2*m}" height="${(o.h||4)+2*m}"><title>${esc('repère « '+o.texte+' »'+(o.source==='ocr'?' (OCR, confiance '+o.conf+' %)':''))}</title></rect>`
@@ -2603,23 +2819,30 @@ function dxrSel(i,fromSvg){const D=DXI;if(!D||D.zm||D.calm||!D.C[i])return;D.rse
 
 // Tableau des réservations repérées (toutes pages) ; contours rattachés à la nomenclature : dans l'onglet Nomenclature
 function dxrRender(){const D=DXI,Z=el('dxrZ');if(!Z||!D)return;if(!D.C.length){Z.innerHTML='';return}
-  Z.innerHTML=`<fieldset class="dxo"><legend>${D.NL.length?'Formes du dessin hors nomenclature':'Réservations repérées sur le dessin'}</legend><div id="dxrS" style="margin-bottom:4px"></div>
-    <div class="mu" style="margin-bottom:6px">${D.NL.length?'Contours non rattachés à une ligne de la nomenclature (les réservations du tableau sont dans l\'onglet Nomenclature). ':''}Formes du dessin, pas encore des réservations : vérifier chaque ligne sur l'aperçu (clic sur une ligne : contour en orange),
+  // avec une nomenclature : formes hors nomenclature en section secondaire repliée (rien n'est supprimé) ; sans : liste principale
+  const nl=D.NL.length,V=dxrVues(),ouv=el('dxrH')&&el('dxrH').open;   // section ouverte par l'utilisateur : le reste après un nouveau rendu
+  Z.innerHTML=`<fieldset class="dxo"><legend>${nl?'Formes du dessin hors nomenclature':'Réservations repérées sur le dessin'}</legend>
+    ${V.length?`<div class="mu" style="margin-bottom:4px" id="dxrVu"><b>${V.length} vue(s) reconnue(s)</b> (cadres bleus sur l'aperçu) : ${V.map(v=>`<span title="${esc((v.titre?'« '+v.titre+' »':'sans titre')+' · confiance '+v.confiance+(v.motifs.length?' · '+v.motifs.join(' ; '):'')+(v.echelle?' · échelle 1/'+v.echelle.valeur:''))}">${esc(v.id)} ${esc(v.libelle)}${v.partie?' '+esc(v.partie):''}</span>`).join(' · ')}</div>`:''}
+    <${nl?'details id="dxrH"'+(ouv?' open':''):'div'}>${nl?'<summary id="dxrHs"></summary>':''}<div id="dxrS" style="margin-bottom:4px"></div>
+    <div class="mu" style="margin-bottom:6px">${nl?'Contours non rattachés à une ligne de la nomenclature (les réservations du tableau sont dans l\'onglet Nomenclature), avec la raison de leur proposition ; parasites probables en fin de liste. ':''}Formes du dessin, pas encore des réservations : vérifier chaque ligne sur l'aperçu (clic sur une ligne : contour en orange),
     corriger forme, cotes, hauteur et référence, puis cocher. Cotes proposées : cote écrite à côté du contour, ou mesure à l'échelle de la page (à vérifier).</div>
     <div style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap"><button class="btn bs bo" onclick="dxrAll(false)">Tout décocher</button></div>
-    <div class="dxi-t"><table class="ser" id="dxrT"><thead><tr><th>Créer</th><th>#</th><th>Page</th><th>Repère</th><th>Forme</th><th>Cotes (mm)</th><th>Origine des cotes</th><th>h (mm)</th><th>Réf.</th><th>État</th></tr></thead><tbody></tbody></table></div>
+    <div class="dxi-t"><table class="ser" id="dxrT"><thead><tr><th>Créer</th><th>#</th><th>Page · vue</th><th>Repère</th><th>Raison</th><th>Forme</th><th>Cotes (mm)</th><th>Origine des cotes</th><th>h (mm)</th><th>Réf.</th><th>État</th></tr></thead><tbody></tbody></table></div>
+    </${nl?'details':'div'}>
     <details id="dxrNP"><summary></summary><table class="ser"><thead><tr><th>#</th><th>Page</th><th>Forme</th><th>Dessin</th><th>Raison</th></tr></thead><tbody></tbody></table></details></fieldset>`;
   dxrRows();dxiUpd()}
-const dxrVis=()=>DXI.C.map((c,i)=>i).filter(i=>DXI.C[i].statut==='a_confirmer'&&!DXI.lk.has(i));
+// Classement d'un contour hors nomenclature (à examiner ou parasite probable, avec sa raison) ; à examiner en tête
+const dxrCl=i=>CPI.vues.classer(DXI.C[i],DXI.C[i].vue?dxrVueDe(DXI.C[i].vue):null);
+const dxrVis=()=>{const I=DXI.C.map((c,i)=>i).filter(i=>DXI.C[i].statut==='a_confirmer'&&!DXI.lk.has(i)),p=I.filter(i=>dxrCl(i).niveau==='parasite');return I.filter(i=>!p.includes(i)).concat(p)};
 function dxrRows(){const D=DXI,T=el('dxrT');if(!T)return;const V=dxrVis(),np=D.C.map((c,i)=>i).filter(i=>D.C[i].statut!=='a_confirmer');T.dataset.v=V.join();
-  T.tBodies[0].innerHTML=V.length?V.map(i=>{const c=D.C[i],r=D.R[i],A=c.annot||{};
+  T.tBodies[0].innerHTML=V.length?V.map(i=>{const c=D.C[i],r=D.R[i],A=c.annot||{},cl=dxrCl(i);
     return `<tr data-r="${i}" onclick="dxrSel(${i})"${i===D.rsel?' class="on"':''}><td><input type="checkbox" data-k="conf"${r.conf?' checked':''} aria-label="Créer ${esc(c.id)}" onchange="DXI.R[${i}].conf=this.checked;dxiUpd()"></td>
-      <td>${esc(c.id)}</td><td>${c.source.page}</td><td>${esc(A.repere?A.repere.texte:'—')}</td><td><select class="fi" data-k="forme" onchange="DXI.R[${i}].forme=this.value;dxiUpd()"></select></td>
+      <td>${esc(c.id)}</td><td>${c.source.page}${c.vue?' · '+esc(c.vue):''}</td><td>${esc(A.repere?A.repere.texte:'—')}</td><td class="mu">${esc(cl.raison)}</td><td><select class="fi" data-k="forme" onchange="DXI.R[${i}].forme=this.value;dxiUpd()"></select></td>
       <td><input class="fi" data-k="cotes" style="width:96px" value="${esc(r.cotes)}" placeholder="${esc(A.cotes?A.cotes.texte:'à saisir')}" oninput="DXI.R[${i}].cotes=this.value;DXI.R[${i}].cotesT=true;dxiUpd()">
         <div class="mu">dessin : ${esc(dxiDims(c))}</div></td><td class="og"></td>
       <td><input class="fi" data-k="h" style="width:62px" value="${esc(r.h)}" placeholder="${esc(D.hCom.trim()||'à saisir')}" oninput="DXI.R[${i}].h=this.value;dxiUpd()"></td>
       <td><input class="fi" data-k="ref" style="width:72px" value="${esc(r.ref)}" placeholder="auto" oninput="DXI.R[${i}].ref=this.value;dxiUpd()"></td><td class="st"></td></tr>`}).join('')
-    :`<tr><td colspan="10" style="color:var(--muted)">Aucune réservation proposée${D.lk.size?' (contours rattachés à la nomenclature : onglet Nomenclature)':''}.</td></tr>`;
+    :`<tr><td colspan="11" style="color:var(--muted)">Aucune réservation proposée${D.lk.size?' (contours rattachés à la nomenclature : onglet Nomenclature)':''}.</td></tr>`;
   const N=el('dxrNP');N.querySelector('summary').textContent=`Contours écartés, non exploitables (${np.length})`;
   N.querySelector('tbody').innerHTML=np.slice(0,DXI_NP).map(i=>{const c=D.C[i];return `<tr class="np"><td>${esc(c.id)}</td><td>${c.source.page}</td><td>${c.type==='circ'?'cercle':'rectangle'}</td><td>${esc(dxiDims(c))}</td><td>${esc(c.remarques.join(' · '))}</td></tr>`}).join('')
     +(np.length>DXI_NP?`<tr class="np"><td colspan="5">… et ${np.length-DXI_NP} autre(s)</td></tr>`:'')}
@@ -2640,7 +2863,9 @@ function dxrUpd(){const D=DXI,T=el('dxrT');if(!T)return;if(T.dataset.v!==dxrVis(
     const s=t.querySelector('.st');s.className='st '+(et==='rep'?'ok':et==='er'?'er':'wn');
     s.innerHTML=esc(et==='rep'?'✓ repérée':et==='conf'?'≈ à confirmer':et==='ac'?'… '+r.msg:'⛔ non créé — '+r.msg)+(pr&&(doute.length||r.msg)?`<div class="mu">${esc(doute.concat(r.msg?[r.msg]:[]).join(' · '))}</div>`:'')});
   const V=dxrVis(),cf=V.filter(i=>D.R[i].conf).length,nE=D.C.filter(c=>c.statut!=='a_confirmer').length;
-  el('dxrS').innerHTML=`<b>${V.length} réservation(s) proposée(s)</b> : ${n.rep} repérée(s), ${n.conf} à confirmer, ${n.ac} à compléter${n.er?`, ${n.er} refusée(s)`:''} · ${nE} non exploitable(s)`
+  const nP=V.filter(i=>dxrCl(i).niveau==='parasite').length;
+  if(el('dxrHs'))el('dxrHs').textContent=`Formes hors nomenclature (${V.length}) : ${V.length-nP} à examiner, ${nP} parasite(s) probable(s) · ${V.filter(i=>D.R[i].conf).length} cochée(s)`;
+  el('dxrS').innerHTML=`<b>${V.length} réservation(s) proposée(s)</b> (${V.length-nP} à examiner, ${nP} parasite(s) probable(s)) : ${n.rep} repérée(s), ${n.conf} à confirmer, ${n.ac} à compléter${n.er?`, ${n.er} refusée(s)`:''} · ${nE} non exploitable(s)`
     +(D.lk.size?` · ${D.lk.size} rattachée(s) à la nomenclature`:'')+` · ${cf} cochée(s) · <b>${dxiReady().length} à créer</b>`;
   dxpOver()}
 </script>

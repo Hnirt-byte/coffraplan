@@ -63,6 +63,7 @@ function dxiCss(){if(el('dxiCss'))return;document.head.insertAdjacentHTML('befor
 #dxpO .rs.cf{stroke:var(--okt);fill:rgba(46,204,113,.22)}#dxpO .rs.on{stroke:var(--accent);stroke-width:3px;fill:rgba(232,130,12,.30)}
 #dxpO .rs.lk{stroke:var(--okt);stroke-dasharray:4 2;fill:none;cursor:default}#dxpO .rs.pr{stroke:var(--accent);stroke-dasharray:5 2;stroke-width:2.5px}
 #dxpO .rl{fill:#7b4dff;pointer-events:none}#dxpO .ca{fill:var(--redt)}#dxpO .cl{stroke:var(--redt);stroke-width:1.5px;vector-effect:non-scaling-stroke}#dxpO.cm{cursor:crosshair}
+#dxpO .vu{fill:none;stroke:#1f77b4;stroke-width:1.2px;vector-effect:non-scaling-stroke;stroke-dasharray:8 4;pointer-events:none}#dxpO .vl{fill:#1f77b4;pointer-events:none}
 #dxpO .oc{fill:rgba(232,130,12,.12);stroke:var(--accent);stroke-width:1.5px;vector-effect:non-scaling-stroke;stroke-dasharray:3 2}#dxpO .ot{stroke:var(--accent);stroke-width:1.2px;vector-effect:non-scaling-stroke;stroke-dasharray:4 3}
 #dxnT .rp{font-size:11px;margin-top:3px;line-height:1.35}#dxnT .rp .btn{padding:1px 5px;font-size:11px;margin:1px 2px 1px 0}#dxnT .cc-forte{color:var(--okt)}#dxnT .cc-partielle{color:var(--okt)}
 #dxnT .cc-probable,#dxnT .cc-conflit{color:var(--acct)}#dxnT .cc-conflit{font-weight:600}#dxnT .cc-absente,#dxnT .cc-rejete{color:var(--muted)}
@@ -257,7 +258,9 @@ function dxnAssoc(){const D=DXI;if(!D.NL.length)return;
   // PDF : seulement après « Analyser le dessin » : rapprochement multi-indices (rapprochement.js), toutes pages
   const ex=D.NA.ecartes.flatMap(e=>e.ids);
   if(D.fmt==='pdf'){D.AS={};D.HR=[];if(D.ana){const RP=CPI.rapprochement.rapprocher(D.NL.map(({N,L})=>({id:L.id,repere:L.repere,dims:L.dims,unite:dxnU(N,L)||null,quantite:L.quantite,page:N.page})),
-      dxrTextes(),D.C,{mm:dxrK,rappels:dxrRappels,exclus:new Set(ex.concat(D.NA.nomenclatures.flatMap(N=>N.ids)))});D.AS=RP.lignes;D.HR=RP.hors;D.ana.colonnes=RP.colonnes}}
+      dxrTextes(),D.C,{mm:dxrK,rappels:dxrRappels,vue:dxrVue,exclus:new Set(ex.concat(D.NA.nomenclatures.flatMap(N=>N.ids)))});D.AS=RP.lignes;D.HR=RP.hors;D.ana.colonnes=RP.colonnes;
+      // occurrences physiques : quantité du tableau = référence, vues comptées une fois
+      D.CS={};D.NL.forEach(({L})=>D.CS[L.id]=CPI.vues.consolider(L,D.AS[L.id],dxrVues()))}}
   else D.AS=CPI.nomenclatures.associer(D.NA.nomenclatures,D.C,D.doc,{uniteDessin:D.u,unites:D.NU,exclus:ex});
   D.NL.forEach(({L},k)=>{const r=D.NR[k],a=dxnAS(L);if(!r.cotesT)r.cotes=dxnPre(k);if(!r.geoT)r.geo=a.statut==='trouvee'&&!r.rej?String(a.principal!=null?a.principal:a.options[0].c):''});dxnLinks()}
 const DXN_AS0={statut:'absente',options:[],reperes:[],note:''};
@@ -325,7 +328,7 @@ function dxnEval(moteur,hc){const D=DXI;if(!D.NL||!D.NL.length)return;
     r.x=x;r.st=x.alertes.length?'wn':'ok';r.msg=x.alertes.join(' · ')})}
 function dxnProv(k){const D=DXI,{N,L}=D.NL[k],r=D.NR[k],a=dxnAS(L),g=r.geo!==''?D.C[+r.geo]:null,u=dxnU(N,L);
   return CPI.nomenclatures.provenance(N,L,{forme:r.x.plan.forme,nb:r.x.plan.nb,cotes:r.cotes,dims:dxnDims(r),ref:r.ref.trim().toUpperCase(),uniteTableau:u||null,uniteDessin:D.fmt==='pdf'?'pt':D.u||null,
-    uniteChoisie:!!(u&&!(L.dims&&L.dims.unite)&&!N.unite),geo:g?{c:g,statut:!r.geoT&&a.statut==='trouvee'?'trouvee':'choisie'}:null,rapprochement:D.fmt==='pdf'&&D.ana?dxrRapProv(a,r):null})}
+    uniteChoisie:!!(u&&!(L.dims&&L.dims.unite)&&!N.unite),geo:g?{c:g,statut:!r.geoT&&a.statut==='trouvee'?'trouvee':'choisie'}:null,rapprochement:D.fmt==='pdf'&&D.ana?dxrRapProv(a,r,D.CS[L.id]):null})}
 // Statuts, formes possibles, géométries proposées, bilan (sans reconstruire la liste : garde la saisie en cours)
 function dxnUpd(){const D=DXI;if(!D||!el('dxnT'))return;const lb={ok:'✓ prêt',wn:'⚠ prêt — ',ac:'… ',er:'⛔ non créé — '};
   document.querySelectorAll('#dxnT tr[data-n]').forEach(t=>{const k=+t.dataset.n,r=D.NR[k],{L}=D.NL[k],a=dxnAS(L),dm=dxnDims(r),F=dxnFormes(dm);
@@ -373,7 +376,7 @@ async function dxpFile(nom,b){if(el('dxiZ')){el('dxiN').innerHTML=`<b>${esc(nom)
   dxiQuit();const doc=lu.document,cur=coll(),NA=CPI.nomenclatures.analyser(doc),NL=NA.nomenclatures.flatMap(N=>N.lignes.map(L=>({N,L})));
   DXI={fmt:'pdf',nom,doc,pdf:lu.pdf,C:[],R:[],lay:{},u:'',ch:cur.ch,ouv:cur.ouv,ind:'',hCom:'',sel:-1,M:null,NA,NL,NR:NL.map(({L})=>dxnNR(L)),NU:{},nsel:-1,
     vue:NL.length?'n':'p',lk:new Set(),page:NL.length?NL[0].N.page:1,zoom:1,zone:null,zm:false,hl:-1,nz:0,ns:0,tok:0,OC:null,ocJob:null,no:0,ohl:null,
-    cal:{},GP:{},GI:{},OT:{},OM:{},calm:null,rsel:-1,rn:0,ana:null,rJob:null,HR:[]};
+    cal:{},GP:{},GI:{},OT:{},OM:{},VU:{},CS:{},calm:null,rsel:-1,rn:0,ana:null,rJob:null,HR:[]};
   dxnAssoc();if(el('dxiZ'))dxiRender()}
 // Nomenclature reconstruite (zone analysée, ligne saisie ou retirée) sans toucher à l'aperçu
 function dxnRefresh(){const z=el('dxiPN');if(!z)return;const v=z.style.display;z.outerHTML=dxnPane();el('dxiPN').style.display=v;dxnRows();dxiHead()}
@@ -389,7 +392,7 @@ function dxpPane(){
     <fieldset><legend>Réservations dessinées</legend><div class="mu">Toutes les pages (ou la zone choisie) : repères lus (texte du PDF, ou OCR des repères dessinés en traits),
       rectangles et cercles, rapprochés de la nomenclature. Simples propositions : rien n'est coché ni créé.</div>
       <label style="display:block;margin-top:4px"><input type="checkbox" id="dxrOcr" checked> lire les repères dessinés en traits (OCR local, quelques secondes par page)</label>
-      <div class="dxp-b" style="margin-top:6px"><button class="btn bs bpr" id="dxrGo" onclick="dxrGo()">🔎 Analyser le dessin</button><button class="btn bs bo" id="dxrStop" onclick="dxrStop()" style="display:none">Arrêter</button></div><div id="dxrM" style="margin-top:4px"></div>
+      <div class="dxp-b" style="margin-top:6px"><button class="btn bs bpr" id="dxrGo" onclick="dxrGo()">🔎 Analyser le dessin</button><button class="btn bs bo" id="dxrStop" onclick="dxrStop()" style="display:none">Arrêter</button><button class="btn bs bo" id="dxrJ" onclick="dxrExport()" disabled title="Tableaux, vues, observations, occurrences, associations, preuves et incertitudes, en JSON (fichier local)">⬇ Analyse (JSON)</button></div><div id="dxrM" style="margin-top:4px"></div>
       <div id="dxrE" style="margin-top:6px"></div></fieldset>
     <fieldset><legend>Zone du tableau</legend><div id="dxpZi" class="mu">Aucune zone choisie.</div>
       <div class="dxp-b" style="margin-top:6px"><button class="btn bs bo" id="dxpZa" onclick="dxpAnalyse()" disabled title="Textes extractibles du PDF : rapide, sans erreur de lecture">Analyser la zone</button>
@@ -447,7 +450,7 @@ function dxpZoneTS(z){const D=DXI,cl=(v,a,b)=>Math.min(b,Math.max(a,v)),T=D.doc.
       .map(s=>Object.assign({},s,{a:[cl(s.a[0],z.x0,z.x1),cl(s.a[1],z.y0,z.y1)],b:[cl(s.b[0],z.x0,z.x1),cl(s.b[1],z.y0,z.y1)]}));
   return{T,S,A:CPI.nomenclatures.analyser({fichier:D.doc.fichier,format:'pdf',textes:T,traits:S,signalements:[]})}}
 function dxpAnalyse(){const D=DXI,z=D&&D.zone;if(!z)return;const msg=el('dxpZr'),{T,S,A}=dxpZoneTS(z);
-  if(!A.nomenclatures.length&&T.length){const G=CPI.nomenclatures.textesEnGrille(S,z,T);   // en-tête non reconnu : la grille de traits suffit à ranger les textes
+  if(!A.nomenclatures.length&&!A.ecartes.length&&T.length){const G=CPI.nomenclatures.textesEnGrille(S,z,T);   // en-tête non reconnu (tableau écarté : non) : la grille de traits suffit à ranger les textes
     if(G&&G.textes.length>=3)return dxoGrilleLue({z:Object.assign({},z)},{G,textes:G.textes,mesures:{ms:0,rangees:G.rangees,colonnes:G.lignes[0].length,source:'textes et traits du PDF',dpi:null}},true)}
   if(!A.nomenclatures.length){msg.innerHTML=T.length?`Aucune nomenclature de réservations reconnue dans la zone (${T.length} texte(s) lu(s)${A.ecartes.length?' ; écarté : '+esc(A.ecartes.map(e=>e.raison).join(' ; ')):''}). Rien n'est ajouté : essayer « Reconnaître le tableau (OCR) » ou saisir les lignes ci-dessous.`
     :'La zone ne contient aucun texte extractible (tableau probablement dessiné en tracés ou numérisé). Rien n\'est ajouté : utiliser « Reconnaître le tableau (OCR) » ou saisir les lignes ci-dessous.';return}
@@ -511,11 +514,7 @@ function dxoResultat(job,r){const D=DXI,z=job.z,msg=el('dxpZr'),s=Math.round(r.m
   const rows=A.nomenclatures.flatMap(N=>CPI.ocr.grille(N,r.textes)),p=r.mesures.passes[r.mesures.retenue-1];
   rows.forEach(w=>Object.keys(w.cells).forEach(k=>{w.cells[k]=String(w.cells[k]).replace(/\n/g,' ')}));
   const E=A.ecartes.map(e=>`${e.titre?'« '+e.titre.replace(/\n/g,' ')+' » ':''}${e.raison}`);
-  if(!rows.length){msg.innerHTML=`Reconnaissance terminée (${s} s, ${r.textes.length} texte(s) lu(s)) : <b>aucune nomenclature de réservations reconnue</b> dans la zone${E.length?' ; écarté : '+esc(E.join(' ; ')):''}. Rien n'est ajouté.
-    <details class="mu"><summary>Textes reconnus</summary>${esc(r.textes.map(t=>t.texte).join(' · '))}</details>`;
-    if(D.OC){const n=D.OC.rows.filter(w=>w.edite.length||!w.src).length;D.OC.ancienne=true;   // grille précédente gardée (corrections), mais marquée comme telle
-      msg.innerHTML+=`<div style="color:var(--acct)">La grille ci-dessous est celle de la reconnaissance précédente (page ${D.OC.page}, ${D.OC.rows.length} ligne(s)${n?`, ${n} modifiée(s) ou ajoutée(s) par vous`:''}) : elle n'est pas le résultat de cette zone. Gardez-la pour l'ajouter, ou « Fermer la grille ».</div>`;dxoGrille()}
-    return}
+  if(!rows.length)return dxoRien(s,r,E);
   const O=D.OC&&dxoChevauche(D.OC.zone,z)?D.OC:null,{R2,sup,gard}=dxoGarder(rows,O,'cle0');
   D.OC={page:z.page,zone:z,mesures:r.mesures,titre:A.nomenclatures.map(N=>N.titre).filter(Boolean).join(' · '),unite:(A.nomenclatures.find(N=>N.unite)||{}).unite||'',
     uniteLue:(A.nomenclatures.find(N=>N.unite)||{}).unite||'',rows:R2,suppr:sup,ecartes:E,nT:r.textes.length,sel:-1};
@@ -532,10 +531,16 @@ function dxoGarder(rows,O,par){let gard=0;if(!O)return{R2:rows,sup:[],gard};
 // Tableau lu cellule par cellule (grille de traits : OCR, ou textes du PDF) → nomenclature (depuisGrille : en-tête lu, ou colonnes
 // à affecter) → grille de vérification. Colonnes réaffectées par l'utilisateur gardées pour une nouvelle lecture de la même zone.
 // Un tableau d'aciers est écarté ; un tableau sans en-tête reconnu est montré quand même (jamais « aucune nomenclature » seul).
+// Zone sans nomenclature de réservations : rien n'est ajouté ; la grille précédente reste (corrections), marquée comme telle
+function dxoRien(s,r,E){const D=DXI,msg=el('dxpZr');
+  msg.innerHTML=`Reconnaissance terminée (${s} s, ${r.textes.length} texte(s) lu(s)) : <b>aucune nomenclature de réservations reconnue</b> dans la zone${E.length?' ; écarté : '+esc(E.join(' ; ')):''}. Rien n'est ajouté.
+    <details class="mu"><summary>Textes reconnus</summary>${esc(r.textes.map(t=>t.texte).join(' · '))}</details>`;
+  if(D.OC){const n=D.OC.rows.filter(w=>w.edite.length||!w.src).length;D.OC.ancienne=true;
+    msg.innerHTML+=`<div style="color:var(--acct)">La grille ci-dessous est celle de la reconnaissance précédente (page ${D.OC.page}, ${D.OC.rows.length} ligne(s)${n?`, ${n} modifiée(s) ou ajoutée(s) par vous`:''}) : elle n'est pas le résultat de cette zone. Gardez-la pour l'ajouter, ou « Fermer la grille ».</div>`;dxoGrille()}}
 function dxoGrilleLue(job,r,pdfTexte){const D=DXI,z=job.z,msg=el('dxpZr'),s=Math.round(r.mesures.ms/100)/10,O0=D.OC&&dxoChevauche(D.OC.zone,z)?D.OC:null;
   const G=Object.assign({fichier:D.doc.fichier,format:'pdf',id:'G'},r.G),cles=O0&&O0.src&&O0.src.nc===Math.max(0,...r.G.lignes.map(l=>l.length))?O0.src.cles:null;
   const {N,entete}=CPI.nomenclatures.depuisGrille(G,cles);
-  if(N.nature==='aciers'){msg.innerHTML=`Lecture terminée (${s} s) : tableau${N.titre?' « '+esc(N.titre.replace(/\n/g,' '))+' »':''} reconnu comme <b>nomenclature d'aciers (ferraillage)</b> : écarté, rien n'est ajouté.`;return}
+  if(N.nature==='aciers')return dxoRien(s,r,[`${N.titre?'« '+N.titre.replace(/\n/g,' ')+' » ':''}tableau reconnu comme nomenclature d'aciers (ferraillage)`]);
   if(!N.lignes.length){msg.innerHTML=`Lecture terminée (${s} s) : grille de ${r.mesures.rangees} rangée(s) × ${r.mesures.colonnes} colonne(s) trouvée(s), mais aucune cellule lisible sous l'en-tête. Rien n'est ajouté : saisie assistée possible ci-dessous.`;return}
   const rows=dxoLignesGrille(N,r.textes),{R2,sup,gard}=dxoGarder(rows,O0,'cle0');
   D.OC={page:z.page,zone:z,mesures:r.mesures,titre:N.titre,unite:N.unite||'',uniteLue:N.unite||'',rows:R2,suppr:sup,ecartes:[],nT:r.textes.length,sel:-1,pdfTexte:!!pdfTexte,
@@ -628,6 +633,10 @@ const dxrDans=(b,t)=>t.x>=b[0]&&t.x<=b[2]&&t.y>=b[1]&&t.y<=b[3];
 function dxrTextes(n){const D=DXI,P=n?[n]:D.doc.pages.map(p=>p.n),T=[];
   P.forEach(m=>{const cad=dxrCad(m);D.doc.textes.filter(t=>t.page===m).concat(D.OT[m]||[]).forEach(t=>{if(!cad.some(b=>dxrDans(b,t)))T.push(t)})});return T}
 function dxrRappels(t){const D=DXI,g=D.GP[t.page];if(!g)return[];if(!D.GI[t.page])D.GI[t.page]=CPI.geometrie.index(g);return CPI.geometrie.rappels(g,t,D.GI[t.page])}
+// Vues techniques (toutes pages analysées) et vue d'un point
+const dxrVues=()=>Object.values(DXI.VU).flatMap(x=>x.vues);
+const dxrVue=(p,x,y)=>{const v=DXI.VU[p];return v?CPI.vues.situer(v.carte,x,y):null};
+const dxrVueDe=id=>dxrVues().find(v=>v.id===id)||null;
 function dxrStop(){const D=DXI;if(!D||!D.rJob)return;D.rJob.stop=true;CPI.ocr.arreter()}
 async function dxrGo(){const D=DXI;if(!D||!D.pdf||D.rJob||D.ocJob)return;const z=D.zone&&D.zone.page===D.page?Object.assign({},D.zone):null,
     pages=z?[z.page]:D.doc.pages.filter(p=>!p.erreur).map(p=>p.n),M=el('dxrM'),b=el('dxrGo'),job=D.rJob={stop:false},ocr=!el('dxrOcr')||el('dxrOcr').checked,B=[];
@@ -637,9 +646,12 @@ async function dxrGo(){const D=DXI;if(!D||!D.pdf||D.rJob||D.ocJob)return;const z
       const cad=dxrCad(n);
       if(ocr&&!D.OT[n]){const K=CPI.geometrie.blocsTexte(g,{cadres:cad});
         msg(`Page ${n} : ${K.length} bloc(s) de texte dessiné à lire…`);
-        const r=await CPI.ocr.lireBlocs(D.pdf,n,K.slice(0,DXR_BL),{run:'b'+n,annule:()=>job.stop||!ici(),progres:(t,f)=>msg(`Page ${n} : ${t}${f?' ('+Math.round(f*100)+' %)':''}`)});
+        const pf=[...new Set(D.NL.map(({L})=>(CPI.nomenclatures.cleRep(L.repere||'').match(/^[A-Z]{1,4}/)||[''])[0]).filter(Boolean))];
+        const r=await CPI.ocr.lireBlocs(D.pdf,n,K.slice(0,DXR_BL),{run:'b'+n,prefixes:pf,annule:()=>job.stop||!ici(),progres:(t,f)=>msg(`Page ${n} : ${t}${f?' ('+Math.round(f*100)+' %)':''}`)});
         if(!ici())return fin();D.OT[n]=r.textes;D.OM[n]=Object.assign(r.mesures,{trouves:K.length})}
       const res=CPI.geometrie.detecterPage(g,{fichier:D.doc.fichier,textes:dxrTextes(n),cadres:cad,zone:z});
+      // vues techniques de la page (titres, régions) : contours rattachés à leur vue
+      D.VU[n]=CPI.vues.detecter(g,dxrTextes(n),{cadres:cad});res.candidats.forEach(c=>c.vue=CPI.vues.situer(D.VU[n].carte,c.centre[0],c.centre[1]));
       dxrFusion(n,res,z);B.push({n,res})}}
   catch(e){const a=job.stop||String(e&&e.message||e)==='annulé';   // arrêt : le moteur OCR est détruit, son erreur n'en est pas une
     fin(a?'Analyse arrêtée : résultats des pages déjà analysées gardés.':'⛔ Analyse impossible : '+esc(String(e&&e.message||e))+'. Les résultats précédents sont gardés.');
@@ -652,7 +664,7 @@ async function dxrGo(){const D=DXI;if(!D||!D.pdf||D.rJob||D.ocJob)return;const z
   fin(`✓ ${z?'Zone de la page '+z.page:pages.length+' page(s)'} : <b>${ok.length} forme(s) possible(s)</b> (${ok.length-nc} rectangle(s), ${nc} cercle(s)) · ${nE} contour(s) écarté(s)`
     +(ocr?` · ${nO} texte(s) dessiné(s) lu(s) par OCR`:'')+(cp?' · <span style="color:var(--acct)">page très chargée : une partie des traits n\'est pas lue</span>':'')
     +(D.NL.length?` · <b>rapprochement : ${dxrBilan().txt}</b>`:'')+(pages.some(n=>!dxrK(n))?' · <span style="color:var(--acct)">page(s) sans échelle : cotes des formes hors nomenclature à saisir</span>':''));
-  dxnRefresh();dxrRender();dxpOver()}
+  if(el('dxrJ'))el('dxrJ').disabled=false;dxnRefresh();dxrRender();dxpOver()}
 // Identité stable d'un contour (page, forme, emprise à 0,5 pt) : une nouvelle analyse garde les corrections du même contour
 // (cotes, hauteur, forme, référence, coche, rattachement à une ligne) ; un contour disparu ne les transmet à aucun autre
 const dxrCle=c=>[c.source.page,c.type].concat(c.bbox.map(v=>Math.round(v*2)/2)).join('|');
@@ -669,21 +681,51 @@ function dxrFusion(n,res,z){const D=DXI,old=D.RK||(D.RK=new Map()),run=++D.rn;D.
 // Détail du rapprochement d'une ligne (onglet Nomenclature) : localisations cliquables, cotes vérifiées, quantité, doutes
 function dxrRap(k,a,r){const D=DXI,O=a.occurrences||[],dm=a.dims||{},f=dxiNum;let h='';
   if(r.perdu)h+=`<div class="av">${esc(r.perdu)}</div>`;
-  if(O.length)h+='<div>'+O.map((o,j)=>`<button class="btn bs bo" onclick="event.stopPropagation();dxrLoc(${k},${j})" title="${esc((o.source==='ocr'?`lu par OCR « ${o.brut} », confiance ${o.conf} %`:'texte du PDF')+(o.contour?' · contour '+o.contour:'')+(o.doutes.length?' · '+o.doutes.join(' ; '):''))}">${o.fiable?'':'? '}p. ${o.page} · ${esc(o.texte)}${o.source==='ocr'?' (OCR)':''} ↗</button>`).join('')+'</div>';
+  const cs=D.CS[D.NL[k].L.id],role=j=>cs&&(cs.roles.find(x=>x.occurrence===j)||{}).role;
+  if(O.length)h+='<div>'+O.map((o,j)=>{const v=o.vue&&dxrVueDe(o.vue),lv=v?`${v.id} ${v.libelle}${v.partie?' '+v.partie:''}`:'hors vue';
+    return `<button class="btn bs bo" onclick="event.stopPropagation();dxrLoc(${k},${j})" title="${esc((o.source==='ocr'?`lu par OCR « ${o.brut} », confiance ${o.conf} %`:'texte du PDF')+' · vue : '+(v?v.id+(v.titre?' « '+v.titre+' »':' (sans titre)'):'aucune')+(role(j)==='physique'?' · occurrence comptée':' · représentation (non comptée)')+(o.contour?' · contour '+o.contour:'')+(o.doutes.length?' · '+o.doutes.join(' ; '):''))}">${o.fiable?'':'? '}${role(j)==='physique'?'●':'○'} p. ${o.page} · ${esc(o.texte)}${o.source==='ocr'?' (OCR)':''} · ${esc(lv)} ↗</button>`}).join('')+'</div>';
   const E={confirmee:'✓ confirmée',mesuree:'≈ mesurée',conflit:'⚠ contredite',non_verifiable:'non vérifiable'},V=Object.values(dm);
   if(V.length)h+='<div>Cotes du tableau : '+V.map(x=>`<span title="${esc(x.preuves.join(' ; '))}">${esc(x.libelle)} ${E[x.etat]}</span>`).join(' · ')+'</div>';
   else if(O.length)h+='<div class="mu">pas de cotes l × h ou Ø dans le tableau : rien à vérifier sur le dessin</div>';
-  const q=a.quantite;if(q&&(q.valeur>1||q.localisations>1))h+=`<div class="mu">${q.source?'quantité du tableau : '+esc(q.source)+(q.coherente===true?' (cohérente)':q.coherente===false?' (plus de localisations que de quantité : vues multiples ?)':''):'quantité non indiquée'}${q.lecture?' · '+esc(q.lecture):''}</div>`;
-  const dt=[...new Set(O.flatMap(o=>o.doutes))];if(a.note&&!q.lecture||dt.length)h+=`<div class="mu">${esc([a.note].concat(dt).filter(Boolean).join(' ; '))}</div>`;
+  if(cs)h+=`<div><b>Quantité attendue ${cs.attendue==null?'non indiquée':cs.attendue}</b> · localisée(s) : ${cs.localisees} · représentation(s) : ${cs.representations}${cs.restantes==null?'':' · restante(s) : <b>'+cs.restantes+'</b>'}${cs.depasse?' <span style="color:var(--acct)">⚠ plus que la quantité</span>':''}</div>`;
+  // la lecture de la quantité par page (rapprochement) est remplacée par le décompte par vue
+  const old=(a.quantite||{}).lecture,M=String(a.note||'').split(' ; ').filter(x=>x&&x!==old).concat(cs?cs.notes:[],[...new Set(O.flatMap(o=>o.doutes))]);
+  if(M.length)h+=`<div class="mu">${esc(M.join(' ; '))}</div>`;
   return h}
 function dxrLoc(k,j){const D=DXI,o=(dxnAS(D.NL[k].L).occurrences||[])[j];if(!o)return;D.hl=-1;D.hlo={k,j};D.page=o.page;D.scroll=true;dxnSel(k);dxiVue('p')}
 // Provenance du rapprochement (clé origineImport.rapprochement) : concordance, localisations (page, position, texte brut OCR,
 // confiance, corrections, contour), état de chaque cote du tableau, quantité, rejet par l'utilisateur ; les cotes créées restent celles retenues
-function dxrRapProv(a,r){const q=x=>Math.round(x*100)/100;
+function dxrRapProv(a,r,cs){const q=x=>Math.round(x*100)/100,vu=id=>{const v=id&&dxrVueDe(id);return v?{id:v.id,type:v.type,titre:v.titre,partie:v.partie}:null};
   return{concordance:r.rej?'rejete':a.concordance||'absente',rejete:!!r.rej,note:a.note||'',
-    localisations:(a.occurrences||[]).map(o=>({page:o.page,x:q(o.x),y:q(o.y),texte:o.texte,source:o.source,brut:o.brut,confiance:o.conf,corrections:o.corrections.slice(),
-      zone:o.box?{page:o.box.page,x0:q(o.box.x0),y0:q(o.box.y0),x1:q(o.box.x1),y1:q(o.box.y1),unite:'pt'}:null,fiable:o.fiable,doutes:o.doutes.slice(),contour:o.contour,cotes_voisines:o.cotes.slice()})),
-    cotes:Object.fromEntries(Object.entries(a.dims||{}).map(([n,x])=>[n,{valeur:x.valeur,etat:x.etat,preuves:x.preuves.slice()}])),quantite:a.quantite?JSON.parse(JSON.stringify(a.quantite)):null}}
+    localisations:(a.occurrences||[]).map((o,j)=>({page:o.page,x:q(o.x),y:q(o.y),texte:o.texte,source:o.source,brut:o.brut,confiance:o.conf,corrections:o.corrections.slice(),
+      zone:o.box?{page:o.box.page,x0:q(o.box.x0),y0:q(o.box.y0),x1:q(o.box.x1),y1:q(o.box.y1),unite:'pt'}:null,vue:vu(o.vue),role:cs?(cs.roles.find(x=>x.occurrence===j)||{}).role||null:null,fiable:o.fiable,doutes:o.doutes.slice(),contour:o.contour,cotes_voisines:o.cotes.slice()})),
+    cotes:Object.fromEntries(Object.entries(a.dims||{}).map(([n,x])=>[n,{valeur:x.valeur,etat:x.etat,preuves:x.preuves.slice()}])),quantite:a.quantite?JSON.parse(JSON.stringify(a.quantite)):null,
+    occurrences:cs?{attendue:cs.attendue,localisees:cs.localisees,representations:cs.representations,restantes:cs.restantes,notes:cs.notes.slice()}:null}}
+// Analyse du plan en JSON (préparée pour une future IA locale : aucune IA ici) : tableaux, lignes, vues, observations
+// graphiques (contours, repères localisés), occurrences physiques, associations, preuves des cotes, incertitudes
+function dxrJSON(){const D=DXI,q=x=>Math.round(x*100)/100,bx=b=>b?b.map(q):null,J={format:'coffraplan-analyse-plan',v:1,fichier:D.doc.fichier,
+    tables:D.NA.nomenclatures.map(N=>({id:N.id,page:N.page,titre:N.titre||null,cadre:bx(N.cadre||(N.zone?[N.zone.x0,N.zone.y0,N.zone.x1,N.zone.y1]:null)),rotation:N.rotation||0,
+      source:N.saisie?'saisie':N.ocr?'ocr':N.grilleTexte?'grille':'pdf',colonnes:N.colonnes.map(c=>({titre:c.titre,cle:c.cle,unite:c.unite||null})),qualite:N.qualite})),
+    tableRows:D.NL.map(({N,L},k)=>({id:L.id,table:N.id,rang:L.rang,repere:L.repere||null,designation:L.description||null,quantite:{texte:L.quantite||null,valeur:L.nb||null},
+      dims:L.dims?{type:L.dims.type,texte:L.dims.texte,unite:dxnU(N,L)||null}:null,cellules:L.cellules.slice(),a_verifier:(L.a_verifier||[]).slice()})),
+    views:dxrVues().map(v=>({id:v.id,page:v.page,region:v.region,titre:v.titre,type:v.type,partie:v.partie,echelle:v.echelle,niveau:v.niveau,confiance:v.confiance,motifs:v.motifs})),
+    graphicalObservations:[],physicalOccurrences:[],associations:[],evidence:[],uncertainties:[]};
+  D.C.forEach((c,i)=>{const cl=c.statut==='a_confirmer'&&!D.lk.has(i)?dxrCl(i):null;
+    J.graphicalObservations.push({id:c.id,type:'contour',forme:c.type,page:c.source.page,vue:c.vue||null,bbox:bx(c.bbox),statut:c.statut,rattache:D.lk.has(i),
+      classement:cl,repere:c.annot&&c.annot.repere?c.annot.repere.texte:null,cotes:c.annot&&c.annot.cotes?c.annot.cotes.texte:null,remarques:c.remarques.slice()})});
+  D.NL.forEach(({L},k)=>{const a=dxnAS(L),cs=D.CS[L.id],r=D.NR[k];
+    (a.occurrences||[]).forEach((o,j)=>{const id=`${L.id}/O${j+1}`,role=cs?(cs.roles.find(x=>x.occurrence===j)||{}).role:null;
+      J.graphicalObservations.push({id,type:'repere',page:o.page,vue:o.vue||null,x:q(o.x),y:q(o.y),texte:o.texte,source:o.source,brut:o.brut,confiance:o.conf,fiable:o.fiable});
+      J.associations.push({ligne:L.id,observation:id,type:'repere',role,contour:o.contour});if(o.contour)J.associations.push({ligne:L.id,observation:o.contour,type:'contour',via:id});
+      o.doutes.forEach(m=>J.uncertainties.push({ligne:L.id,observation:id,message:m}))});
+    if(cs){cs.physiques.forEach(p=>J.physicalOccurrences.push({id:`${L.id}#${p.n}`,ligne:L.id,n:p.n,vue:p.vue,page:p.page,x:q(p.x),y:q(p.y),fiable:p.fiable,
+        representations:p.representations.map(j=>`${L.id}/O${j+1}`)}));
+      J.tableRows[k].occurrences={attendue:cs.attendue,localisees:cs.localisees,representations:cs.representations,restantes:cs.restantes};
+      cs.notes.forEach(m=>J.uncertainties.push({ligne:L.id,message:m}))}
+    Object.entries(a.dims||{}).forEach(([n,x])=>J.evidence.push({ligne:L.id,dimension:n,valeur:x.valeur,etat:x.etat,preuves:x.preuves.slice()}));
+    if(r.rej)J.uncertainties.push({ligne:L.id,message:'rapprochement rejeté par l\'utilisateur'})});
+  return J}
+function dxrExport(){const D=DXI;if(!D||!D.ana)return;dlBlob(new Blob([JSON.stringify(dxrJSON(),null,1)],{type:'application/json'}),String(D.nom||'plan').replace(/\.[^.]+$/,'').replace(/[^\w\-]+/g,'_')+'_analyse.json')}
 // Bilan du rapprochement (comptes des concordances, repères lus, doublons évités, formes hors nomenclature)
 function dxrBilan(){const D=DXI,n={forte:0,partielle:0,probable:0,conflit:0,absente:0,rejete:0};let vues=0;
   D.NL.forEach(({L},k)=>{const a=dxnAS(L);n[D.NR[k].rej?'rejete':a.concordance||'absente']++;vues+=Math.max(0,(a.preuves||[]).length-1)});
@@ -727,7 +769,7 @@ function dxrProv(i,dm,fo){const D=DXI,c=D.C[i],r=D.R[i],n=c.source.page,e=D.cal[
   if(r.ref.trim().toUpperCase()!==String(A.repere?A.repere.texte:'').toUpperCase().replace(/\s+/g,''))corrige.push('ref');
   const dims={};Object.keys(c.dims).forEach(k=>dims[k]=q(c.dims[k]));
   return{fichier:D.doc.fichier,format:'pdf',type:'detection',page:n,presentation:'Page '+n,id:c.source.id,candidat:c.id,forme_detectee:c.type,
-    unite_source:'pt',unite:'mm',centre:c.centre.map(q),boite:{page:n,x0:q(c.bbox[0]),y0:q(c.bbox[1]),x1:q(c.bbox[2]),y1:q(c.bbox[3]),unite:'pt'},dims_source:dims,zone:c.zone||null,
+    unite_source:'pt',unite:'mm',vue:c.vue||null,centre:c.centre.map(q),boite:{page:n,x0:q(c.bbox[0]),y0:q(c.bbox[1]),x1:q(c.bbox[2]),y1:q(c.bbox[3]),unite:'pt'},dims_source:dims,zone:c.zone||null,
     echelle:e?Object.assign({mm_par_pt:e.k},e.mode==='points'?{mode:'points',a:e.a.map(q),b:e.b.map(q),distance_pt:q(e.pt),distance_mm:e.mm}:{mode:'echelle',echelle:e.ech,texte:e.texte}):null,
     repere:A.repere?A.repere.texte:null,annotation:A.cotes?A.cotes.texte:null,
     cotes:{origine:r.cotesT?'saisie':p.origine||null,proposees:p.cotes||'',retenues:r.cotes.trim()},choix:{forme:fo,ref:r.ref.trim().toUpperCase()},
@@ -761,6 +803,8 @@ function dxrEchEff(){const D=DXI;delete D.cal[D.page];dxrApres()}
 // Superposition : contours repérés de la page (violet ; vert : coché ; tirets verts : rattaché à une ligne de nomenclature ;
 // tirets orange : proposés pour la ligne de nomenclature choisie) et points de la calibration
 function dxrOver(H,f){const D=DXI;let h='';const P=D.nsel>=0&&D.NL[D.nsel]?new Set(dxnAS(D.NL[D.nsel].L).options.map(o=>o.c)):new Set();
+  // vues techniques de la page : cadre bleu en tirets et identifiant
+  ((D.VU[D.page]||{}).vues||[]).forEach(v=>{const r=v.region;h+=`<rect class="vu" x="${r[0]}" y="${H-r[3]}" width="${r[2]-r[0]}" height="${r[3]-r[1]}"><title>${esc(v.id+(v.titre?' « '+v.titre+' »':' (sans titre)'))}</title></rect><text class="vl" x="${r[0]+2}" y="${H-r[3]+f}" font-size="${f}">${esc(v.id+' '+v.libelle+(v.partie?' '+v.partie:''))}</text>`});
   // localisations (repères) de la ligne de nomenclature choisie : cadre orange, lignes de rappel suivies en tirets ; repère demandé : surligné
   if(D.nsel>=0&&D.NL[D.nsel])(dxnAS(D.NL[D.nsel].L).occurrences||[]).forEach((o,j)=>{if(o.page!==D.page)return;const w=o.box?o.box.x1-o.box.x0:(o.h||4)*2,m=(o.h||4)*0.4,x0=o.x-w/2-m,y1=o.y+(o.h||4)/2+m;
     h+=`<rect class="${D.hlo&&D.hlo.k===D.nsel&&D.hlo.j===j?'hl':'oc'}" x="${x0}" y="${H-y1}" width="${w+2*m}" height="${(o.h||4)+2*m}"><title>${esc('repère « '+o.texte+' »'+(o.source==='ocr'?' (OCR, confiance '+o.conf+' %)':''))}</title></rect>`
@@ -781,23 +825,30 @@ function dxrSel(i,fromSvg){const D=DXI;if(!D||D.zm||D.calm||!D.C[i])return;D.rse
 
 // Tableau des réservations repérées (toutes pages) ; contours rattachés à la nomenclature : dans l'onglet Nomenclature
 function dxrRender(){const D=DXI,Z=el('dxrZ');if(!Z||!D)return;if(!D.C.length){Z.innerHTML='';return}
-  Z.innerHTML=`<fieldset class="dxo"><legend>${D.NL.length?'Formes du dessin hors nomenclature':'Réservations repérées sur le dessin'}</legend><div id="dxrS" style="margin-bottom:4px"></div>
-    <div class="mu" style="margin-bottom:6px">${D.NL.length?'Contours non rattachés à une ligne de la nomenclature (les réservations du tableau sont dans l\'onglet Nomenclature). ':''}Formes du dessin, pas encore des réservations : vérifier chaque ligne sur l'aperçu (clic sur une ligne : contour en orange),
+  // avec une nomenclature : formes hors nomenclature en section secondaire repliée (rien n'est supprimé) ; sans : liste principale
+  const nl=D.NL.length,V=dxrVues(),ouv=el('dxrH')&&el('dxrH').open;   // section ouverte par l'utilisateur : le reste après un nouveau rendu
+  Z.innerHTML=`<fieldset class="dxo"><legend>${nl?'Formes du dessin hors nomenclature':'Réservations repérées sur le dessin'}</legend>
+    ${V.length?`<div class="mu" style="margin-bottom:4px" id="dxrVu"><b>${V.length} vue(s) reconnue(s)</b> (cadres bleus sur l'aperçu) : ${V.map(v=>`<span title="${esc((v.titre?'« '+v.titre+' »':'sans titre')+' · confiance '+v.confiance+(v.motifs.length?' · '+v.motifs.join(' ; '):'')+(v.echelle?' · échelle 1/'+v.echelle.valeur:''))}">${esc(v.id)} ${esc(v.libelle)}${v.partie?' '+esc(v.partie):''}</span>`).join(' · ')}</div>`:''}
+    <${nl?'details id="dxrH"'+(ouv?' open':''):'div'}>${nl?'<summary id="dxrHs"></summary>':''}<div id="dxrS" style="margin-bottom:4px"></div>
+    <div class="mu" style="margin-bottom:6px">${nl?'Contours non rattachés à une ligne de la nomenclature (les réservations du tableau sont dans l\'onglet Nomenclature), avec la raison de leur proposition ; parasites probables en fin de liste. ':''}Formes du dessin, pas encore des réservations : vérifier chaque ligne sur l'aperçu (clic sur une ligne : contour en orange),
     corriger forme, cotes, hauteur et référence, puis cocher. Cotes proposées : cote écrite à côté du contour, ou mesure à l'échelle de la page (à vérifier).</div>
     <div style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap"><button class="btn bs bo" onclick="dxrAll(false)">Tout décocher</button></div>
-    <div class="dxi-t"><table class="ser" id="dxrT"><thead><tr><th>Créer</th><th>#</th><th>Page</th><th>Repère</th><th>Forme</th><th>Cotes (mm)</th><th>Origine des cotes</th><th>h (mm)</th><th>Réf.</th><th>État</th></tr></thead><tbody></tbody></table></div>
+    <div class="dxi-t"><table class="ser" id="dxrT"><thead><tr><th>Créer</th><th>#</th><th>Page · vue</th><th>Repère</th><th>Raison</th><th>Forme</th><th>Cotes (mm)</th><th>Origine des cotes</th><th>h (mm)</th><th>Réf.</th><th>État</th></tr></thead><tbody></tbody></table></div>
+    </${nl?'details':'div'}>
     <details id="dxrNP"><summary></summary><table class="ser"><thead><tr><th>#</th><th>Page</th><th>Forme</th><th>Dessin</th><th>Raison</th></tr></thead><tbody></tbody></table></details></fieldset>`;
   dxrRows();dxiUpd()}
-const dxrVis=()=>DXI.C.map((c,i)=>i).filter(i=>DXI.C[i].statut==='a_confirmer'&&!DXI.lk.has(i));
+// Classement d'un contour hors nomenclature (à examiner ou parasite probable, avec sa raison) ; à examiner en tête
+const dxrCl=i=>CPI.vues.classer(DXI.C[i],DXI.C[i].vue?dxrVueDe(DXI.C[i].vue):null);
+const dxrVis=()=>{const I=DXI.C.map((c,i)=>i).filter(i=>DXI.C[i].statut==='a_confirmer'&&!DXI.lk.has(i)),p=I.filter(i=>dxrCl(i).niveau==='parasite');return I.filter(i=>!p.includes(i)).concat(p)};
 function dxrRows(){const D=DXI,T=el('dxrT');if(!T)return;const V=dxrVis(),np=D.C.map((c,i)=>i).filter(i=>D.C[i].statut!=='a_confirmer');T.dataset.v=V.join();
-  T.tBodies[0].innerHTML=V.length?V.map(i=>{const c=D.C[i],r=D.R[i],A=c.annot||{};
+  T.tBodies[0].innerHTML=V.length?V.map(i=>{const c=D.C[i],r=D.R[i],A=c.annot||{},cl=dxrCl(i);
     return `<tr data-r="${i}" onclick="dxrSel(${i})"${i===D.rsel?' class="on"':''}><td><input type="checkbox" data-k="conf"${r.conf?' checked':''} aria-label="Créer ${esc(c.id)}" onchange="DXI.R[${i}].conf=this.checked;dxiUpd()"></td>
-      <td>${esc(c.id)}</td><td>${c.source.page}</td><td>${esc(A.repere?A.repere.texte:'—')}</td><td><select class="fi" data-k="forme" onchange="DXI.R[${i}].forme=this.value;dxiUpd()"></select></td>
+      <td>${esc(c.id)}</td><td>${c.source.page}${c.vue?' · '+esc(c.vue):''}</td><td>${esc(A.repere?A.repere.texte:'—')}</td><td class="mu">${esc(cl.raison)}</td><td><select class="fi" data-k="forme" onchange="DXI.R[${i}].forme=this.value;dxiUpd()"></select></td>
       <td><input class="fi" data-k="cotes" style="width:96px" value="${esc(r.cotes)}" placeholder="${esc(A.cotes?A.cotes.texte:'à saisir')}" oninput="DXI.R[${i}].cotes=this.value;DXI.R[${i}].cotesT=true;dxiUpd()">
         <div class="mu">dessin : ${esc(dxiDims(c))}</div></td><td class="og"></td>
       <td><input class="fi" data-k="h" style="width:62px" value="${esc(r.h)}" placeholder="${esc(D.hCom.trim()||'à saisir')}" oninput="DXI.R[${i}].h=this.value;dxiUpd()"></td>
       <td><input class="fi" data-k="ref" style="width:72px" value="${esc(r.ref)}" placeholder="auto" oninput="DXI.R[${i}].ref=this.value;dxiUpd()"></td><td class="st"></td></tr>`}).join('')
-    :`<tr><td colspan="10" style="color:var(--muted)">Aucune réservation proposée${D.lk.size?' (contours rattachés à la nomenclature : onglet Nomenclature)':''}.</td></tr>`;
+    :`<tr><td colspan="11" style="color:var(--muted)">Aucune réservation proposée${D.lk.size?' (contours rattachés à la nomenclature : onglet Nomenclature)':''}.</td></tr>`;
   const N=el('dxrNP');N.querySelector('summary').textContent=`Contours écartés, non exploitables (${np.length})`;
   N.querySelector('tbody').innerHTML=np.slice(0,DXI_NP).map(i=>{const c=D.C[i];return `<tr class="np"><td>${esc(c.id)}</td><td>${c.source.page}</td><td>${c.type==='circ'?'cercle':'rectangle'}</td><td>${esc(dxiDims(c))}</td><td>${esc(c.remarques.join(' · '))}</td></tr>`}).join('')
     +(np.length>DXI_NP?`<tr class="np"><td colspan="5">… et ${np.length-DXI_NP} autre(s)</td></tr>`:'')}
@@ -818,6 +869,8 @@ function dxrUpd(){const D=DXI,T=el('dxrT');if(!T)return;if(T.dataset.v!==dxrVis(
     const s=t.querySelector('.st');s.className='st '+(et==='rep'?'ok':et==='er'?'er':'wn');
     s.innerHTML=esc(et==='rep'?'✓ repérée':et==='conf'?'≈ à confirmer':et==='ac'?'… '+r.msg:'⛔ non créé — '+r.msg)+(pr&&(doute.length||r.msg)?`<div class="mu">${esc(doute.concat(r.msg?[r.msg]:[]).join(' · '))}</div>`:'')});
   const V=dxrVis(),cf=V.filter(i=>D.R[i].conf).length,nE=D.C.filter(c=>c.statut!=='a_confirmer').length;
-  el('dxrS').innerHTML=`<b>${V.length} réservation(s) proposée(s)</b> : ${n.rep} repérée(s), ${n.conf} à confirmer, ${n.ac} à compléter${n.er?`, ${n.er} refusée(s)`:''} · ${nE} non exploitable(s)`
+  const nP=V.filter(i=>dxrCl(i).niveau==='parasite').length;
+  if(el('dxrHs'))el('dxrHs').textContent=`Formes hors nomenclature (${V.length}) : ${V.length-nP} à examiner, ${nP} parasite(s) probable(s) · ${V.filter(i=>D.R[i].conf).length} cochée(s)`;
+  el('dxrS').innerHTML=`<b>${V.length} réservation(s) proposée(s)</b> (${V.length-nP} à examiner, ${nP} parasite(s) probable(s)) : ${n.rep} repérée(s), ${n.conf} à confirmer, ${n.ac} à compléter${n.er?`, ${n.er} refusée(s)`:''} · ${nE} non exploitable(s)`
     +(D.lk.size?` · ${D.lk.size} rattachée(s) à la nomenclature`:'')+` · ${cf} cochée(s) · <b>${dxiReady().length} à créer</b>`;
   dxpOver()}

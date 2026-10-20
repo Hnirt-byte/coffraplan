@@ -69,7 +69,6 @@ function cotes(s,u0,saisie){
 // Hauteur (rectangle). Vide, « - », SO… = valeur absente, jamais une cote contradictoire : on passe à la colonne suivante.
 // Diamètre et Largeur × Hauteur tous deux renseignés : ambiguïté signalée, rien n'est choisi. DN du réseau ≠ diamètre.
 // « Hauteur » d'un tableau = 2e cote de l'ouverture, jamais la hauteur de coffrage (h reste à saisir).
-const DIAM_SEUL=/^(ø|diam(etre|\.)?)\s*(\(?\s*(mm|cm|m)\s*\)?)?$/;   // titre de colonne qui n'est qu'un diamètre (Ø mm, Diamètre (mm))
 function dimsLigne(cols,cells,av){
   const get=k=>cols.map((c,j)=>c.cle===k&&cells[j]?{c,v:cells[j]}:null).filter(Boolean),q=v=>`« ${v.replace(/\n/g,' ')} »`;
   const dd=(r,c,v)=>r.etat==='rect'?{type:'rect',a:r.a,b:r.b,unite:r.unite,texte:v,colonne:c.titre}:{type:'circ',D:r.D,unite:r.unite,texte:v,colonne:c.titre};
@@ -83,7 +82,7 @@ function dimsLigne(cols,cells,av){
   const Dm=get('diametre');
   if(Dm.length){const {c,v}=Dm[0],r=cotes(v,c.unite);
     if(r.etat==='rect'||r.etat==='circ'||r.etat==='seul'){circ=dd(r.etat==='seul'?{etat:'circ',D:r.v,unite:r.unite}:r,c,v);
-      if(!DIAM_SEUL.test(norm(c.titre)))av.push(`cote prise dans la colonne « ${c.titre.replace(/\n/g,' ')} » : à confirmer comme cote de la réservation`)}
+      av.push(`cote prise dans la colonne « ${c.titre.replace(/\n/g,' ')} » : à confirmer comme cote de la réservation`)}
     else if(!absent(r))av.push(`colonne « ${c.titre.replace(/\n/g,' ')} » ${q(v)} : `+(r.etat==='dn'?dn:'cotes non lues'))}
   let rect=null;
   const La=get('largeur'),Ha=get('hauteur');

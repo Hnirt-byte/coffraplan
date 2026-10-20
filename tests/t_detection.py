@@ -73,6 +73,8 @@ def t(s):
         pg.click('#dxiTabP'); pg.wait_for_function('el("dxpPg").textContent.includes("Page 1 / 2")'); pg.wait_for_timeout(300)
         s.check('non définie' in pg.inner_text('#dxrE') and 'ÉCHELLE 1/50' in pg.inner_text('#dxrE').upper(), 'page sans échelle ; échelle 1/50 écrite sur la page proposée (pas appliquée d\'office)', pg.inner_text('#dxrE'))
         pg.click('#dxrGo'); pg.wait_for_function('!DXI.rJob&&!!el("dxrT")')
+        # phase 5 : avec une nomenclature, les formes hors nomenclature sont dans une section repliée : l'ouvrir
+        pg.click('#dxrHs')
         # finalisation phase 4 (demande de Kévin du 20/10/2026) : « Analyser le dessin » traite toutes les pages (8 formes page 1, 2 page 2)
         s.check('2 page(s) : 10 forme(s) possible(s)' in pg.inner_text('#dxrM') and 'sans échelle' in pg.inner_text('#dxrM'), 'bouton « Analyser le dessin » : bilan des 2 pages', pg.inner_text('#dxrM'))
         s.check(J('document.querySelectorAll("#dxpO .rs").length') == 8, 'aperçu : 8 contours superposés')

@@ -10,7 +10,7 @@ import base64, gzip, hashlib, os, sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 HTML = os.path.join(HERE, '..', '..', 'app', 'CoffraPlan.html')
-ORDRE = ['lecteur.js', 'dxf.js', 'pdf.js', 'ocr.js', 'detecteur.js', 'nomenclatures.js', 'geometrie.js', 'rapprochement.js', 'adaptateur.js', 'fenetre.js']   # dxf.js après lecteur.js (DECODEURS)
+ORDRE = ['lecteur.js', 'dxf.js', 'pdf.js', 'ocr.js', 'detecteur.js', 'nomenclatures.js', 'geometrie.js', 'rapprochement.js', 'vues.js', 'adaptateur.js', 'fenetre.js']   # dxf.js après lecteur.js (DECODEURS)
 DEBUT, FIN = '<script id="cpi-src">', '</script>'
 # PDF.js 6.4.299 (Apache-2.0), fichiers legacy/build/ (compatibles navigateurs plus anciens) du paquet npm pdfjs-dist@6.4.299, copiés sans modification
 PDFJS = [('pdfjs-src', 'pdf.min.mjs', 'bccc24ea711db8e44503629519904a5292d73b9daaa214bbe7cdcc282b0f4259'),

@@ -13,8 +13,8 @@
 const MM={mm:1,cm:10,m:1000};
 const OCR_MIN=30;   // % : en dessous, un mot lu par OCR n'est pas proposé comme repère, même incertain (bruit de traits, flèches, cotes tournées)
 const NB=n=>(n.match(/\d+/)||[''])[0];
-// Clé de repère tolérante aux confusions de lecture (S/5, O/0, I/1, L/1, B/8, Z/2, G/6 après les lettres du début) : rapprochement « incertain »
-const CONF={S:'5',O:'0',I:'1',L:'1',B:'8',Z:'2',G:'6'};
+// Clé de repère tolérante aux confusions de lecture (S/5, O/0, I/1, L/1, B/8, Z/2, G/6, A/4 après les lettres du début) : rapprochement « incertain »
+const CONF={S:'5',O:'0',I:'1',L:'1',B:'8',Z:'2',G:'6',A:'4'};
 const cleFloue=k=>k.replace(/^([A-Z]+?)([A-Z0-9]*)$/,(m,a,b)=>a+[...b].map(c=>/\d/.test(c)?c:CONF[c]||c).join('')).replace(/(^|[^0-9])0+(?=\d)/g,'$1');
 
 // Confiance OCR du repère lui-même : mots du bloc qui le composent (un trait de rappel lu « | » ou « / » à côté ne le dégrade pas)
@@ -39,13 +39,14 @@ const comparable=(vT,uT,vA,uA)=>!!uA||(()=>{const r=vA*(MM[uA]||MM[uT]||1)/(vT*(
 
 // L = {id, repere, dims ({type:'rect',a,b}|{type:'circ',D}|null), unite, quantite, page (page du tableau), ids}
 // textes : textes du dessin (PDF et OCR ; ceux des tableaux déjà retirés) ; C : candidats de CPI.geometrie (toutes pages)
-// o = {mm: candidat → mm par point | null, rappels: texte → pointes [[x,y]] (lignes de rappel), exclus: Set d'ids de textes}
+// o = {mm: candidat → mm par point | null, rappels: texte → pointes [[x,y]] (lignes de rappel), exclus: Set d'ids de textes,
+//      vue: (page, x, y) → id de vue | null (CPI.vues.situer) : contours et cotes voisines cherchés dans la vue du repère seulement}
 // → {lignes: {idLigne: résultat}, hors: [{texte, page, x, y, conf}], colonnes: nb de textes écartés (colonnes de tableau)}
 function rapprocher(lignes,textes,C,o){o=o||{};const N=root.CPI.nomenclatures,cleRep=N.cleRep,cotes=N.cotes,dGeo=N.dGeo,ex=o.exclus||new Set();
   const T0=textes.filter(t=>!ex.has(t.id)&&t.page),col=colonnes(T0),T=T0.filter(t=>!col.has(t.id));
   const K=new Map(T.map(t=>[t.id,cles(t,cleRep)])),OK=C.map((c,i)=>({c,i})).filter(x=>x.c.statut==='a_confirmer'&&x.c.source&&x.c.source.page);
   const kLigne=new Map(lignes.map(L=>[L.id,cleRep(L.repere||'')])),toutes=new Set([...kLigne.values()].filter(Boolean));
-  const R={};
+  const R={},vue=o.vue||(()=>null),vC=new Map(OK.map(({c,i})=>[i,vue(c.source.page,c.centre[0],c.centre[1])]));
   lignes.forEach(L=>{const k=kLigne.get(L.id),num=/^\d+$/.test(k),occ=[];
     if(k)T.forEach(t=>{const ks=K.get(t.id);let flou=false;
       if(num){if(cleRep(String(t.texte).replace(/[^\p{L}\p{N}]+/gu,''))!==k)return}   // repère numérique : texte entier seulement
@@ -55,12 +56,12 @@ function rapprocher(lignes,textes,C,o){o=o||{};const N=root.CPI.nomenclatures,cl
       if(flou)pq.push(`lu « ${t.texte} » : rapproché par confusion de lettres et de chiffres`);if(num)pq.push('repère purement numérique');
       occ.push({t,fiable:!pq.length,doutes:pq,conf:cf})});
     // contour désigné par chaque localisation : le plus proche du repère ou du bout de sa ligne de rappel (≤ 4 hauteurs de texte)
-    occ.forEach(x=>{const t=x.t,P=[[t.x,t.y]],h=Math.max(t.h||2,1);if(o.rappels)try{x.rappels=o.rappels(t)}catch(e){x.rappels=[]}else x.rappels=[];P.push(...x.rappels);
-      const V=OK.filter(({c})=>c.source.page===t.page).map(({c,i})=>{let d=Infinity;for(const p of P)d=Math.min(d,dGeo(p,c.geometrie));return{i,d}}).filter(v=>v.d<=4*h).sort((a,b)=>a.d-b.d);
+    occ.forEach(x=>{const t=x.t,P=[[t.x,t.y]],h=Math.max(t.h||2,1),vt=x.vue=vue(t.page,t.x,t.y);if(o.rappels)try{x.rappels=o.rappels(t)}catch(e){x.rappels=[]}else x.rappels=[];P.push(...x.rappels);
+      const V=OK.filter(({c,i})=>c.source.page===t.page&&vC.get(i)===vt).map(({c,i})=>{let d=Infinity;for(const p of P)d=Math.min(d,dGeo(p,c.geometrie));return{i,d}}).filter(v=>v.d<=4*h).sort((a,b)=>a.d-b.d);
       x.contours=V;x.contour=V.length===1||V.length>1&&V[1].d>1.25*V[0].d+0.5*h?V[0].i:null;
       // cotes écrites voisines : près du repère (6 hauteurs) ou du contour désigné (4 hauteurs)
       const cc=x.contour!=null?C[x.contour].geometrie:null;x.cotes=[];
-      T.forEach(u=>{if(u===t||u.page!==t.page||[...K.get(u.id)].some(z=>toutes.has(z)))return;const q=cotes(u.texte,null);if(!/^(rect|circ|seul)$/.test(q.etat))return;
+      T.forEach(u=>{if(u===t||u.page!==t.page||[...K.get(u.id)].some(z=>toutes.has(z))||vue(u.page,u.x,u.y)!==vt)return;const q=cotes(u.texte,null);if(!/^(rect|circ|seul)$/.test(q.etat))return;
         const d=Math.hypot(u.x-t.x,u.y-t.y),dc=cc?dGeo([u.x,u.y],cc):Infinity;if(d<=6*h||dc<=4*Math.max(u.h||h,1))x.cotes.push(Object.assign({texte:u.texte,id:u.id,d:Math.min(d,dc),ocr:!!u.ocr},q))});
       x.cotes.sort((a,b)=>a.d-b.d);x.cotes=x.cotes.slice(0,4)});
     R[L.id]=verifier(L,occ,C,o)});
@@ -124,7 +125,7 @@ function verifier(L,occ,C,o){const d=L.dims,uT=L.unite||null,D={},notes=[];
   if(princ.length>1)notes.push(unique?`${princ.length} contours désignés, un par page (vues) : celui de la 1re page est proposé`:`${princ.length} contours désignés sur une même page (occurrences ?) : à choisir`);
   return{concordance:cc,libelle:LB[cc],statut,options,principal:princ.length?princ.slice().sort((a,b)=>C[a].source.page-C[b].source.page)[0]:null,preuves:ctr,
     occurrences:occ.map(x=>({id:x.t.id,texte:x.t.texte,page:x.t.page,x:x.t.x,y:x.t.y,h:x.t.h,source:x.t.ocr?'ocr':'pdf',conf:x.t.ocr?x.conf:null,brut:x.t.ocr?x.t.ocr.brut:null,
-      corrections:x.t.ocr?x.t.ocr.corrections:[],box:x.t.ocr?x.t.ocr.box:null,fiable:x.fiable,doutes:x.doutes,rappels:x.rappels,contour:x.contour!=null?C[x.contour].id:null,
+      corrections:x.t.ocr?x.t.ocr.corrections:[],box:x.t.ocr?x.t.ocr.box:null,vue:x.vue||null,fiable:x.fiable,doutes:x.doutes,rappels:x.rappels,contour:x.contour!=null?C[x.contour].id:null,
       cotes:x.cotes.map(q=>q.texte)})),
     reperes:occ.map(x=>({x:x.t.x,y:x.t.y,id:x.t.id})),dims:D,quantite,note:notes.concat(lecture?[lecture]:[]).join(' ; ')}}
 

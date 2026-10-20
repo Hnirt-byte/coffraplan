@@ -117,7 +117,7 @@ def t(s):
         s.check(fo[:3] == ['rect', 'carre', 'circ'] and fo[3:] == ['', '', ''], 'formes proposées : rect, carré, fourreau ; à choisir quand les cotes manquent', json.dumps(fo))
         s.check(not J('document.querySelector("#dxnT [data-k=geo]")'), 'PDF : aucune géométrie de la page rattachée (échelle inconnue)')
         # aperçu
-        pg.click('#dxnT tr[data-n="1"] td:nth-child(10) button')
+        pg.click('#dxnT tr[data-n="1"] td:nth-child(11) button')
         pg.wait_for_function('el("dxpPg")&&el("dxpPg").textContent.includes("Page 1 / 1")')
         pg.wait_for_timeout(600)
         enc = J('''(()=>{const c=el('dxpCv'),g=c.getContext('2d').getImageData(0,0,c.width,c.height).data;let n=0;for(let i=0;i<g.length;i+=16)if(g[i]<128)n++;return n})()''')

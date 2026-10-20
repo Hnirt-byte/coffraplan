@@ -49,7 +49,8 @@ async function reconnaitre(canvas,o){const p=charger(),w=await p,opt=o||{},vivan
 // un 9 ou un 2 n'ont pas d'anneau complet). Mot réécrit, note gardée (le brut de la cellule reste celui de Tesseract).
 const OSL=/^[0OoQ@©®%92DGøØ]/;
 function oslash(cv,M){let d=null,W=0;
-  M.forEach(m=>{const s=m.sym&&m.sym[0];if(!s||!s.b||!OSL.test(m.texte)||s.t==='Ø'||!(m.texte.length===1||/^.\d/.test(m.texte)))return;
+  // « 90x70 » : une cote l × h n'est jamais précédée d'un Ø (le 9 d'un scan flou a l'air barré)
+  M.forEach(m=>{const s=m.sym&&m.sym[0];if(!s||!s.b||!OSL.test(m.texte)||s.t==='Ø'||!(m.texte.length===1||/^.\d/.test(m.texte))||/^.\d*\s*[x×X*]\s*\d/.test(m.texte))return;
     if(!d){W=cv.width;d=cv.getContext('2d',{willReadFrequently:true}).getImageData(0,0,W,cv.height).data}
     const b=s.b,w=b.x1-b.x0,h=b.y1-b.y0,H=d.length/4/W;if(w<6||h<6)return;
     const ink=(x,y)=>{for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){const X=Math.round(x+dx),Y=Math.round(y+dy);if(X>=0&&Y>=0&&X<W&&Y<H&&d[4*(Y*W+X)]<128)return true}return false};
@@ -142,6 +143,11 @@ async function lireZone(pdf,z,o){o=o||{};const t0=Date.now(),pr=o.progres||(()=>
 // lettre et collé dans une mosaïque (fond blanc, larges marges) : une reconnaissance par mosaïque au lieu d'une par bloc ou d'une
 // OCR de toute la page A0. Chaque mot est rendu à son bloc ; le texte garde valeur brute, confiance, corrections et emprise.
 // o = {progres(texte, fraction), annule(), run} → {textes (format de lireZone, ocr.bloc = emprise du bloc lu), mesures}
+// Mot réduit aux caractères dont le centre est dans le bloc lui-même (x0..x1, pixels) : la marge autour du bloc ne sert que de
+// contexte (le trait du symbole voisin d'une étiquette encadrée, lu « | » ou « 1 », n'est pas une lettre du repère) ; null si vide
+function noyau(w,x0,x1){const S=w.sym||[];if(!S.length||!S.every(s=>s.b))return w;const K=S.filter(s=>{const c=(s.b.x0+s.b.x1)/2;return c>=x0&&c<=x1});
+  if(K.length===S.length)return w;if(!K.length)return null;
+  return Object.assign({},w,{texte:K.map(s=>s.t).join(''),conf:Math.min(w.conf,...K.map(s=>s.c)),sym:K,x0:Math.min(...K.map(s=>s.b.x0)),x1:Math.max(...K.map(s=>s.b.x1))})}
 const BL_PX=32,BL_W=2000,BL_H=2400,TUILE=3000,RELU_MAX=200;   // shortcut: au plus 200 relectures de repères douteux par page
 async function lireBlocs(pdf,n,blocs,o){o=o||{};const t0=Date.now(),pr=o.progres||(()=>{}),stop=()=>{if(o.annule&&o.annule())throw new Error('annulé')};
   if(!blocs.length)return{textes:[],mesures:{blocs:0,mosaiques:0,ms:0,moteur:VERSION}};
@@ -164,16 +170,24 @@ async function lireBlocs(pdf,n,blocs,o){o=o||{};const t0=Date.now(),pr=o.progres
     g.fillStyle='#fff';g.fillRect(0,0,BL_W,m.h);m.P.forEach(c=>g.drawImage(c.cv,c.x,c.y));
     const im=g.getImageData(0,0,BL_W,m.h),d=im.data;for(let j=0;j<d.length;j+=4){const v=(d[j]*77+d[j+1]*150+d[j+2]*29)>>8<170?0:255;d[j]=d[j+1]=d[j+2]=v}g.putImageData(im,0,0);
     const W=await reconnaitre(cv,{psm:11,dpi:300,progres:q=>{if(q&&q.status==='recognizing text')pr(`Lecture des repères dessinés, page ${n} (${nm+1}/${M.length})`,q.progress)}});nm++;
-    W.forEach(w=>{const xc=(w.x0+w.x1)/2,yc=(w.y0+w.y1)/2,c=m.P.find(c=>xc>=c.x&&xc<=c.x+c.w&&yc>=c.y&&yc<=c.y+c.h);if(c)(R.get(c.i)||R.set(c.i,[]).get(c.i)).push(w)})}
+    W.forEach(w=>{const xc=(w.x0+w.x1)/2,yc=(w.y0+w.y1)/2,c=m.P.find(c=>xc>=c.x&&xc<=c.x+c.w&&yc>=c.y&&yc<=c.y+c.h);if(!c)return;
+      const v=noyau(w,c.x+0.4*BL_PX,c.x+c.w-0.4*BL_PX);if(v)(R.get(c.i)||R.set(c.i,[]).get(c.i)).push(v)})}
   // 2e lecture, seule et en une ligne (psm 7), des courtes lectures douteuses qui ressemblent à un repère (« D4 » à 37 %,
   // « |D16 », « D 7 ») : gardée si sa confiance est meilleure ; la 1re lecture reste dans brut1
-  const RL=/^[^A-Za-z0-9]{0,3}[A-Za-z]{1,4}\s?[0-9OoSIlBZG]{1,4}[A-Za-z]?[^A-Za-z0-9]{0,3}$/,cv1=new Map(C.map(c=>[c.i,c])),relu=new Map();let nr=0;
-  for(const [i,W0] of R){const W=W0.slice().sort((a,b)=>a.x0-b.x0),t=W.map(w=>w.texte).join(' '),cf=Math.min(...W.map(w=>w.conf));
-    if(cf>=SEUIL||!RL.test(t)||nr>=RELU_MAX)continue;stop();nr++;const c=cv1.get(i),p=24,cv=root.document.createElement('canvas');cv.width=c.w+2*p;cv.height=c.h+2*p;
-    const g=cv.getContext('2d',{willReadFrequently:true});g.fillStyle='#fff';g.fillRect(0,0,cv.width,cv.height);g.drawImage(c.cv,p,p);
-    const im=g.getImageData(0,0,cv.width,cv.height),d=im.data;for(let j=0;j<d.length;j+=4){const v=(d[j]*77+d[j+1]*150+d[j+2]*29)>>8<170?0:255;d[j]=d[j+1]=d[j+2]=v}g.putImageData(im,0,0);
-    pr(`Relecture des repères douteux, page ${n} (${nr})`,null);const W2=(await reconnaitre(cv,{psm:7,dpi:300})).filter(w=>w.texte.trim());
-    if(W2.length&&Math.min(...W2.map(w=>w.conf))>cf+5)relu.set(i,{W:W2,brut1:t,conf1:cf})}
+  const RL=/^[^A-Za-z0-9]{0,3}[A-Za-z]{1,4}\s?[0-9OoSIlBZGAÀ]{1,4}[A-Za-z]?[^A-Za-z0-9]{0,3}$/,cv1=new Map(C.map(c=>[c.i,c])),relu=new Map();let nr=0;
+  // o.prefixes (lettres des repères du tableau, « R ») : ces blocs sont relus en premier (RELU_MAX)
+  const PX=o.prefixes&&o.prefixes.length?new RegExp('^[^A-Za-z0-9]{0,3}('+o.prefixes.join('|')+')','i'):null,ord=[...R].sort((a,b)=>PX?(a[1].some(w=>PX.test(w.texte))?0:1)-(b[1].some(w=>PX.test(w.texte))?0:1):0);
+  for(const [i,W0] of ord){const W=W0.slice().sort((a,b)=>a.x0-b.x0),t=W.map(w=>w.texte).join(' '),cf=Math.min(...W.map(w=>w.conf));
+    // repère seul ou l'un des mots (« o RÀ ») ; lettres ramenées à 24 px et traits épaissis d'un pixel : polices de DAO à un trait, mieux lues (mesuré sur un plan réel)
+    if(cf>=SEUIL||!RL.test(t)&&!W.some(w=>RL.test(w.texte))||nr>=RELU_MAX)continue;stop();nr++;const c=cv1.get(i),p=24,e=0.75;
+    pr(`Relecture des repères douteux, page ${n} (${nr})`,null);let best=null;
+    for(const ep of [0,1]){const cv=root.document.createElement('canvas');cv.width=Math.ceil(c.w*e)+2*p;cv.height=Math.ceil(c.h*e)+2*p;   // sans puis avec épaississement
+      const g=cv.getContext('2d',{willReadFrequently:true});g.fillStyle='#fff';g.fillRect(0,0,cv.width,cv.height);g.drawImage(c.cv,p,p,c.w*e,c.h*e);
+      const im=g.getImageData(0,0,cv.width,cv.height),d=im.data,W_=cv.width,K=new Uint8Array(W_*cv.height);for(let j=0;j<K.length;j++)K[j]=(d[4*j]*77+d[4*j+1]*150+d[4*j+2]*29)>>8<170?1:0;
+      for(let j=0;j<K.length;j++){const x=j%W_,v=K[j]||ep&&(x>0&&K[j-1]||j>=W_&&(K[j-W_]||x>0&&K[j-W_-1]))?0:255;d[4*j]=d[4*j+1]=d[4*j+2]=v}g.putImageData(im,0,0);
+      const W2=(await reconnaitre(cv,{psm:7,dpi:300})).map(w=>noyau(w,p+0.4*BL_PX*e,p+(c.w-0.4*BL_PX)*e)).filter(w=>w&&w.texte.trim()),q=W2.length?Math.min(...W2.map(w=>w.conf)):-1;
+      if(q>cf+5&&(!best||q>best.q))best={W:W2,q}}
+    if(best)relu.set(i,{W:best.W,brut1:t,conf1:cf})}
   const out=[],run=o.run||'b';
   R.forEach((W,i)=>{const rl=relu.get(i);if(rl)W=rl.W.map(w=>Object.assign({},w,{x0:w.x0,x1:w.x1}));
     W=W.filter(w=>!(/^[|_\-—–~.,'`:;]+$/.test(w.texte)&&w.conf<50));if(!W.length)return;W.sort((a,b)=>a.x0-b.x0);
@@ -213,7 +227,7 @@ async function relireCellules(b,pr,stop){const {P,M}=b,c=P.canvas,W=c.width,f=(A
 //    relecture une à une des cellules vides, douteuses ou lues différemment par les deux variantes. Les rangées viennent de la
 //    géométrie, jamais de l'ordre des mots de Tesseract. Une cellule illisible reste vide (rien n'est inventé) ; brut et confiance
 //    gardés. → null (pas de grille) | {G (pour CPI.nomenclatures.depuisGrille), textes (un par cellule lue), mesures}
-const G_PX=24,G_RELU=300;   // shortcut: au plus 300 cellules relues une à une (tableau géant : les suivantes gardent la 1re lecture)
+const G_PX=[24,36],G_RELU=300;   // px de hauteur de lettre essayés : 24 (polices de DAO à un trait), 36 (polices pleines) ; shortcut: au plus 300 cellules relues une à une (tableau géant : les suivantes gardent la 1re lecture)
 const rotZ=(z,q)=>{const P=[[z.x0,z.y0],[z.x1,z.y1],[z.x0,z.y1],[z.x1,z.y0]].map(p=>root.CPI.nomenclatures.tourne(p,-q));
   return{x0:Math.min(...P.map(p=>p[0])),y0:Math.min(...P.map(p=>p[1])),x1:Math.max(...P.map(p=>p[0])),y1:Math.max(...P.map(p=>p[1]))}};
 const boiteRetour=(b,q)=>{const P=[[b[0],b[1]],[b[2],b[3]],[b[0],b[3]],[b[2],b[1]]].map(p=>root.CPI.nomenclatures.tourne(p,q));
@@ -269,12 +283,13 @@ async function lireGrille(pdf,z,o){o=o||{};const t0=Date.now(),pr=o.progres||(()
   const asp=med(GQ[0].rangs.flatMap(r=>r.cellules.map(c=>(r.y0-r.y1)/Math.max(0.1,c.x1-c.x0))));
   const Q=o.rot!=null?[o.rot%4]:asp>1.3?[1,3,0]:[0,1,3];
   const hq=g=>med(g.rangs.map(r=>r.y0-r.y1)),Qv=Q.filter(q=>GQ[q]);if(!Qv.length)return null;
-  const k=plafond(z,Math.min(10,Math.max(3,G_PX/(0.55*Math.min(...Qv.map(q=>hq(GQ[q])))))));   // hauteur de lettre ≈ 0,55 rangée (rangées du sens de lecture : les plus basses)
-  pr(`Rendu de la zone (${Math.round(k*72)} dpi)`,null);const cv=await root.CPI.pdf.rendreZone(pdf,z.page,z,k);stop();
-  const px=b=>{const x0=(b[0]-z.x0)*k,x1=(b[2]-z.x0)*k,y0=(z.y1-b[3])*k,y1=(z.y1-b[1])*k;return[x0,y0,x1-x0,y1-y0]};
+  // rendu de la zone pour une hauteur de lettre de P px (hauteur de lettre ≈ 0,55 rangée ; rangées du sens de lecture : les plus basses)
+  const hmin=0.55*Math.min(...Qv.map(q=>hq(GQ[q]))),RD={};
+  const rendu=async P=>{if(!RD[P]){const k=plafond(z,Math.min(10,Math.max(3,P/hmin)));pr(`Rendu de la zone (${Math.round(k*72)} dpi)`,null);RD[P]={P,k,cv:await root.CPI.pdf.rendreZone(pdf,z.page,z,k)};stop()}return RD[P]};
+  const px=(r,b)=>{const k=r.k,x0=(b[0]-z.x0)*k,x1=(b[2]-z.x0)*k,y0=(z.y1-b[3])*k,y1=(z.y1-b[1])*k;return[x0,y0,x1-x0,y1-y0]};
   // cellules d'une grille (repère q) : boîte page, découpe redressée en retrait des traits
-  const cellules=g=>{const ins=2,out=[];g.rangs.forEach((r,i)=>r.cellules.forEach(c=>{const b=boiteRetour([c.x0,r.y1,c.x1,r.y0],g.q),[x,y,w,h]=px(b);
-      if(w-2*ins<4||h-2*ins<4)return;out.push({i,j:c.j0,b,crop:decoupe(cv,x+ins,y+ins,w-2*ins,h-2*ins,g.q)})}));return out};
+  const cellules=(g,r)=>{const ins=2,out=[];g.rangs.forEach((rg,i)=>rg.cellules.forEach(c=>{const b=boiteRetour([c.x0,rg.y1,c.x1,rg.y0],g.q),[x,y,w,h]=px(r,b);
+      if(w-2*ins<4||h-2*ins<4)return;out.push({i,j:c.j0,b,crop:decoupe(r.cv,x+ins,y+ins,w-2*ins,h-2*ins,g.q)})}));return out};
   // couleur d'encre dominante (teintes voisines gardées), d'après toutes les cellules d'une grille
   const dominante=Cl=>{const hs=new Float64Array(13);Cl.forEach(c=>{const W=c.crop.width,H=c.crop.height,d=c.crop.getContext('2d',{willReadFrequently:true}).getImageData(0,0,W,H).data;
       for(let i=0;i<W*H;i+=2){const p=pix(d[4*i],d[4*i+1],d[4*i+2]);if(p)hs[p.t+1]++}});
@@ -282,15 +297,14 @@ async function lireGrille(pdf,z,o){o=o||{};const t0=Date.now(),pr=o.progres||(()
     return{t:m-1,autres:tot-dom>=0.03*tot&&tot>0}};
   const variantes=(c,D)=>{const A=nb(c.crop,()=>true),V=[{nom:'gris',...A}];
     if(D.autres){const t=D.t,B=nb(c.crop,u=>u===-1||t>=0&&Math.min((u-t+12)%12,(t-u+12)%12)<=1);V.push({nom:'couleur',...B})}return V};
-  let choix=GQ[Qv[0]],mesQ=null;
-  if(Qv.length>1){const E=[];for(const q of Qv){const g=GQ[q];if(!g)continue;const Cl=cellules(g),D=dominante(Cl),V=Cl.map(c=>variantes(c,D)[D.autres?1:0]).filter(v=>v.n>=12).slice(0,10);
-      // score : caractères lus dans des mots d'au moins 2 lettres ou chiffres, pondérés par la confiance (un texte lu de travers
-      // donne des signes isolés, parfois à forte confiance)
-      pr(`Orientation du tableau : essai à ${q*90}°`,null);const R=await mosaique(V.map(v=>v.c),{stop,progres:null});
-      const sc=R.reduce((s,W)=>s+W.reduce((a,m)=>{const n=(m.texte.match(/[\p{L}\p{N}]/gu)||[]).length;return a+(n>=2?n*m.conf/100:0)},0),0)/Math.max(1,V.length);
-      E.push({q,g,c:sc})}
-    E.sort((a,b)=>b.c-a.c);if(E.length){choix=E[0].g;mesQ=E.map(e=>({rotation:e.q*90,score:Math.round(e.c*10)/10}))}}
-  const g=choix,hr=hq(g),Cl=cellules(g),D=dominante(Cl),V=Cl.map(c=>variantes(c,D)),enc=V.map(v=>v.some(x=>x.n>=Math.max(12,0.002*x.c.width*x.c.height)));
+  // orientation et résolution : essais sur 10 cellules, chaque sens à 24 puis 36 px de lettre ; score : caractères lus dans des
+  // mots d'au moins 2 lettres ou chiffres, pondérés par la confiance (un texte lu de travers donne des signes isolés, parfois à forte confiance)
+  const E=[];for(const P of G_PX)for(const q of Qv){const g=GQ[q],r=await rendu(P),Cl=cellules(g,r),D=dominante(Cl),V=Cl.map(c=>variantes(c,D)[D.autres?1:0]).filter(v=>v.n>=12).slice(0,10);
+    pr(`Orientation du tableau : essai à ${q*90}°`,null);const R=await mosaique(V.map(v=>v.c),{stop,progres:null});
+    const sc=R.reduce((s,W)=>s+W.reduce((a,m)=>{const n=(m.texte.match(/[\p{L}\p{N}]/gu)||[]).length;return a+(n>=2?n*m.conf/100:0)},0),0)/Math.max(1,V.length);
+    E.push({q,P,g,c:sc})}
+  E.sort((a,b)=>b.c-a.c);const mesQ=Qv.length>1?Qv.map(q=>({rotation:q*90,score:Math.round(Math.max(...E.filter(e=>e.q===q).map(e=>e.c))*10)/10})):null;
+  const g=E[0].g,RZ=await rendu(E[0].P),k=RZ.k,cv=RZ.cv,hr=hq(g),Cl=cellules(g,RZ),D=dominante(Cl),V=Cl.map(c=>variantes(c,D)),enc=V.map(v=>v.some(x=>x.n>=Math.max(12,0.002*x.c.width*x.c.height)));
   const L=V.map(()=>[]),tir=new Set();
   V.forEach((v,i)=>{const t=v[v.length-1];if(enc[i]&&t.tiret){tir.add(i);L[i]=v.map((x,j)=>j===v.length-1?{texte:'-',conf:90,moy:90,notes:[],tiret:true}:null)}});
   const I=Cl.map((c,i)=>i).filter(i=>enc[i]&&!tir.has(i)),nv=V[0]?V[0].length:1;
@@ -304,10 +318,10 @@ async function lireGrille(pdf,z,o){o=o||{};const t0=Date.now(),pr=o.progres||(()
     if(nr>=G_RELU||A.length&&!dif&&Math.min(...A.map(a=>a.conf))>=SEUIL)continue;stop();nr++;pr('Relecture des cellules douteuses',nr/Math.max(1,I.length));
     for(let v=0;v<nv;v++){if(V[i][v].n<12)continue;const c=V[i][v].c,p=Math.round(Math.min(c.width,c.height)/3)+8,cc=root.document.createElement('canvas');cc.width=c.width+2*p;cc.height=c.height+2*p;
       const x2=cc.getContext('2d');x2.fillStyle='#fff';x2.fillRect(0,0,cc.width,cc.height);x2.drawImage(c,p,p);
-      const r=texteMots(await reconnaitre(cc,{psm:c.height>1.6*G_PX*1.5?6:7,dpi:300,oslash:true}));if(r&&(!L[i][v]||r.moy>L[i][v].moy))L[i][v]=r}}
+      const r=texteMots(await reconnaitre(cc,{psm:c.height>1.6*RZ.P*1.5?6:7,dpi:300,oslash:true}));if(r&&(!L[i][v]||r.moy>L[i][v].moy))L[i][v]=r}}
   // titre : bande au-dessus du tableau (dans son sens de lecture), jusqu'à 4 hauteurs de rangée
   let titre='';const zq=rotZ(z,g.q),top=g.cadre[3],hT=Math.min(4*hr,zq.y1-top);
-  if(hT>=0.6*hr){const b=boiteRetour([g.cadre[0],top+0.2*g.t,g.cadre[2],top+hT],g.q),[x,y,w,h]=px(b);if(w>8&&h>8){stop();const B=nb(decoupe(cv,x,y,w,h,g.q),()=>true);   // gris : le titre n'a pas toujours la couleur des cellules
+  if(hT>=0.6*hr){const b=boiteRetour([g.cadre[0],top+0.2*g.t,g.cadre[2],top+hT],g.q),[x,y,w,h]=px(RZ,b);if(w>8&&h>8){stop();const B=nb(decoupe(cv,x,y,w,h,g.q),()=>true);   // gris : le titre n'a pas toujours la couleur des cellules
     if(o.trace)o.trace.push({titre:true,v:[B.c.toDataURL()]});
     if(B.n>=12){const r=texteMots(await reconnaitre(B.c,{psm:6,dpi:300}));if(o.trace)o.trace.push({titreLu:r});if(r&&r.moy>=50)titre=corriger(r.texte).texte}}}
   // textes au contrat de lireZone (un par cellule lue) et matrice de la grille
@@ -352,6 +366,8 @@ function grille(N,textes){const tid=new Map(textes.map(t=>[t.id,t]));
       if((k==='angle'||k==='niveau')&&/^[Oo]$/.test(v.trim())){corr.push(`« ${v.trim()} » lu comme 0`);v='0'}   // zéro seul lu comme la lettre O
       if(k==='repere'&&v){let u=v.replace(/\s+/g,'').toUpperCase();const m=u.match(/^([A-Z]+?)([IL1|O0SBZG]+)$/);
         if(!/\d/.test(u)&&m&&pref[m[1]]){u=m[1]+m[2].replace(/[IL|]/g,'1').replace(/O/g,'0').replace(/S/g,'5').replace(/B/g,'8').replace(/Z/g,'2').replace(/G/g,'6')}
+        // « 53 » dans une colonne de repères S1, S2… : 1re lettre lue comme le chiffre qui lui ressemble (signalé)
+        const LD={S:'5',B:'8',O:'0',I:'1',Z:'2',G:'6'},px=/^\d{2,}$/.test(u)&&Object.keys(pref).find(p=>p.length===1&&pref[p]>=2&&LD[p]===u[0]);if(px)u=px+u.slice(1);
         if(u!==v.replace(/\s+/g,'').toUpperCase())corr.push(`repère « ${v} » lu comme ${u}`);v=u}   // espaces et minuscules : sans signalement
       R.cells[k]=v;R.brut[k]=O.map(o=>o.brut).join(' ');R.conf[k]=conf;R.corr[k]=corr;R.doute[k]=conf!=null&&conf<SEUIL||corr.length>0;R.box[k]=unionBox(O.map(o=>o.box).filter(Boolean))});
     R.cle0=root.CPI.nomenclatures.cleRep(R.cells.repere||'');   // repère tel que reconnu : retrouve la ligne quand l'OCR est relancé
