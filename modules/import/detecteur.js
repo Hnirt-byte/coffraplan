@@ -36,8 +36,7 @@ function rectSegments(S,opt){
     if(N[u].e.has(v)||Math.abs(a[0]*b[1]-a[1]*b[0])>tol*Math.hypot(...a)*Math.hypot(...b)||a[0]*b[0]+a[1]*b[1]>=0)return;
     N[u].e.delete(k);N[v].e.delete(k);n.e.clear();n.ok=false;lier(u,v,iu.concat(iv))});
   // index grossier des sommets restants (côtés, intérieur)
-  const V=N.map((n,k)=>k).filter(k=>N[k].ok),xs=V.map(k=>N[k].p[0]),ys=V.map(k=>N[k].p[1]),
-    x0=Math.min(...xs),y0=Math.min(...ys),cs=Math.max(Math.max(...xs)-x0,Math.max(...ys)-y0,eps)/64,Q=new Map();
+  const V=N.map((n,k)=>k).filter(k=>N[k].ok),[x0,y0,X1,Y1]=bornes(V.map(k=>N[k].p)),cs=Math.max(X1-x0,Y1-y0,eps)/64,Q=new Map();
   V.forEach(k=>{const c=Math.floor((N[k].p[0]-x0)/cs)+','+Math.floor((N[k].p[1]-y0)/cs);if(!Q.has(c))Q.set(c,[]);Q.get(c).push(k)});
   const R=[];let nc=0;
   for(const a of V){const A=[...N[a].e.keys()].filter(b=>b>a);if(N[a].e.size>6)continue;
@@ -46,12 +45,14 @@ function rectSegments(S,opt){
         const P=[a,b,c,d],r=rectangle(P.map(k=>N[k].p),tol);if(!r)continue;
         const dg=[[a,c],[b,d]].filter(([u,v])=>N[u].e.has(v)),ids=[[a,b],[b,c],[c,d],[d,a]].concat(dg).flatMap(([u,v])=>N[u].e.get(v));
         const accole=P.filter(k=>N[k].e.size>2+dg.filter(x=>x.includes(k)).length).length;
-        let te=0,int=0;const Px=P.map(k=>N[k].p),bx=[Math.min(...Px.map(p=>p[0])),Math.min(...Px.map(p=>p[1])),Math.max(...Px.map(p=>p[0])),Math.max(...Px.map(p=>p[1]))];
+        let te=0,int=0;const Px=P.map(k=>N[k].p),bx=bornes(Px);
         for(let gx=Math.floor((bx[0]-x0)/cs);gx<=Math.floor((bx[2]-x0)/cs);gx++)for(let gy=Math.floor((bx[1]-y0)/cs);gy<=Math.floor((bx[3]-y0)/cs);gy++)
           for(const k of Q.get(gx+','+gy)||[]){if(P.includes(k))continue;const p=N[k].p;
             if(Px.some((q,m)=>dSeg(p,q,Px[(m+1)%4])<=eps))te++;else if(dansPoly(p,Px))int++}
         R.push(Object.assign({pts:Px,ids,diag:dg.length>0,accole,te,int},r))}}}
   return R}
+// Emprise [x0,y0,x1,y1] sans Math.min(...tableau) : pile dépassée au-delà de ~100 000 sommets (grands plans)
+function bornes(P){let x0=Infinity,y0=Infinity,x1=-Infinity,y1=-Infinity;for(const p of P){if(p[0]<x0)x0=p[0];if(p[0]>x1)x1=p[0];if(p[1]<y0)y0=p[1];if(p[1]>y1)y1=p[1]}return[x0,y0,x1,y1]}
 function dSeg(p,a,b){const dx=b[0]-a[0],dy=b[1]-a[1],l=dx*dx+dy*dy,t=l?Math.max(0,Math.min(1,((p[0]-a[0])*dx+(p[1]-a[1])*dy)/l)):0;return Math.hypot(p[0]-a[0]-t*dx,p[1]-a[1]-t*dy)}
 function dansPoly(p,P){let c=false;for(let i=0,j=P.length-1;i<P.length;j=i++){const a=P[i],b=P[j];if((a[1]>p[1])!==(b[1]>p[1])&&p[0]<(b[0]-a[0])*(p[1]-a[1])/(b[1]-a[1])+a[0])c=!c}return c}
 
@@ -82,7 +83,7 @@ function detecter(doc,opt){
 // libres de tout autre trait du calque, diagonales admises) et s'ils ne doublent pas une polyligne déjà reconnue
 function lignes(doc,C,tol){const G={},note=(c,m)=>{if(!c.remarques.includes(m))c.remarques.push(m)};
   (doc.entites||[]).forEach((e,i)=>{if(e.type==='autre'&&e.segment&&e.espace!=='papier')(G[e.calque]=G[e.calque]||[]).push({id:i,a:e.segment[0],b:e.segment[1]})});
-  Object.keys(G).forEach(cal=>{const S=G[cal],P=S.flatMap(s=>[s.a,s.b]),ext=Math.max(...P.map(p=>Math.abs(p[0])),...P.map(p=>Math.abs(p[1])),1);
+  Object.keys(G).forEach(cal=>{const S=G[cal],P=S.flatMap(s=>[s.a,s.b]),ext=P.reduce((m,p)=>Math.max(m,Math.abs(p[0]),Math.abs(p[1])),1);
     rectSegments(S,{eps:1e-6*ext,tol}).forEach(r=>{const E=[...new Set(r.ids)].map(i=>C[i]),ids=E.map(c=>c.source.id).join('+');
       if(r.accole||r.te){E.forEach(c=>note(c,'côté d\'un rectangle de LINE non proposé : autres traits raccordés aux sommets ou sur les côtés'));return}
       const dbl=C.find(c=>c.type==='rect'&&c.geometrie.type==='polyligne'&&dist(c.centre,r.centre)<=tol*r.L&&Math.abs(c.dims.L-r.L)<=tol*r.L&&Math.abs(c.dims.l-r.l)<=tol*r.L);

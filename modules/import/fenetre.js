@@ -63,6 +63,9 @@ function dxiCss(){if(el('dxiCss'))return;document.head.insertAdjacentHTML('befor
 #dxpO .rs.cf{stroke:var(--okt);fill:rgba(46,204,113,.22)}#dxpO .rs.on{stroke:var(--accent);stroke-width:3px;fill:rgba(232,130,12,.30)}
 #dxpO .rs.lk{stroke:var(--okt);stroke-dasharray:4 2;fill:none;cursor:default}#dxpO .rs.pr{stroke:var(--accent);stroke-dasharray:5 2;stroke-width:2.5px}
 #dxpO .rl{fill:#7b4dff;pointer-events:none}#dxpO .ca{fill:var(--redt)}#dxpO .cl{stroke:var(--redt);stroke-width:1.5px;vector-effect:non-scaling-stroke}#dxpO.cm{cursor:crosshair}
+#dxpO .oc{fill:rgba(232,130,12,.12);stroke:var(--accent);stroke-width:1.5px;vector-effect:non-scaling-stroke;stroke-dasharray:3 2}#dxpO .ot{stroke:var(--accent);stroke-width:1.2px;vector-effect:non-scaling-stroke;stroke-dasharray:4 3}
+#dxnT .rp{font-size:11px;margin-top:3px;line-height:1.35}#dxnT .rp .btn{padding:1px 5px;font-size:11px;margin:1px 2px 1px 0}#dxnT .cc-forte{color:var(--okt)}#dxnT .cc-partielle{color:var(--okt)}
+#dxnT .cc-probable,#dxnT .cc-conflit{color:var(--acct)}#dxnT .cc-conflit{font-weight:600}#dxnT .cc-absente,#dxnT .cc-rejete{color:var(--muted)}
 #dxrT tr{cursor:pointer}#dxrT tr.on td{background:rgba(232,130,12,.16)}#dxrT .fi{padding:3px 5px;font-size:12px;min-width:0}#dxrT th{position:sticky;top:0;background:var(--surface);z-index:1}
 #dxoT td.ac{white-space:nowrap}#dxoT td.ac .btn{padding:2px 6px}#dxoP progress{width:100%}
 @media (max-width:820px){#dxi .dxi-w,#dxi .dxi-g,#dxi .dxp{grid-template-columns:1fr}}
@@ -239,6 +242,7 @@ function dxiCreate(){const D=DXI;if(!D)return;dxiEval();const L=dxiReady(),LN=dx
 
 // ==== Nomenclatures de réservations (vue par défaut quand le DXF en contient) ====
 const DXN_ST={trouvee:'✓ trouvée, cohérente',probable:'≈ probable, à vérifier',multiple:'⋯ plusieurs possibles',absente:'∅ non retrouvée',choisie:'✓ choisie'};
+const DXN_CC={forte:'✓✓ concordance forte',partielle:'✓ concordance partielle',probable:'≈ correspondance probable',conflit:'⚠ conflit à examiner',absente:'∅ non retrouvée sur le dessin',rejete:'✕ rapprochement rejeté'};
 const DXN_OPT=12;   // shortcut: au plus 12 géométries proposées par ligne (les autres sont comptées) ; liste filtrable si un vrai plan l'exige
 const dxnU=(N,L)=>L.dims&&L.dims.unite||DXI.NU[N.id]||N.unite||'';
 const dxnDims=r=>CPI.nomenclatures.cotes(r.cotes,'mm',true);
@@ -249,14 +253,19 @@ function dxnPre(k){const {N,L}=DXI.NL[k],d=L.dims,f=DXI_MM[dxnU(N,L)];if(!d||!f)
 // Rapprochements (à refaire si l'unité du dessin ou d'un tableau change) ; une correspondance « trouvée » est rattachée d'office, modifiable
 function dxnAssoc(){const D=DXI;if(!D.NL.length)return;
   // PDF : aucune géométrie de la page n'est rattachée (échelle inconnue) ; les lignes gardent leurs cotes écrites ou saisies
-  // PDF : seulement après « Repérer les réservations » (contours de la page, cotes comparées si la page a une échelle)
+  // PDF : seulement après « Analyser le dessin » (contours de la page, cotes comparées si la page a une échelle)
+  // PDF : seulement après « Analyser le dessin » : rapprochement multi-indices (rapprochement.js), toutes pages
   const ex=D.NA.ecartes.flatMap(e=>e.ids);
-  D.AS=D.fmt==='pdf'?(D.C.length?CPI.nomenclatures.associer(D.NA.nomenclatures,D.C,D.doc,{mm:dxrK,unites:D.NU,exclus:ex}):{})
-    :CPI.nomenclatures.associer(D.NA.nomenclatures,D.C,D.doc,{uniteDessin:D.u,unites:D.NU,exclus:ex});
-  D.NL.forEach(({L},k)=>{const r=D.NR[k],a=dxnAS(L);if(!r.cotesT)r.cotes=dxnPre(k);if(!r.geoT)r.geo=a.statut==='trouvee'?String(a.options[0].c):''});dxnLinks()}
+  if(D.fmt==='pdf'){D.AS={};D.HR=[];if(D.ana){const RP=CPI.rapprochement.rapprocher(D.NL.map(({N,L})=>({id:L.id,repere:L.repere,dims:L.dims,unite:dxnU(N,L)||null,quantite:L.quantite,page:N.page})),
+      dxrTextes(),D.C,{mm:dxrK,rappels:dxrRappels,exclus:new Set(ex.concat(D.NA.nomenclatures.flatMap(N=>N.ids)))});D.AS=RP.lignes;D.HR=RP.hors;D.ana.colonnes=RP.colonnes}}
+  else D.AS=CPI.nomenclatures.associer(D.NA.nomenclatures,D.C,D.doc,{uniteDessin:D.u,unites:D.NU,exclus:ex});
+  D.NL.forEach(({L},k)=>{const r=D.NR[k],a=dxnAS(L);if(!r.cotesT)r.cotes=dxnPre(k);if(!r.geoT)r.geo=a.statut==='trouvee'&&!r.rej?String(a.principal!=null?a.principal:a.options[0].c):''});dxnLinks()}
 const DXN_AS0={statut:'absente',options:[],reperes:[],note:''};
 const dxnAS=L=>DXI.AS&&DXI.AS[L.id]||DXN_AS0;   // ligne saisie ou ajoutée après le rapprochement : aucune géométrie
-function dxnLinks(){DXI.lk=new Set(DXI.NR.filter(r=>r.geo!=='').map(r=>+r.geo))}
+// Contours rattachés : celui choisi pour chaque ligne et toutes les vues désignées par son repère (preuves d'une même entrée :
+// pas de doublon dans « hors nomenclature ») ; sauf ligne au rapprochement rejeté ou sans contour choisi par l'utilisateur
+function dxnLinks(){const D=DXI;D.lk=new Set(D.NR.filter(r=>r.geo!=='').map(r=>+r.geo));
+  if(D.fmt==='pdf')D.NL.forEach(({L},k)=>{const r=D.NR[k];if(r.rej||r.geoT&&r.geo==='')return;(dxnAS(L).preuves||[]).forEach(i=>D.lk.add(i))})}
 function dxnPane(){const D=DXI,NA=D.NA,pdf=D.fmt==='pdf';
   const vide=pdf&&!D.NL.length?`<div class="hint" style="margin:8px 0;border-left-color:var(--acct)"><b>Aucune nomenclature de réservations exploitable n'a été reconnue automatiquement.</b>
     Rien n'est inventé : aucune ligne n'est proposée. ${D.doc.pages.map(p=>`Page ${p.n} : ${esc(CPI.pdf.LIB_NAT[p.nature]||p.nature)}`).join(' · ')}.
@@ -272,7 +281,9 @@ function dxnPane(){const D=DXI,NA=D.NA,pdf=D.fmt==='pdf';
     <div style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap"><button class="btn bs bo" onclick="dxnAll(true)">☑ Tout sélectionner</button><button class="btn bs bo" onclick="dxnAll(false)">Tout décocher</button>
     <button class="btn bs bo" onclick="dxnRefs(true)" title="Référence CoffraPlan = repère du tableau">Références du tableau</button><button class="btn bs bo" onclick="dxnRefs(false)" title="Références vides : numérotation automatique CoffraPlan">Références CoffraPlan automatiques</button></div>
     <div class="dxi-t"><table class="ser" id="dxnT"><thead><tr><th>Créer</th><th>Repère</th><th>Désignation</th><th>Ouverture · réseau</th><th>Niveau · angle</th><th>Forme</th><th>Cotes (mm)</th><th>h (mm)</th><th>Réf.</th><th>${pdf?'Source':'Géométrie du dessin'}</th><th>Statut</th></tr></thead><tbody></tbody></table></div>
-    ${pdf?`<div class="hint" style="margin:6px 0 0">Source : ouvre la page du PDF avec la ligne encadrée. Les contours dessinés sur un PDF ne donnent pas de cotes (échelle de la page inconnue) : seules les cotes écrites dans le tableau ou saisies sont utilisées.</div></div>`
+    ${pdf?`<div class="hint" style="margin:6px 0 0">Source : ouvre la page du PDF avec la ligne encadrée. Après « Analyser le dessin » (onglet Aperçu du plan) : concordance avec le dessin,
+    localisations du repère (clic : voir sur le plan ; « ? » : lecture incertaine), cotes du tableau confirmées, contredites ou non vérifiables. Les ouvrages sont créés avec les cotes du
+    tableau (ou saisies), jamais avec une mesure du dessin ; une cote absente du dessin n'est pas un défaut.</div></div>`
     :`<svg id="dxnV" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Correspondances possibles dans le dessin"></svg>
     <div class="hint" style="margin:6px 0 0">Schéma des géométries proposées pour les lignes (espace Objet) ; points : repères trouvés dans le dessin. Ligne sélectionnée : propositions en orange, un clic en choisit une.</div></div>`}`}
 function dxiVue(v){const D=DXI;if(!D||!el('dxiPN'))return;D.vue=v;
@@ -289,11 +300,11 @@ function dxnRows(){const D=DXI,T=el('dxnT');if(!T)return;
       <td><input class="fi" data-k="h" style="width:62px" value="${esc(r.h)}" placeholder="${esc(D.hCom.trim()||'à saisir')}" oninput="DXI.NR[${k}].h=this.value;dxiUpd()"></td>
       <td><input class="fi" data-k="ref" style="width:72px" value="${esc(r.ref)}" placeholder="auto" oninput="DXI.NR[${k}].ref=this.value;dxiUpd()"></td>
       <td>${D.fmt==='pdf'?`<button class="btn bs bo" onclick="event.stopPropagation();dxpVoir(${k})" title="Voir la ligne sur le PDF">p. ${N.page} ↗</button>${N.saisie?`<button class="btn bs bo" onclick="event.stopPropagation();dxpSuppr(${k})" title="Retirer cette ligne saisie" aria-label="Retirer la ligne saisie">✕</button>`:''}`
-        +(D.C.length?`<select class="fi" data-k="geo" style="max-width:190px;margin-top:3px" aria-label="Contour du dessin" onclick="event.stopPropagation()" onchange="dxnGeo(${k},this.value)"></select><div class="gs"></div>`:'')
+        +(D.ana?`<select class="fi" data-k="geo" style="max-width:190px;margin-top:3px" aria-label="Contour du dessin" onclick="event.stopPropagation()" onchange="dxnGeo(${k},this.value)"></select><div class="gs"></div><div class="rp"></div>`:'')
         :`<select class="fi" data-k="geo" style="max-width:190px" onchange="dxnGeo(${k},this.value)"></select><div class="gs"></div>`}</td><td class="st"></td></tr>`}).join('');
   dxiUpd()}
 // Choix de la géométrie rattachée à une ligne (retirée de la vue « Géométries du dessin » ; aucune : elle y revient)
-function dxnGeo(k,v){const r=DXI.NR[k];r.geo=v;r.geoT=true;dxnLinks();dxiUpd()}
+function dxnGeo(k,v){const r=DXI.NR[k];r.rej=v==='rej';r.geo=r.rej?'':v;r.geoT=true;r.perdu='';dxnLinks();dxiUpd()}
 function dxnSel(k){const D=DXI;if(!D)return;D.nsel=k;document.querySelectorAll('#dxnT tr[data-n]').forEach(t=>t.classList.toggle('on',+t.dataset.n===k));dxnSvg();if(D.fmt==='pdf')dxpOver()}
 function dxnAll(on){const D=DXI;if(!D)return;D.NR.forEach(r=>r.conf=on);document.querySelectorAll('#dxnT [data-k=conf]').forEach(e=>e.checked=on);dxiUpd()}
 function dxnRefs(tab){const D=DXI;if(!D)return;D.NR.forEach((r,k)=>r.ref=tab?String(D.NL[k].L.repere||'').toUpperCase():'');
@@ -312,25 +323,28 @@ function dxnEval(moteur,hc){const D=DXI;if(!D.NL||!D.NL.length)return;
     r.x=x;r.st=x.alertes.length?'wn':'ok';r.msg=x.alertes.join(' · ')})}
 function dxnProv(k){const D=DXI,{N,L}=D.NL[k],r=D.NR[k],a=dxnAS(L),g=r.geo!==''?D.C[+r.geo]:null,u=dxnU(N,L);
   return CPI.nomenclatures.provenance(N,L,{forme:r.x.plan.forme,cotes:r.cotes,dims:dxnDims(r),ref:r.ref.trim().toUpperCase(),uniteTableau:u||null,uniteDessin:D.fmt==='pdf'?'pt':D.u||null,
-    uniteChoisie:!!(u&&!(L.dims&&L.dims.unite)&&!N.unite),geo:g?{c:g,statut:!r.geoT&&a.statut==='trouvee'?'trouvee':'choisie'}:null})}
+    uniteChoisie:!!(u&&!(L.dims&&L.dims.unite)&&!N.unite),geo:g?{c:g,statut:!r.geoT&&a.statut==='trouvee'?'trouvee':'choisie'}:null,rapprochement:D.fmt==='pdf'&&D.ana?dxrRapProv(a,r):null})}
 // Statuts, formes possibles, géométries proposées, bilan (sans reconstruire la liste : garde la saisie en cours)
 function dxnUpd(){const D=DXI;if(!D||!el('dxnT'))return;const lb={ok:'✓ prêt',wn:'⚠ prêt — ',ac:'… ',er:'⛔ non créé — '};
   document.querySelectorAll('#dxnT tr[data-n]').forEach(t=>{const k=+t.dataset.n,r=D.NR[k],{L}=D.NL[k],a=dxnAS(L),dm=dxnDims(r),F=dxnFormes(dm);
     if(r.forme&&!F.includes(r.forme))r.forme='';
     const sf=t.querySelector('[data-k=forme]'),fo=r.forme||dxnDef(dm),key=F.join();
     if(sf.dataset.f!==key){sf.dataset.f=key;sf.innerHTML=F.map(f=>`<option value="${f}">${f?esc(fmLb(f))+(/_fond$/.test(f)?' (choix explicite)':''):'— à choisir —'}</option>`).join('')}sf.value=fo;
-    const sg=t.querySelector('[data-k=geo]'),O=a.options.slice(0,DXN_OPT),gk=O.map(o=>o.c).join()+'|'+D.u+'|'+Object.values(D.cal||{}).map(x=>x.k).join();
-    if(sg){if(sg.dataset.g!==gk){sg.dataset.g=gk;sg.innerHTML=`<option value="">— aucune —</option>`+O.map(o=>{const c=D.C[o.c];
-      return `<option value="${o.c}">${esc(c.id+' · '+dxiDims(c)+' · '+c.source.calque+(o.via==='cotes'?' · mêmes cotes':o.cotes==='diff'?' · cotes différentes':''))}</option>`}).join('')
-      +(a.options.length>DXN_OPT?`<option disabled>… et ${a.options.length-DXN_OPT} autre(s)</option>`:'')}
-    sg.value=r.geo;const gs=t.querySelector('.gs');gs.textContent=r.geo!==''&&r.geoT?DXN_ST.choisie:DXN_ST[a.statut];gs.title=a.note;
-    gs.style.color=r.geo!==''||a.statut==='trouvee'?'var(--okt)':a.statut==='absente'?'var(--muted)':'var(--acct)'}
+    const sg=t.querySelector('[data-k=geo]'),O=a.options.slice(0,DXN_OPT),pdf=D.fmt==='pdf',gk=O.map(o=>o.c).join()+'|'+D.u+'|'+Object.values(D.cal||{}).map(x=>x.k).join();
+    if(sg){if(sg.dataset.g!==gk){sg.dataset.g=gk;sg.innerHTML=`<option value="">— ${pdf?'aucun contour':'aucune'} —</option>`+O.map(o=>{const c=D.C[o.c];
+      return `<option value="${o.c}">${esc(c.id+' · '+dxiDims(c)+' · '+(pdf?'p. '+c.source.page:c.source.calque)+(o.via==='cotes'?' · mêmes cotes':o.cotes==='diff'?' · cotes différentes':o.ambigu?' · près du repère':''))}</option>`}).join('')
+      +(a.options.length>DXN_OPT?`<option disabled>… et ${a.options.length-DXN_OPT} autre(s)</option>`:'')+(pdf?'<option value="rej">✕ rejeter le rapprochement</option>':'')}
+    sg.value=r.rej?'rej':r.geo;const gs=t.querySelector('.gs');
+    if(pdf){const cc=r.rej?'rejete':a.concordance||'absente';gs.className='gs cc-'+cc;gs.textContent=(DXN_CC[cc]||cc)+(r.geo!==''&&r.geoT?' · contour choisi':'');gs.title=a.note;t.querySelector('.rp').innerHTML=dxrRap(k,a,r)}
+    else{gs.textContent=r.geo!==''&&r.geoT?DXN_ST.choisie:DXN_ST[a.statut];gs.title=a.note;
+    gs.style.color=r.geo!==''||a.statut==='trouvee'?'var(--okt)':a.statut==='absente'?'var(--muted)':'var(--acct)'}}
     const s=t.querySelector('.st');s.className='st '+(r.st==='ac'?'wn':r.st);
-    s.innerHTML=esc(lb[r.st]+(r.st==='ok'?'':r.msg))+(L.a_verifier.length?`<div class="av">à vérifier : ${esc(L.a_verifier.join(' ; '))}</div>`:'')+(a.note?`<div class="mu">${esc(a.note)}</div>`:'')});
+    s.innerHTML=esc(lb[r.st]+(r.st==='ok'?'':r.msg))+(r.perdu?`<div class="av">${esc(r.perdu)}</div>`:'')+(L.a_verifier.length?`<div class="av">à vérifier : ${esc(L.a_verifier.join(' ; '))}</div>`:'')+(a.note&&D.fmt!=='pdf'?`<div class="mu">${esc(a.note)}</div>`:'')});
   const n={trouvee:0,probable:0,multiple:0,absente:0};D.NL.forEach(({L})=>n[dxnAS(L).statut]++);
   const NN=D.NA.nomenclatures.filter(N=>!N.saisie).length,cf=D.NR.filter(r=>r.conf).length,nS=D.NL.filter(x=>x.N.saisie).length;
   if(el('dxiTabN'))el('dxiTabN').textContent=`Nomenclature des réservations (${D.NL.length})`;
-  if(D.fmt==='pdf'){const nO=D.NL.filter(x=>x.N.ocr).length;el('dxnS').innerHTML=`<b>${D.NL.length-nS-nO} ligne(s) lue(s)</b> dans ${NN} tableau${NN>1?'x':''} · ${nO} ligne(s) reconnue(s) par OCR · ${nS} ligne(s) saisie(s) · ${cf} sélectionnée(s) · <b>${dxnReady().length} à créer</b>`;return}
+  if(D.fmt==='pdf'){const nO=D.NL.filter(x=>x.N.ocr).length;el('dxnS').innerHTML=`<b>${D.NL.length-nS-nO} ligne(s) lue(s)</b> dans ${NN} tableau${NN>1?'x':''} · ${nO} ligne(s) reconnue(s) par OCR · ${nS} ligne(s) saisie(s) · ${cf} sélectionnée(s) · <b>${dxnReady().length} à créer</b>`
+    +(D.ana?`<div style="margin-top:3px">Rapprochement avec le dessin : ${dxrBilan().txt}</div>`:'<div class="mu" style="margin-top:3px">Onglet Aperçu du plan : « Analyser le dessin » pour retrouver ces réservations sur le plan.</div>');return}
   el('dxnS').innerHTML=`<b>${D.NL.length} ligne(s) de nomenclature</b> dans ${NN} tableau${NN>1?'x':''} · géométries : ${n.trouvee} trouvée(s), ${n.probable} probable(s), ${n.multiple} à choisir parmi plusieurs, ${n.absente} non retrouvée(s)
     · ${cf} sélectionnée(s) · <b>${dxnReady().length} à créer</b>`;
   dxnSvg()}
@@ -350,14 +364,14 @@ function dxnSvg(){const D=DXI,S=el('dxnV');if(!S)return;const G=new Set(),pts=[]
 function dxnPick(i){const D=DXI;if(!D||D.nsel<0)return;const t=document.querySelector(`#dxnT tr[data-n="${D.nsel}"] [data-k=geo]`);dxnGeo(D.nsel,String(i));if(t)t.value=String(i)}
 
 // ==== PDF : lecture, aperçu des pages, zone à analyser, saisie assistée (fonctions dxp*) ====
-const dxnNR=L=>({conf:false,forme:'',cotes:'',cotesT:false,h:'',ref:String(L.repere||'').toUpperCase(),geo:'',geoT:false});
+const dxnNR=L=>({conf:false,forme:'',cotes:'',cotesT:false,h:'',ref:String(L.repere||'').toUpperCase(),geo:'',geoT:false,rej:false,perdu:''});
 async function dxpFile(nom,b){if(el('dxiZ')){el('dxiN').innerHTML=`<b>${esc(nom)}</b> · lecture du PDF…`;el('dxiZ').innerHTML=''}
   const lu=await CPI.pdf.lire(b,nom);if(!lu.ok)return dxiErr(nom,lu);
   const v=CPI.lecteur.lirePlan({format:'normalise',nom,contenu:lu.document});if(!v.ok){CPI.pdf.fermer(lu.pdf);return dxiErr(nom,v)}
   dxiQuit();const doc=lu.document,cur=coll(),NA=CPI.nomenclatures.analyser(doc),NL=NA.nomenclatures.flatMap(N=>N.lignes.map(L=>({N,L})));
   DXI={fmt:'pdf',nom,doc,pdf:lu.pdf,C:[],R:[],lay:{},u:'',ch:cur.ch,ouv:cur.ouv,ind:'',hCom:'',sel:-1,M:null,NA,NL,NR:NL.map(({L})=>dxnNR(L)),NU:{},nsel:-1,
     vue:NL.length?'n':'p',lk:new Set(),page:NL.length?NL[0].N.page:1,zoom:1,zone:null,zm:false,hl:-1,nz:0,ns:0,tok:0,OC:null,ocJob:null,no:0,ohl:null,
-    cal:{},GP:{},calm:null,rsel:-1,rn:0};
+    cal:{},GP:{},GI:{},OT:{},OM:{},calm:null,rsel:-1,rn:0,ana:null,rJob:null,HR:[]};
   dxnAssoc();if(el('dxiZ'))dxiRender()}
 // Nomenclature reconstruite (zone analysée, ligne saisie ou retirée) sans toucher à l'aperçu
 function dxnRefresh(){const z=el('dxiPN');if(!z)return;const v=z.style.display;z.outerHTML=dxnPane();el('dxiPN').style.display=v;dxnRows();dxiHead()}
@@ -370,8 +384,10 @@ function dxpPane(){
       onpointerdown="dxpPd(event)" onpointermove="dxpPm(event)" onpointerup="dxpPu(event)"></svg></div></div>
     <div class="hint" style="margin:6px 0 0">Cadres verts en tirets : tableaux reconnus ; orange : ligne choisie ; bleu : zone ; violet : réservations repérées (clic : ligne du tableau). Pour choisir une zone : « Sélectionner une zone », puis cliquer-glisser sur la page.</div></div>
   <div class="dxp-s"><div id="dxpI"></div>
-    <fieldset><legend>Réservations dessinées</legend><div class="mu">Rectangles et cercles de la page affichée (ou de la zone choisie). Simples propositions : rien n'est coché ni créé.</div>
-      <div class="dxp-b" style="margin-top:6px"><button class="btn bs bpr" id="dxrGo" onclick="dxrGo()">🔎 Repérer les réservations</button></div><div id="dxrM" style="margin-top:4px"></div>
+    <fieldset><legend>Réservations dessinées</legend><div class="mu">Toutes les pages (ou la zone choisie) : repères lus (texte du PDF, ou OCR des repères dessinés en traits),
+      rectangles et cercles, rapprochés de la nomenclature. Simples propositions : rien n'est coché ni créé.</div>
+      <label style="display:block;margin-top:4px"><input type="checkbox" id="dxrOcr" checked> lire les repères dessinés en traits (OCR local, quelques secondes par page)</label>
+      <div class="dxp-b" style="margin-top:6px"><button class="btn bs bpr" id="dxrGo" onclick="dxrGo()">🔎 Analyser le dessin</button><button class="btn bs bo" id="dxrStop" onclick="dxrStop()" style="display:none">Arrêter</button></div><div id="dxrM" style="margin-top:4px"></div>
       <div id="dxrE" style="margin-top:6px"></div></fieldset>
     <fieldset><legend>Zone du tableau</legend><div id="dxpZi" class="mu">Aucune zone choisie.</div>
       <div class="dxp-b" style="margin-top:6px"><button class="btn bs bo" id="dxpZa" onclick="dxpAnalyse()" disabled title="Textes extractibles du PDF : rapide, sans erreur de lecture">Analyser la zone</button>
@@ -408,7 +424,7 @@ function dxpOver(){const D=DXI,O=el('dxpO');if(!D||!O)return;const p=D.doc.pages
   if(D.OC&&D.OC.page===D.page)D.OC.rows.forEach(w=>Object.keys(w.box).forEach(k=>{const b=w.box[k];if(b&&w.doute[k]&&!w.edite.includes(k))h+=r(b.x0,b.y0,b.x1,b.y1,'od')}));
   const o=D.ohl;if(o&&o.page===D.page)h+=r(o.x0-1,o.y0-1,o.x1+1,o.y1+1,'hl');
   O.innerHTML=h+dxrOver(H,f)}
-function dxpVoir(k){const D=DXI;if(!D||!D.NL[k])return;D.hl=k;D.page=D.NL[k].N.page||1;D.scroll=true;dxnSel(k);dxiVue('p')}
+function dxpVoir(k){const D=DXI;if(!D||!D.NL[k])return;D.hl=k;D.hlo=null;D.page=D.NL[k].N.page||1;D.scroll=true;dxnSel(k);dxiVue('p')}
 // Zone : cliquer-glisser en mode « Sélectionner une zone » ; coordonnées en points PDF, Y vers le haut, comme les textes lus
 function dxpZm(on){const D=DXI;if(!D)return;D.zm=on==null?!D.zm:on;if(D.zm&&D.calm){D.calm=null;dxrEch()}el('dxpO').classList.toggle('zm',D.zm);el('dxpZm').setAttribute('aria-pressed',D.zm);el('dxpZm').classList.toggle('bpr',D.zm)}
 function dxpPt(e){const D=DXI,b=el('dxpO').getBoundingClientRect(),p=D.doc.pages[D.page-1];return[Math.min(p.w,Math.max(0,(e.clientX-b.left)/D.k)),Math.min(p.h,Math.max(0,p.h-(e.clientY-b.top)/D.k))]}
@@ -462,7 +478,7 @@ function dxoProg(t,f){const z=el('dxoP');if(!z)return;
   z.innerHTML=t==null?'':`<div class="mu">${esc(t)}</div><div style="display:flex;gap:6px;align-items:center"><progress max="1"${f!=null?` value="${Math.max(0,Math.min(1,f))}"`:''}></progress>
     <button class="btn bs bo" onclick="dxoStop()">Annuler</button></div>`}
 // Lancement : demande confirmation si la zone est déjà lisible par le texte du PDF (inutile de lancer un traitement lourd)
-function dxoLancer(force){const D=DXI,z=D&&D.zone;if(!z||D.ocJob)return;
+function dxoLancer(force){const D=DXI,z=D&&D.zone;if(!z||D.ocJob||D.rJob)return;
   if(!force){const N=dxpZoneTS(z).A.nomenclatures.find(N=>N.qualite.niveau==='bonne'&&N.lignes.length);
     if(N)return uiConfirm(`Cette zone contient un tableau déjà lisible par le texte du PDF (${N.lignes.length} ligne(s), lecture « bonne ») : « Analyser la zone » suffit, sans erreur de lecture possible. Lancer quand même la reconnaissance optique ?`,()=>dxoLancer(true),{ok:'Lancer l\'OCR'})}
   const job={z:Object.assign({},z),stop:false,run:'o'+(++D.no),t0:Date.now()};D.ocJob=job;el('dxpZo').disabled=true;el('dxpZr').textContent='';
@@ -557,25 +573,82 @@ function dxoValider(){const D=DXI,O=D&&D.OC;if(!O)return;const R=el('dxoR'),cle=
 const dxrK=c=>{const e=DXI&&DXI.cal&&DXI.cal[c&&c.source?c.source.page:c];return e?e.k:null};
 const DXR_PT=25.4/72;   // mm de papier par point PDF
 async function dxrGeo(n){const D=DXI;if(!D.GP[n])D.GP[n]=await CPI.pdf.chemins(D.pdf,n);return D.GP[n]}
-// Repérage : page affichée, ou zone choisie sur cette page ; remplace le repérage précédent de la page (choix des lignes
-// rattachées gardés par identifiant de contour)
-async function dxrGo(){const D=DXI;if(!D||!D.pdf)return;const n=D.page,z=D.zone&&D.zone.page===n?Object.assign({},D.zone):null,M=el('dxrM'),b=el('dxrGo');
-  M.textContent='Repérage en cours…';b.disabled=true;let g;
-  try{g=await dxrGeo(n)}catch(e){if(DXI===D){M.textContent='⛔ Tracés de la page illisibles : '+String(e&&e.message||e);b.disabled=false}return}
-  if(DXI!==D)return;b.disabled=false;
-  const cad=D.NA.nomenclatures.filter(N=>N.page===n&&!N.saisie).map(N=>N.zone?[N.zone.x0,N.zone.y0,N.zone.x1,N.zone.y1]:N.cadre).filter(Boolean)
-    .concat(D.NA.ecartes.filter(e=>e.page===n&&e.cadre).map(e=>e.cadre));
-  const res=CPI.geometrie.detecterPage(g,{fichier:D.doc.fichier,textes:D.doc.textes.filter(t=>t.page===n),cadres:cad,zone:z});
-  const run=++D.rn;res.candidats.forEach(c=>{c.zone=z;c.id=c.id+(run>1?'.'+run:'')});
-  const id0=D.NR.map(r=>r.geo!==''?D.C[+r.geo].id:null),keep=D.C.map((c,i)=>c.source.page===n?-1:i).filter(i=>i>=0);
+// Analyse du dessin : toutes les pages (ou la zone choisie, sur sa page) ; par page : tracés, repères dessinés lus par OCR
+// (blocs de texte en traits, CPI.geometrie.blocsTexte → CPI.ocr.lireBlocs, gardés pour les analyses suivantes), contours ;
+// puis rapprochement avec la nomenclature (toutes pages). Une erreur ou un arrêt laisse l'état précédent, bouton rendu.
+const DXR_BL=3000;   // shortcut: au plus 3000 blocs de texte lus par page (les plus proches des contours d'abord) ; à relever si un vrai plan l'exige
+const dxrCad=n=>DXI.NA.nomenclatures.filter(N=>N.page===n&&!N.saisie).map(N=>N.zone?[N.zone.x0,N.zone.y0,N.zone.x1,N.zone.y1]:N.cadre).filter(Boolean)
+  .concat(DXI.NA.ecartes.filter(e=>e.page===n&&e.cadre).map(e=>e.cadre));
+const dxrDans=(b,t)=>t.x>=b[0]&&t.x<=b[2]&&t.y>=b[1]&&t.y<=b[3];
+// Textes du dessin : ceux du PDF et ceux lus par OCR, hors tableaux reconnus (cadres, zones OCR)
+function dxrTextes(n){const D=DXI,P=n?[n]:D.doc.pages.map(p=>p.n),T=[];
+  P.forEach(m=>{const cad=dxrCad(m);D.doc.textes.filter(t=>t.page===m).concat(D.OT[m]||[]).forEach(t=>{if(!cad.some(b=>dxrDans(b,t)))T.push(t)})});return T}
+function dxrRappels(t){const D=DXI,g=D.GP[t.page];if(!g)return[];if(!D.GI[t.page])D.GI[t.page]=CPI.geometrie.index(g);return CPI.geometrie.rappels(g,t,D.GI[t.page])}
+function dxrStop(){const D=DXI;if(!D||!D.rJob)return;D.rJob.stop=true;CPI.ocr.arreter()}
+async function dxrGo(){const D=DXI;if(!D||!D.pdf||D.rJob||D.ocJob)return;const z=D.zone&&D.zone.page===D.page?Object.assign({},D.zone):null,
+    pages=z?[z.page]:D.doc.pages.filter(p=>!p.erreur).map(p=>p.n),M=el('dxrM'),b=el('dxrGo'),job=D.rJob={stop:false},ocr=!el('dxrOcr')||el('dxrOcr').checked,B=[];
+  const ici=()=>DXI===D&&D.rJob===job,fin=m=>{if(DXI!==D)return;if(D.rJob===job)D.rJob=null;if(el('dxrGo')){el('dxrGo').disabled=false;el('dxrStop').style.display='none'}if(m!=null&&el('dxrM'))el('dxrM').innerHTML=m};
+  b.disabled=true;el('dxrStop').style.display='';const msg=t=>{if(ici()&&el('dxrM'))el('dxrM').textContent=t};
+  try{for(const n of pages){if(job.stop)throw new Error('annulé');msg(`Page ${n} : lecture des tracés…`);const g=await dxrGeo(n);if(!ici())return fin();
+      const cad=dxrCad(n);
+      if(ocr&&!D.OT[n]){const K=CPI.geometrie.blocsTexte(g,{cadres:cad});
+        msg(`Page ${n} : ${K.length} bloc(s) de texte dessiné à lire…`);
+        const r=await CPI.ocr.lireBlocs(D.pdf,n,K.slice(0,DXR_BL),{run:'b'+n,annule:()=>job.stop||!ici(),progres:(t,f)=>msg(`Page ${n} : ${t}${f?' ('+Math.round(f*100)+' %)':''}`)});
+        if(!ici())return fin();D.OT[n]=r.textes;D.OM[n]=Object.assign(r.mesures,{trouves:K.length})}
+      const res=CPI.geometrie.detecterPage(g,{fichier:D.doc.fichier,textes:dxrTextes(n),cadres:cad,zone:z});
+      dxrFusion(n,res,z);B.push({n,res})}}
+  catch(e){const a=job.stop||String(e&&e.message||e)==='annulé';   // arrêt : le moteur OCR est détruit, son erreur n'en est pas une
+    fin(a?'Analyse arrêtée : résultats des pages déjà analysées gardés.':'⛔ Analyse impossible : '+esc(String(e&&e.message||e))+'. Les résultats précédents sont gardés.');
+    if(a&&B.length&&DXI===D){D.ana={pages:B.map(x=>x.n),zone:z,ocr};dxnAssoc();dxnRefresh();dxrRender();dxpOver()}return}
+  if(!ici())return fin();
+  D.ana={pages:pages,zone:z,ocr};
+  try{dxnAssoc()}catch(e){D.ana=null;D.AS={};fin('⛔ Rapprochement impossible : '+esc(String(e&&e.message||e)));return}
+  const ok=B.flatMap(x=>x.res.candidats.filter(c=>c.statut==='a_confirmer')),nc=ok.filter(c=>c.type==='circ').length,nE=B.reduce((s,x)=>s+x.res.candidats.length,0)-ok.length,
+    nO=pages.reduce((s,n)=>s+(D.OT[n]||[]).length,0),cp=B.some(x=>x.res.coupe);
+  fin(`✓ ${z?'Zone de la page '+z.page:pages.length+' page(s)'} : <b>${ok.length} forme(s) possible(s)</b> (${ok.length-nc} rectangle(s), ${nc} cercle(s)) · ${nE} contour(s) écarté(s)`
+    +(ocr?` · ${nO} texte(s) dessiné(s) lu(s) par OCR`:'')+(cp?' · <span style="color:var(--acct)">page très chargée : une partie des traits n\'est pas lue</span>':'')
+    +(D.NL.length?` · <b>rapprochement : ${dxrBilan().txt}</b>`:'')+(pages.some(n=>!dxrK(n))?' · <span style="color:var(--acct)">page(s) sans échelle : cotes des formes hors nomenclature à saisir</span>':''));
+  dxnRefresh();dxrRender();dxpOver()}
+// Identité stable d'un contour (page, forme, emprise à 0,5 pt) : une nouvelle analyse garde les corrections du même contour
+// (cotes, hauteur, forme, référence, coche, rattachement à une ligne) ; un contour disparu ne les transmet à aucun autre
+const dxrCle=c=>[c.source.page,c.type].concat(c.bbox.map(v=>Math.round(v*2)/2)).join('|');
+// D.RK : corrections de tous les contours déjà vus (un contour sorti d'une analyse par zone puis retrouvé les reprend)
+function dxrFusion(n,res,z){const D=DXI,old=D.RK||(D.RK=new Map()),run=++D.rn;D.C.forEach((c,i)=>{if(c.source.page===n)old.set(dxrCle(c),{c,r:D.R[i]})});
+  const gk=D.NR.map(r=>r.geo!==''&&D.C[+r.geo]?{k:dxrCle(D.C[+r.geo]),id:D.C[+r.geo].id}:null),keep=D.C.map((c,i)=>c.source.page===n?-1:i).filter(i=>i>=0);
+  const vieux=new Set([...old.values()].filter(o=>o.c.source.page===n).map(o=>o.c.id)),R=res.candidats.map(c=>{c.zone=z;const o=old.get(dxrCle(c));if(o){c.id=o.c.id;return o.r}return null});
+  res.candidats.forEach((c,j)=>{if(!R[j]&&vieux.has(c.id))c.id+='.'+run});
   D.C=keep.map(i=>D.C[i]).concat(res.candidats);
-  D.R=keep.map(i=>D.R[i]).concat(res.candidats.map(c=>({conf:false,forme:'',h:'',ref:c.annot.repere?c.annot.repere.texte.toUpperCase().replace(/\s+/g,''):'',cotes:'',cotesT:false,pre:null})));
-  D.NR.forEach((r,k)=>{const j=id0[k]?D.C.findIndex(c=>c.id===id0[k]):-1;if(j<0){r.geo='';r.geoT=false}else r.geo=String(j)});
-  D.rsel=-1;D.C.forEach((c,i)=>{if(c.source.page===n)dxrPre(i)});
-  const ok=res.candidats.filter(c=>c.statut==='a_confirmer'),nc=ok.filter(c=>c.type==='circ').length;
-  M.innerHTML=`✓ ${z?'Zone':'Page '+n} : <b>${ok.length} réservation(s) possible(s)</b> (${ok.length-nc} rectangle(s), ${nc} cercle(s)) · ${res.candidats.length-ok.length} contour(s) écarté(s)`
-    +(res.coupe?' · <span style="color:var(--acct)">page très chargée : une partie des traits n\'est pas lue</span>':'')+(dxrK(n)?'':' · <span style="color:var(--acct)">page sans échelle : cotes à saisir, ou échelle à choisir ci-dessous</span>');
-  dxnAssoc();dxnRefresh();dxrRender();dxpOver()}
+  D.R=keep.map(i=>D.R[i]).concat(res.candidats.map((c,j)=>R[j]||{conf:false,forme:'',h:'',ref:c.annot.repere?c.annot.repere.texte.toUpperCase().replace(/\s+/g,''):'',cotes:'',cotesT:false,pre:null}));
+  D.NR.forEach((r,k)=>{const g=gk[k];if(!g)return;const j=D.C.findIndex(c=>dxrCle(c)===g.k);if(j>=0){r.geo=String(j);return}
+    r.geo='';if(r.geoT)r.perdu=`contour ${g.id} absent de la nouvelle analyse : rattachement retiré (aucun autre contour ne le remplace d'office)`;r.geoT=false});
+  D.rsel=-1;D.C.forEach((c,i)=>{if(c.source.page===n)dxrPre(i)})}
+// Détail du rapprochement d'une ligne (onglet Nomenclature) : localisations cliquables, cotes vérifiées, quantité, doutes
+function dxrRap(k,a,r){const D=DXI,O=a.occurrences||[],dm=a.dims||{},f=dxiNum;let h='';
+  if(r.perdu)h+=`<div class="av">${esc(r.perdu)}</div>`;
+  if(O.length)h+='<div>'+O.map((o,j)=>`<button class="btn bs bo" onclick="event.stopPropagation();dxrLoc(${k},${j})" title="${esc((o.source==='ocr'?`lu par OCR « ${o.brut} », confiance ${o.conf} %`:'texte du PDF')+(o.contour?' · contour '+o.contour:'')+(o.doutes.length?' · '+o.doutes.join(' ; '):''))}">${o.fiable?'':'? '}p. ${o.page} · ${esc(o.texte)}${o.source==='ocr'?' (OCR)':''} ↗</button>`).join('')+'</div>';
+  const E={confirmee:'✓ confirmée',mesuree:'≈ mesurée',conflit:'⚠ contredite',non_verifiable:'non vérifiable'},V=Object.values(dm);
+  if(V.length)h+='<div>Cotes du tableau : '+V.map(x=>`<span title="${esc(x.preuves.join(' ; '))}">${esc(x.libelle)} ${E[x.etat]}</span>`).join(' · ')+'</div>';
+  else if(O.length)h+='<div class="mu">pas de cotes l × h ou Ø dans le tableau : rien à vérifier sur le dessin</div>';
+  const q=a.quantite;if(q&&(q.valeur>1||q.localisations>1))h+=`<div class="mu">${q.source?'quantité du tableau : '+esc(q.source)+(q.coherente===true?' (cohérente)':q.coherente===false?' (plus de localisations que de quantité : vues multiples ?)':''):'quantité non indiquée'}${q.lecture?' · '+esc(q.lecture):''}</div>`;
+  const dt=[...new Set(O.flatMap(o=>o.doutes))];if(a.note&&!q.lecture||dt.length)h+=`<div class="mu">${esc([a.note].concat(dt).filter(Boolean).join(' ; '))}</div>`;
+  return h}
+function dxrLoc(k,j){const D=DXI,o=(dxnAS(D.NL[k].L).occurrences||[])[j];if(!o)return;D.hl=-1;D.hlo={k,j};D.page=o.page;D.scroll=true;dxnSel(k);dxiVue('p')}
+// Provenance du rapprochement (clé origineImport.rapprochement) : concordance, localisations (page, position, texte brut OCR,
+// confiance, corrections, contour), état de chaque cote du tableau, quantité, rejet par l'utilisateur ; les cotes créées restent celles retenues
+function dxrRapProv(a,r){const q=x=>Math.round(x*100)/100;
+  return{concordance:r.rej?'rejete':a.concordance||'absente',rejete:!!r.rej,note:a.note||'',
+    localisations:(a.occurrences||[]).map(o=>({page:o.page,x:q(o.x),y:q(o.y),texte:o.texte,source:o.source,brut:o.brut,confiance:o.conf,corrections:o.corrections.slice(),
+      zone:o.box?{page:o.box.page,x0:q(o.box.x0),y0:q(o.box.y0),x1:q(o.box.x1),y1:q(o.box.y1),unite:'pt'}:null,fiable:o.fiable,doutes:o.doutes.slice(),contour:o.contour,cotes_voisines:o.cotes.slice()})),
+    cotes:Object.fromEntries(Object.entries(a.dims||{}).map(([n,x])=>[n,{valeur:x.valeur,etat:x.etat,preuves:x.preuves.slice()}])),quantite:a.quantite?JSON.parse(JSON.stringify(a.quantite)):null}}
+// Bilan du rapprochement (comptes des concordances, repères lus, doublons évités, formes hors nomenclature)
+function dxrBilan(){const D=DXI,n={forte:0,partielle:0,probable:0,conflit:0,absente:0,rejete:0};let vues=0;
+  D.NL.forEach(({L},k)=>{const a=dxnAS(L);n[D.NR[k].rej?'rejete':a.concordance||'absente']++;vues+=Math.max(0,(a.preuves||[]).length-1)});
+  const hors=D.C.filter((c,i)=>c.statut==='a_confirmer'&&!D.lk.has(i)).length,nr=D.NL.reduce((s,{L})=>s+(dxnAS(L).occurrences||[]).length,0);
+  const o={...n,reperes:nr,doublons:D.lk.size,vues,hors,horsReperes:D.HR.length,colonnes:D.ana&&D.ana.colonnes||0};
+  o.txt=`${n.forte} forte(s), ${n.partielle} partielle(s), ${n.probable} probable(s), ${n.conflit} conflit(s), ${n.absente} non retrouvée(s)${n.rejete?`, ${n.rejete} rejetée(s)`:''}`
+    +` · ${nr} localisation(s) de repère · ${D.lk.size} contour(s) rattaché(s) (pas de doublon) · ${hors} forme(s) hors nomenclature`
+    +(D.HR.length?` · repère(s) hors nomenclature : ${D.HR.slice(0,12).map(x=>esc(x.texte)+' (p. '+x.page+')').join(', ')}${D.HR.length>12?'…':''}`:'');
+  return o}
 // Cotes proposées (mm) : cote écrite à côté du contour (unité écrite, ou déduite de la mesure à 10 % près), sinon mesure à l'échelle
 function dxrPre(i){const D=DXI,c=D.C[i],r=D.R[i],k=dxrK(c),A=c.annot&&c.annot.cotes,f=dxiNum,circ=c.type==='circ';
   const mes=k?(circ?[c.dims.D*k]:[c.dims.L*k,c.dims.l*k]):null,pres=(v,m)=>v.every((y,j)=>Math.abs(y*m-mes[j])<=0.1*mes[j]);let p={cotes:'',origine:null,note:''};
@@ -644,6 +717,10 @@ function dxrEchEff(){const D=DXI;delete D.cal[D.page];dxrApres()}
 // Superposition : contours repérés de la page (violet ; vert : coché ; tirets verts : rattaché à une ligne de nomenclature ;
 // tirets orange : proposés pour la ligne de nomenclature choisie) et points de la calibration
 function dxrOver(H,f){const D=DXI;let h='';const P=D.nsel>=0&&D.NL[D.nsel]?new Set(dxnAS(D.NL[D.nsel].L).options.map(o=>o.c)):new Set();
+  // localisations (repères) de la ligne de nomenclature choisie : cadre orange, lignes de rappel suivies en tirets ; repère demandé : surligné
+  if(D.nsel>=0&&D.NL[D.nsel])(dxnAS(D.NL[D.nsel].L).occurrences||[]).forEach((o,j)=>{if(o.page!==D.page)return;const w=o.box?o.box.x1-o.box.x0:(o.h||4)*2,m=(o.h||4)*0.4,x0=o.x-w/2-m,y1=o.y+(o.h||4)/2+m;
+    h+=`<rect class="${D.hlo&&D.hlo.k===D.nsel&&D.hlo.j===j?'hl':'oc'}" x="${x0}" y="${H-y1}" width="${w+2*m}" height="${(o.h||4)+2*m}"><title>${esc('repère « '+o.texte+' »'+(o.source==='ocr'?' (OCR, confiance '+o.conf+' %)':''))}</title></rect>`
+      +(o.rappels||[]).map(q=>`<line class="ot" x1="${o.x}" y1="${H-o.y}" x2="${q[0]}" y2="${H-q[1]}"/>`).join('')});
   D.C.forEach((c,i)=>{if(c.source.page!==D.page||c.statut!=='a_confirmer')return;const g=c.geometrie,lk=D.lk.has(i),
       cl=`rs${i===D.rsel?' on':''}${D.R[i].conf?' cf':''}${lk?' lk':''}${P.has(i)?' pr':''}`,t=`<title>${esc(c.id+' · '+dxiDims(c)+(lk?' · rattaché à la nomenclature':''))}</title>`,a=`class="${cl}" data-r="${i}"${lk?'':` onclick="dxrSel(${i},1)"`}`;
     h+=(g.type==='cercle'?`<circle ${a} cx="${g.centre[0]}" cy="${H-g.centre[1]}" r="${g.r}">${t}</circle>`:`<polygon ${a} points="${g.points.map(p=>p[0]+','+(H-p[1])).join(' ')}">${t}</polygon>`)
@@ -660,8 +737,8 @@ function dxrSel(i,fromSvg){const D=DXI;if(!D||D.zm||D.calm||!D.C[i])return;D.rse
 
 // Tableau des réservations repérées (toutes pages) ; contours rattachés à la nomenclature : dans l'onglet Nomenclature
 function dxrRender(){const D=DXI,Z=el('dxrZ');if(!Z||!D)return;if(!D.C.length){Z.innerHTML='';return}
-  Z.innerHTML=`<fieldset class="dxo"><legend>Réservations repérées sur le dessin</legend><div id="dxrS" style="margin-bottom:4px"></div>
-    <div class="mu" style="margin-bottom:6px">Formes du dessin, pas encore des réservations : vérifier chaque ligne sur l'aperçu (clic sur une ligne : contour en orange),
+  Z.innerHTML=`<fieldset class="dxo"><legend>${D.NL.length?'Formes du dessin hors nomenclature':'Réservations repérées sur le dessin'}</legend><div id="dxrS" style="margin-bottom:4px"></div>
+    <div class="mu" style="margin-bottom:6px">${D.NL.length?'Contours non rattachés à une ligne de la nomenclature (les réservations du tableau sont dans l\'onglet Nomenclature). ':''}Formes du dessin, pas encore des réservations : vérifier chaque ligne sur l'aperçu (clic sur une ligne : contour en orange),
     corriger forme, cotes, hauteur et référence, puis cocher. Cotes proposées : cote écrite à côté du contour, ou mesure à l'échelle de la page (à vérifier).</div>
     <div style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap"><button class="btn bs bo" onclick="dxrAll(false)">Tout décocher</button></div>
     <div class="dxi-t"><table class="ser" id="dxrT"><thead><tr><th>Créer</th><th>#</th><th>Page</th><th>Repère</th><th>Forme</th><th>Cotes (mm)</th><th>Origine des cotes</th><th>h (mm)</th><th>Réf.</th><th>État</th></tr></thead><tbody></tbody></table></div>

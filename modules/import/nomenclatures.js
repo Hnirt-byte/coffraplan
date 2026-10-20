@@ -270,7 +270,7 @@ function candidat(N,L,s){const d=s&&s.dims,g=s&&s.geo;if(!d||(d.etat!=='rect'&&d
     geometrie:null,centre:g?g.centre:null,dims:d.etat==='circ'?{D:d.D}:{L:Math.max(d.a,d.b),l:Math.min(d.a,d.b),angle:0},h:null,manquants:[],remarques:[]}}
 
 // Provenance d'un ouvrage créé depuis une ligne (clé origineImport du plan). k = {forme, cotes (texte saisi), dims (mm), ref,
-// uniteTableau, uniteChoisie, geo:{c: candidat, statut:'trouvee'|'choisie'} | null}. Aucun contenu du DXF au-delà de la ligne.
+// uniteTableau, uniteChoisie, geo:{c: candidat, statut:'trouvee'|'choisie'} | null, rapprochement (PDF : rapprochement avec le dessin) | null}. Aucun contenu du DXF au-delà de la ligne.
 // PDF : page, zone de page (points PDF, Y vers le haut : cadre du tableau, zone choisie ou zone de la saisie assistée) ;
 // ligne saisie par l'utilisateur (N.saisie) : type 'saisie', ses textes sont les valeurs tapées ; ligne reconnue par OCR puis
 // vérifiée (N.ocr) : type 'ocr', textes = valeurs retenues, ocr = {brut, confiance, corrections, corrige, incertain, ajoutee, moteur}.
@@ -286,8 +286,8 @@ function provenance(N,L,k){
     nomenclature:N.id,titre:N.titre,ligne:L.id,rang:L.rang,repere:L.repere,ids:L.ids.slice(),textes,
     unite_source:d?d.unite:null,unite:uT||null,dims_source:d?JSON.parse(JSON.stringify(d)):null,
     geometrie:g?{id:g.source.id,calque:g.source.calque,candidat:g.id,statut:k.geo.statut,unite:k.uniteDessin||null,centre:g.centre,dims_source:JSON.parse(JSON.stringify(g.dims))}:null,
-    choix:{forme:k.forme,cotes:k.cotes,ref:k.ref||'',unite_tableau:k.uniteChoisie?k.uniteTableau:null},corrige,a_verifier:L.a_verifier.slice(),h_saisie:true,...pdf,...(L.ocr?{ocr:JSON.parse(JSON.stringify(L.ocr))}:{})};
+    choix:{forme:k.forme,cotes:k.cotes,ref:k.ref||'',unite_tableau:k.uniteChoisie?k.uniteTableau:null},corrige,a_verifier:L.a_verifier.slice(),h_saisie:true,...pdf,...(L.ocr?{ocr:JSON.parse(JSON.stringify(L.ocr))}:{}),...(k.rapprochement?{rapprochement:k.rapprochement}:{})};
 }
 
-root.CPI=Object.assign(root.CPI||{},{nomenclatures:{analyser,associer,cotes,ligne,nature,candidat,provenance,cleRep,LIB}});
+root.CPI=Object.assign(root.CPI||{},{nomenclatures:{analyser,associer,cotes,ligne,nature,candidat,provenance,cleRep,dGeo,LIB}});
 })(typeof globalThis!=='undefined'?globalThis:this);

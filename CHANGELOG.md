@@ -3,6 +3,40 @@
 Détail complet de chaque version (demandes, écarts voulus, tests, non validé) : `docs/historique/HANDOFF_<version>.md`.
 Chaque version est un tag git (`git diff v2.4 v2.5 -- app/` pour voir les changements).
 
+## Non publié — finalisation du rapprochement nomenclature ↔ dessin (phase 4)
+**Demande (Kévin, 20/10/2026)** : rapprochement automatique et déterministe nomenclature ↔ dessin (repère, fiabilité,
+proximité, lignes de rappel, forme, cotes, page / vue, quantité) ; cotes du tableau prioritaires, concordance partielle
+admise, conflit seulement sur la même dimension ; OCR ciblé des repères dessinés en traits ; multipage par repère seulement,
+plusieurs vues = une ligne, quantité jamais inventée ; états forte / partielle / probable / conflit / non retrouvée / hors
+nomenclature ; corrections gardées à la relance ; correctifs de relecture (critères multipages, identité stable, plus de
+`Math.min/max(...tableau)` dans `detecteur.js`, erreur lisible sans fenêtre bloquée).
+
+**Fait** : `pdf.js` : petits tracés (`petits`) relevés par `chemins`. `geometrie.js` : `blocsTexte` (repères dessinés
+regroupés), `rappels` (lignes de rappel, un coude), `index`, `emprise` (bornes sans décomposition de tableau). `ocr.js` :
+`lireBlocs` (mosaïque des blocs, tuiles de rendu, relecture ligne des repères douteux, brut / confiance / corrections /
+zone conservés). `rapprochement.js` (nouveau) : occurrences du repère (clé exacte ou approchée → incertaine, confiance < 30 %
+ignorée, listes en colonne écartées), contour et cotes écrites voisins, vérification cote par cote (unité essayée si non
+écrite), états, quantité (source tableau, localisations, cohérence), contour principal unique ou un par page.
+`detecteur.js` : bornes par boucle (`bornes`). Fenêtre : « 🔎 Analyser le dessin » (toutes les pages ou la zone, option OCR,
+Arrêter), état et détail par ligne, localisations cliquables, « ✕ rejeter le rapprochement », bilan, formes « hors
+nomenclature » ; identité stable des contours (`dxrCle`, mémoire `D.RK`) ; erreur affichée et fenêtre rendue. Provenance
+`origineImport.rapprochement`. Mode d'emploi § 7.22 réécrit.
+
+**Écarts voulus** : `t_detection.py` : message attendu « 2 page(s) : 10 forme(s) possible(s) » (l'analyse couvre désormais
+toutes les pages au lieu de la page affichée) et attente sur `!DXI.rJob` (analyse asynchrone). Nouvelle suite
+`t_rapprochement.py` (34 vérifications, `tests/rapprochement_fictifs.py`) dans les suites rapides. Moteur, débit, feuilles
+et exports inchangés.
+
+**Essai local sur le PDF et le DXF réels (20/10/2026, hors dépôt, comptes seulement)** : PDF (2 pages A0, textes vectorisés) :
+nomenclature lue par OCR, 23 lignes ; analyse ≈ 28 s, 1 425 textes dessinés lus ; 0 forte, 16 partielles, 5 probables,
+0 conflit, 2 non retrouvées (une absente du plan, une mal lue au tableau), 21 lignes localisées (31 localisations, 8 en plan
+et en détail), 3 contours rattachés, 17 formes hors nomenclature (surtout des cadres de ferraillage). Aucune cote vérifiable
+(pas de cote écrite près des repères, pas d'échelle). Version précédente : 23 non retrouvées. DXF : inchangé (5 rectangles
+en `LINE`), pas de rapprochement détaillé.
+
+**Non validé** : Chromium seul ; réservations à côtés courbes non reconnues ; faux positifs possibles (listes et notes
+contenant un repère) ; durée de l'OCR sur grands plans ; DXF sans rapprochement détaillé.
+
 ## Non publié — repérage géométrique des réservations (PDF vectoriel et DXF)
 **Demande (Kévin, 20/10/2026, phase 4)** : repérer les réservations directement dans le dessin d'un PDF vectoriel (page ou
 zone), en proposer les dimensions (échelle jamais supposée : calibration simple ou cote écrite), les rapprocher des

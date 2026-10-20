@@ -249,8 +249,8 @@ automatique), unite_tableau}, corrige:['cotes','ref'], a_verifier, h_saisie, ind
   mm par l'échelle de la page ; « trouvée » (repère voisin + cotes identiques) rattachée d'office, modifiable ; plusieurs
   contours : liste au choix dans l'onglet Nomenclature ; un contour rattaché quitte la liste repérée (pas de doublon), un
   contour seulement « possible » y est signalé ; même référence cochée des deux côtés : refusée.
-- Fenêtre (onglet Aperçu) : « 🔎 Repérer les réservations » (page affichée, ou zone choisie sur cette page ; remplace le
-  repérage précédent de la page), contours violets cliquables (ligne sélectionnée ↔ contour orange), tableau : page, repère,
+- Fenêtre (onglet Aperçu) : « 🔎 Analyser le dessin » (toutes les pages, ou la zone choisie sur sa page ; relancer garde les
+  corrections, voir plus bas), contours violets cliquables (ligne sélectionnée ↔ contour orange), tableau : page, repère,
   forme, cotes, origine des cotes, h, référence, état (repérée · à confirmer · à compléter · refusée), contours écartés à part.
   Création : `adaptateur.versPlan` avec les cotes en mm (contrôles du moteur), rien de coché d'office.
 - Provenance (`origineImport`, `type:'detection'`) : `fichier`, `format`, `page`, `id` (segments ou contour PDF), `candidat`,
@@ -258,9 +258,58 @@ automatique), unite_tableau}, corrige:['cotes','ref'], a_verifier, h_saisie, ind
   échelle lue et son texte), `repere`, `annotation`, `cotes:{origine:'annotation'|'mesure'|'saisie', proposees, retenues}`,
   `choix`, `corrige` (`cotes`, `forme`, `ref`), `a_verifier`. Le PDF n'est jamais stocké.
 - Limites : côtés en arc (réservation dans un voile circulaire), rectangles dont un côté est interrompu ou partagé par un mur
-  ou une hachure qui touche le contour, contours ouverts, blocs complexes : non proposés ; repères dessinés en traits (texte
-  vectorisé) : non lus ; une réservation dessinée dans plusieurs vues apparaît plusieurs fois ; PDF numérisé : aucune
-  détection (OCR des nomenclatures et saisie assistée seulement).
+  ou une hachure qui touche le contour, contours ouverts, blocs complexes : non proposés (la réservation reste retrouvable
+  par son repère, voir le rapprochement) ; PDF numérisé : aucune détection (OCR des nomenclatures et saisie assistée seulement).
+
+## Repères dessinés et rapprochement nomenclature ↔ dessin (`rapprochement.js`, phase 4 finalisée)
+- Principe : la nomenclature donne les cotes de fabrication ; le dessin identifie, localise et, quand il le peut, contrôle.
+  Aucune cote n'est remplacée par une mesure ; une ligne non retrouvée reste créable avec ses cotes.
+- Textes dessinés en traits (export DAO qui vectorise ses polices) : `CPI.pdf.chemins` rend aussi `petits` (emprises à plat des
+  sous-chemins < 20 pt) ; `CPI.geometrie.blocsTexte(geo, {cadres})` les regroupe en lignes de texte (écart ≤ 1,2 hauteur : le
+  « 1 » sans empattement des polices de DAO est très espacé ; même bande verticale), garde 2,5 à 30 pt de haut, ≤ 200 pt de
+  long, hors tableaux. `CPI.ocr.lireBlocs(pdf, n, blocs, o)` : page rendue par tuiles (celles qui contiennent des blocs), blocs
+  découpés, mis à ~32 px de hauteur de lettre, collés en mosaïques (écart 3 hauteurs entre découpes), une reconnaissance
+  Tesseract (psm 11) par mosaïque ; lectures courtes douteuses qui ressemblent à un repère relues seules (psm 7, ≤ 200 par
+  page). Texte OCR au format de `lireZone` + `ocr.box`, `ocr.mots` (confiance par mot), `ocr.relu`. Gardés par page pour les
+  analyses suivantes ; jamais d'OCR intégrale de la page A0.
+- `CPI.geometrie.rappels(geo, texte, index)` : traits partant à moins d'une hauteur du texte (≥ 2 hauteurs de long), suivis
+  sur un coude ; leurs bouts désignent ce que le repère montre. `CPI.geometrie.index(geo)` : index des segments par case.
+- `CPI.rapprochement.rapprocher(lignes, textes, candidats, {mm, rappels, exclus})` → `{lignes: {id: résultat}, hors, colonnes}` :
+  - textes : ceux du PDF et ceux lus par OCR, hors tableaux reconnus ; colonnes de ≥ 5 textes alignés régulièrement espacés
+    (tableau non reconnu) écartées ;
+  - repère identique (clé `cleRep` du texte entier ou d'un de ses mots : « |D16 », « D8 / », « D 7 ») ; lecture OCR : confiance
+    des mots du repère seulement ; < 30 % : ignorée ; < 75 %, corrigée, ou rapprochée par confusion S/5, O/0, I/1, L/1, B/8,
+    Z/2, G/6 (`cleFloue`) : localisation **incertaine** ; repère purement numérique : texte entier seulement, incertain ;
+  - contour désigné : le plus proche du repère ou du bout d'une ligne de rappel (≤ 4 hauteurs de texte), seulement s'il se
+    détache nettement du suivant ; cotes écrites voisines (≤ 6 hauteurs du repère ou 4 du contour) : « l x h », « Ø », nombre seul ;
+  - vérification de chaque cote du tableau (repères fiables seulement) : `confirmee` (cote écrite égale, à 1 % ou 2 mm ; sans
+    unité écrite, essayée en mm, cm, m : « 40x40 » d'un plan en cm confirme 400 × 400 mm), `mesuree` (contour à l'échelle de sa
+    page, à 5 %), `conflit` (cote écrite complète « l x h » ou « Ø » différente, même ordre de grandeur ou unité écrite),
+    `non_verifiable` (absente : jamais un conflit) ; un nombre seul différent, une mesure différente, une forme différente :
+    simples remarques ;
+  - concordance : `forte` (repère fiable, toutes les cotes confirmées ou mesurées), `partielle` (repère fiable, une partie
+    vérifiable, ou aucune), `probable` (repère incertain, ou cotes seules : contour de mêmes cotes mesurées sur la page du
+    tableau, jamais d'une autre page), `conflit`, `absente` ; un contour est proposé d'office (`statut:'trouvee'`) s'il est
+    unique, ou unique par page (vues) ; plusieurs sur une page : au choix ;
+  - interpages : un repère identique suffit ; jamais les cotes seules ; toutes les localisations d'un repère sont les preuves
+    d'une seule entrée (vues, coupes, détails ; leurs contours rattachés, jamais reproposés) ; quantité du tableau gardée et
+    comparée au nombre de localisations par page (`coherente`), jamais déduite ;
+  - `hors` : repères de même préfixe que ceux du tableau sans ligne correspondante (« D24 »).
+- Fenêtre : onglet Nomenclature, colonne Source : concordance, localisations cliquables (page affichée, repère surligné, lignes
+  de rappel en tirets ; « ? » = incertaine), état de chaque cote du tableau, quantité, doutes ; liste « aucun contour / contours /
+  ✕ rejeter le rapprochement » ; bilan (fortes, partielles, probables, conflits, non retrouvées, localisations, contours
+  rattachés, formes et repères hors nomenclature). Formes non rattachées : « Formes du dessin hors nomenclature ».
+- Nouvelle analyse : identité d'un contour = page, forme, emprise à 0,5 pt (`dxrCle`) ; même contour retrouvé (même après une
+  analyse par zone qui l'avait exclu) : identifiant, cotes, hauteur, forme, référence, coche reprises ; rattachement d'une
+  ligne gardé ; contour disparu : rattachement retiré et signalé, jamais transféré à un autre. Erreur ou arrêt : message
+  lisible, bouton rendu, résultats précédents gardés.
+- Provenance d'une ligne créée (`origineImport.rapprochement`) : `concordance`, `rejete`, `localisations` (page, position,
+  texte, source pdf/ocr, brut, confiance, corrections, zone en pt, fiable, doutes, contour, cotes voisines), `cotes` (état et
+  preuves de chaque cote), `quantite`, `note`.
+- Limites : DXF : rapprochement inchangé (`associer`) ; repères tournés (texte vertical) non lus ; une note qui cite un repère
+  (« 5x D11 ») ou une liste d'articles hors tableau peut donner une localisation de trop (visible, rejetable) ; cotes
+  écrites lues seulement si horizontales ; échelle d'une vue de détail différente de celle de la page : mesure fausse (simple
+  remarque, jamais un conflit).
 
 ## Reconnaissance OCR (`ocr.js`, fenêtre `dxo*`)
 - But : lire une nomenclature dont les textes sont dessinés en tracés ou numérisés. Complète la lecture texte, ne la remplace

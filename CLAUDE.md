@@ -100,6 +100,12 @@ développement : il progresse vite mais n'est pas développeur senior.
   `CPI.pdf.chemins` ; rectangles par `CPI.detecteur.rectSegments` (aussi les rectangles en 4 `LINE` d'un DXF) ; échelle par page
   (`DXI.cal` : 2 points ou échelle écrite), fenêtre `dxr*`, `origineImport.type = 'detection'`. Banc `t_detection.py` (plans
   fictifs de `tests/detection_fictifs.py`).
+  Finalisation (rapprochement nomenclature ↔ dessin) : repères dessinés en traits regroupés par `CPI.geometrie.blocsTexte`
+  (petits tracés `petits` de `chemins`) puis lus en mosaïque par `CPI.ocr.lireBlocs` ; lignes de rappel `rappels` ;
+  `rapprochement.js` (`CPI.rapprochement.rapprocher`) : cotes du tableau prioritaires, états forte / partielle / probable /
+  conflit / non retrouvée, occurrences multipages par repère seulement, quantité jamais inventée. Bouton « 🔎 Analyser le
+  dessin » (`dxrGo`, toutes les pages ou la zone, `dxrStop`) ; corrections gardées à la relance par identité stable `dxrCle`
+  (mémoire `D.RK`) ; provenance `origineImport.rapprochement`. Banc `t_rapprochement.py` (`tests/rapprochement_fictifs.py`).
 - Version affichée : élément `#appVer` (« v3.0 »). Les tests t_ux et t_v30 vérifient ce numéro.
 
 ## Décisions actées (ne pas changer sans l'accord de Kévin)
