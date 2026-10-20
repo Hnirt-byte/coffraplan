@@ -43,6 +43,10 @@ def t(s):
         J = lambda x, *a: pg.evaluate(x, *a)
         R = {n: J(LIRE, [b64(p), n]) for n, p in F.items()}
         s.check(J('(async()=>!!(await CPI.pdf.charger()).GlobalWorkerOptions.workerPort)()'), 'PDF.js : worker lancé depuis le fichier ouvert en file://')
+        # stabilisation : lire() juste après fermer() échouait (« worker is being destroyed »), t_pdf intermittent sous charge
+        ench = J('''async b64=>{const b=()=>Uint8Array.from(atob(b64),c=>c.charCodeAt(0)),r=[];for(let i=0;i<3;i++){const x=await CPI.pdf.lire(b(),'x');
+          r.push(x.ok||x.message);if(x.ok)CPI.pdf.fermer(x.pdf)}return r}''', b64(F['PDF_1_TABLEAU.pdf']))
+        s.check(ench == [True] * 3, 'PDF lu aussitôt après la fermeture du précédent (libération attendue)', json.dumps(ench, ensure_ascii=False))
 
         # ---- lecture
         r = R['PDF_1_TABLEAU.pdf']; N = r['N']

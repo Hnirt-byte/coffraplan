@@ -32,9 +32,12 @@ function charger(){if(W)return W;
 async function arreter(){const w=W;W=null;if(!w)return;try{(await w).terminate()}catch(e){}}
 
 // Reconnaissance d'une image (canvas) : mots {texte, conf, x0, y0, x1, y1 (px), ligne} ; psm = mode de découpage Tesseract
-async function reconnaitre(canvas,o){const w=await charger(),opt=o||{};LOG=opt.progres||null;
-  try{await w.setParameters({tessedit_pageseg_mode:String(opt.psm||11),preserve_interword_spaces:'1',user_defined_dpi:String(opt.dpi||300)});
-    const r=await w.recognize(canvas,{},{blocks:true,text:false});const M=[];let nl=0;
+// Image convertie ici (PNG, comme Tesseract le ferait) : un arrêt pendant la conversion lève 'annulé' au lieu d'appeler un worker
+// détruit (Tesseract.js enverrait alors son message à un worker nul : erreur JS non interceptée)
+async function reconnaitre(canvas,o){const p=charger(),w=await p,opt=o||{},vivant=()=>{if(W!==p)throw new Error('annulé')};LOG=opt.progres||null;
+  try{const img=new Uint8Array(await (await new Promise((r,e)=>canvas.toBlob(x=>x?r(x):e(new Error('image de la zone illisible'))))).arrayBuffer());vivant();
+    await w.setParameters({tessedit_pageseg_mode:String(opt.psm||11),preserve_interword_spaces:'1',user_defined_dpi:String(opt.dpi||300)});
+    vivant();const r=await w.recognize(img,{},{blocks:true,text:false});const M=[];let nl=0;
     (r.data.blocks||[]).forEach(b=>(b.paragraphs||[]).forEach(p=>(p.lines||[]).forEach(l=>{nl++;(l.words||[]).forEach(m=>{if(!m.text||!m.text.trim())return;
       M.push({texte:m.text,conf:Math.round(m.confidence),x0:m.bbox.x0,y0:m.bbox.y0,x1:m.bbox.x1,y1:m.bbox.y1,ligne:nl,
         sym:(m.symbols||[]).map(s=>({t:s.text,c:Math.round(s.confidence)}))})})})));

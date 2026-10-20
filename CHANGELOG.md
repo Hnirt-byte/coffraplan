@@ -3,6 +3,22 @@
 Détail complet de chaque version (demandes, écarts voulus, tests, non validé) : `docs/historique/HANDOFF_<version>.md`.
 Chaque version est un tag git (`git diff v2.4 v2.5 -- app/` pour voir les changements).
 
+## Non publié — stabilisation avant Release
+**Demande (Kévin, 20/10/2026)** : examiner l'instabilité de `t_pdf` sous charge et corriger la seule cause identifiée, sans
+relance automatique ni test désactivé ; aucune évolution métier.
+
+**Fait** : deux défauts préexistants de l'appli, révélés par la campagne `-j 4` (la charge élargit la fenêtre de course).
+- `pdf.js` (depuis 11ef359) : `fermer()` ne faisait pas attendre la libération du document ; PDF.js partage son worker et refuse
+  un nouveau document tant qu'une libération est en cours (« PDFWorker.create - the worker is being destroyed ») → « fichier PDF
+  illisible » si un PDF est ouvert juste après en avoir fermé un. `lire()` attend désormais la dernière libération.
+- `ocr.js` : un arrêt de l'OCR pendant la conversion de l'image laissait Tesseract.js écrire dans un worker détruit (TypeError
+  « postMessage » non interceptée, `t_ocr` intermittent). L'image est convertie en PNG avant l'appel (même entrée que Tesseract
+  produisait lui-même) et un arrêt survenu entre-temps lève « annulé ».
+
+**Écarts voulus** : vérifications ajoutées, sans rien modifier d'existant : `t_pdf` (3 lectures enchaînées sur fermeture
+immédiate, échouait 3 fois sur 3 avant), `t_ocr` (arrêt pendant la préparation de l'image, échouait avant). Moteur, débit,
+feuilles et exports inchangés.
+
 ## Non publié — finalisation du rapprochement nomenclature ↔ dessin (phase 4)
 **Demande (Kévin, 20/10/2026)** : rapprochement automatique et déterministe nomenclature ↔ dessin (repère, fiabilité,
 proximité, lignes de rappel, forme, cotes, page / vue, quantité) ; cotes du tableau prioritaires, concordance partielle
