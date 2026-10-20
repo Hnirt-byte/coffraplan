@@ -6,7 +6,7 @@
 // Diagnostic par page : texte extractible, dessin vectoriel sans texte (textes vectorisés), image (numérisation probable).
 // Chargé à la première ouverture d'un PDF ; aucune requête réseau (polices standard, CMap, wasm : désactivés).
 (function(root){'use strict';
-let LIB=null;
+let LIB=null,FERME=Promise.resolve();   // FERME : dernière libération de document, attendue avant d'en ouvrir un autre
 const SEG_DET=400000;   // shortcut: repérage des réservations (chemins), au-delà les traits ne sont pas lus (signalé) ; à relever si un vrai plan le demande
 const PETIT=20,PETIT_MAX=400000;   // pt ; shortcut: au-delà de 400 000 petits sous-chemins par page, les suivants ne servent pas à chercher les textes dessinés
 const SEG_MAX=60000;   // shortcut: au-delà, les traits d'une page ne sont plus relevés (le diagnostic les compte) ; à relever si un vrai plan le demande
@@ -86,6 +86,7 @@ const LIB_NAT={texte:'textes extractibles',mixte:'quelques textes extractibles, 
 // Lecture : données (ArrayBuffer ou Uint8Array) → {ok:true, document, pdf (PDFDocumentProxy, pour l'aperçu)} | {ok:false, message}
 async function lire(data,nom){let lib,pdf;
   try{lib=await charger()}catch(e){return{ok:false,message:'lecteur PDF indisponible : '+(e&&e.message||e)}}
+  await FERME;   // le worker est partagé : PDF.js refuse un nouveau document tant qu'une libération est en cours
   try{pdf=await lib.getDocument(Object.assign({data:new Uint8Array(data)},OPTS)).promise}
   catch(e){return{ok:false,message:e&&e.name==='PasswordException'?'PDF protégé par mot de passe':'fichier PDF illisible ('+(e&&e.message||e)+')'}}
   const doc={format:'pdf',fichier:nom,version:'PDF',unite:null,entites:[],textes:[],traits:[],presentations:[],pages:[],signalements:[]};
@@ -132,8 +133,8 @@ async function chemins(pdf,n){const lib=await charger(),pg=await pdf.getPage(n),
   cheminsPage(lib,ol,vp,sp,null);pg.cleanup();
   return{page:n,w:vp.width,h:vp.height,segments:S,contours:C,petits:B,coupe}}
 
-// Libère un document lu (le worker partagé reste ouvert pour le PDF suivant)
-function fermer(pdf){try{const t=pdf&&pdf.loadingTask;if(t)t.destroy().catch(()=>{})}catch(e){}}
+// Libère un document lu (le worker partagé reste ouvert pour le PDF suivant) ; lire() attend la fin de la libération
+function fermer(pdf){try{const t=pdf&&pdf.loadingTask;if(t)FERME=Promise.all([FERME,t.destroy().catch(()=>{})])}catch(e){}return FERME}
 
 root.CPI=Object.assign(root.CPI||{},{pdf:{charger,lire,rendre,rendreZone,chemins,fermer,nature,LIB_NAT}});
 })(typeof globalThis!=='undefined'?globalThis:this);

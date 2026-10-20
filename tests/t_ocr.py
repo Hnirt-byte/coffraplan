@@ -230,6 +230,12 @@ def t(s):
         pg.wait_for_function('!DXI.ocJob&&DXI.OC', timeout=120000)
         pg.click('#dxoV')
         s.check('déjà' in pg.inner_text('#dxoR') and J('DXI.NL.length') == 6, 'OCR confirmé : lignes déjà lues par le texte non ajoutées (pas de doublon)', pg.inner_text('#dxoR'))
+        # stabilisation : arrêt du moteur pendant la conversion de l'image → TypeError « postMessage » non interceptée (t_ocr intermittent)
+        n0 = len(errs)
+        st = J('''async()=>{const cv=document.createElement('canvas');cv.width=3000;cv.height=2000;const g=cv.getContext('2d');g.fillStyle='#fff';g.fillRect(0,0,3000,2000);
+          await CPI.ocr.charger();let e=null;const p=CPI.ocr.reconnaitre(cv,{}).catch(x=>e=String(x&&x.message||x));await CPI.ocr.arreter();await Promise.race([p,new Promise(r=>setTimeout(r,3000))]);return e}''')
+        pg.wait_for_timeout(300)
+        s.check(st == 'annulé' and len(errs) == n0, 'OCR arrêté pendant la préparation de l\'image : « annulé », aucune erreur JS', json.dumps([st, errs[n0:][:2]], ensure_ascii=False))
         s.check(not net, 'aucune requête réseau pendant toute la suite', json.dumps(net[:5]))
         s.check(not [e for e in errs if 'Failed to load resource' not in e], 'aucune erreur JavaScript', json.dumps(errs[:5], ensure_ascii=False))
         b.close()

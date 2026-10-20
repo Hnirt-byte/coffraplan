@@ -516,7 +516,7 @@ root.CPI.dxf={decoder,paires};
 // Diagnostic par page : texte extractible, dessin vectoriel sans texte (textes vectorisés), image (numérisation probable).
 // Chargé à la première ouverture d'un PDF ; aucune requête réseau (polices standard, CMap, wasm : désactivés).
 (function(root){'use strict';
-let LIB=null;
+let LIB=null,FERME=Promise.resolve();   // FERME : dernière libération de document, attendue avant d'en ouvrir un autre
 const SEG_DET=400000;   // shortcut: repérage des réservations (chemins), au-delà les traits ne sont pas lus (signalé) ; à relever si un vrai plan le demande
 const PETIT=20,PETIT_MAX=400000;   // pt ; shortcut: au-delà de 400 000 petits sous-chemins par page, les suivants ne servent pas à chercher les textes dessinés
 const SEG_MAX=60000;   // shortcut: au-delà, les traits d'une page ne sont plus relevés (le diagnostic les compte) ; à relever si un vrai plan le demande
@@ -596,6 +596,7 @@ const LIB_NAT={texte:'textes extractibles',mixte:'quelques textes extractibles, 
 // Lecture : données (ArrayBuffer ou Uint8Array) → {ok:true, document, pdf (PDFDocumentProxy, pour l'aperçu)} | {ok:false, message}
 async function lire(data,nom){let lib,pdf;
   try{lib=await charger()}catch(e){return{ok:false,message:'lecteur PDF indisponible : '+(e&&e.message||e)}}
+  await FERME;   // le worker est partagé : PDF.js refuse un nouveau document tant qu'une libération est en cours
   try{pdf=await lib.getDocument(Object.assign({data:new Uint8Array(data)},OPTS)).promise}
   catch(e){return{ok:false,message:e&&e.name==='PasswordException'?'PDF protégé par mot de passe':'fichier PDF illisible ('+(e&&e.message||e)+')'}}
   const doc={format:'pdf',fichier:nom,version:'PDF',unite:null,entites:[],textes:[],traits:[],presentations:[],pages:[],signalements:[]};
@@ -642,8 +643,8 @@ async function chemins(pdf,n){const lib=await charger(),pg=await pdf.getPage(n),
   cheminsPage(lib,ol,vp,sp,null);pg.cleanup();
   return{page:n,w:vp.width,h:vp.height,segments:S,contours:C,petits:B,coupe}}
 
-// Libère un document lu (le worker partagé reste ouvert pour le PDF suivant)
-function fermer(pdf){try{const t=pdf&&pdf.loadingTask;if(t)t.destroy().catch(()=>{})}catch(e){}}
+// Libère un document lu (le worker partagé reste ouvert pour le PDF suivant) ; lire() attend la fin de la libération
+function fermer(pdf){try{const t=pdf&&pdf.loadingTask;if(t)FERME=Promise.all([FERME,t.destroy().catch(()=>{})])}catch(e){}return FERME}
 
 root.CPI=Object.assign(root.CPI||{},{pdf:{charger,lire,rendre,rendreZone,chemins,fermer,nature,LIB_NAT}});
 })(typeof globalThis!=='undefined'?globalThis:this);
@@ -682,9 +683,12 @@ function charger(){if(W)return W;
 async function arreter(){const w=W;W=null;if(!w)return;try{(await w).terminate()}catch(e){}}
 
 // Reconnaissance d'une image (canvas) : mots {texte, conf, x0, y0, x1, y1 (px), ligne} ; psm = mode de découpage Tesseract
-async function reconnaitre(canvas,o){const w=await charger(),opt=o||{};LOG=opt.progres||null;
-  try{await w.setParameters({tessedit_pageseg_mode:String(opt.psm||11),preserve_interword_spaces:'1',user_defined_dpi:String(opt.dpi||300)});
-    const r=await w.recognize(canvas,{},{blocks:true,text:false});const M=[];let nl=0;
+// Image convertie ici (PNG, comme Tesseract le ferait) : un arrêt pendant la conversion lève 'annulé' au lieu d'appeler un worker
+// détruit (Tesseract.js enverrait alors son message à un worker nul : erreur JS non interceptée)
+async function reconnaitre(canvas,o){const p=charger(),w=await p,opt=o||{},vivant=()=>{if(W!==p)throw new Error('annulé')};LOG=opt.progres||null;
+  try{const img=new Uint8Array(await (await new Promise((r,e)=>canvas.toBlob(x=>x?r(x):e(new Error('image de la zone illisible'))))).arrayBuffer());vivant();
+    await w.setParameters({tessedit_pageseg_mode:String(opt.psm||11),preserve_interword_spaces:'1',user_defined_dpi:String(opt.dpi||300)});
+    vivant();const r=await w.recognize(img,{},{blocks:true,text:false});const M=[];let nl=0;
     (r.data.blocks||[]).forEach(b=>(b.paragraphs||[]).forEach(p=>(p.lines||[]).forEach(l=>{nl++;(l.words||[]).forEach(m=>{if(!m.text||!m.text.trim())return;
       M.push({texte:m.text,conf:Math.round(m.confidence),x0:m.bbox.x0,y0:m.bbox.y0,x1:m.bbox.x1,y1:m.bbox.y1,ligne:nl,
         sym:(m.symbols||[]).map(s=>({t:s.text,c:Math.round(s.confidence)}))})})})));
