@@ -264,10 +264,12 @@ async function lireGrille(pdf,z,o){o=o||{};const t0=Date.now(),pr=o.progres||(()
   if(!GQ[0]){pr('Recherche de la grille sur l\'image',null);const k0=plafond(z,200/72),cv=await root.CPI.pdf.rendreZone(pdf,z.page,z,k0);stop();const P=pretraiter(cv),X=x=>z.x0+x/k0,Y=y=>z.y1-y/k0;
     S=P.H.map(h=>({a:[X(h.x0),Y(h.y)],b:[X(h.x1),Y(h.y)]})).concat(P.V.map(v=>({a:[X(v.x),Y(v.y0)],b:[X(v.x),Y(v.y1)]})));source='traits de l\'image';GQ=grilles(S)}
   if(!GQ[0])return null;
-  // orientation : cellules plus hautes que larges (texte vertical probable) → 90° et 270° essayés ; 0° sinon ; o.rot impose
+  // orientation : o.rot impose ; sinon 0° essayé sur quelques cellules, puis 90° et 270° si la lecture n'est pas nette (cellules
+  // plus hautes que larges : 90° et 270° d'abord)
   const asp=med(GQ[0].rangs.flatMap(r=>r.cellules.map(c=>(r.y0-r.y1)/Math.max(0.1,c.x1-c.x0))));
-  const Q=o.rot!=null?[o.rot%4]:asp>1.3?[1,3]:[0];
-  const hr=med(GQ[Q[0]].rangs.map(r=>r.y0-r.y1)),k=plafond(z,Math.min(10,Math.max(3,G_PX/(0.55*hr))));
+  const Q=o.rot!=null?[o.rot%4]:asp>1.3?[1,3,0]:[0,1,3];
+  const hq=g=>med(g.rangs.map(r=>r.y0-r.y1)),Qv=Q.filter(q=>GQ[q]);if(!Qv.length)return null;
+  const k=plafond(z,Math.min(10,Math.max(3,G_PX/(0.55*Math.min(...Qv.map(q=>hq(GQ[q])))))));   // hauteur de lettre ≈ 0,55 rangée (rangées du sens de lecture : les plus basses)
   pr(`Rendu de la zone (${Math.round(k*72)} dpi)`,null);const cv=await root.CPI.pdf.rendreZone(pdf,z.page,z,k);stop();
   const px=b=>{const x0=(b[0]-z.x0)*k,x1=(b[2]-z.x0)*k,y0=(z.y1-b[3])*k,y1=(z.y1-b[1])*k;return[x0,y0,x1-x0,y1-y0]};
   // cellules d'une grille (repère q) : boîte page, découpe redressée en retrait des traits
@@ -280,12 +282,15 @@ async function lireGrille(pdf,z,o){o=o||{};const t0=Date.now(),pr=o.progres||(()
     return{t:m-1,autres:tot-dom>=0.03*tot&&tot>0}};
   const variantes=(c,D)=>{const A=nb(c.crop,()=>true),V=[{nom:'gris',...A}];
     if(D.autres){const t=D.t,B=nb(c.crop,u=>u===-1||t>=0&&Math.min((u-t+12)%12,(t-u+12)%12)<=1);V.push({nom:'couleur',...B})}return V};
-  let choix=GQ[Q[0]],mesQ=null;
-  if(Q.length>1){const E=[];for(const q of Q){const g=GQ[q];if(!g)continue;const Cl=cellules(g),D=dominante(Cl),V=Cl.map(c=>variantes(c,D)[D.autres?1:0]).filter(v=>v.n>=12).slice(0,10);
-      pr(`Orientation du tableau : essai à ${q*90}°`,null);const R=await mosaique(V.map(v=>v.c),{stop,progres:null}),T=R.map(texteMots).filter(Boolean);
-      E.push({q,g,c:T.length?T.reduce((s,t)=>s+t.moy,0)/T.length:0})}
-    E.sort((a,b)=>b.c-a.c);if(E.length){choix=E[0].g;mesQ=E.map(e=>({rotation:e.q*90,confiance:Math.round(e.c)}))}}
-  const g=choix,Cl=cellules(g),D=dominante(Cl),V=Cl.map(c=>variantes(c,D)),enc=V.map(v=>v.some(x=>x.n>=Math.max(12,0.002*x.c.width*x.c.height)));
+  let choix=GQ[Qv[0]],mesQ=null;
+  if(Qv.length>1){const E=[];for(const q of Qv){const g=GQ[q];if(!g)continue;const Cl=cellules(g),D=dominante(Cl),V=Cl.map(c=>variantes(c,D)[D.autres?1:0]).filter(v=>v.n>=12).slice(0,10);
+      // score : caractères lus dans des mots d'au moins 2 lettres ou chiffres, pondérés par la confiance (un texte lu de travers
+      // donne des signes isolés, parfois à forte confiance)
+      pr(`Orientation du tableau : essai à ${q*90}°`,null);const R=await mosaique(V.map(v=>v.c),{stop,progres:null});
+      const sc=R.reduce((s,W)=>s+W.reduce((a,m)=>{const n=(m.texte.match(/[\p{L}\p{N}]/gu)||[]).length;return a+(n>=2?n*m.conf/100:0)},0),0)/Math.max(1,V.length);
+      E.push({q,g,c:sc})}
+    E.sort((a,b)=>b.c-a.c);if(E.length){choix=E[0].g;mesQ=E.map(e=>({rotation:e.q*90,score:Math.round(e.c*10)/10}))}}
+  const g=choix,hr=hq(g),Cl=cellules(g),D=dominante(Cl),V=Cl.map(c=>variantes(c,D)),enc=V.map(v=>v.some(x=>x.n>=Math.max(12,0.002*x.c.width*x.c.height)));
   const L=V.map(()=>[]),tir=new Set();
   V.forEach((v,i)=>{const t=v[v.length-1];if(enc[i]&&t.tiret){tir.add(i);L[i]=v.map((x,j)=>j===v.length-1?{texte:'-',conf:90,moy:90,notes:[],tiret:true}:null)}});
   const I=Cl.map((c,i)=>i).filter(i=>enc[i]&&!tir.has(i)),nv=V[0]?V[0].length:1;

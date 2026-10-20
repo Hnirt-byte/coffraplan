@@ -36,7 +36,7 @@ const LIB={repere:'repère',description:'désignation',type:'type / élément',o
   niveau:'niveau (position)',angle:'angle (position)',largeur:'largeur',hauteur:'hauteur',quantite:'quantité',observations:'observations',lot:'lot / entreprise',acier:'acier (ferraillage)',autre:'non reconnue'};
 // Nature du tableau : en-tête + titre seulement (un tableau d'aciers a aussi des repères et des diamètres)
 const RESA=mot('reservations?|resas?|tremies?|fourreaux?|ouvertures?|percements?|carottages?|traversees?|incorporations?|passages?|rebouchages?');
-const ACIER=mot('aciers?|ha\\d*|ferraillages?|armatures?|nuances?|faconnages?|barres?|poids|masses?|kg|longueurs? developpees?|crochets?|epingles?|etriers?|cadres?|enrobages?|espacements?|fe ?e?500|b ?500|treillis');
+const ACIER=mot('aciers?|fers|ha\\d*|ferraillages?|armatures?|nuances?|faconnages?|barres?|poids|masses?|kg|longueurs? developpees?|crochets?|epingles?|etriers?|cadres?|enrobages?|espacements?|fe ?e?500|b ?500|treillis');
 const AUTRE=mot("indices?|ind\\.?|revisions?|modifications?|dessine|verifie|approuve|folios?|liste des plans|documents?|bordereau|planning");
 const POIDS={ouverture:2,niveau:1,angle:1,reseau:1,diametre:1};
 function nature(titre,cols){let R=0,A=0,O=0;
@@ -282,12 +282,14 @@ function textesEnGrille(S,z,T){const Q=[0,0,0,0];T.forEach(t=>Q[Math.round(((t.r
 // est un titre. Sans en-tête reconnu, les colonnes restent « non reconnues » et toutes les rangées sont gardées : rien n'est
 // abandonné, l'utilisateur affecte les colonnes. → {N (nomenclature, nature comprise), entete (vrai si au moins un titre reconnu)}
 function depuisGrille(G,cles){const R=G.lignes,nc=Math.max(0,...R.map(r=>r.length)),ID=G.ids||[];
-  const chiffre=v=>/\d/.test(norm(v).replace(/\(?(?<![a-z0-9])(mm|cm|m)(?![a-z0-9])\)?/g,'')),TT=G.titre?[G.titre]:[];let h=0;const E=[];
-  while(h<R.length-1&&E.length<3){const ne=R[h].filter(v=>String(v||'').trim());
-    if(!ne.length){h++;continue}
-    if(ne.length===1&&nc>=3&&!chiffre(ne[0])&&!E.length&&!kinds(norm(ne[0])).length){TT.push(ne[0]);h++;continue}   // titre dans la grille
-    const k=new Set(ne.flatMap(v=>kinds(norm(v)).slice(0,1)));
-    if(k.size>=2||!ne.some(chiffre)&&k.size>=1){E.push(h);h++}else break}
+  // en-tête : 1re rangée (parmi les 10 premières) d'au moins 2 titres de natures différentes, sans valeur chiffrée ; les rangées
+  // au-dessus forment le titre (cartouche, intitulé) ; les 2 suivantes la complètent si elles n'ont que des titres ou des unités
+  const chiffre=v=>/\d/.test(norm(v).replace(/\(?(?<![a-z0-9])(mm|cm|m)(?![a-z0-9])\)?/g,'')),TT=G.titre?[G.titre]:[],E=[];
+  const natR=r=>new Set(r.filter(v=>String(v||'').trim()&&!chiffre(v)).flatMap(v=>kinds(norm(v)).slice(0,1)));
+  let e=-1;for(let i=0;i<Math.min(10,R.length-1);i++){const ne=R[i].filter(v=>String(v||'').trim());if(natR(R[i]).size>=2&&ne.filter(chiffre).length<=ne.length/3){e=i;break}}
+  let h=0;
+  if(e>=0){for(let i=0;i<e;i++)R[i].filter(v=>String(v||'').trim()).forEach(v=>TT.push(v));E.push(e);h=e+1;
+    while(h<R.length-1&&E.length<3){const ne=R[h].filter(v=>String(v||'').trim());if(!ne.length||ne.some(chiffre)||!ne.every(v=>kinds(norm(v)).length||SOUS.test(norm(v))))break;E.push(h);h++}}
   // titre illisible : nature déduite des valeurs de la colonne (Ø…, l x h, repères) quand elles l'indiquent sans doute possible
   const VAL=R.slice(h).map(r=>r.map(v=>String(v||'').trim())),REPV=/^[A-Z]{1,3} ?\d{1,3}[A-Z]?$/i,deduite=j=>{const V=VAL.map(r=>r[j]||'').filter(v=>v&&!VIDE.test(norm(v)));if(!V.length)return null;
     const part=f=>V.filter(f).length/V.length;
