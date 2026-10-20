@@ -106,7 +106,7 @@ développement : il progresse vite mais n'est pas développeur senior.
   conflit / non retrouvée, occurrences multipages par repère seulement, quantité jamais inventée. Bouton « 🔎 Analyser le
   dessin » (`dxrGo`, toutes les pages ou la zone, `dxrStop`) ; corrections gardées à la relance par identité stable `dxrCle`
   (mémoire `D.RK`) ; provenance `origineImport.rapprochement`. Banc `t_rapprochement.py` (`tests/rapprochement_fictifs.py`).
-- Version affichée : élément `#appVer` (« v3.0 »). Les tests t_ux et t_v30 vérifient ce numéro.
+- Version affichée : élément `#appVer` (« v3.1 »). t_ux vérifie ce numéro exact ; t_v30 vérifie « v3.x ».
 
 ## Décisions actées (ne pas changer sans l'accord de Kévin)
 - Palette : joues CP `#EBD9B4`, fond inférieur `#B4532A`, fond supérieur `#E8A92E`, goussets `#F26B1D`, cloisons et

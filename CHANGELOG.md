@@ -3,7 +3,57 @@
 Détail complet de chaque version (demandes, écarts voulus, tests, non validé) : `docs/historique/HANDOFF_<version>.md`.
 Chaque version est un tag git (`git diff v2.4 v2.5 -- app/` pour voir les changements).
 
-## Non publié — stabilisation avant Release
+## v3.1 — importer un plan DXF ou PDF
+**Demande (Kévin, 20/10/2026)** : préparer la version v3.1 à partir des travaux faits depuis v3.0, sans fonction nouvelle.
+Détail technique de chaque étape (demandes, écarts voulus, tests) : sections « Détail v3.1 » de `CHANGELOG.md`.
+
+**Nouveautés**
+- **📥 Importer un plan** : une seule fenêtre pour les plans DXF et PDF du bureau d'études. Les réservations lues
+  deviennent des ouvrages CoffraPlan, avec les cotes du plan. Rien n'est créé sans sélection et confirmation, les ouvrages
+  déjà saisis ne sont pas modifiés, et le débit d'un ouvrage importé est le même que celui de la même saisie à la main.
+- **DXF** : formes dessinées (rectangles, y compris en 4 traits séparés, et cercles) et nomenclatures de réservations
+  (tableaux, textes, blocs, espaces Objet et présentations). L'unité du dessin est demandée quand le fichier ne la donne pas.
+- **PDF** : aperçu des pages, zoom, choix d'une zone, lecture des tableaux quand le texte du PDF est lisible, et saisie
+  assistée sinon (on recopie les cotes en regardant la page).
+- **Lecture des nomenclatures dessinées en traits ou numérisées (OCR)**, directement dans le fichier, sans connexion
+  internet : une grille de vérification signale en orange les cellules douteuses ; on corrige, ajoute, fusionne ou retire des
+  lignes avant de créer les ouvrages.
+- **🔎 Analyser le dessin** (PDF) : CoffraPlan retrouve les réservations sur le plan et les rapproche des lignes de la
+  nomenclature. Chaque ligne reçoit un état : concordance forte, partielle, correspondance probable, conflit, non retrouvée.
+  Les cotes du tableau restent prioritaires ; un clic sur une localisation affiche la page et le repère ; un rapprochement
+  faux peut être rejeté, et les corrections sont gardées si l'on relance l'analyse.
+- **Traçabilité** : chaque ouvrage importé garde son origine (fichier, page, ligne, repère, textes et cotes lus, résultat de
+  l'OCR et du rapprochement). Elle est conservée dans la sauvegarde et à la réouverture du projet.
+
+**Corrections**
+- Ouverture d'un PDF juste après la fermeture d'un autre : le message « fichier PDF illisible » pouvait s'afficher à tort.
+- Arrêt de la lecture OCR au mauvais moment : une erreur pouvait apparaître dans la console du navigateur (sans effet visible).
+
+**Limites connues — à lire avant usage sur chantier**
+- **Vérifier les associations automatiques** : sans cote écrite près du repère ni échelle, une concordance reste au mieux
+  « partielle ». Une note ou une liste qui cite un repère peut donner une fausse localisation : contrôler chaque ligne avant
+  de créer les ouvrages.
+- **OCR** : les textes tournés (nomenclature dessinée à la verticale) ne sont pas lus ; utiliser alors la saisie assistée.
+  Compter une vingtaine de secondes par grande page.
+- **Contours courbes** : les réservations à côtés courbes (voile circulaire, par exemple) ne sont pas reconnues sur le dessin.
+- Beaucoup de formes « hors nomenclature » (cadres de ferraillage notamment) sont proposées, jamais cochées d'office.
+- Pas de fichier DWG ; pas de rapprochement détaillé pour les DXF.
+- **Navigateurs** : vérifié sous Chrome / Edge (Chromium) seulement. Firefox, Safari et tablette ne sont pas validés.
+- Non vérifiés non plus : impression papier ou traceur, DXF dans AutoCAD, glTF / IFC dans Revit ou une visionneuse.
+- Le fichier HTML pèse environ 6 Mo (lecteur PDF et moteur OCR intégrés pour fonctionner hors connexion).
+
+**Écarts voulus (préparation)** : numéro v3.1 ; `t_ux` attend v3.1 ; `t_v30` vérifie « v3.x » (le numéro exact reste
+contrôlé par `t_ux`). Moteur, débit, feuilles et exports inchangés.
+
+**Tests** : syntaxe et assemblage du module d'import conformes ; campagne complète `python tests/run.py complet -j 4`
+30/30 suites vertes (20/10/2026, Chromium) ; mode d'emploi v3.1 généré (32 pages). Scénario t_ux « alerte au clavier
+(Entrée) », échoué une fois en CI après la fusion de la stabilisation : 24 passages conformes sur 24 sous charge (-j 4), non
+reproduit, test inchangé, intermittence notée. Sous une charge plus forte que la CI (même suite lancée 4 fois en parallèle),
+échecs isolés observés : t_pdf « faux PDF : erreur de lecture affichée » (1 sur 8) et t_ocr (2 sur 14 : clic « Annuler »
+d'une reconnaissance en cours jamais abouti, et une exception dont le détail n'a pas été conservé) ; non corrigés dans cette
+version.
+
+## Détail v3.1 — stabilisation avant Release
 **Demande (Kévin, 20/10/2026)** : examiner l'instabilité de `t_pdf` sous charge et corriger la seule cause identifiée, sans
 relance automatique ni test désactivé ; aucune évolution métier.
 
@@ -19,7 +69,7 @@ relance automatique ni test désactivé ; aucune évolution métier.
 immédiate, échouait 3 fois sur 3 avant), `t_ocr` (arrêt pendant la préparation de l'image, échouait avant). Moteur, débit,
 feuilles et exports inchangés.
 
-## Non publié — finalisation du rapprochement nomenclature ↔ dessin (phase 4)
+## Détail v3.1 — finalisation du rapprochement nomenclature ↔ dessin (phase 4)
 **Demande (Kévin, 20/10/2026)** : rapprochement automatique et déterministe nomenclature ↔ dessin (repère, fiabilité,
 proximité, lignes de rappel, forme, cotes, page / vue, quantité) ; cotes du tableau prioritaires, concordance partielle
 admise, conflit seulement sur la même dimension ; OCR ciblé des repères dessinés en traits ; multipage par repère seulement,
@@ -53,7 +103,7 @@ en `LINE`), pas de rapprochement détaillé.
 **Non validé** : Chromium seul ; réservations à côtés courbes non reconnues ; faux positifs possibles (listes et notes
 contenant un repère) ; durée de l'OCR sur grands plans ; DXF sans rapprochement détaillé.
 
-## Non publié — repérage géométrique des réservations (PDF vectoriel et DXF)
+## Détail v3.1 — repérage géométrique des réservations (PDF vectoriel et DXF)
 **Demande (Kévin, 20/10/2026, phase 4)** : repérer les réservations directement dans le dessin d'un PDF vectoriel (page ou
 zone), en proposer les dimensions (échelle jamais supposée : calibration simple ou cote écrite), les rapprocher des
 nomenclatures sans doublon, les créer après validation par l'adaptateur existant, provenance complète ; DXF : rectangles en
@@ -81,7 +131,7 @@ ligne reste indispensable. DXF réel : 5 rectangles en `LINE` assemblés (2 calq
 
 **Non validé** : Chromium seulement ; aucun PDF de plan de réservations réel avec repères en texte ; tablette ; impression.
 
-## Non publié — reconnaissance OCR locale des nomenclatures PDF
+## Détail v3.1 — reconnaissance OCR locale des nomenclatures PDF
 **Demande (Kévin, 19/10/2026, phase 3)** : lire les nomenclatures de réservations dont les textes sont dessinés en tracés ou
 numérisés, sur une zone de l'aperçu, en local (aucune API, aucun CDN, aucun modèle téléchargé, `file://`, HTML autonome) ;
 valeurs brutes gardées, doutes signalés, grille de vérification éditable, rien de coché d'office, aucun filtre, même
@@ -125,7 +175,7 @@ Aucune requête réseau.
 autres PDF réels (autres logiciels de DAO) ;
 temps et mémoire sur un poste modeste ; textes tournés dans un tableau ; tableaux sur plusieurs pages.
 
-## Non publié — « Importer un plan » : fenêtre unique DXF et PDF
+## Détail v3.1 — « Importer un plan » : fenêtre unique DXF et PDF
 **Demande (Kévin, 19/10/2026)** : remplacer « Importer un plan DXF » par une entrée unique, lire les PDF (textes extractibles),
 détecter leurs nomenclatures de réservations, aperçu des pages, sélection de zone, saisie assistée quand le tableau n'est pas
 lisible (PDF dont les textes sont vectorisés), même création et même provenance que le DXF ; appli toujours hors connexion.
@@ -151,7 +201,7 @@ des valeurs fictives a donné un ouvrage avec sa provenance (page 2). Aucune req
 **Non validé** : Firefox, Safari, tablette réelle ; PDF d'autres logiciels que le générateur de test et ce plan ; tableaux
 continués sur plusieurs pages sans en-tête ; OCR (non développé).
 
-## Non publié — nomenclatures de réservations dans l'import DXF
+## Détail v3.1 — nomenclatures de réservations dans l'import DXF
 **Demande (Kévin, 19/10/2026)** : un vrai plan de bureau d'études donnait 772 formes pour une nomenclature de 23 réservations
 placée dans une présentation. Détecter les nomenclatures de réservations (espace Objet et présentations), garder toutes leurs
 lignes sans filtre, rapprocher les lignes des géométries, les proposer en priorité dans la fenêtre, provenance étendue.
@@ -189,7 +239,7 @@ coordonnées de feuille). Aucun écart sur le débit, les feuilles et les export
 réel (seule une entité minimale fabriquée est testée) ; fenêtres de présentation (VIEWPORT) non interprétées : un repère placé
 seulement dans une présentation ne relie pas la ligne au dessin ; Chromium seulement.
 
-## Non publié — import DXF dans l'appli
+## Détail v3.1 — import DXF dans l'appli
 **Demande (Kévin, 19/10/2026)** : rendre l'import DXF utilisable dans CoffraPlan : fenêtre « Importer un plan DXF » (fichier,
 unité, calques, liste et aperçu synchronisés), préparation (forme, hauteur commune ou par ligne, référence, chantier, ouvrage,
 indice du plan source), création sur confirmation explicite seulement, annulable, provenance persistante dans le plan.
@@ -207,7 +257,7 @@ clés internes `data-vk` / `data-glk` des feuilles (empreintes du plan) incluent
 
 **Non validé** : aucun DXF réel ni exporté par AutoCAD ; fenêtre vue dans Chromium seulement (ni Firefox, Safari, tablette).
 
-## Non publié — lecteur DXF du module d'import
+## Détail v3.1 — lecteur DXF du module d'import
 **Demande (Kévin, 18/10/2026)** : premier vrai lecteur DXF dans `modules/import/` (unités, calques, identifiants, polylignes
 fermées droites, cercles, provenance), géométries ambiguës gardées en « non pris en charge », unité absente jamais devinée.
 
@@ -220,7 +270,7 @@ potentiel ». README du module : table du décodeur, décisions de Kévin, proto
 
 **Non validé** : aucun DXF réel ni exporté par AutoCAD lu ; pas d'interface d'import.
 
-## Non publié — stabilité de t_ux (sélecteur de fichier)
+## Détail v3.1 — stabilité de t_ux (sélecteur de fichier)
 **Demande (Kévin, 19/10/2026)** : trouver la cause de l'échec intermittent de t_ux (attente du sélecteur de fichier après
 Ctrl+O), sans désactiver ni affaiblir le contrôle.
 
@@ -232,7 +282,7 @@ L'appli, elle, répondait bien : sur un échec reproduit, `impJ` avait cliqué l
 (écouteur `filechooser` sans effet). Les contrôles sont inchangés : t_ux échoue toujours si Ctrl+O n'ouvre plus le sélecteur.
 Reproduction hors banc : 1 échec sur 40 puis 1 sur 150 avant, 0 sur 150 après. `app/CoffraPlan.html` inchangé.
 
-## Non publié — nettoyage des noms de chantiers réels
+## Détail v3.1 — nettoyage des noms de chantiers réels
 **Demande (Kévin, 18/10/2026)** : retirer des fichiers suivis les références à des chantiers réels, remplacées par des noms
 fictifs (`CHANTIER_DEMO_A`).
 
@@ -244,7 +294,7 @@ texte d'exemple du champ « Nom du chantier » change (référence figée, géom
 **Historique** : réécrit le 18/10/2026 (git-filter-repo, branches poussées en force) ; tous les SHA ont changé. Tags v2.10 /
 v3.0 et Releases à recréer à la main ; copies clonées ou en cache non effaçables.
 
-## Non publié — module d'import de plans (fondation)
+## Détail v3.1 — module d'import de plans (fondation)
 **Demande (Kévin, 18/10/2026)** : préparer l'architecture d'un module d'import de plans (lecteur, détecteur de
 réservations, adaptateur CoffraPlan), sans écrire l'import DXF / IFC / PDF et sans toucher aux fonctions existantes.
 

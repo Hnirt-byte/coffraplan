@@ -150,7 +150,7 @@ def t(s):
                 cot:tx.filter(x=>/^[+−]\\d/.test(x.textContent)&&x.getAttribute('fill')==='#1f5fbf').map(x=>x.textContent)}}""", [f, ov])
             s.check(r['bul'] == 'XY' and r['ax'] >= 2, f'[{f} {ov}] vue en plan : axes X / Y de l\'ouvrage en bleu, repérés', str(r))
             s.check(len(r['cot']) >= 2 and any(c.startswith('+') for c in r['cot']) and any(c.startswith('−') for c in r['cot']), f'[{f} {ov}] cotes signées depuis les axes (bleu)', str(r['cot']))
-        s.check(ev("document.getElementById('appVer').textContent") == 'v3.0', 'version affichée v3.0')
+        s.check(ev("document.getElementById('appVer').textContent").startswith('v3.'), 'version affichée v3.x')  # v3.1 : numéro exact vérifié par t_ux
         s.check(not [e for e in errs if 'net::' not in e], 'aucune erreur JS', str(errs[:3]))
         b.close()
 
