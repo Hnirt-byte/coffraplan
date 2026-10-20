@@ -131,6 +131,15 @@ Rectangle reconnu : contour fermé de 4 sommets (5 si refermé), côtés opposé
 sommet (écarte le quadrilatère croisé), à `tol` près (0,5 % de la diagonale). Côtés égaux : remarque « carré potentiel ». Cercle : `r > 0`. Tout le reste : `non_pris_en_charge`, avec la raison et la géométrie conservée.
 **B ne produit jamais de statut validé** : une forme ambiguë (quadrilatère presque rectangle) reste non prise en charge.
 
+Rectangles en `LINE` indépendantes (phase 4) : `dxf.js` garde les extrémités d'une `LINE` plane (`segment`) ; `detecter`
+regroupe les `LINE` de l'espace Objet par calque et les passe à `rectSegments` (graphe des extrémités raccordées à 1e-6 de
+l'étendue près ; côté en plusieurs morceaux alignés réuni ; cycles de 4 côtés testés par `rectangle`). Proposé (candidat ajouté
+après ceux des entités, `source.id` = identifiants des LINE joints par `+`, `geometrie.type:'polyligne'`, `geometrie.lignes`)
+seulement sans ambiguïté : aucun autre trait du calque raccordé aux sommets (diagonales admises) ni posé sur un côté (cadre
+subdivisé, cartouche, quadrillage écartés), et pas de polyligne reconnue aux mêmes centre et cotes (doublon). Les LINE gardent
+leur entrée « non prise en charge » avec la remarque « côté du rectangle Rn » (ou la raison du refus). 4 LINE sur 2 calques :
+non assemblées.
+
 ### C → plan (`CPI.adaptateur.versPlan(candidat, confirmation, ctx)`)
 - `confirmation = {confirme:true, forme?, h?, unite?, ref?, nb?}` — `h` en mm (saisie CoffraPlan) ; `confirme` doit valoir
   exactement `true`.
@@ -201,7 +210,7 @@ automatique), unite_tableau}, corrige:['cotes','ref'], a_verifier, h_saisie, ind
   partie), `vectoriel` (tracés, < 3 textes), `image` (image seule : numérisation), `vide`. Rapport dans la fenêtre :
   « lecture automatique : n ligne(s) » ou « aucune nomenclature lisible automatiquement : OCR ou saisie assistée ».
 - Nomenclatures : `nomenclatures.analyser` tel quel, une page = un espace (jamais de mélange entre pages) ; `N.page`,
-  `N.format`. Rapprochement géométrique : aucun pour un PDF.
+  `N.format`. Rapprochement géométrique : seulement après « Repérer les réservations » (ci-dessous).
 - Fenêtre : onglets « Nomenclature » et « Aperçu du plan » (pages, zoom, tableaux reconnus encadrés, ligne encadrée par
   « p. N ↗ »). Zone : cliquer-glisser, « Analyser la zone » (textes et traits de la zone, traits coupés au bord) : les tableaux
   lus automatiquement qui partagent des textes avec la zone sont remplacés (`N.id` = `Z1`…, `N.zone`) ; rien n'est ajouté si la
@@ -213,6 +222,45 @@ automatique), unite_tableau}, corrige:['cotes','ref'], a_verifier, h_saisie, ind
 - Limites : textes tournés ignorés pour les tableaux (comme en DXF) ; tableau continué sur une autre page sans en-tête
   répété : non relié (saisie assistée) ; PDF protégé par mot de passe refusé ; images JPEG 2000 / JBIG2 et
   textes CJK mal rendus dans l'aperçu (décodeurs non intégrés) ; testé dans Chromium seulement.
+
+## Repérage des réservations sur le dessin d'un PDF (`geometrie.js`, fenêtre `dxr*`, phase 4)
+- Tracés relus à la demande (rien gardé à l'ouverture) : `CPI.pdf.chemins(pdf, n)` → `{page, w, h, segments:[{id, a, b}],
+  contours:[{id, pts, courbes}], coupe}`, points de la page affichée, Y vers le haut (rotation comprise, même repère que les
+  textes) ; chemins de découpe (`W n`) ignorés ; au plus 400 000 segments par page (`coupe` signalé). Même parcours des
+  opérateurs que les traits des tableaux (`cheminsPage`).
+- `CPI.geometrie.detecterPage(geo, {fichier, textes, cadres, zone})` → `{candidats, ignores, coupe}` :
+  rectangles par `CPI.detecteur.rectSegments` (rectangle « re », contour fermé ou traits séparés : même résultat ; tolérance
+  de raccord 0,25 pt) ; cercles : contour fermé en courbes de Bézier (ou ≥ 8 sommets) dont sommets et milieux de courbes sont à
+  2 % près sur un cercle d'emprise carrée ; même cercle tracé et rempli compté une fois ; moins de 2 pt : ignoré.
+  Candidat au contrat du détecteur, `unite:'pt'`, `source.page`, `geometrie.page`, `bbox`, `annot:{repere?, cotes?}`.
+- Écartés (« non exploitable », raison gardée) : dans un tableau reconnu ou une zone OCR (`cadres`) ; ≥ 60 % de la page
+  (cadre de feuille ou de vue) ; ≥ 40 % (ouvrage, local, vue) ; côtés touchés par d'autres extrémités de traits (subdivisé :
+  tableau, cartouche) ; 3 sommets ou plus partagés (cellule de quadrillage) ; 3 textes ou plus à l'intérieur ; plus de 30
+  extrémités de traits à l'intérieur (cadre de détail, texte dessiné). Doutes notés sans écarter : sommet raccordé (mur ?),
+  grand contour (≥ 25 %), traits intérieurs, diagonales.
+- Textes voisins (moins de 4 hauteurs de texte, contour le plus proche) : repère (`R12`, `TR-3`, `F1`…, pas un nombre seul) ;
+  cote écrite (`650x800`, `Ø250`, unité éventuelle) lue par `nomenclatures.cotes` ; « R12 650x800 » donne les deux.
+- Échelle (par page, jamais devinée) : calibration (2 points accrochés au sommet de trait le plus proche à 8 px, distance
+  réelle saisie en mm → mm par point) ou échelle écrite sur la page (« Éch. 1/50 », proposée, appliquée sur clic :
+  50 × 25,4 / 72 mm par point, valable si le PDF est à la taille réelle de la feuille). Cotes proposées : cote écrite avec unité
+  (sans échelle), ou sans unité si l'échelle permet de la déduire (à 10 % près) ; sinon mesure à l'échelle arrondie au mm ;
+  sinon rien (« à compléter »). Toujours modifiables.
+- Nomenclature : `associer(…, {mm})` compare repères et contours d'une même page (textes `page` ↔ contours `page`), cotes en
+  mm par l'échelle de la page ; « trouvée » (repère voisin + cotes identiques) rattachée d'office, modifiable ; plusieurs
+  contours : liste au choix dans l'onglet Nomenclature ; un contour rattaché quitte la liste repérée (pas de doublon), un
+  contour seulement « possible » y est signalé ; même référence cochée des deux côtés : refusée.
+- Fenêtre (onglet Aperçu) : « 🔎 Repérer les réservations » (page affichée, ou zone choisie sur cette page ; remplace le
+  repérage précédent de la page), contours violets cliquables (ligne sélectionnée ↔ contour orange), tableau : page, repère,
+  forme, cotes, origine des cotes, h, référence, état (repérée · à confirmer · à compléter · refusée), contours écartés à part.
+  Création : `adaptateur.versPlan` avec les cotes en mm (contrôles du moteur), rien de coché d'office.
+- Provenance (`origineImport`, `type:'detection'`) : `fichier`, `format`, `page`, `id` (segments ou contour PDF), `candidat`,
+  `forme_detectee`, `centre`, `boite` et `dims_source` en pt, `zone`, `echelle` (`mm_par_pt` + 2 points et distances, ou
+  échelle lue et son texte), `repere`, `annotation`, `cotes:{origine:'annotation'|'mesure'|'saisie', proposees, retenues}`,
+  `choix`, `corrige` (`cotes`, `forme`, `ref`), `a_verifier`. Le PDF n'est jamais stocké.
+- Limites : côtés en arc (réservation dans un voile circulaire), rectangles dont un côté est interrompu ou partagé par un mur
+  ou une hachure qui touche le contour, contours ouverts, blocs complexes : non proposés ; repères dessinés en traits (texte
+  vectorisé) : non lus ; une réservation dessinée dans plusieurs vues apparaît plusieurs fois ; PDF numérisé : aucune
+  détection (OCR des nomenclatures et saisie assistée seulement).
 
 ## Reconnaissance OCR (`ocr.js`, fenêtre `dxo*`)
 - But : lire une nomenclature dont les textes sont dessinés en tracés ou numérisés. Complète la lecture texte, ne la remplace
@@ -313,8 +361,8 @@ Fichier confidentiel : il reste sur le poste de Kévin, hors du dépôt.
 ## Limites et non vérifié
 - Lecteur DXF éprouvé sur des fichiers ezdxf (R12, R2000) seulement : aucun plan réel, aucun fichier exporté par
   AutoCAD, Revit ou un autre logiciel n'a été lu.
-- Non lus comme géométries : blocs (`INSERT`), réservations dessinées en `LINE` séparées, hachures, arcs, DXF binaire ; contours
-  d'une présentation non proposés.
+- Non lus comme géométries : blocs (`INSERT`), hachures, arcs, DXF binaire ; contours d'une présentation non proposés ;
+  `LINE` séparées : seulement les rectangles sans ambiguïté (même calque, aucun autre trait raccordé).
 - Nomenclatures : éprouvées sur des DXF ezdxf fictifs seulement (TEXT + LINE, MTEXT sans grille, blocs, présentation active ou
   non) ; ACAD_TABLE : entité minimale fabriquée, jamais un fichier AutoCAD ; textes tournés ignorés pour les tableaux ;
   largeur des textes estimée (0,6 h par caractère) ; fenêtres de présentation non interprétées ; MINSERT : première occurrence ;

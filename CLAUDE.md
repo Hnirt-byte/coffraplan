@@ -96,6 +96,10 @@ développement : il progresse vite mais n'est pas développeur senior.
   aucune requête réseau. Rendu de zone par `CPI.pdf.rendreZone`, tableau par `nomenclatures.analyser` (pas de 2e moteur),
   grille de vérification `dxo*`, `origineImport.type = 'ocr'` + clé `ocr` (brut, confiance, corrigé). Banc `t_ocr.py`
   (PDF fictifs de `tests/pdf_ocr_fictifs.py` : textes en contours, scan ; fontTools + police Liberation / DejaVu).
+  Repérage des réservations sur le dessin (phase 4) : `geometrie.js` (`CPI.geometrie.detecterPage`) sur les tracés relus par
+  `CPI.pdf.chemins` ; rectangles par `CPI.detecteur.rectSegments` (aussi les rectangles en 4 `LINE` d'un DXF) ; échelle par page
+  (`DXI.cal` : 2 points ou échelle écrite), fenêtre `dxr*`, `origineImport.type = 'detection'`. Banc `t_detection.py` (plans
+  fictifs de `tests/detection_fictifs.py`).
 - Version affichée : élément `#appVer` (« v3.0 »). Les tests t_ux et t_v30 vérifient ce numéro.
 
 ## Décisions actées (ne pas changer sans l'accord de Kévin)

@@ -3,6 +3,34 @@
 Détail complet de chaque version (demandes, écarts voulus, tests, non validé) : `docs/historique/HANDOFF_<version>.md`.
 Chaque version est un tag git (`git diff v2.4 v2.5 -- app/` pour voir les changements).
 
+## Non publié — repérage géométrique des réservations (PDF vectoriel et DXF)
+**Demande (Kévin, 20/10/2026, phase 4)** : repérer les réservations directement dans le dessin d'un PDF vectoriel (page ou
+zone), en proposer les dimensions (échelle jamais supposée : calibration simple ou cote écrite), les rapprocher des
+nomenclatures sans doublon, les créer après validation par l'adaptateur existant, provenance complète ; DXF : rectangles en
+4 `LINE` indépendantes. Sans nouvelle bibliothèque, hors connexion, rien de coché ni créé d'office.
+
+**Fait** : `geometrie.js` (nouveau, intégré par `assembler.py`) : rectangles et cercles d'une page, parasites écartés avec leur
+raison (cadre de feuille, cartouche subdivisé, cellules, tableaux, cadres de détail, très grands contours), repères et cotes
+écrites voisins. `pdf.js` : parcours des tracés commun (`cheminsPage`), `CPI.pdf.chemins` (relu à la demande). `detecteur.js` :
+`rectSegments` (graphe d'extrémités, côtés en morceaux réunis) et rectangles en `LINE` d'un même calque, sans ambiguïté, sans
+doubler une polyligne ; `dxf.js` garde les extrémités des `LINE`. `nomenclatures.associer` : contours et repères d'une même page
+PDF, cotes comparées à l'échelle de la page. Fenêtre (`dxr*`) : « 🔎 Repérer les réservations », contours cliquables, échelle
+(2 points ou « Éch. 1/50 » lue sur la page), tableau éditable (forme, cotes, h, référence), états repérée / à confirmer /
+à compléter / non exploitable, création par `adaptateur.versPlan`, provenance `type:'detection'`. Mode d'emploi § 7.22.
+Banc `tests/t_detection.py` (38 vérifications) sur `tests/detection_fictifs.py` (PDF 2 pages dont une tournée, DXF).
+
+**Écarts voulus** : aucun test existant modifié. PDF : la nomenclature peut désormais être rattachée à un contour du dessin
+(seulement après « Repérer ») ; DXF : 4 `LINE` formant un rectangle sans ambiguïté deviennent un candidat de plus (les fichiers
+des bancs existants n'en contiennent pas). Moteur, débit, feuilles et exports inchangés.
+
+**Essai local sur le PDF et le DXF réels (20/10/2026, hors dépôt, comptes seulement)** : PDF (plan de ferraillage, 2 pages A0,
+textes en grande partie vectorisés, pas d'échelle écrite lisible) : page 1, 5 contours proposés, 52 écartés ; page 2,
+15 proposés, 45 écartés ; 0 repère lu (textes dessinés en traits) ; < 2,5 s par page. Les réservations du voile circulaire
+(côtés en arc) ne sont pas reconnues ; une partie des propositions sont des cadres d'étiquettes : la vérification ligne à
+ligne reste indispensable. DXF réel : 5 rectangles en `LINE` assemblés (2 calques), lecture + détection ≈ 1,3 s.
+
+**Non validé** : Chromium seulement ; aucun PDF de plan de réservations réel avec repères en texte ; tablette ; impression.
+
 ## Non publié — reconnaissance OCR locale des nomenclatures PDF
 **Demande (Kévin, 19/10/2026, phase 3)** : lire les nomenclatures de réservations dont les textes sont dessinés en tracés ou
 numérisés, sur une zone de l'aperçu, en local (aucune API, aucun CDN, aucun modèle téléchargé, `file://`, HTML autonome) ;

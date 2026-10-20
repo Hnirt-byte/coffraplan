@@ -7,6 +7,7 @@
 // Chargé à la première ouverture d'un PDF ; aucune requête réseau (polices standard, CMap, wasm : désactivés).
 (function(root){'use strict';
 let LIB=null;
+const SEG_DET=400000;   // shortcut: repérage des réservations (chemins), au-delà les traits ne sont pas lus (signalé) ; à relever si un vrai plan le demande
 const SEG_MAX=60000;   // shortcut: au-delà, les traits d'une page ne sont plus relevés (le diagnostic les compte) ; à relever si un vrai plan le demande
 const src=id=>{const s=root.document&&root.document.getElementById(id);if(!s)throw new Error('lecteur PDF absent de ce fichier ('+id+')');return s.textContent};
 const blobUrl=t=>URL.createObjectURL(new Blob([t],{type:'text/javascript'}));
@@ -45,25 +46,35 @@ function textesPage(lib,tc,vp,n,P){const M=vp.transform,H=vp.height,R=[];let nIl
     T.push({id:`p${n}-t${T.length+1}`,calque:'',espace:'papier',presentation:P,page:n,nature:'texte PDF',texte:t,x,y:H-y,h,w:r.w,rot:Math.round(rot*100)/100})});
   return{T,nIl}}
 
-// Traits droits (horizontaux et verticaux seulement : ceux des grilles de tableaux) et compte des chemins et images
-function traitsPage(lib,ol,vp,n,P){const O=lib.OPS,D={0:'m',1:'l',2:'c',3:'q',4:'z'},H=vp.height,S=[],imgs=new Set(IMG.map(k=>O[k]).filter(v=>v!=null));
-  let ctm=[1,0,0,1,0,0],pile=[],nCh=0,nSeg=0,nImg=0,coupe=false;
+// Parcours des tracés d'une page : chaque sous-chemin (m … z) en points de la page affichée (Y vers le bas ici, comme le
+// viewport ; l'appelant retourne Y). sp(pts, ferme, courbes, peint) : pts = sommets (extrémités des segments et des courbes),
+// courbes = [[p0, c1, c2, p3]…] (quadratiques élevées en cubiques), peint = faux pour un chemin de découpe sans tracé (W n).
+function cheminsPage(lib,ol,vp,sp,img){const O=lib.OPS,D={0:'m',1:'l',2:'c',3:'q',4:'z'},imgs=new Set(IMG.map(k=>O[k]).filter(v=>v!=null));
+  let ctm=[1,0,0,1,0,0],pile=[];
   for(let i=0;i<ol.fnArray.length;i++){const f=ol.fnArray[i],a=ol.argsArray[i];
     if(f===O.save)pile.push(ctm);else if(f===O.restore)ctm=pile.pop()||ctm;else if(f===O.transform)ctm=mul(ctm,a);
     else if(f===O.paintFormXObjectBegin){pile.push(ctm);if(a&&a[0])ctm=mul(ctm,a[0])}else if(f===O.paintFormXObjectEnd)ctm=pile.pop()||ctm;
-    else if(imgs.has(f))nImg++;
-    else if(f===O.constructPath){const d=a&&a[1]&&a[1][0];if(!d||!d.length)continue;nCh++;
-      const T=mul(vp.transform,ctm),p=(x,y)=>[T[0]*x+T[2]*y+T[4],H-(T[1]*x+T[3]*y+T[5])];
-      let k=0,cur=null,st=null;
-      const seg=(u,v)=>{nSeg++;if(coupe)return;const dx=v[0]-u[0],dy=v[1]-u[1],l=Math.hypot(dx,dy);
-        if(l>0&&(Math.abs(dy)<=0.01*l||Math.abs(dx)<=0.01*l)){if(S.length>=SEG_MAX){coupe=true;return}S.push({calque:'',espace:'papier',presentation:P,page:n,a:u,b:v})}};
+    else if(imgs.has(f)){if(img)img()}
+    else if(f===O.constructPath){const d=a&&a[1]&&a[1][0];if(!d||!d.length)continue;const peint=a[0]!==O.endPath;
+      const T=mul(vp.transform,ctm),p=(x,y)=>[T[0]*x+T[2]*y+T[4],T[1]*x+T[3]*y+T[5]];
+      let k=0,pts=null,cb=[],cur=null;const fin=z=>{if(pts&&pts.length>1)sp(pts,z,cb,peint);pts=null;cb=[]};
+      sp.chemin&&sp.chemin();
       while(k<d.length){const o=D[d[k++]];
-        if(o==='m'){cur=st=p(d[k],d[k+1]);k+=2}
-        else if(o==='l'){const q=p(d[k],d[k+1]);k+=2;if(cur)seg(cur,q);cur=q}
-        else if(o==='c'){cur=p(d[k+4],d[k+5]);k+=6}
-        else if(o==='q'){cur=p(d[k+2],d[k+3]);k+=4}
-        else if(o==='z'){if(cur&&st)seg(cur,st);cur=st}
-        else break}}}
+        if(o==='m'){fin(false);cur=p(d[k],d[k+1]);pts=[cur];k+=2}
+        else if(o==='l'){cur=p(d[k],d[k+1]);k+=2;if(pts)pts.push(cur)}
+        else if(o==='c'){const c1=p(d[k],d[k+1]),c2=p(d[k+2],d[k+3]),q=p(d[k+4],d[k+5]);k+=6;if(pts){cb.push([cur,c1,c2,q]);pts.push(q)}cur=q}
+        else if(o==='q'){const c=p(d[k],d[k+1]),q=p(d[k+2],d[k+3]);k+=4;if(pts){cb.push([cur,[cur[0]+2/3*(c[0]-cur[0]),cur[1]+2/3*(c[1]-cur[1])],[q[0]+2/3*(c[0]-q[0]),q[1]+2/3*(c[1]-q[1])],q]);pts.push(q)}cur=q}
+        else if(o==='z'){if(pts){const st=pts[0];fin(true);cur=st;pts=[st]}}
+        else break}
+      fin(false)}}}
+
+// Traits droits (horizontaux et verticaux seulement : ceux des grilles de tableaux) et compte des chemins et images
+function traitsPage(lib,ol,vp,n,P){const H=vp.height,S=[];let nCh=0,nSeg=0,nImg=0,coupe=false;
+  const seg=(u,v)=>{nSeg++;if(coupe)return;const dx=v[0]-u[0],dy=v[1]-u[1],l=Math.hypot(dx,dy);
+    if(l>0&&(Math.abs(dy)<=0.01*l||Math.abs(dx)<=0.01*l)){if(S.length>=SEG_MAX){coupe=true;return}S.push({calque:'',espace:'papier',presentation:P,page:n,a:[u[0],H-u[1]],b:[v[0],H-v[1]]})}};
+  const sp=(pts,z,cb)=>{let j=0;for(let i=1;i<pts.length;i++){if(j<cb.length&&cb[j][3]===pts[i]){j++;continue}seg(pts[i-1],pts[i])}if(z)seg(pts[pts.length-1],pts[0])};
+  sp.chemin=()=>nCh++;
+  cheminsPage(lib,ol,vp,sp,()=>nImg++);
   return{S,nCh,nSeg,nImg,coupe}}
 
 // Nature d'une page pour le rapport : lecture automatique possible ou saisie assistée
@@ -103,8 +114,21 @@ async function rendreZone(pdf,n,z,k){const pg=await pdf.getPage(n),vp=pg.getView
   await pg.render({canvas:cv,canvasContext:g,viewport:vp,transform:[1,0,0,1,-z.x0*k,-(H-z.y1)*k],background:'#fff'}).promise;
   return cv}
 
+// Tracés d'une page pour le repérage des réservations (geometrie.js), relus à la demande (rien n'est gardé à l'ouverture) :
+// segments droits de tous les chemins peints et sous-chemins fermés courbes ou à nombreux sommets (cercles possibles), en
+// points de la page affichée, Y vers le haut (même repère que les textes). → {page, w, h, segments, contours, coupe}
+async function chemins(pdf,n){const lib=await charger(),pg=await pdf.getPage(n),vp=pg.getViewport({scale:1}),ol=await pg.getOperatorList(),H=vp.height,S=[],C=[];
+  let ch=0,coupe=false;const Y=q=>[q[0],H-q[1]];
+  const sp=(pts,z,cb,peint)=>{if(!peint)return;const P=pts.map(Y),id=`p${n}-c${ch}`,q=P[P.length-1];z=z||P.length>2&&Math.hypot(q[0]-P[0][0],q[1]-P[0][1])<0.01;
+    let j=0;for(let i=1;i<P.length;i++){if(j<cb.length&&cb[j][3]===pts[i]){j++;continue}if(S.length>=SEG_DET){coupe=true;break}S.push({id:id+'-'+S.length,a:P[i-1],b:P[i]})}
+    if(z&&P.length>2&&!cb.length&&S.length<SEG_DET)S.push({id:id+'-'+S.length,a:P[P.length-1],b:P[0]});
+    if(z&&(cb.length||P.length>=8))C.push({id:id+'-k'+C.length,pts:P,courbes:cb.map(c=>c.map(Y))})};
+  sp.chemin=()=>ch++;
+  cheminsPage(lib,ol,vp,sp,null);pg.cleanup();
+  return{page:n,w:vp.width,h:vp.height,segments:S,contours:C,coupe}}
+
 // Libère un document lu (le worker partagé reste ouvert pour le PDF suivant)
 function fermer(pdf){try{const t=pdf&&pdf.loadingTask;if(t)t.destroy().catch(()=>{})}catch(e){}}
 
-root.CPI=Object.assign(root.CPI||{},{pdf:{charger,lire,rendre,rendreZone,fermer,nature,LIB_NAT}});
+root.CPI=Object.assign(root.CPI||{},{pdf:{charger,lire,rendre,rendreZone,chemins,fermer,nature,LIB_NAT}});
 })(typeof globalThis!=='undefined'?globalThis:this);

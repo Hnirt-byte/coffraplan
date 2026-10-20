@@ -81,6 +81,8 @@ function decoder(txt,nom){
       if(f&(8|16|64))autre(o,b,'POLYLINE 3D ou maillage');
       else if(f&2||f&4||lisse)autre(o,b,'POLYLINE lissée (courbe ajustée ou spline)');   // 70 : bit 2 = courbe ajustée, bit 4 = spline
       else poly(o,b,pts,f,bulge,large)}
+    else if(o.type==='LINE'){autre(o,b,'LINE');const S=[[num(o,10,NaN),num(o,20,NaN)],[num(o,11,NaN),num(o,21,NaN)]];
+      if(S.flat().every(Number.isFinite)&&num(o,30,0)===num(o,31,0))b.segment=S}   // côté possible d'un rectangle en 4 LINE (detecteur.js)
     else autre(o,b,o.type==='INSERT'?'INSERT (bloc non décomposé)':o.type)}
   return Object.assign({format:'dxf',fichier:nom==null?'':String(nom),unite:iu?UNITES[iu]:null,version:H.$ACADVER||null,
     calques:[...new Set(calques.concat(entites.map(e=>e.calque)))],entites},annexes(S,E,X));

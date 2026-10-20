@@ -228,31 +228,33 @@ function dansPoly(p,P){let c=false;for(let i=0,j=P.length-1;i<P.length;j=i++){co
 function dSeg(p,a,b){const dx=b[0]-a[0],dy=b[1]-a[1],l=dx*dx+dy*dy,t=l?Math.max(0,Math.min(1,((p[0]-a[0])*dx+(p[1]-a[1])*dy)/l)):0;return Math.hypot(p[0]-a[0]-t*dx,p[1]-a[1]-t*dy)}
 function dGeo(p,g){if(g.type==='cercle')return Math.max(0,Math.hypot(p[0]-g.centre[0],p[1]-g.centre[1])-g.r);
   const P=g.points;if(dansPoly(p,P))return 0;let d=Infinity;for(let i=0;i<P.length;i++)d=Math.min(d,dSeg(p,P[i],P[(i+1)%P.length]));return d}
-// Cotes compatibles (mm) : 'ok' | 'diff' | '?' (unité inconnue ou cotes absentes) ; tolérance 1 % ou 2 mm
-function compat(L,uT,c,uD){const d=L.dims;if(!d||!MM[d.unite||uT]||!MM[uD]||!c.dims)return'?';
-  const kT=MM[d.unite||uT],kD=MM[uD],eq=(x,y)=>Math.abs(x-y)<=Math.max(2,0.01*Math.max(x,y));
+// Cotes compatibles (mm) : 'ok' | 'diff' | '?' (unité inconnue ou cotes absentes) ; tolérance 1 % ou 2 mm ; kD = mm par unité du dessin
+function compat(L,uT,c,kD){const d=L.dims;if(!d||!MM[d.unite||uT]||!(kD>0)||!c.dims)return'?';
+  const kT=MM[d.unite||uT],eq=(x,y)=>Math.abs(x-y)<=Math.max(2,0.01*Math.max(x,y));
   if(d.type==='circ')return c.type==='circ'&&eq(d.D*kT,c.dims.D*kD)?'ok':'diff';
   return c.type==='rect'&&eq(Math.max(d.a,d.b)*kT,c.dims.L*kD)&&eq(Math.min(d.a,d.b)*kT,c.dims.l*kD)?'ok':'diff'}
 
-// Rapprochement des lignes avec les géométries du détecteur (espace Objet seulement). opt = {uniteDessin, unites:{idNomenclature:unité}}
+// Rapprochement des lignes avec les géométries du détecteur (espace Objet d'un DXF ; page d'un PDF : textes et contours de la même
+// page seulement). opt = {uniteDessin, unites:{idNomenclature:unité}, mm: candidat → mm par unité du dessin (PDF : échelle de la page)}
 // → {idLigne: {statut, options:[{c (rang dans C), id, d, via, cotes}], reperes:[{x,y,id}], note}}
 function associer(noms,C,doc,opt){
-  const o=opt||{},pris=new Set(),idx={},papier={};
+  const o=opt||{},pris=new Set(),idx={},papier={},kD=c=>o.mm?o.mm(c):MM[o.uniteDessin];
+  const spT=t=>t.espace==='objet'?'o':t.page?'p'+t.page:null,spG=g=>g.espace!=='papier'?'o':g.page?'p'+g.page:null;   // espaces jamais mélangés
   noms.forEach(N=>N.ids.forEach(i=>pris.add(i)));(o.exclus||[]).forEach(i=>pris.add(i));
   (doc.textes||[]).forEach(t=>{if(pris.has(t.id))return;const k=new Set([cleRep(t.texte)]);t.texte.split(/[\s,;:()[\]]+/).forEach(x=>k.add(cleRep(x)));
-    k.forEach(x=>{if(!x)return;if(t.espace==='objet')(idx[x]=idx[x]||[]).push(t);else(papier[x]=papier[x]||new Set()).add(t.presentation||'présentation')})});
-  const geo=C.map((c,i)=>({c,i})).filter(x=>x.c.statut==='a_confirmer'&&x.c.geometrie&&x.c.geometrie.espace!=='papier');
+    k.forEach(x=>{if(!x)return;if(spT(t))(idx[x]=idx[x]||[]).push(t);else(papier[x]=papier[x]||new Set()).add(t.presentation||'présentation')})});
+  const geo=C.map((c,i)=>({c,i})).filter(x=>x.c.statut==='a_confirmer'&&x.c.geometrie&&spG(x.c.geometrie));
   const R={};
   noms.forEach(N=>{const uT=(o.unites||{})[N.id]||N.unite;N.lignes.forEach(L=>{const k=cleRep(L.repere),occ=k?idx[k]||[]:[],op={};
     occ.forEach(t=>{const P=[[t.x,t.y]].concat(t.fleches||[]),lim=4*t.h;
-      geo.forEach(({c,i})=>{const d=Math.min(...P.map(p=>dGeo(p,c.geometrie)));if(d<=lim&&(!op[i]||d<op[i].d))op[i]={c:i,id:c.id,d,via:'repere',cotes:compat(L,uT,c,o.uniteDessin)}})});
+      geo.forEach(({c,i})=>{if(spG(c.geometrie)!==spT(t))return;const d=Math.min(...P.map(p=>dGeo(p,c.geometrie)));if(d<=lim&&(!op[i]||d<op[i].d))op[i]={c:i,id:c.id,d,via:'repere',cotes:compat(L,uT,c,kD(c))}})});
     // cotes compatibles d'abord (sinon tronquées au-delà des DXN_OPT premières propositions), puis distance
     const rg={ok:0,'?':1,diff:2};let options=Object.values(op).sort((a,b)=>rg[a.cotes]-rg[b.cotes]||a.d-b.d),statut,note='';
     const enPapier=k&&papier[k]?' ; repère présent dans une présentation (« '+[...papier[k]].join(' », « ')+' ») : lien non établi, fenêtre de présentation non interprétée':'';
     if(!occ.length){
-      const M=L.dims?geo.filter(({c})=>compat(L,uT,c,o.uniteDessin)==='ok').map(({c,i})=>({c:i,id:c.id,d:null,via:'cotes',cotes:'ok'})):[];
+      const M=L.dims?geo.filter(({c})=>compat(L,uT,c,kD(c))==='ok').map(({c,i})=>({c:i,id:c.id,d:null,via:'cotes',cotes:'ok'})):[];
       options=M;statut=M.length===1?'probable':M.length>1?'multiple':'absente';
-      note=(k?'repère non trouvé dans l\'espace Objet':'ligne sans repère')+(M.length===1?' ; une seule géométrie de mêmes cotes':M.length>1?' ; '+M.length+' géométries de mêmes cotes':'')+enPapier}
+      note=(k?'repère non trouvé dans '+(o.mm?'le dessin du PDF':'l\'espace Objet'):'ligne sans repère')+(M.length===1?' ; une seule géométrie de mêmes cotes':M.length>1?' ; '+M.length+' géométries de mêmes cotes':'')+enPapier}
     else if(!options.length){statut='absente';note=`repère trouvé ${occ.length} fois, aucun contour reconnu à proximité`}
     else if(options.length===1){const ok=options[0].cotes==='ok'&&!/^\d+$/.test(k);statut=ok?'trouvee':'probable';
       note=ok?'repère à proximité, cotes identiques':options[0].cotes==='diff'?'cotes du dessin différentes de celles du tableau':/^\d+$/.test(k)?'repère purement numérique : à vérifier':'cotes non comparables (unité ou cotes manquantes)'}
