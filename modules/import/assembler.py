@@ -1,18 +1,29 @@
 """Intègre le module d'import dans app/CoffraPlan.html (bibliothèque standard seulement, résultat déterministe).
   python modules/import/assembler.py           → réécrit les blocs générés du HTML depuis les sources
   python modules/import/assembler.py --check   → échoue (code 1) si un bloc du HTML diffère des sources (CI, tests)
-Blocs générés : <script id="cpi-src"> (modules/import/*.js) et PDF.js tel que publié (vendor/pdfjs, empreintes SHA-256
-vérifiées) dans <script type="text/plain" id="pdfjs-src"> et id="pdfjs-worker-src", chargés seulement à l'ouverture d'un PDF.
+Blocs générés : <script id="cpi-src"> (modules/import/*.js) ; PDF.js tel que publié (vendor/pdfjs, empreintes SHA-256
+vérifiées) dans <script type="text/plain" id="pdfjs-src"> et id="pdfjs-worker-src", chargés seulement à l'ouverture d'un PDF ;
+moteur OCR Tesseract.js (vendor/tesseract, empreintes vérifiées) dans les blocs tess-src, tess-worker-src, tess-core-src
+(scripts tels que publiés), tess-wasm et tess-fra (fichiers .gz en base64), chargés seulement au 1er « Reconnaître (OCR) ».
 Le reste du HTML s'édite toujours à la main. Ne pas modifier ces blocs dans le HTML."""
-import hashlib, os, sys
+import base64, gzip, hashlib, os, sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 HTML = os.path.join(HERE, '..', '..', 'app', 'CoffraPlan.html')
-ORDRE = ['lecteur.js', 'dxf.js', 'pdf.js', 'detecteur.js', 'nomenclatures.js', 'adaptateur.js', 'fenetre.js']   # dxf.js après lecteur.js (DECODEURS)
+ORDRE = ['lecteur.js', 'dxf.js', 'pdf.js', 'ocr.js', 'detecteur.js', 'nomenclatures.js', 'adaptateur.js', 'fenetre.js']   # dxf.js après lecteur.js (DECODEURS)
 DEBUT, FIN = '<script id="cpi-src">', '</script>'
 # PDF.js 6.4.299 (Apache-2.0), fichiers legacy/build/ (compatibles navigateurs plus anciens) du paquet npm pdfjs-dist@6.4.299, copiés sans modification
 PDFJS = [('pdfjs-src', 'pdf.min.mjs', 'bccc24ea711db8e44503629519904a5292d73b9daaa214bbe7cdcc282b0f4259'),
          ('pdfjs-worker-src', 'pdf.worker.min.mjs', '145d2dd3ab0c86151011dba95acfa2d5336e2accd59388ea43dbee0efddaaec6')]
+
+# Tesseract.js 7.0.0, tesseract.js-core 7.0.0, @tesseract.js-data/fra 1.0.0 (Apache-2.0) : (bloc, fichier, SHA-256 du fichier, SHA-256
+# du contenu décompressé pour un .gz). Le .wasm.gz est le tesseract-core-simd-lstm.wasm publié, compressé par gzip -9 -n.
+TESS = [('tess-src', 'tesseract.min.js', '000c27d9cd0def655f77b36c72a389c0ab13793aa31cb4d7aab56d09c0afbc7e', None),
+        ('tess-worker-src', 'worker.min.js', '576b7df7e3393e137e51849357c9adb53fe7ac1bb69bfa06cf3d61520f182c6d', None),
+        ('tess-core-src', 'tesseract-core-simd-lstm.js', 'e48e2f02ddae3716c8dd24bf41cd290d4efa96892d689cdc4013c2545d63f469', None),
+        ('tess-wasm', 'tesseract-core-simd-lstm.wasm.gz', 'bad86ecb17527e1725a505a34f7ad44fbe0ccec9013080532997d189d7849f79',
+         '34e8d50cac216427d86bf397d610fdd9f49492539bbcdfbfccc4eda20c810bea'),
+        ('tess-fra', 'fra.traineddata.gz', 'd611139672b3752c7097e671e4a1d9209dfd37f2aeb081ef6487fba3351e9255', None)]
 
 
 def bloc():
@@ -35,13 +46,28 @@ def pdfjs(ident, nom, sha):
     return f'<script type="text/plain" id="{ident}">' + src + '\n</script>'
 
 
+def tess(ident, nom, sha, sha_gz):
+    b = open(os.path.join(HERE, 'vendor', 'tesseract', nom), 'rb').read()
+    if hashlib.sha256(b).hexdigest() != sha or (sha_gz and hashlib.sha256(gzip.decompress(b)).hexdigest() != sha_gz):
+        sys.exit(f'vendor/tesseract/{nom} : empreinte SHA-256 inattendue (fichier modifié ou autre version)')
+    if nom.endswith('.gz'):
+        t = base64.b64encode(b).decode('ascii')
+        src = '\n'.join(t[i:i + 120] for i in range(0, len(t), 120))
+    else:
+        src = b.decode('utf-8').rstrip('\n')
+        if '</script' in src.lower() or '<!--' in src:
+            sys.exit(f'{nom} : « </script » ou « <!-- » interdit dans un bloc du HTML')
+    return f'<script type="text/plain" id="{ident}">' + src + '\n</script>'
+
+
 def main(check):
     html = open(HTML, encoding='utf-8', newline='').read()
-    blocs = [(DEBUT, bloc(), 'cpi-src')] + [(f'<script type="text/plain" id="{i}">', pdfjs(i, n, h), i) for i, n, h in PDFJS]
+    blocs = [(DEBUT, bloc(), 'cpi-src')] + [(f'<script type="text/plain" id="{i}">', pdfjs(i, n, h), i) for i, n, h in PDFJS] \
+        + [(f'<script type="text/plain" id="{i}">', tess(i, n, h, g), i) for i, n, h, g in TESS]
     faits = []
     for debut, neuf, nom in blocs:
         a = html.find(debut)
-        if a < 0:   # premier assemblage d'un bloc PDF.js : ajouté en fin de document
+        if a < 0:   # premier assemblage d'un bloc PDF.js ou OCR : ajouté en fin de document
             if nom == 'cpi-src':
                 sys.exit(f'{DEBUT} absent de app/CoffraPlan.html')
             a = b = html.rindex('</body>')

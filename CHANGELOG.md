@@ -3,6 +3,50 @@
 Détail complet de chaque version (demandes, écarts voulus, tests, non validé) : `docs/historique/HANDOFF_<version>.md`.
 Chaque version est un tag git (`git diff v2.4 v2.5 -- app/` pour voir les changements).
 
+## Non publié — reconnaissance OCR locale des nomenclatures PDF
+**Demande (Kévin, 19/10/2026, phase 3)** : lire les nomenclatures de réservations dont les textes sont dessinés en tracés ou
+numérisés, sur une zone de l'aperçu, en local (aucune API, aucun CDN, aucun modèle téléchargé, `file://`, HTML autonome) ;
+valeurs brutes gardées, doutes signalés, grille de vérification éditable, rien de coché d'office, aucun filtre, même
+création et provenance OCR ; moteur de coffrage inchangé.
+
+**Fait** : Tesseract.js 7.0.0 (cœur `simd-lstm`, modèle français `best_int`, Apache-2.0) copié dans
+`modules/import/vendor/tesseract/` et intégré par `assembler.py` (blocs `tess-*`, empreintes SHA-256 vérifiées, wasm et modèle
+en gzip + base64), lancé dans un worker blob au premier clic. `ocr.js` (nouveau) : rendu de la zone par le PDF.js existant
+(`CPI.pdf.rendreZone`), prétraitement léger de la copie, deux passes de lecture, cellules vides relues, mots → textes et
+traits de la page, tableau par `nomenclatures.analyser`, corrections prudentes selon la colonne (O/0, I/1, S/5, B/8 ; @ → Ø ; un nombre seul n'est jamais converti en Ø),
+doutes (confiance < 75, correction, repère en double ou hors suite). Fenêtre : « Reconnaître le tableau (OCR) » à côté
+d'« Analyser la zone », progression, annulation, grille de vérification (cellules éditables et signalées, emplacement sur la
+page, insérer / fusionner / retirer, corrections gardées si l'OCR est relancé), ajout à la nomenclature sans doublon avec la
+lecture texte. `nomenclatures.js` : colonne `acier` (tableaux d'aciers écartés), un en-tête ne contient pas de chiffre,
+`ligne()` exporté, provenance `type:'ocr'` + clé `ocr` (brut, confiance, corrections, valeurs corrigées, incertain).
+Mode d'emploi § 7.22 « Reconnaître le tableau (OCR) ». Banc `tests/t_ocr.py` (50 vérifications) sur des PDF fictifs écrits
+par `tests/pdf_ocr_fictifs.py` (textes en contours de glyphes via fontTools, tableau numérisé, page tournée, avec et sans
+bordures).
+
+**Écarts voulus** : message d'un PDF sans nomenclature lisible « … : saisie assistée » → « … : OCR ou saisie assistée » ;
+t_pdf vérifie le nouveau libellé (vérification modifiée, documentée ici). HTML : 3,34 Mo → 6,0 Mo (moteur OCR). CI : polices
+Liberation / DejaVu installées, `fonttools` ajouté aux dépendances de test. Moteur, débit, feuilles et exports inchangés.
+
+**Corrections de relecture (Kévin, 20/10/2026)** : (1) un nombre seul peu sûr dans les dimensions n'est plus converti en
+diamètre (« 250 » → « Ø50 », « 900 » → « Ø00 », « 2500 » → « Ø500 » auparavant) : valeur gardée, ambiguïté signalée, Ø à
+préciser par l'utilisateur ; t_ocr : la vérification « Ø reconnu ou interprété » devient « Ø reconnu, sinon nombre brut gardé
+et signalé » (vérification modifiée, voulue) + test de non-régression 250 / 900 / 2500. (2) Nouvelle zone sans nomenclature
+après un tableau reconnu : la grille précédente n'est plus présentée comme le résultat ; elle reste affichée avec ses
+corrections, marquée « reconnaissance précédente » ; test du scénario tableau A puis zone B. Plan réel : résultats inchangés.
+Test réseau de t_ocr : les requêtes Google Fonts de l'interface (héritées, hors OCR) sont bloquées et ignorées ; toute autre
+requête fait échouer le test.
+
+**Essai local sur le PDF réel (19/10/2026, hors dépôt, comptes seulement)** : tableau de la page 2 (vectorisé) reconnu en
+≈ 7 s : 23 lignes sur 23, toutes les colonnes reconnues. Cellules comparées à la nomenclature du DXF du même plan : 15
+erronées sur 207, dont 12 signalées ; repères 2 erreurs sur 23 (signalées), ouvertures, niveaux, angles, types et
+désignations sans erreur ; erreurs restantes surtout dans les observations (nuages de révision) et le DN. Correction d'une
+cellule dans la grille, ajout (aucune ligne cochée), création d'un ouvrage rectangulaire avec provenance OCR : conformes.
+Aucune requête réseau.
+
+**Non validé** : Firefox, Safari, tablette réelle (seul Chromium est testé) ; véritables scans (seul un scan fictif est testé) ;
+autres PDF réels (autres logiciels de DAO) ;
+temps et mémoire sur un poste modeste ; textes tournés dans un tableau ; tableaux sur plusieurs pages.
+
 ## Non publié — « Importer un plan » : fenêtre unique DXF et PDF
 **Demande (Kévin, 19/10/2026)** : remplacer « Importer un plan DXF » par une entrée unique, lire les PDF (textes extractibles),
 détecter leurs nomenclatures de réservations, aperçu des pages, sélection de zone, saisie assistée quand le tableau n'est pas

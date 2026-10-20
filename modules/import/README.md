@@ -199,7 +199,7 @@ automatique), unite_tableau}, corrige:['cotes','ref'], a_verifier, h_saisie, ind
   rotation de page et matrices appliquées. Morceaux de texte voisins sur une même ligne de base réunis.
 - Nature d'une page : `texte` (≥ 3 textes), `mixte` (plus de 50 tracés par texte : textes probablement vectorisés en
   partie), `vectoriel` (tracés, < 3 textes), `image` (image seule : numérisation), `vide`. Rapport dans la fenêtre :
-  « lecture automatique : n ligne(s) » ou « aucune nomenclature lisible automatiquement : saisie assistée ».
+  « lecture automatique : n ligne(s) » ou « aucune nomenclature lisible automatiquement : OCR ou saisie assistée ».
 - Nomenclatures : `nomenclatures.analyser` tel quel, une page = un espace (jamais de mélange entre pages) ; `N.page`,
   `N.format`. Rapprochement géométrique : aucun pour un PDF.
 - Fenêtre : onglets « Nomenclature » et « Aperçu du plan » (pages, zoom, tableaux reconnus encadrés, ligne encadrée par
@@ -211,13 +211,49 @@ automatique), unite_tableau}, corrige:['cotes','ref'], a_verifier, h_saisie, ind
   `{page, x0, y0, x1, y1, unite:'pt'}` (zone choisie, sinon cadre du tableau ; ligne saisie : zone choisie au moment de la
   saisie). Le PDF n'est jamais stocké.
 - Limites : textes tournés ignorés pour les tableaux (comme en DXF) ; tableau continué sur une autre page sans en-tête
-  répété : non relié (saisie assistée) ; PDF protégé par mot de passe refusé ; pas d'OCR ; images JPEG 2000 / JBIG2 et
+  répété : non relié (saisie assistée) ; PDF protégé par mot de passe refusé ; images JPEG 2000 / JBIG2 et
   textes CJK mal rendus dans l'aperçu (décodeurs non intégrés) ; testé dans Chromium seulement.
+
+## Reconnaissance OCR (`ocr.js`, fenêtre `dxo*`)
+- But : lire une nomenclature dont les textes sont dessinés en tracés ou numérisés. Complète la lecture texte, ne la remplace
+  pas : « Analyser la zone » (textes extractibles) et « Reconnaître le tableau (OCR) » sont deux actions distinctes ; si la
+  zone contient déjà un tableau bien lu par le texte, l'OCR demande confirmation avant de se lancer.
+- Moteur : Tesseract.js 7.0.0, cœur `simd-lstm`, modèle français `best_int` (`vendor/tesseract/README.md` : versions, licences,
+  empreintes). Worker blob construit depuis les blocs du HTML, chargé au premier clic ; aucune requête réseau (t_ocr).
+- Chaîne (`CPI.ocr.lireZone(pdf, zone, o)`) : rendu de la zone par le PDF.js existant (`CPI.pdf.rendreZone`, rotation de page
+  appliquée), 300 dpi plafonnés (`PX_MAX` 14 Mpx, côté ≤ 6000 px) ; prétraitement léger sur la copie rendue (gris, étirement du
+  contraste, traits longs relevés comme traits du tableau puis effacés) — le PDF n'est jamais modifié ; lecture psm 11, puis
+  2e passe remise à l'échelle (hauteur médiane des mots ≈ 40 px), passe retenue = meilleure confiance pondérée ; cellules
+  encrées mais vides relues seules (psm 7). Mots → textes en points PDF (Y vers le haut), groupés en phrases, avec
+  `ocr:{brut, conf, corrections, incertain, box}` (seuil de doute `SEUIL` = 75).
+- Tableau : `nomenclatures.analyser` tel quel sur ces textes et traits (avec ou sans bordures, cellules sur plusieurs lignes,
+  tableaux d'aciers écartés : colonne `acier`). Aucun second moteur métier.
+- Corrections automatiques (`corriger`, puis `grille` selon la colonne) : O/o → 0, I/l/| → 1, S → 5, B → 8 dans une suite de
+  chiffres seulement (1re lettre d'un repère gardée), @ © ® → Ø devant des chiffres, « (rnm) » → « (mm) ». Un nombre seul peu sûr dans une ouverture (« 250 », « 900 », « 2500 » :
+  Ø peut-être mal lu) n'est jamais converti en diamètre : valeur gardée, ambiguïté signalée, Ø à préciser par l'utilisateur. Valeur brute toujours gardée ; toute correction autre que casse / espaces est signalée. Repères
+  en double ou hors de la suite des voisins signalés. Rien n'est inventé : cellule illisible = vide signalée ; DN laissé
+  dans « Réseau », jamais converti en cote ; altitude laissée dans « Niveau », jamais prise pour une hauteur de coffrage.
+- Grille de vérification (sous l'aperçu) : Repère, Désignation, Type ou nature, Dimensions d'ouverture, Réseau, Niveau ou
+  altitude, Observations, autres colonnes non vides, État ; toutes les cellules éditables, cellules douteuses en orange avec
+  le texte brut et la confiance en infobulle, cellule montrée sur la page quand elle a le focus ; insérer, fusionner, retirer
+  (rétablissable) une ligne ; une ligne au repère douteux n'est jamais retirée sans action de l'utilisateur. OCR relancé :
+  corrections et lignes ajoutées gardées (clé = repère lu à l'origine `cle0`). Nouvelle zone sans nomenclature : la grille précédente reste affichée avec ses corrections,
+  marquée « reconnaissance précédente » (jamais présentée comme résultat de la nouvelle zone).
+- « Ajouter à la nomenclature » (`versNomenclature`, via `nomenclatures.ligne`) : `N.ocr = true`, `N.id` = `O1`, `O2`… ;
+  lignes déjà lues par le texte sur la même page non ajoutées (pas de doublon) ; nouvel OCR d'une même zone : remplace le
+  précédent sans perdre les coches ; rien n'est coché d'office. Création : même chemin que DXF / PDF.
+- Provenance : `type:'ocr'`, `format:'pdf'`, `page`, `zone`, `repere`, `textes` (retenus), `indice`, `unite`, `dims_source`,
+  `a_verifier` (lectures incertaines, ligne ajoutée à la main) et `ocr:{brut, confiance, corrections, corrige (valeurs
+  saisies par l'utilisateur), incertain, ajoutee, moteur}`. Ni image ni PDF stockés ; jamais lue par le moteur.
+- Limites : précision dépendante du rendu (petits corps, nuages de révision, textes barrés) ; une seule zone à la fois ;
+  textes tournés non lus dans le tableau ; ≈ 1 à 8 s par tableau sur la machine de test ; Chromium seulement (Firefox, Safari
+  non testés) ; vrais scans non testés (seul un scan fictif l'est). Test réseau de t_ocr : les requêtes Google Fonts de
+  l'interface (héritées, hors OCR) sont bloquées mais ignorées ; toute autre requête fait échouer le test.
 
 ## 3. Fichiers séparés et HTML autonome (en place)
 
 - `python modules/import/assembler.py` remplace le bloc `<script id="cpi-src">…</script>` de `app/CoffraPlan.html` (placé
-  avant le `<script>` principal) par `lecteur.js`, `dxf.js`, `detecteur.js`, `nomenclatures.js`, `adaptateur.js`, `fenetre.js`, dans cet ordre,
+  avant le `<script>` principal) par `lecteur.js`, `dxf.js`, `pdf.js`, `ocr.js`, `detecteur.js`, `nomenclatures.js`, `adaptateur.js`, `fenetre.js`, dans cet ordre,
   chacun précédé de son nom. Résultat déterministe (fins de ligne normalisées), bibliothèque standard Python seulement.
 - `--check` échoue si le bloc diffère des sources : lancé par `tests/syntax.sh` (étape « Syntaxe » de la CI) et par t_dxf_ui.
   Une source modifiée sans réassemblage fait donc échouer la CI.

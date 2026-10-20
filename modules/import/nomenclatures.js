@@ -24,6 +24,7 @@ const COLS=[
   ['largeur',mot('larg(eur|\\.)?')],
   ['hauteur',mot('haut(eur|\\.)?')],
   ['quantite',mot('qte|quantites?|nombre|nbre?|qt')],
+  ['acier',mot('poids|masses?|faconnages?|nuances?|longueurs? developpees?|aciers?|armatures?|crochets?')],
   ['type',mot('types?|elements?|elts?|supports?|parois?|ouvrages?|localisation|emplacement|zone')],
   ['description',mot('designation|description|libelle|objet|nature|fonctions?|usage|destination|intitule')],
   ['observations',mot('observations?|remarques?|commentaires?|notes?|obs\\.?')],
@@ -31,7 +32,7 @@ const COLS=[
   ['repere',mot("rep(ere|\\.)?|ref(erence|\\.)?|n°|no\\.?|num(ero|\\.)?|marque|identifiant|id|code|reservations?|resas?")]];
 const kinds=n=>COLS.filter(c=>c[1].test(n)).map(c=>c[0]);
 const LIB={repere:'repère',description:'désignation',type:'type / élément',ouverture:'ouverture',reseau:'réseau',diametre:'diamètre',
-  niveau:'niveau (position)',angle:'angle (position)',largeur:'largeur',hauteur:'hauteur',quantite:'quantité',observations:'observations',lot:'lot / entreprise',autre:'non reconnue'};
+  niveau:'niveau (position)',angle:'angle (position)',largeur:'largeur',hauteur:'hauteur',quantite:'quantité',observations:'observations',lot:'lot / entreprise',acier:'acier (ferraillage)',autre:'non reconnue'};
 // Nature du tableau : en-tête + titre seulement (un tableau d'aciers a aussi des repères et des diamètres)
 const RESA=mot('reservations?|resas?|tremies?|fourreaux?|ouvertures?|percements?|carottages?|traversees?|incorporations?|passages?|rebouchages?');
 const ACIER=mot('aciers?|ha\\d*|ferraillages?|armatures?|nuances?|faconnages?|barres?|poids|masses?|kg|longueurs? developpees?|crochets?|epingles?|etriers?|cadres?|enrobages?|espacements?|fe ?e?500|b ?500|treillis');
@@ -122,7 +123,8 @@ function construire(g,hg,used,K){
   const BT0=g.T.filter(t=>libre(t)&&t.y>=band[0]&&t.y<=band[1]&&t.x>=(grC?Math.min(xs[0],xL-2*hm):xL-2*hm)&&t.x<=(grC?Math.max(xs[xs.length-1],xR+2*hm):xR+2*hm));
   const Cl=[];BT0.slice().sort((a,b)=>a.x0-b.x0).forEach(t=>{const c=Cl[Cl.length-1];if(c&&t.x0<=c.x1+0.3*hm)c.x1=Math.max(c.x1,t.x1);else Cl.push({x0:t.x0,x1:t.x1})});
   const pad=Math.max(4*hm,med(Cl.map(c=>c.x1-c.x0))),P0=ext&&grC?xs[0]:Cl[0].x0-pad,PN=ext&&grC?xs[xs.length-1]:Cl[Cl.length-1].x1+pad;
-  const enTete=T=>{const k=new Set();let c=0;T.forEach(t=>{if(K[t.i].length){c++;k.add(K[t.i][0])}});return c>=3&&k.size>=2};
+  // une ligne qui contient un chiffre (repère, cote, niveau) n'est pas un en-tête, même si ses mots ressemblent à des titres
+  const enTete=T=>{const k=new Set();let c=0;T.forEach(t=>{if(K[t.i].length){c++;k.add(K[t.i][0])}});return c>=3&&k.size>=2&&!T.some(t=>/\d/.test(t.n))};
   // lignes de texte d'un côté de l'en-tête (dir -1 : dessous, +1 : dessus) : bandes de la grille, sinon regroupement par hauteur
   function cote(dir){
     const bord=dir<0?band[0]:band[1],loin=t=>dir<0?bord-t.y:t.y-bord;
@@ -167,7 +169,7 @@ function construire(g,hg,used,K){
   const bt=dir<0?band[1]:band[0],TT=g.T.filter(t=>libre(t)&&!BT0.includes(t)&&t.x>=B0-2*hm&&t.x<=BN+2*hm&&(dir<0?t.y>bt&&t.y-bt<=6*hm:t.y<bt&&bt-t.y<=6*hm));
   const RT=R.flat();
   [...BT,...TT,...RT].forEach(t=>used.add(t.i));
-  return{titre:cellule(TT),colonnes,R:R.map(T=>colonnes.map((c,j)=>cellule(T.filter(t=>col(t.x)===j)))),RT:R,BT,TT,
+  return{titre:cellule(TT),colonnes,R:R.map(T=>colonnes.map((c,j)=>cellule(T.filter(t=>col(t.x)===j)))),RI:R.map(T=>colonnes.map((c,j)=>T.filter(t=>col(t.x)===j).map(t=>t.id))),RT:R,BT,TT,
     grille:{colonnes:grC,lignes:res.grille},cadre:[B0,Math.min(band[0],...RT.map(t=>t.y)),BN,Math.max(band[1],...RT.map(t=>t.y))],hm}
 }
 
@@ -196,15 +198,9 @@ function analyser(doc){
       colonnes:tb.colonnes,cadre:tb.cadre,ids:[...tb.BT,...tb.TT,...tb.RT.flat()].map(t=>t.id)};
     if(nat!=='reservations'||!tb.R.length){ecartes.push(Object.assign(base,{id:'T'+(ecartes.length+1),nature:nat,nLignes:tb.R.length,
       raison:nat==='aciers'?'nomenclature d\'aciers (ferraillage)':nat==='autre'?'tableau non identifié comme nomenclature de réservations':'en-tête de nomenclature sans ligne lisible'}));return}
-    const id='N'+(nomenclatures.length+1),cj=k=>tb.colonnes.map((c,j)=>c.cle===k?j:-1).filter(j=>j>=0);
-    const lignes=tb.R.map((cells,k)=>{const av=[],T=tb.RT[k],v=key=>cj(key).map(j=>cells[j]).filter(Boolean).join(' — ');
-      const L={id:id+'-L'+String(k+1).padStart(2,'0'),rang:k+1,ids:T.map(t=>t.id),calques:[...new Set(T.map(t=>t.calque))],cellules:cells,
-        repere:(cj('repere').map(j=>cells[j]).find(Boolean)||'').replace(/\n/g,' '),description:v('description'),type:v('type'),observations:v('observations'),
-        lot:v('lot'),quantite:v('quantite'),niveau:v('niveau'),angle:v('angle'),reseau:v('reseau'),ouverture:v('ouverture')||v('diametre'),dims:null,a_verifier:av};
-      if(!L.repere)av.push(cj('repere').length?'repère absent de la ligne':'pas de colonne repère dans le tableau');
-      L.dims=dimsLigne(tb.colonnes,cells,av);
-      if(L.dims&&!L.dims.unite)av.push('unité des cotes non indiquée par le tableau');
-      return L});
+    const id='N'+(nomenclatures.length+1);
+    const lignes=tb.R.map((cells,k)=>Object.assign({id:id+'-L'+String(k+1).padStart(2,'0'),rang:k+1,ids:tb.RT[k].map(t=>t.id),calques:[...new Set(tb.RT[k].map(t=>t.calque))]},
+      ligne(tb.colonnes,cells),{idsCellules:tb.RI[k]}));
     const nR=lignes.filter(l=>l.repere).length,nA=tb.colonnes.filter(c=>c.cle==='autre').length,motifs=[];
     motifs.push(tb.grille.colonnes&&tb.grille.lignes?'grille de traits lue':'pas de grille complète : '+(tb.grille.colonnes?'lignes':tb.grille.lignes?'colonnes':'colonnes et lignes')+' déduites de la position des textes');
     if(nR<lignes.length)motifs.push((lignes.length-nR)+' ligne(s) sans repère');if(nA)motifs.push(nA+' colonne(s) non reconnue(s), gardée(s) telles quelles');
@@ -214,6 +210,17 @@ function analyser(doc){
       qualite:{niveau,motifs}}))});
   return{nomenclatures,ecartes,signalements:(doc.signalements||[]).slice()};
 }
+
+// Champs d'une ligne de tableau d'après ses cellules (une par colonne) : repère, désignation, type, observations, lot,
+// quantité, niveau, angle, réseau, ouverture (textes) ; cotes lues par dimsLigne ; a_verifier (motifs). Sert aussi aux lignes
+// reconnues par OCR puis corrigées par l'utilisateur (même contrat, mêmes règles).
+function ligne(cols,cells){const av=[],cj=k=>cols.map((c,j)=>c.cle===k?j:-1).filter(j=>j>=0),v=key=>cj(key).map(j=>cells[j]).filter(Boolean).join(' — ');
+  const L={cellules:cells,repere:(cj('repere').map(j=>cells[j]).find(Boolean)||'').replace(/\n/g,' '),description:v('description'),type:v('type'),observations:v('observations'),
+    lot:v('lot'),quantite:v('quantite'),niveau:v('niveau'),angle:v('angle'),reseau:v('reseau'),ouverture:v('ouverture')||v('diametre'),dims:null,a_verifier:av};
+  if(!L.repere)av.push(cj('repere').length?'repère absent de la ligne':'pas de colonne repère dans le tableau');
+  L.dims=dimsLigne(cols,cells,av);
+  if(L.dims&&!L.dims.unite)av.push('unité des cotes non indiquée par le tableau');
+  return L}
 
 // Repère normalisé : majuscules, sans espaces ni séparateurs, zéros de tête des nombres retirés (D03 = D3 = d 3)
 const cleRep=s=>sansAcc(s).toUpperCase().replace(/[\s._\-–—/]+/g,'').replace(/(^|[^0-9])0+(?=\d)/g,'$1');
@@ -263,7 +270,8 @@ function candidat(N,L,s){const d=s&&s.dims,g=s&&s.geo;if(!d||(d.etat!=='rect'&&d
 // Provenance d'un ouvrage créé depuis une ligne (clé origineImport du plan). k = {forme, cotes (texte saisi), dims (mm), ref,
 // uniteTableau, uniteChoisie, geo:{c: candidat, statut:'trouvee'|'choisie'} | null}. Aucun contenu du DXF au-delà de la ligne.
 // PDF : page, zone de page (points PDF, Y vers le haut : cadre du tableau, zone choisie ou zone de la saisie assistée) ;
-// ligne saisie par l'utilisateur (N.saisie) : type 'saisie', ses textes sont les valeurs tapées.
+// ligne saisie par l'utilisateur (N.saisie) : type 'saisie', ses textes sont les valeurs tapées ; ligne reconnue par OCR puis
+// vérifiée (N.ocr) : type 'ocr', textes = valeurs retenues, ocr = {brut, confiance, corrections, corrige, incertain, ajoutee, moteur}.
 function provenance(N,L,k){
   const textes={};N.colonnes.forEach((c,j)=>{const v=L.cellules[j];if(!v)return;let t=c.titre.replace(/\n/g,' ')||'colonne '+(j+1),n=2;const t0=t;while(t in textes)t=t0+' ('+(n++)+')';textes[t]=v});
   const d=L.dims,uT=d&&(d.unite||k.uniteTableau),kT=MM[uT],corrige=[];
@@ -272,12 +280,12 @@ function provenance(N,L,k){
   if(String(k.ref||'')!==String(L.repere||'').toUpperCase())corrige.push('ref');
   const g=k.geo&&k.geo.c;
   const pdf=N.format==='pdf'?{page:N.page,zone:L.zone||N.zone||(N.cadre?{page:N.page,x0:N.cadre[0],y0:N.cadre[1],x1:N.cadre[2],y1:N.cadre[3],unite:'pt'}:null)}:{};
-  return{fichier:N.fichier,format:N.format||'dxf',type:N.saisie?'saisie':'nomenclature',espace:N.espace,presentation:N.presentation,calque:L.calques.join(', '),id:g?g.source.id:null,
+  return{fichier:N.fichier,format:N.format||'dxf',type:N.saisie?'saisie':N.ocr?'ocr':'nomenclature',espace:N.espace,presentation:N.presentation,calque:L.calques.join(', '),id:g?g.source.id:null,
     nomenclature:N.id,titre:N.titre,ligne:L.id,rang:L.rang,repere:L.repere,ids:L.ids.slice(),textes,
     unite_source:d?d.unite:null,unite:uT||null,dims_source:d?JSON.parse(JSON.stringify(d)):null,
     geometrie:g?{id:g.source.id,calque:g.source.calque,candidat:g.id,statut:k.geo.statut,unite:k.uniteDessin||null,centre:g.centre,dims_source:JSON.parse(JSON.stringify(g.dims))}:null,
-    choix:{forme:k.forme,cotes:k.cotes,ref:k.ref||'',unite_tableau:k.uniteChoisie?k.uniteTableau:null},corrige,a_verifier:L.a_verifier.slice(),h_saisie:true,...pdf};
+    choix:{forme:k.forme,cotes:k.cotes,ref:k.ref||'',unite_tableau:k.uniteChoisie?k.uniteTableau:null},corrige,a_verifier:L.a_verifier.slice(),h_saisie:true,...pdf,...(L.ocr?{ocr:JSON.parse(JSON.stringify(L.ocr))}:{})};
 }
 
-root.CPI=Object.assign(root.CPI||{},{nomenclatures:{analyser,associer,cotes,candidat,provenance,cleRep,LIB}});
+root.CPI=Object.assign(root.CPI||{},{nomenclatures:{analyser,associer,cotes,ligne,nature,candidat,provenance,cleRep,LIB}});
 })(typeof globalThis!=='undefined'?globalThis:this);
