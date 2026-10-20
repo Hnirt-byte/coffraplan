@@ -2055,9 +2055,13 @@ function dxpSuppr(k){const D=DXI,x=D&&D.NL[k];if(!x||!x.N.saisie)return;const N=
 // ==== OCR d'une zone (ocr.js, fonctions dxo*) : reconnaissance, grille de vérification, ajout à la nomenclature ====
 const dxoCle=w=>CPI.nomenclatures.cleRep(w.cells.repere||'');
 const dxoChevauche=(a,b)=>a&&b&&a.page===b.page&&a.x0<b.x1&&b.x0<a.x1&&a.y0<b.y1&&b.y0<a.y1;
+// bouton « Annuler » créé une seule fois par opération : le recréer à chaque progression pouvait perdre un clic
 function dxoProg(t,f){const z=el('dxoP');if(!z)return;
-  z.innerHTML=t==null?'':`<div class="mu">${esc(t)}</div><div style="display:flex;gap:6px;align-items:center"><progress max="1"${f!=null?` value="${Math.max(0,Math.min(1,f))}"`:''}></progress>
-    <button class="btn bs bo" onclick="dxoStop()">Annuler</button></div>`}
+  if(t==null){z.innerHTML='';return}
+  if(!z.querySelector('progress'))z.innerHTML=`<div class="mu"></div><div style="display:flex;gap:6px;align-items:center"><progress max="1"></progress>
+    <button class="btn bs bo" onclick="dxoStop()">Annuler</button></div>`;
+  z.querySelector('.mu').textContent=t;const p=z.querySelector('progress');
+  if(f!=null)p.value=Math.max(0,Math.min(1,f));else p.removeAttribute('value')}
 // Lancement : demande confirmation si la zone est déjà lisible par le texte du PDF (inutile de lancer un traitement lourd)
 function dxoLancer(force){const D=DXI,z=D&&D.zone;if(!z||D.ocJob||D.rJob)return;
   if(!force){const N=dxpZoneTS(z).A.nomenclatures.find(N=>N.qualite.niveau==='bonne'&&N.lignes.length);
