@@ -59,7 +59,7 @@ def t(s):
         s.check(r['lab'] == 'CoffraPlan', 'logo dans la barre supérieure (SVG intégré, libellé accessible)')
         s.check(abs(r['w'] / r['h'] - r['vr']) < 0.01, f"logo non déformé (rapport {r['w'] / r['h']:.3f} = {r['vr']:.3f})")
         s.check(r['hh'] <= 56, f"barre supérieure compacte ({r['hh']:.0f} px ≤ 56)")
-        s.check(r['ver'] == 'v3.0', 'numéro de version affiché', r['ver'])
+        s.check(r['ver'] == 'v3.1', 'numéro de version affiché', r['ver'])
         body = ev("document.body.innerText")
         s.check('Plans Réservation' not in body and 'Plans de Réservation' not in body, 'ancien intitulé « Plans Réservation » retiré de l\'interface')
         ev("()=>{T.mk('rect',{dL:1200,dl:800,dh:300});prev()}")
