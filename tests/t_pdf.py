@@ -104,8 +104,9 @@ def t(s):
         pg.set_input_files('#dxiF', bad); pg.wait_for_selector('#dxiZ .hint')
         s.check('DWG pas encore pris en charge' in pg.inner_text('#dxiZ'), 'DWG : refus clair (exporter en DXF ou PDF)', pg.inner_text('#dxiZ'))
         faux = os.path.join(tmp, 'faux.pdf'); open(faux, 'w').write('pas un pdf')
-        pg.set_input_files('#dxiF', faux); pg.wait_for_selector('#dxiZ .hint')
-        s.check('%PDF absent' in pg.inner_text('#dxiZ') and pg.is_disabled('#dxiGo'), 'faux PDF : erreur de lecture affichée')
+        # le message du DWG est déjà un .hint : attendre que celui du faux PDF le remplace
+        pg.set_input_files('#dxiF', faux); pg.wait_for_function("document.querySelector('#dxiZ .hint')?.textContent.includes('%PDF absent')")
+        s.check('%PDF absent' in pg.inner_text('#dxiZ') and 'DWG' not in pg.inner_text('#dxiZ') and pg.is_disabled('#dxiGo'), 'faux PDF : erreur de lecture affichée (message du DWG remplacé)')
         pg.set_input_files('#dxiF', F['PDF_1_TABLEAU.pdf']); pg.wait_for_selector('#dxnT tr[data-n]')
         n = pg.inner_text('#dxiN')
         s.check('PDF_1_TABLEAU.pdf' in n and '1 page' in n and 'lecture automatique : 6 ligne' in n, 'nom, format, pages et lecture automatique affichés', n)

@@ -164,7 +164,12 @@ def t(s):
         pg.click('#dxoV')
         s.check(J('DXI.NL.length') == 11, 'deuxième tableau OCR ajouté (11 lignes)')
         # arrêt d'une reconnaissance en cours
-        pg.click('#dxpZo'); pg.wait_for_selector('#dxoP button:has-text("Annuler")'); pg.click('#dxoP button:has-text("Annuler")')
+        pg.click('#dxpZo'); pg.wait_for_selector('#dxoP button:has-text("Annuler")')
+        # v3.1 : le bouton n'est plus recréé à chaque progression (un clic pouvait être perdu)
+        J("()=>{window._ab=document.querySelector('#dxoP button');window._an=0;new MutationObserver(()=>window._an++).observe(el('dxoP'),{subtree:true,childList:true,characterData:true,attributes:true})}")
+        pg.wait_for_function('window._an>=3')
+        s.check(J("()=>document.querySelector('#dxoP button')===window._ab&&window._ab.isConnected&&!!DXI.ocJob"), 'progression OCR : bouton « Annuler » inchangé pendant les actualisations', str(J('window._an')))
+        pg.click('#dxoP button:has-text("Annuler")')
         s.check('annulée' in pg.inner_text('#dxpZr') and not J('DXI.ocJob') and J('DXI.NL.length') == 11 and not pg.is_disabled('#dxpZo'), 'reconnaissance annulée : moteur arrêté, rien modifié')
 
         # ---- création

@@ -28,6 +28,8 @@ Détail technique de chaque étape (demandes, écarts voulus, tests) : sections 
 **Corrections**
 - Ouverture d'un PDF juste après la fermeture d'un autre : le message « fichier PDF illisible » pouvait s'afficher à tort.
 - Arrêt de la lecture OCR au mauvais moment : une erreur pouvait apparaître dans la console du navigateur (sans effet visible).
+- Bouton « Annuler » pendant la lecture OCR : un clic pouvait être ignoré, car le bouton était recréé à chaque avancement de
+  la barre de progression. Il reste désormais le même jusqu'à la fin de la lecture.
 
 **Limites connues — à lire avant usage sur chantier**
 - **Vérifier les associations automatiques** : sans cote écrite près du repère ni échelle, une concordance reste au mieux
@@ -42,16 +44,33 @@ Détail technique de chaque étape (demandes, écarts voulus, tests) : sections 
 - Non vérifiés non plus : impression papier ou traceur, DXF dans AutoCAD, glTF / IFC dans Revit ou une visionneuse.
 - Le fichier HTML pèse environ 6 Mo (lecteur PDF et moteur OCR intégrés pour fonctionner hors connexion).
 
-**Écarts voulus (préparation)** : numéro v3.1 ; `t_ux` attend v3.1 ; `t_v30` vérifie « v3.x » (le numéro exact reste
-contrôlé par `t_ux`). Moteur, débit, feuilles et exports inchangés.
+**Écarts voulus** : numéro v3.1 ; `t_ux` attend v3.1 ; `t_v30` vérifie « v3.x » (le numéro exact reste contrôlé par `t_ux`).
+Moteur, débit, feuilles et exports inchangés.
 
-**Tests** : syntaxe et assemblage du module d'import conformes ; campagne complète `python tests/run.py complet -j 4`
-30/30 suites vertes (20/10/2026, Chromium) ; mode d'emploi v3.1 généré (32 pages). Scénario t_ux « alerte au clavier
-(Entrée) », échoué une fois en CI après la fusion de la stabilisation : 24 passages conformes sur 24 sous charge (-j 4), non
-reproduit, test inchangé, intermittence notée. Sous une charge plus forte que la CI (même suite lancée 4 fois en parallèle),
-échecs isolés observés : t_pdf « faux PDF : erreur de lecture affichée » (1 sur 8) et t_ocr (2 sur 14 : clic « Annuler »
-d'une reconnaissance en cours jamais abouti, et une exception dont le détail n'a pas été conservé) ; non corrigés dans cette
-version.
+**Tests** : campagne complète `python tests/run.py complet -j 4` : 30/30 suites vertes (20/10/2026, Chromium) ; mode d'emploi v3.1 généré.
+Détail des essais sous charge : section « Détail v3.1 — correctifs finaux avant publication ».
+
+## Détail v3.1 — correctifs finaux avant publication
+**Demande (Kévin, 20/10/2026)** : corriger avant la publication les deux anomalies relevées sous surcharge pendant la
+préparation de v3.1, sans développement fonctionnel ; ne rien modifier pour t_ux.
+
+**Constats (préparation, 20/10/2026)** : scénario t_ux « alerte au clavier (Entrée) », échoué une fois en CI après la fusion
+de la stabilisation : 24 passages conformes sur 24 sous charge (-j 4), non reproduit, test inchangé, intermittence notée.
+Sous une charge plus forte que la CI (même suite lancée 4 fois en parallèle) : t_pdf « faux PDF : erreur de lecture
+affichée » 1 fois sur 8 ; t_ocr 2 fois sur 14 (clic « Annuler » d'une reconnaissance en cours jamais abouti ; une exception
+dont le détail n'a pas été conservé, cause non établie, aucune correction inventée).
+
+**Fait**
+- `tests/t_pdf.py` (défaut du test) : après le refus du DWG, `#dxiZ .hint` existe déjà ; l'attente portait sur ce seul
+  élément et pouvait lire l'ancien message. Le test attend maintenant que le message du faux PDF (« %PDF absent ») remplace
+  celui du DWG et vérifie que « DWG » n'y figure plus ; contrôle du bouton de création désactivé conservé.
+- `modules/import/fenetre.js` (défaut de l'appli) : `dxoProg` réécrivait tout son HTML à chaque progression et recréait le
+  bouton « Annuler » ; il le crée une fois par opération, puis ne met à jour que le texte et la barre ; `dxoStop()` et le
+  nettoyage en fin d'opération inchangés. HTML réassemblé (`assembler.py`).
+
+**Écarts voulus** : `t_ocr` : vérification ajoutée (« progression OCR : bouton « Annuler » inchangé pendant les
+actualisations » : même élément après au moins 3 actualisations, puis annulation effective). Elle échoue sur l'appli
+précédente (main e9870fc) et passe après correction. `t_pdf` : attente et libellé du contrôle du faux PDF précisés.
 
 ## Détail v3.1 — stabilisation avant Release
 **Demande (Kévin, 20/10/2026)** : examiner l'instabilité de `t_pdf` sous charge et corriger la seule cause identifiée, sans
