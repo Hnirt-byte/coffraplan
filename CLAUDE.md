@@ -110,6 +110,10 @@ développement : il progresse vite mais n'est pas développeur senior.
   référence, occurrences physiques comptées dans une seule vue, `classer` : formes hors nomenclature à examiner /
   représentation / parasite) ; état `DXI.VU` (vues par page), `DXI.CS` (occurrences par ligne) ; section repliée `#dxrH` ;
   export `dxrJSON` (`coffraplan-analyse-plan`). Banc `t_vues.py` (`tests/vues_fictifs.py`).
+  Phase 5.1 (corrections après essais réels) : unité lue seulement contre la cote (`conflitUnite`, jamais résolue par l'en-tête),
+  en-têtes à plusieurs niveaux (`colonne.groupe`), nature `trappes`, DN gardé sans cote (`L.dn`), remplacement explicite d'un tableau
+  par l'OCR (`dxoValider`), titres de vue (dessus / dessous, renforts = détail, cadre, cartouche), nature des mentions de repère
+  (`natureMention`), comptage conservateur (`consolider`). Banc `t_phase51.py` ; détail dans `modules/import/README.md`.
 - Version affichée : élément `#appVer` (« v3.1 »). t_ux vérifie ce numéro exact ; t_v30 vérifie « v3.x ».
 
 ## Décisions actées (ne pas changer sans l'accord de Kévin)

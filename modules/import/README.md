@@ -197,7 +197,7 @@ automatique), unite_tableau}, corrige:['cotes','ref'], a_verifier, h_saisie, ind
 ## Import PDF (`pdf.js`, fenêtre `dxp*`)
 - Bibliothèque : PDF.js 6.4.299 (Mozilla, Apache-2.0), build « legacy » copié sans modification dans `vendor/pdfjs/`
   (empreintes SHA-256 vérifiées par `assembler.py`) et recopié dans le HTML (`<script type="text/plain" id="pdfjs-src">`,
-  `id="pdfjs-worker-src"`, ≈ 1,8 Mo : HTML ≈ 3,3 Mo). Chargé à la première ouverture d'un PDF (module importé par URL blob).
+  `id="pdfjs-worker-src"`, ≈ 1,8 Mo ; HTML complet ≈ 6 Mo avec l'OCR). Chargé à la première ouverture d'un PDF (module importé par URL blob).
   Worker : le module est transformé à la volée en script classique (`import.meta.url` → `self.location.href`, `export`
   final retiré) car une page ouverte en `file://` ne peut pas lancer un worker de module ; repli : PDF.js dans la page.
   Options : polices standard, CMap, wasm et ICC désactivés (`null`) : aucune requête réseau (vérifié par t_pdf).
@@ -387,6 +387,41 @@ automatique), unite_tableau}, corrige:['cotes','ref'], a_verifier, h_saisie, ind
 - Banc `t_vues.py` (plans fictifs de `tests/vues_fictifs.py`). Limites : titres de vue tournés non lus ; deux vues collées
   sans blanc entre elles peuvent se confondre ; position relative entre vues = vues de même cadrage.
 
+## Phase 5.1 : corrections après essais sur trois plans réels (sans nouvelle fonction)
+- Unités (`cotes`, `dimsLigne`) : seule l'unité écrite contre la cote compte (« 500x500 mm », « Ø250mm ») ; une autre valeur de la
+  cellule (« 500x500 — 4,86m », hauteur d'axe fusionnée) ne la donne jamais. Unité de la cellule contraire à celle du titre de colonne :
+  cote gardée, `dims.conflitUnite`, unité à confirmer ; la fenêtre ne la remplace jamais par l'unité de l'en-tête (`dxnU`), seulement
+  par un choix de l'utilisateur. Provenance : `L.uniteOrigine` ('titre de colonne' | 'cellule'), `origineImport.unite_origine`.
+- Grille OCR (`ocr.grille`) : Diamètre, Largeur, Hauteur, Longueur vont dans « Dimensions d'ouverture » seulement si le tableau n'a pas
+  de colonne Ouverture ; sinon « Autres colonnes » (jamais fusionnées avec l'ouverture).
+- Colonnes : « Réservation(s) » n'est un titre de repères que seul ou avec « N° » ; « Axe réservations », « Niveau réservation »,
+  « Hauteur (d')axe … » → niveau ; « Longueur » = 2e cote si pas de « Hauteur » (« longueur développée » reste aciers).
+- En-tête à plusieurs niveaux : textes (`construire`) : largeur du tableau prise sur la 1re ligne de valeurs, lignes d'en-tête voisines
+  sans chiffre ajoutées, titre au-dessus de plusieurs colonnes = titre de groupe (`colonne.groupe`, unité transmise) ; écart de
+  coupure entre titres `ECART` = 60 hauteurs de texte (colonne de commentaires large) ; grille (`depuisGrille`) : cellule d'en-tête
+  fusionnée sur n colonnes éclatée quand une ligne a n mots.
+- Nature `trappes` (`nature`) : titre ou colonne trappe, regard, tampon, feuillure, ouverture équipée, châssis, caillebotis, sans
+  mot de réservation dans le titre → tableau écarté (`ecartes[].lignes` consultables), jamais proposé à la création ; OCR : grille
+  de trappes refusée comme une grille d'aciers. JSON : `excludedTables`.
+- DN dans la colonne Ouverture (décision de Kévin, 21/10/2026) : réservation circulaire probable, `L.dn = {D, texte}`, message
+  « diamètre réel de réservation à confirmer », aucune cote tirée du DN ; création impossible sans cote saisie.
+- OCR sur la zone d'un tableau déjà lu automatiquement (`dxoValider`) : remplacement proposé (lignes en correspondance par repère,
+  sinon par rang ; choix gardés ; nombre de lignes retirées annoncé) ; refus : rien d'ajouté ni de retiré.
+- Vues (`vues.js`) : « vue dessus / dessous » = plan ; « plan » aussi après « vue » ; titre de 1,45 à 1,8 × la médiane admis pour un
+  mot portant lui-même un mot-clé de vue ; renvoi (« voir », « cf ») et paragraphe (3 lignes ou plus, ou 3 textes de même hauteur à
+  moins de 2,5 hauteurs : notes, cartouche) rejetés ; « Renforts » sans « ferraillage » = détail ; titre sans tracé : pas une vue ;
+  cadre de feuille (≥ 90 % de la page) jamais rattaché à un titre ; dessin sans titre à 80 % dans une vue titrée : partie de cette
+  vue ; seule une région **sans titre** de plus de 30 % de la page est incertaine par son aire.
+- Repères (`rapprochement.js`, `natureMention`) : chaque mention a une `nature` : `repere` (isolé), `identifiant` (« 1-D1 »,
+  « D10-EXT » quand le repère du tableau n'a pas de tiret), `multiplicateur` (« 2x D10 », « 5x » à gauche), `annotation` (autres
+  mots : renvoi, note) ; seules les mentions `repere` comptent, les autres restent des observations non rattachées avec leur motif.
+  `blocsTexte` : un tiret (tracé plat ≤ 1,5 hauteur de lettre) est regroupé avec ses lettres, l'OCR lit « 1-D1 » entier.
+- Comptage (`consolider`) : jamais dans une vue sans titre ; pas de repli sur le ferraillage si une vue en plan du document est
+  incertaine ; même repère plusieurs fois dans la vue retenue sans quantité au tableau : aucune occurrence décidée, observations à
+  vérifier.
+- Banc `t_phase51.py` (cas synthétiques anonymes de chaque défaut). Limites restantes : repères et titres verticaux non lus (planche
+  tournée) ; réservations à côtés courbes non détectées ; mots isolés d'un cartouche lus par OCR peuvent encore former une vue.
+
 ## 3. Fichiers séparés et HTML autonome (en place)
 
 - `python modules/import/assembler.py` remplace le bloc `<script id="cpi-src">…</script>` de `app/CoffraPlan.html` (placé
@@ -455,7 +490,8 @@ Fichier confidentiel : il reste sur le poste de Kévin, hors du dépôt.
 - Nomenclatures : éprouvées sur des DXF ezdxf fictifs seulement (TEXT + LINE, MTEXT sans grille, blocs, présentation active ou
   non) ; ACAD_TABLE : entité minimale fabriquée, jamais un fichier AutoCAD ; textes tournés ignorés pour les tableaux ;
   largeur des textes estimée (0,6 h par caractère) ; fenêtres de présentation non interprétées ; MINSERT : première occurrence ;
-  attributs et blocs dynamiques non testés sur un vrai fichier ; quantité (« Qté ») gardée en texte, pas reportée dans `nb`.
+  attributs et blocs dynamiques non testés sur un vrai fichier ; quantité (« Qté », « Nb ») gardée en texte et reportée dans `L.nb`
+  depuis la phase 5 (création : un ouvrage, `nb` = quantité).
 - Hypothèses : réservation rectangulaire → coffrage `rect` / `carre` sans fond par défaut ; cercle → fourreau `circ`.
   Les autres formes (voile cintré, poutre, goulotte…) ne sont pas reconnues.
 - Orientation (`angle`) et position (`centre`) ne sont gardées que dans la provenance : un plan CoffraPlan n'a pas de

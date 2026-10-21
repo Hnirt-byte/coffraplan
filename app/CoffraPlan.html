@@ -995,7 +995,7 @@ async function lireGrille(pdf,z,o){o=o||{};const t0=Date.now(),pr=o.progres||(()
 const COLONNES=[['repere','Repère'],['description','Désignation'],['type','Type ou nature'],['ouverture',"Dimensions d'ouverture"],['reseau','Réseau (DN)'],
   ['niveau','Niveau ou altitude'],['angle','Angle'],['observations','Observations'],['lot','Lot / entreprise'],['quantite','Quantité'],['autre','Autres colonnes']];
 const BASE=['repere','description','type','ouverture','niveau','observations'];
-const VERS={repere:'repere',description:'description',type:'type',ouverture:'ouverture',diametre:'ouverture',largeur:'ouverture',hauteur:'ouverture',reseau:'reseau',
+const VERS={repere:'repere',description:'description',type:'type',ouverture:'ouverture',diametre:'ouverture',largeur:'ouverture',hauteur:'ouverture',longueur:'ouverture',reseau:'reseau',
   niveau:'niveau',angle:'angle',observations:'observations',lot:'lot',quantite:'quantite'};
 const unionBox=B=>B.length?{page:B[0].page,x0:Math.min(...B.map(b=>b.x0)),y0:Math.min(...B.map(b=>b.y0)),x1:Math.max(...B.map(b=>b.x1)),y1:Math.max(...B.map(b=>b.y1))}:null;
 // Ø peut-être mal lu devant un nombre seul (« 2250 », « 0250 », « D120 ») dans la colonne des dimensions, mot incertain : signalé seulement
@@ -1004,7 +1004,10 @@ function grille(N,textes){const tid=new Map(textes.map(t=>[t.id,t]));
   const reps=N.lignes.map(L=>L.repere.trim()),pref={};
   reps.forEach(r=>{const m=r.toUpperCase().match(/^([A-Z]+)\d/);if(m)pref[m[1]]=(pref[m[1]]||0)+1});
   const out=N.lignes.map(L=>{const R={cells:{},brut:{},conf:{},corr:{},doute:{},box:{},edite:[],src:L.id},P={};
-    N.colonnes.forEach((c,j)=>{const k=VERS[c.cle]||'autre',T=((L.idsCellules||[])[j]||[]).map(i=>tid.get(i)).filter(Boolean);(P[k]=P[k]||[]).push({c,v:L.cellules[j]||'',T})});
+    // Diamètre, Largeur, Hauteur, Longueur ne vont dans « Dimensions d'ouverture » que si le tableau n'a pas de colonne Ouverture :
+    // sinon elles restent à part (« Autres colonnes »), jamais fusionnées avec l'ouverture (unité, hauteur d'axe…)
+    const avecO=N.colonnes.some(c=>c.cle==='ouverture');
+    N.colonnes.forEach((c,j)=>{const k0=VERS[c.cle]||'autre',k=avecO&&k0==='ouverture'&&c.cle!=='ouverture'?'autre':k0,T=((L.idsCellules||[])[j]||[]).map(i=>tid.get(i)).filter(Boolean);(P[k]=P[k]||[]).push({c,v:L.cellules[j]||'',T})});
     Object.entries(P).forEach(([k,A])=>{const T=A.flatMap(a=>a.T),O=T.map(t=>t.ocr||{});
       let v=k==='autre'?A.filter(a=>a.v).map(a=>`${(a.c.titre||'colonne').replace(/\n/g,' ')} : ${a.v}`).join(' · '):A.map(a=>a.v).filter(Boolean).join(' — ');
       const corr=O.flatMap(o=>o.corrections||[]),conf=O.length?Math.min(...O.map(o=>o.conf)):null;
@@ -1175,7 +1178,8 @@ const ROT=[[1,0],[0,1],[-1,0],[0,-1]],tourne=(p,q)=>{const [c,s]=ROT[(q%4+4)%4];
 
 // Nature d'une colonne d'après son titre : premier motif reconnu (« Réservation » seul = colonne des repères, en dernier)
 const COLS=[
-  ['niveau',mot("niv(eau|\\.)?|alti(metrie|tude)?|ngf|fil d'?eau|arase|cote (d'?axe|ngf|fil)|hauteur ?(\\/|par rapport|d'?axe|sous)|h ?\\/ ?[a-z]+")],
+  // « Hauteur axe », « Axe réservations » : position de l'axe (altitude ou hauteur au-dessus d'un fond), jamais une cote d'ouverture
+  ['niveau',mot("niv(eau|\\.)?|alti(metrie|tude)?|ngf|fil d'?eau|arase|cote (d'?axe|ngf|fil)|hauteur ?(\\/|par rapport|(d'? ?)?axe|sous)|axes? (des? )?(reservations?|tuyaux?|fourreaux?)|h ?\\/ ?[a-z]+")],
   ['angle',mot('angles?|orientation|azimut|gisement')],
   ['ouverture',mot("ouvertures?|tremies?|dim(ension)?s?\\.?|sections?|percements?|carottages?|passages?|encombrement|cotes|taille|l ?[x×*] ?[hl]|b ?[x×*] ?h")],
   ['reseau',mot("dn|reseaux?|canalisations?|tuyaux?|conduits?|gaines?|fluides?")],
@@ -1184,21 +1188,28 @@ const COLS=[
   ['hauteur',mot('haut(eur|\\.)?')],
   ['quantite',mot('qte|quantites?|nombre|nb(re?)?|qt')],
   ['acier',mot('poids|masses?|faconnages?|nuances?|longueurs? developpees?|aciers?|armatures?|crochets?')],
+  ['longueur',mot('long(ueur|\\.)?')],   // après « acier » : « longueur développée » reste une colonne d'aciers
   ['type',mot('types?|elements?|elts?|supports?|parois?|ouvrages?|localisation|emplacement|zone')],
   ['description',mot('designation|description|libelle|objet|nature|fonctions?|usage|destination|intitule')],
   ['observations',mot('observations?|remarques?|commentaires?|notes?|obs\\.?')],
   ['lot',mot("lots?|entreprises?|corps d'?etat|fournisseurs?|intervenants?|emetteur|responsable|societe|poseur")],
-  ['repere',mot("rep(ere|\\.)?|ref(erence|\\.)?|n°|no\\.?|num(ero|\\.)?|marque|identifiant|id|code|reservations?|resas?")]];
+  // « Réservation(s) » n'est un titre de repères que seul (ou avec n°) : « Axe réservations », « Niveau réservation » n'en sont pas
+  ['repere',new RegExp(mot("rep(ere|\\.)?|ref(erence|\\.)?|n°|no\\.?|num(ero|\\.)?|marque|identifiant|id|code").source+'|^(?:(?:n°|no) ?)?(?:reservations?|resas?)$')]];
 const kinds=n=>COLS.filter(c=>c[1].test(n)).map(c=>c[0]);
 const LIB={repere:'repère',description:'désignation',type:'type / élément',ouverture:'ouverture',reseau:'réseau',diametre:'diamètre',
-  niveau:'niveau (position)',angle:'angle (position)',largeur:'largeur',hauteur:'hauteur',quantite:'quantité',observations:'observations',lot:'lot / entreprise',acier:'acier (ferraillage)',autre:'non reconnue'};
+  niveau:'niveau (position)',angle:'angle (position)',largeur:'largeur',hauteur:'hauteur',longueur:'longueur',quantite:'quantité',observations:'observations',lot:'lot / entreprise',acier:'acier (ferraillage)',autre:'non reconnue'};
 // Nature du tableau : en-tête + titre seulement (un tableau d'aciers a aussi des repères et des diamètres)
 const RESA=mot('reservations?|resas?|tremies?|fourreaux?|ouvertures?|percements?|carottages?|traversees?|incorporations?|passages?|rebouchages?');
 const ACIER=mot('aciers?|fers|ha\\d*|ferraillages?|armatures?|nuances?|faconnages?|barres?|poids|masses?|kg|longueurs? developpees?|crochets?|epingles?|etriers?|cadres?|enrobages?|espacements?|fe ?e?500|b ?500|treillis');
 const AUTRE=mot("indices?|ind\\.?|revisions?|modifications?|dessine|verifie|approuve|folios?|liste des plans|documents?|bordereau|planning");
+// Trappes, regards, tampons (ouvertures équipées d'un cadre ou d'une feuillure) : tableau distinct, jamais des réservations
+const TRAPPE=mot("trappes?|regards?|tampons?|feuillures?|ouvertures? equipees?|chassis|caillebotis");
+const ECART=60;   // en hauteurs de texte : écart horizontal au-delà duquel deux titres (ou deux valeurs d'une ligne) ne sont plus du même tableau (colonne de commentaires large : ≈ 32 h mesurés)
+const RAISON_TRAPPES='nomenclature de trappes / ouvertures équipées (cadres, feuillures) : lignes consultables, jamais créées comme réservations';
 const POIDS={ouverture:2,niveau:1,angle:1,reseau:1,diametre:1};
-function nature(titre,cols){let R=0,A=0,O=0;
-  [titre].concat(cols.map(c=>c.titre)).forEach(t=>{const n=norm(t);if(RESA.test(n))R+=3;if(ACIER.test(n))A+=3;if(AUTRE.test(n))O+=3});
+function nature(titre,cols){let R=0,A=0,O=0,T=0;
+  [titre].concat(cols.map(c=>c.titre)).forEach(t=>{const n=norm(t);if(RESA.test(n))R+=3;if(ACIER.test(n))A+=3;if(AUTRE.test(n))O+=3;if(TRAPPE.test(n))T+=3});
+  if(T&&!RESA.test(norm(titre)))return'trappes';   // titre de trappes, ou colonne « feuillure » sans titre de réservations
   cols.forEach(c=>{R+=POIDS[c.cle]||0});
   return R>=3&&R>A&&R>O?'reservations':A>=3&&A>=R?'aciers':'autre'}
 // unité d'une colonne : « (mm) », « en mm », ou « mm » seul en fin de titre (« Largeur mm », titre sur deux lignes)
@@ -1214,38 +1225,49 @@ function cotes(s,u0,saisie){
   const t0=String(s==null?'':s).trim(),t=norm(t0).replace(/,/g,'.');
   if(!t)return{etat:'vide'};
   if(VIDE.test(t))return{etat:'manquant',texte:t0};
-  const mu=t.match(/\d\s*(mm|cm|m)(?![a-z0-9])/),u=mu?mu[1]:u0||null,N='(\\d+(?:\\.\\d+)?)',U='\\s*(?:mm|cm|m)?\\s*';
-  let m=t.match(new RegExp(N+U+'[x×*]\\s*'+N+'(?:'+U+'[x×*]\\s*'+N+')?'));
-  if(m)return Object.assign({etat:'rect',a:+m[1],b:+m[2],unite:u},m[3]?{c:+m[3]}:{});
-  if((m=t.match(new RegExp('(?:ø|diam\\.?|diametre|phi'+(saisie?'|d|o':'')+')\\s*'+N))))return{etat:'circ',D:+m[1],unite:u};
+  // unité : seulement celle écrite contre la cote elle-même (« 500x500 mm », « Ø250mm ») ; une autre valeur de la cellule
+  // (« 500x500 — 4,86m » : hauteur d'axe fusionnée) ne donne jamais l'unité de l'ouverture (unité de la cellule seule : cotes(v, null))
+  const N='(\\d+(?:\\.\\d+)?)',U='\\s*(?:mm|cm|m)?\\s*',UF='(?:\\s*(mm|cm|m)(?![a-z0-9]))?',un=s=>({unite:(s.match(/\d\s*(mm|cm|m)(?![a-z0-9])/)||[])[1]||u0||null});
+  let m=t.match(new RegExp(N+U+'[x×*]\\s*'+N+'(?:'+U+'[x×*]\\s*'+N+')?'+UF));
+  if(m)return Object.assign({etat:'rect',a:+m[1],b:+m[2]},un(m[0]),m[3]?{c:+m[3]}:{});
+  if((m=t.match(new RegExp('(?:ø|diam\\.?|diametre|phi'+(saisie?'|d|o':'')+')\\s*'+N+UF))))return Object.assign({etat:'circ',D:+m[1]},un(m[0]));
   if((m=t.match(new RegExp('(?<![a-z])dn\\s*'+N))))return{etat:'dn',D:+m[1]};
-  if((m=t.match(new RegExp('^'+N+'\\s*(mm|cm|m)?$'))))return{etat:'seul',v:+m[1],unite:u};
+  if((m=t.match(new RegExp('^'+N+'\\s*(mm|cm|m)?$'))))return Object.assign({etat:'seul',v:+m[1]},un(m[0]));
   return{etat:'illisible',texte:t0};
 }
 
 // Cotes d'une ligne, dans cet ordre : 1. ouverture explicite exploitable ; 2. diamètre exploitable (cercle) ; 3. Largeur et
 // Hauteur (rectangle). Vide, « - », SO… = valeur absente, jamais une cote contradictoire : on passe à la colonne suivante.
 // Diamètre et Largeur × Hauteur tous deux renseignés : ambiguïté signalée, rien n'est choisi. DN du réseau ≠ diamètre.
-// « Hauteur » d'un tableau = 2e cote de l'ouverture, jamais la hauteur de coffrage (h reste à saisir).
-function dimsLigne(cols,cells,av){
+// « Hauteur » d'un tableau = 2e cote de l'ouverture, jamais la hauteur de coffrage (h reste à saisir) ; « Longueur » sans
+// « Hauteur » = 2e cote (trappes, regards). Unité écrite dans la cellule différente de celle du titre de colonne : cote gardée,
+// unité laissée à confirmer (conflitUnite), jamais convertie. DN dans la colonne Ouverture : réservation circulaire probable,
+// noté dans info.dn, aucune cote tirée du DN (décision de Kévin, 21/10/2026).
+function dimsLigne(cols,cells,av,info){
   const get=k=>cols.map((c,j)=>c.cle===k&&cells[j]?{c,v:cells[j]}:null).filter(Boolean),q=v=>`« ${v.replace(/\n/g,' ')} »`;
-  const dd=(r,c,v)=>r.etat==='rect'?{type:'rect',a:r.a,b:r.b,unite:r.unite,texte:v,colonne:c.titre}:{type:'circ',D:r.D,unite:r.unite,texte:v,colonne:c.titre};
+  // unité écrite dans la cellule contre la cote (ue) ou titre de colonne ; les deux différentes : à confirmer. info.uniteOrigine : provenance
+  const uc=(r,c,v)=>{const ue=cotes(v,null).unite;if(ue&&c.unite&&ue!==c.unite){av.push(`unité « ${ue} » écrite dans la cellule, « ${c.unite} » dans le titre de la colonne « ${c.titre.replace(/\n/g,' ')} » : unité à confirmer (aucune conversion)`);return{unite:null,conflitUnite:true}}
+    if(info)info.uniteOrigine=ue?'cellule':c.unite?'titre de colonne':null;return{unite:r.unite}};
+  const dd=(r,c,v)=>Object.assign(r.etat==='rect'?{type:'rect',a:r.a,b:r.b}:{type:'circ',D:r.D},uc(r,c,v),{texte:v,colonne:c.titre});
   const absent=r=>r.etat==='vide'||r.etat==='manquant',dn='DN du réseau, diamètre de la réservation à saisir';
   const O=get('ouverture');
   if(O.length){const {c,v}=O[0],r=cotes(v,c.unite);
     if(r.etat==='rect'){if(r.c!=null)av.push(`ouverture ${q(v)} : 3e cote ignorée`);return dd(r,c,v)}
     if(r.etat==='circ')return dd(r,c,v);
-    if(!absent(r))av.push(`ouverture ${q(v)} : `+(r.etat==='dn'?dn:r.etat==='seul'?'une seule cote, forme et cotes à préciser':'cotes non lues'))}
+    if(r.etat==='dn'&&info)info.dn={D:r.D,texte:v.replace(/\n/g,' ')};
+    if(!absent(r))av.push(`ouverture ${q(v)} : `+(r.etat==='dn'?'DN : réservation circulaire probable, diamètre réel de réservation à confirmer (aucune cote tirée du DN)':r.etat==='seul'?'une seule cote, forme et cotes à préciser':'cotes non lues'))}
   let circ=null;
   const Dm=get('diametre');
   if(Dm.length){const {c,v}=Dm[0],r=cotes(v,c.unite);
-    if(r.etat==='rect'||r.etat==='circ'||r.etat==='seul'){circ=dd(r.etat==='seul'?{etat:'circ',D:r.v,unite:r.unite}:r,c,v);
+    if(r.etat==='rect'||r.etat==='circ'||r.etat==='seul'){circ=dd(r.etat==='seul'?Object.assign({},r,{etat:'circ',D:r.v}):r,c,v);
       av.push(`cote prise dans la colonne « ${c.titre.replace(/\n/g,' ')} » : à confirmer comme cote de la réservation`)}
     else if(!absent(r))av.push(`colonne « ${c.titre.replace(/\n/g,' ')} » ${q(v)} : `+(r.etat==='dn'?dn:'cotes non lues'))}
   let rect=null;
-  const La=get('largeur'),Ha=get('hauteur');
+  const La=get('largeur'),Ha=get('hauteur').length?get('hauteur'):get('longueur');
   if(La.length||Ha.length){const a=La.length?cotes(La[0].v,La[0].c.unite):{etat:'vide'},b=Ha.length?cotes(Ha[0].v,Ha[0].c.unite):{etat:'vide'};
-    if(a.etat==='seul'&&b.etat==='seul')rect={type:'rect',a:a.v,b:b.v,unite:a.unite===b.unite?a.unite:a.unite&&b.unite?null:a.unite||b.unite,texte:La[0].v+' × '+Ha[0].v,colonne:La[0].c.titre+' / '+Ha[0].c.titre};
+    if(a.etat==='seul'&&b.etat==='seul'){const ua=uc(a,La[0].c,La[0].v),ub=uc(b,Ha[0].c,Ha[0].v),cf=ua.conflitUnite||ub.conflitUnite||ua.unite&&ub.unite&&ua.unite!==ub.unite;
+      if(cf&&!ua.conflitUnite&&!ub.conflitUnite)av.push(`unités différentes « ${ua.unite} » / « ${ub.unite} » pour Largeur et Hauteur : unité à confirmer (aucune conversion)`);
+      rect=Object.assign({type:'rect',a:a.v,b:b.v},cf?{unite:null,conflitUnite:true}:{unite:ua.unite||ub.unite},{texte:La[0].v+' × '+Ha[0].v,colonne:La[0].c.titre+' / '+Ha[0].c.titre})}
     else if(!absent(a)||!absent(b))av.push(a.etat==='seul'||b.etat==='seul'?'une seule des cotes Largeur / Hauteur lue : cotes à compléter':'cotes Largeur / Hauteur non lues')}
   if(circ&&rect){av.push(`diamètre ${q(circ.texte)} et Largeur × Hauteur ${q(rect.texte)} tous deux renseignés : forme et cotes à confirmer`);return null}
   if(circ)return circ;
@@ -1275,7 +1297,7 @@ function etendue(H,y,x0,x1,hm){const S=H.filter(h=>Math.abs(h.y-y)<=0.2*hm).sort
 
 // Un tableau à partir d'une ligne d'en-tête hg (textes) ; renvoie null si aucune colonne lisible
 function construire(g,hg,used,K){
-  const hm=med(hg.map(t=>t.h)),yH=hg.reduce((s,t)=>s+t.y,0)/hg.length,xL=Math.min(...hg.map(t=>t.x0)),xR=Math.max(...hg.map(t=>t.x1));
+  const hm=med(hg.map(t=>t.h)),yH=hg.reduce((s,t)=>s+t.y,0)/hg.length;let xL=Math.min(...hg.map(t=>t.x0)),xR=Math.max(...hg.map(t=>t.x1));
   const libre=t=>!used.has(t.i);
   // bande d'en-tête : entre deux traits horizontaux de la grille, sinon textes à mot-clé ou sous-titres « (mm) » juste au-dessus / au-dessous
   const Hy=fusion(g.A.H.filter(h=>couvre([h],xL,xR)>=0.5*(xR-xL)).map(h=>h.y),0.2*hm),   // croissant
@@ -1283,8 +1305,16 @@ function construire(g,hg,used,K){
   let band,grL=false;
   if(dessus!==undefined&&dessous!==undefined&&dessus-dessous<=8*hm){band=[dessous,dessus];grL=true}
   else{band=[Math.min(...hg.map(t=>t.y))-0.6*hm,Math.max(...hg.map(t=>t.y))+0.6*hm];
-    for(let k=0;k<3;k++)g.T.forEach(t=>{if(!libre(t)||t.x<xL-2*hm||t.x>xR+2*hm||t.y>=band[0]&&t.y<=band[1])return;
-      const d=t.y<band[0]?band[0]-t.y:t.y-band[1];if(d<=1.3*hm&&(K[t.i].length||SOUS.test(t.n))){band[0]=Math.min(band[0],t.y-0.6*t.h);band[1]=Math.max(band[1],t.y+0.6*t.h)}})}
+    // largeur du tableau : celle de la 1re ligne de valeurs (texte chiffré) contre l'en-tête, suivie de proche en proche (écart ≤ 30 h) :
+    // des colonnes éloignées des autres (IDENTIFIANT, COMMENTAIRES larges) restent dans le tableau
+    const pres=t=>Math.min(Math.abs(t.y-band[0]),Math.abs(t.y-band[1])),ln=g.T.filter(t=>libre(t)&&/\d/.test(t.n)&&t.x>=xL&&t.x<=xR&&(t.y<band[0]||t.y>band[1])&&pres(t)<=3*hm).sort((a,b)=>pres(a)-pres(b))[0];
+    if(ln){const L=g.T.filter(t=>libre(t)&&Math.abs(t.y-ln.y)<=0.5*Math.max(t.h,ln.h)).sort((a,b)=>a.x0-b.x0);let i=L.indexOf(ln),j=i;
+      while(i>0&&L[i].x0-L[i-1].x1<=ECART*hm)i--;while(j<L.length-1&&L[j+1].x0-L[j].x1<=ECART*hm)j++;xL=Math.min(xL,L[i].x0);xR=Math.max(xR,L[j].x1)}
+    // en-tête sur plusieurs lignes (titres de groupe « DIMENSIONS (mm) » au-dessus de « Hauteur », « Largeur ») : lignes voisines dont
+    // aucun texte n'a de chiffre (une ligne de valeurs a toujours un repère, une cote ou un niveau chiffrés)
+    const sansChiffre=t=>!g.T.some(u=>Math.abs(u.y-t.y)<=0.5*Math.max(u.h,t.h)&&u.x>=xL-2*hm&&u.x<=xR+2*hm&&/\d/.test(u.n));
+    for(let k=0;k<6;k++)g.T.forEach(t=>{if(!libre(t)||t.x<xL-2*hm||t.x>xR+2*hm||t.y>=band[0]&&t.y<=band[1])return;
+      const d=t.y<band[0]?band[0]-t.y:t.y-band[1];if(d<=1.3*hm&&(K[t.i].length||SOUS.test(t.n)||t.h<=1.1*hm&&!/\d/.test(t.n)&&sansChiffre(t))){band[0]=Math.min(band[0],t.y-0.6*t.h);band[1]=Math.max(band[1],t.y+0.6*t.h)}})}
   // traits verticaux de la grille : ils traversent l'en-tête, entre les extrémités du trait qui la borde (grille) ou en
   // partant de son bord (un cadre de feuille ou le tableau voisin ne comptent pas)
   const yM=(band[0]+band[1])/2,ext=grL?etendue(g.A.H,dessus,xL,xR,hm):null,
@@ -1293,7 +1323,13 @@ function construire(g,hg,used,K){
   if(ext&&xs.length){if(xs[0]>ext[0]+0.3*hm)xs.unshift(ext[0]);if(xs[xs.length-1]<ext[1]-0.3*hm)xs.push(ext[1])}
   const grC=xs.length>=2;
   const BT0=g.T.filter(t=>libre(t)&&t.y>=band[0]&&t.y<=band[1]&&t.x>=(grC?Math.min(xs[0],xL-2*hm):xL-2*hm)&&t.x<=(grC?Math.max(xs[xs.length-1],xR+2*hm):xR+2*hm));
-  const Cl=[];BT0.slice().sort((a,b)=>a.x0-b.x0).forEach(t=>{const c=Cl[Cl.length-1];if(c&&t.x0<=c.x1+0.3*hm)c.x1=Math.max(c.x1,t.x1);else Cl.push({x0:t.x0,x1:t.x1})});
+  // colonnes d'en-tête de bas en haut : un titre au-dessus de plusieurs colonnes (« DIMENSIONS (mm) », « FINITIONS ») est un titre de
+  // groupe : il ne fait pas une colonne, il donne son unité aux colonnes qu'il couvre
+  const Cl=[],GR=new Map(),sur=(t,c)=>t.x0<=c.x1+0.3*hm&&t.x1>=c.x0-0.3*hm;
+  BT0.slice().sort((a,b)=>a.y-b.y||a.x0-b.x0).forEach(t=>{const C=Cl.filter(c=>sur(t,c));
+    if(C.length>=2&&C.every(c=>t.y>c.y+0.5*hm)){GR.set(t,C);return}
+    if(C.length){const c=C[0];c.x0=Math.min(c.x0,t.x0);c.x1=Math.max(c.x1,t.x1);c.y=Math.max(c.y,t.y)}else Cl.push({x0:t.x0,x1:t.x1,y:t.y})});
+  Cl.sort((a,b)=>a.x0-b.x0);for(let j=1;j<Cl.length;j++)if(Cl[j].x0<=Cl[j-1].x1+0.3*hm){Cl[j-1].x1=Math.max(Cl[j-1].x1,Cl[j].x1);Cl.splice(j--,1)}
   const pad=Math.max(4*hm,med(Cl.map(c=>c.x1-c.x0))),P0=ext&&grC?xs[0]:Cl[0].x0-pad,PN=ext&&grC?xs[xs.length-1]:Cl[Cl.length-1].x1+pad;
   // une ligne qui contient un chiffre (repère, cote, niveau) n'est pas un en-tête, même si ses mots ressemblent à des titres
   const enTete=T=>{const k=new Set();let c=0;T.forEach(t=>{if(K[t.i].length){c++;k.add(K[t.i][0])}});return c>=3&&k.size>=2&&!T.some(t=>/\d/.test(t.n))};
@@ -1326,8 +1362,9 @@ function construire(g,hg,used,K){
   if(!(ext&&grC)){if(!B.length||xmin<B[0]-0.3*hm)B.unshift(xmin-0.5*hm);if(xmax>B[B.length-1]+0.3*hm)B.push(xmax+0.5*hm)}
   const B0=B[0],BN=B[B.length-1],col=x=>{for(let j=0;j+1<B.length;j++)if(x<B[j+1])return j;return B.length-2};
   const BT=BT0.filter(t=>t.x>=B0&&t.x<=BN);
-  const colonnes=B.slice(1).map((b,j)=>{const titre=cellule(BT.filter(t=>col(t.x)===j)),n=norm(titre),u=n.match(UNIT);
-    return{titre,cle:kinds(n)[0]||'autre',unite:uCol(u)}});
+  const colonnes=B.slice(1).map((b,j)=>{const titre=cellule(BT.filter(t=>!GR.has(t)&&col(t.x)===j)),n=norm(titre),u=n.match(UNIT),xc=(B[j]+b)/2,
+      gr=[...GR.keys()].find(t=>t.x0-0.3*hm<=xc&&t.x1+0.3*hm>=xc),gt=gr?gr.texte.trim():'';
+    return Object.assign({titre,cle:kinds(n)[0]||'autre',unite:uCol(u)||(gr?uCol(norm(gt).match(UNIT)):null)},gr?{groupe:gt}:{})});
   if(!colonnes.some(c=>c.cle!=='autre'))return null;
   // lignes du tableau : bandes de la grille ; sans grille, une ligne par repère, les lignes de texte sans repère
   // (valeurs sur plusieurs lignes) rattachées au repère le plus proche en hauteur
@@ -1363,7 +1400,7 @@ function analyser(doc){
     const cand=[];
     rows.forEach(r=>{const hm=med(r.T.map(t=>t.h));let c=null;
       r.T.sort((a,b)=>a.x-b.x).forEach(t=>{const pk=K[t.i][0];
-        if(!c||t.x0-c.x1>30*hm||pk==='repere'&&c.rep&&c.T.length>=3){c={T:[],x1:-Infinity,rep:false};cand.push(c)}
+        if(!c||t.x0-c.x1>ECART*hm||pk==='repere'&&c.rep&&c.T.length>=3){c={T:[],x1:-Infinity,rep:false};cand.push(c)}
         c.T.push(t);c.x1=Math.max(c.x1,t.x1);c.rep=c.rep||pk==='repere'})});
     cand.map(c=>({T:c.T,k:new Set(c.T.map(t=>K[t.i][0])).size})).filter(c=>c.T.length>=3&&c.k>=2).sort((a,b)=>b.k-a.k||b.T.length-a.T.length)
       .forEach(c=>{if(c.T.some(t=>used.has(t.i)))return;const tb=construire(g,c.T,used,K);if(!tb)return;
@@ -1374,7 +1411,9 @@ function analyser(doc){
   brut.forEach(tb=>{const nat=nature(tb.titre,tb.colonnes),base={espace:tb.espace,presentation:tb.presentation,...(tb.page?{page:tb.page}:{}),titre:tb.titre,
       colonnes:tb.colonnes,cadre:tb.cadre,...(tb.rotation?{rotation:tb.rotation}:{}),ids:[...tb.BT,...tb.TT,...tb.RT.flat()].map(t=>t.id)};
     if(nat!=='reservations'||!tb.R.length){ecartes.push(Object.assign(base,{id:'T'+(ecartes.length+1),nature:nat,nLignes:tb.R.length,
-      raison:nat==='aciers'?'nomenclature d\'aciers (ferraillage)':nat==='autre'?'tableau non identifié comme nomenclature de réservations':'en-tête de nomenclature sans ligne lisible'}));return}
+      raison:nat==='aciers'?'nomenclature d\'aciers (ferraillage)':nat==='trappes'?RAISON_TRAPPES:nat==='autre'?'tableau non identifié comme nomenclature de réservations':'en-tête de nomenclature sans ligne lisible'},
+      // trappes : lignes gardées pour consultation (saisie manuelle possible), jamais proposées à la création
+      nat==='trappes'?{lignes:tb.R.map((cells,k)=>Object.assign({rang:k+1},ligne(tb.colonnes,cells)))}:{}));return}
     const id='N'+(nomenclatures.length+1);
     const lignes=tb.R.map((cells,k)=>Object.assign({id:id+'-L'+String(k+1).padStart(2,'0'),rang:k+1,ids:tb.RT[k].map(t=>t.id),calques:[...new Set(tb.RT[k].map(t=>t.calque))]},
       ligne(tb.colonnes,cells),{idsCellules:tb.RI[k]}));
@@ -1451,9 +1490,17 @@ function depuisGrille(G,cles){const R=G.lignes,nc=Math.max(0,...R.map(r=>r.lengt
   const VAL=R.slice(h).map(r=>r.map(v=>String(v||'').trim())),REPV=/^[A-Z]{1,3} ?\d{1,3}[A-Z]?$/i,deduite=j=>{const V=VAL.map(r=>r[j]||'').filter(v=>v&&!VIDE.test(norm(v)));if(!V.length)return null;
     const part=f=>V.filter(f).length/V.length;
     return part(v=>/^[øØ⌀∅] ?\d/.test(v))>=0.5?'diametre':part(v=>cotes(v,null).etat==='rect')>=0.5?'ouverture':part(v=>REPV.test(v))>=0.6?'repere':null};
-  const colonnes=[];for(let j=0;j<nc;j++){const titre=E.map(i=>R[i][j]||'').filter(Boolean).join('\n'),n=norm(titre),u=n.match(UNIT);let lu=kinds(n)[0]||'autre',dd=false;
+  // titre de groupe fusionné sur n colonnes (« DIMENSIONS (mm) » puis « Hauteur Largeur » dans une seule cellule, titres vides à
+  // droite, valeurs dessous) : les mots d'une ligne de n mots vont un par colonne, le groupe donne son unité ; la fonction de chaque
+  // colonne vient de son sous-titre seul
+  const TI=Array.from({length:nc},(x,j)=>E.map(i=>R[i][j]||'').filter(Boolean)),GP=[],val=j=>R.slice(h).some(r=>String(r[j]||'').trim());
+  for(let j=0;j<nc;j++){let n=1;while(j+n<nc&&!TI[j+n].length&&val(j+n))n++;if(n<2)continue;
+    const L=TI[j].join('\n').split('\n').map(x=>x.trim()).filter(Boolean);if(L.length<2)continue;
+    const S=Array.from({length:n},()=>[]),reste=[];L.slice(1).forEach(l=>{const w=l.split(/\s+/);if(w.length===n)w.forEach((x,k)=>S[k].push(x));else reste.push(l)});
+    if(!S[0].length)continue;for(let k=0;k<n;k++){TI[j+k]=S[k].concat(k?[]:reste);GP[j+k]=L[0]}j+=n-1}
+  const colonnes=[];for(let j=0;j<nc;j++){const titre=TI[j].join('\n'),n=norm(titre),u=n.match(UNIT)||GP[j]&&norm(GP[j]).match(UNIT);let lu=kinds(n)[0]||'autre',dd=false;
     if(lu==='autre'){const x=deduite(j);if(x&&!(x==='repere'&&colonnes.some(c=>c.cle==='repere'))){lu=x;dd=true}}
-    colonnes.push({titre:titre||'Colonne '+(j+1),cle:cles&&cles[j]||lu,cleLue:lu,unite:uCol(u),...(dd?{deduite:true}:{})})}
+    colonnes.push({titre:titre||'Colonne '+(j+1),cle:cles&&cles[j]||lu,cleLue:lu,unite:uCol(u),...(dd?{deduite:true}:{}),...(GP[j]?{groupe:GP[j]}:{})})}
   const entete=colonnes.some(c=>c.cleLue!=='autre'),titre=TT.join('\n'),nat=entete?nature(titre,colonnes):'autre',id=G.id||'G1';
   const lignes=[];R.slice(h).forEach((cells0,k)=>{const cells=colonnes.map((c,j)=>String(cells0[j]||'').trim());if(!cells.some(Boolean))return;
     const IDc=(ID[h+k]||[]).map(x=>x||[]),n=lignes.length+1;
@@ -1474,8 +1521,8 @@ function ligne(cols,cells){const av=[],cj=k=>cols.map((c,j)=>c.cle===k?j:-1).fil
   if(!L.repere)av.push(cj('repere').length?'repère absent de la ligne':'pas de colonne repère dans le tableau');
   const qn=L.quantite.replace(/\n/g,' ').trim(),qm=qn.match(/^(\d{1,4})\s*(u|ex|pcs?|pi[eè]ces?)?\.?$/i);L.nb=qm&&+qm[1]>0?+qm[1]:null;   // quantité du tableau : référence métier
   if(qn&&L.nb==null)av.push(`quantité « ${qn} » non lue comme un nombre entier`);
-  L.dims=dimsLigne(cols,cells,av);
-  if(L.dims&&!L.dims.unite)av.push('unité des cotes non indiquée par le tableau');
+  const info={};L.dims=dimsLigne(cols,cells,av,info);if(info.dn)L.dn=info.dn;if(L.dims&&L.dims.unite)L.uniteOrigine=info.uniteOrigine||null;
+  if(L.dims&&!L.dims.unite&&!L.dims.conflitUnite)av.push('unité des cotes non indiquée par le tableau');
   return L}
 
 // Repère normalisé : majuscules, sans espaces ni séparateurs, zéros de tête des nombres retirés (D03 = D3 = d 3)
@@ -1541,13 +1588,13 @@ function provenance(N,L,k){
   const pdf=N.format==='pdf'?{page:N.page,zone:L.zone||N.zone||(N.cadre?{page:N.page,x0:N.cadre[0],y0:N.cadre[1],x1:N.cadre[2],y1:N.cadre[3],unite:'pt'}:null)}:{};
   return{fichier:N.fichier,format:N.format||'dxf',type:N.saisie?'saisie':N.ocr?'ocr':'nomenclature',espace:N.espace,presentation:N.presentation,calque:L.calques.join(', '),id:g?g.source.id:null,
     nomenclature:N.id,titre:N.titre,ligne:L.id,rang:L.rang,repere:L.repere,ids:L.ids.slice(),textes,
-    unite_source:d?d.unite:null,unite:uT||null,dims_source:d?JSON.parse(JSON.stringify(d)):null,
+    unite_source:d?d.unite:null,unite_origine:d&&d.unite?L.uniteOrigine||null:null,unite:uT||null,dims_source:d?JSON.parse(JSON.stringify(d)):null,
     geometrie:g?{id:g.source.id,calque:g.source.calque,candidat:g.id,statut:k.geo.statut,unite:k.uniteDessin||null,centre:g.centre,dims_source:JSON.parse(JSON.stringify(g.dims))}:null,
     choix:{forme:k.forme,cotes:k.cotes,ref:k.ref||'',unite_tableau:k.uniteChoisie?k.uniteTableau:null,...(k.nb!=null?{nb:k.nb}:{})},corrige,
     quantite:{texte:L.quantite||'',tableau:L.nb==null?null:L.nb},a_verifier:L.a_verifier.slice(),h_saisie:true,...pdf,...(L.ocr?{ocr:JSON.parse(JSON.stringify(L.ocr))}:{}),...(k.rapprochement?{rapprochement:k.rapprochement}:{})};
 }
 
-root.CPI=Object.assign(root.CPI||{},{nomenclatures:{analyser,associer,cotes,ligne,nature,candidat,provenance,cleRep,dGeo,LIB,grilleTraits,depuisGrille,textesEnGrille,kinds:t=>kinds(norm(t)),tourne}});
+root.CPI=Object.assign(root.CPI||{},{nomenclatures:{analyser,associer,cotes,ligne,nature,candidat,provenance,cleRep,dGeo,LIB,RAISON_TRAPPES,grilleTraits,depuisGrille,textesEnGrille,kinds:t=>kinds(norm(t)),tourne}});
 })(typeof globalThis!=='undefined'?globalThis:this);
 // ==== modules/import/geometrie.js ====
 // CoffraPlan — module d'import de plans : repérage géométrique des réservations sur une page PDF vectorielle.
@@ -1644,12 +1691,15 @@ function blocsTexte(geo,o){o=o||{};const B=geo.petits||[],N=B.length>>2,pt=i=>B[
     if(cad.some(c=>dans(c,[(b.x0+b.x1)/2,(b.y0+b.y1)/2],0)))return;out.push(b)});
   return out}
 // Petits tracés I (indices dans B) réunis en groupes (union-find sur une grille) → [{x0,y0,x1,y1,n}] ; écart admis à la mesure du
-// plus petit des deux tracés quand l'un est 2,5 fois plus haut (trait de cote, ligne de rappel : ils n'attirent pas les lettres voisines)
+// plus petit des deux tracés quand l'un est 2,5 fois plus haut (trait de cote, ligne de rappel : ils n'attirent pas les lettres voisines),
+// sauf un tiret (plat, pas plus long que 1,5 hauteur de lettre)
 function grouper(B,I){const par=new Map(),CS=10,G=new Map();I.forEach(i=>par.set(i,i));const f=i=>{while(par.get(i)!==i){par.set(i,par.get(par.get(i)));i=par.get(i)}return i};
   for(const i of I){const x0=B[4*i],y0=B[4*i+1],x1=B[4*i+2],y1=B[4*i+3],hi=Math.max(y1-y0,1);
     const m=1.2*hi,c0=Math.floor((x0-m)/CS),c1=Math.floor((x1+m)/CS),r0=Math.floor(y0/CS),r1=Math.floor(y1/CS);
     for(let c=c0;c<=c1;c++)for(let r=r0;r<=r1;r++){const k=c*1e6+r,L=G.get(k);
-      if(L){for(const j of L){const hj=Math.max(B[4*j+3]-B[4*j+1],1),h=Math.max(hi,hj)>2.5*Math.min(hi,hj)?Math.min(hi,hj):Math.max(hi,hj),gx=Math.max(B[4*j]-x1,x0-B[4*j+2]),gy=Math.max(B[4*j+1]-y1,y0-B[4*j+3]);
+      if(L){for(const j of L){const hj=Math.max(B[4*j+3]-B[4*j+1],1),lo=hi<hj?i:j,hl=Math.min(hi,hj),wl=B[4*lo+2]-B[4*lo],
+        // tiret d'un identifiant (« 1-D1 ») : tracé plat et court, regroupé avec ses lettres (sinon « D1 » serait lu seul) ; un trait de cote reste à part
+        tiret=wl>=1.5*hl&&wl<=1.5*Math.max(hi,hj),h=Math.max(hi,hj)>2.5*hl&&!tiret?hl:Math.max(hi,hj),gx=Math.max(B[4*j]-x1,x0-B[4*j+2]),gy=Math.max(B[4*j+1]-y1,y0-B[4*j+3]);
         if(gx<=1.2*h&&gy<=0.12*h){const a=f(i),b=f(j);if(a!==b)par.set(a,b)}}L.push(i)}else G.set(k,[i])}}
   const R=new Map();for(const i of I){const x0=B[4*i],y0=B[4*i+1],x1=B[4*i+2],y1=B[4*i+3];
     const r=f(i),b=R.get(r);if(b){b.x0=Math.min(b.x0,x0);b.y0=Math.min(b.y0,y0);b.x1=Math.max(b.x1,x1);b.y1=Math.max(b.y1,y1);b.n++}else R.set(r,{x0,y0,x1,y1,n:1})}
@@ -1715,6 +1765,19 @@ function egal(vT,uT,vA,uA){const kT=MM[uT]||1,UA=uA?[uA]:uT?['mm','cm','m']:[nul
   for(const u of UA){const kA=u?MM[u]:kT,x=vT*kT,y=vA*kA;if(Math.abs(x-y)<=Math.max(uT||u?2:0,0.01*Math.max(x,y)))return{ok:true,u}}return{ok:false}}
 const comparable=(vT,uT,vA,uA)=>!!uA||(()=>{const r=vA*(MM[uA]||MM[uT]||1)/(vT*(MM[uT]||1));return r>=0.5&&r<=2})();
 
+// Nature d'une mention du repère k dans le texte t : 'repere' (isolé : localise la réservation) ou mention qui n'en localise aucune,
+// gardée comme observation non rattachée avec son motif : 'multiplicateur'
+// (« 2x D10-EXT », « 5x D11 » : note, liste), 'identifiant' (« 1-D1 », « D10-EXT » : panneau, armature, élément standard ; seulement
+// si le repère du tableau n'a pas de tiret), 'annotation' (autres mots autour du repère : renvoi, note). T = textes de la page.
+const MULT=/^\d+\s*[x×]$/i;
+function natureMention(t,k,dashR,T,cleRep,cotes){const s=String(t.texte||''),h=Math.max(t.h||2,1);
+  const W=s.split(/\s+/).filter(Boolean),gauche=T.find(u=>u!==t&&u.page===t.page&&Math.abs(u.y-t.y)<=0.5*h&&u.x<t.x&&t.x-(t.w||0)/2-(u.x+(u.w||0)/2)<=1.5*h&&MULT.test(String(u.texte).trim().split(/\s+/).pop()));
+  if(W.some(w=>MULT.test(w))||gauche)return['multiplicateur',`quantité « ${(W.find(w=>MULT.test(w))||String(gauche.texte).trim())} » devant le repère (note, liste) : pas une localisation`];
+  if(!dashR&&/[\p{L}\p{N}][-–—]|[-–—][\p{L}\p{N}]/u.test(s))return['identifiant',`identifiant composé « ${s.trim()} » (panneau, armature, élément ?) : pas un repère de réservation isolé`];
+  const autres=W.map(w=>w.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu,'')).filter(w=>(w.match(/\p{L}/gu)||[]).length>=2&&cleFloue(cleRep(w))!==cleFloue(k)&&!/^(rect|circ|seul)$/.test(cotes(w,null).etat));   // « DS » lu pour D5 : le repère lui-même
+  if(autres.length)return['annotation',`mention dans un texte (« ${s.trim()} ») : renvoi ou annotation, pas un repère isolé`];
+  return['repere',null]}
+
 // L = {id, repere, dims ({type:'rect',a,b}|{type:'circ',D}|null), unite, quantite, page (page du tableau), ids}
 // textes : textes du dessin (PDF et OCR ; ceux des tableaux déjà retirés) ; C : candidats de CPI.geometrie (toutes pages)
 // o = {mm: candidat → mm par point | null, rappels: texte → pointes [[x,y]] (lignes de rappel), exclus: Set d'ids de textes,
@@ -1733,7 +1796,8 @@ function rapprocher(lignes,textes,C,o){o=o||{};const N=root.CPI.nomenclatures,cl
       // lecture presque illisible (« —— DS) | » à 2 %) : bruit, pas un indice
       const pq=[],cf=confRep(t,k,cleRep);if(t.ocr&&cf<OCR_MIN)return;if(t.ocr&&(cf<root.CPI.ocr.SEUIL||(t.ocr.corrections||[]).length))pq.push(`lecture OCR incertaine (« ${t.ocr.brut} », confiance ${cf} %)`);
       if(flou)pq.push(`lu « ${t.texte} » : rapproché par confusion de lettres et de chiffres`);if(num)pq.push('repère purement numérique');
-      occ.push({t,fiable:!pq.length,doutes:pq,conf:cf})});
+      const [nat,mn]=natureMention(t,k,/[-–—]/.test(L.repere||''),T,cleRep,cotes);if(mn)pq.push(mn);
+      occ.push({t,fiable:!pq.length,doutes:pq,conf:cf,nature:nat,motifNature:mn})});
     // contour désigné par chaque localisation : le plus proche du repère ou du bout de sa ligne de rappel (≤ 4 hauteurs de texte)
     occ.forEach(x=>{const t=x.t,P=[[t.x,t.y]],h=Math.max(t.h||2,1),vt=x.vue=vue(t.page,t.x,t.y);x.vinc=!!(vt&&o.vueIncertaine&&o.vueIncertaine(vt));if(o.rappels)try{x.rappels=o.rappels(t)}catch(e){x.rappels=[]}else x.rappels=[];P.push(...x.rappels);
       const V=OK.filter(({c,i})=>c.source.page===t.page&&vC.get(i)===vt).map(({c,i})=>{let d=Infinity;for(const p of P)d=Math.min(d,dGeo(p,c.geometrie));return{i,d}}).filter(v=>v.d<=4*h).sort((a,b)=>a.d-b.d);
@@ -1806,7 +1870,7 @@ function verifier(L,occ,C,o){const d=L.dims,uT=L.unite||null,D={},notes=[];
   if(princ.length>1)notes.push(unique?`${princ.length} contours désignés, un par page (vues) : celui de la 1re page est proposé`:`${princ.length} contours désignés sur une même page (occurrences ?) : à choisir`);
   return{concordance:cc,libelle:LB[cc],statut,options,principal:princ.length?princ.slice().sort((a,b)=>C[a].source.page-C[b].source.page)[0]:null,preuves:ctr,
     occurrences:occ.map(x=>({id:x.t.id,texte:x.t.texte,page:x.t.page,x:x.t.x,y:x.t.y,h:x.t.h,source:x.t.ocr?'ocr':'pdf',conf:x.t.ocr?x.conf:null,brut:x.t.ocr?x.t.ocr.brut:null,
-      corrections:x.t.ocr?x.t.ocr.corrections:[],box:x.t.ocr?x.t.ocr.box:null,vue:x.vue||null,fiable:x.fiable,doutes:x.doutes,rappels:x.rappels,contour:x.contour!=null?C[x.contour].id:null,
+      corrections:x.t.ocr?x.t.ocr.corrections:[],box:x.t.ocr?x.t.ocr.box:null,vue:x.vue||null,fiable:x.fiable,nature:x.nature,motifNature:x.motifNature,doutes:x.doutes,rappels:x.rappels,contour:x.contour!=null?C[x.contour].id:null,
       cotes:x.cotes.map(q=>q.texte)})),
     reperes:occ.map(x=>({x:x.t.x,y:x.t.y,id:x.t.id})),dims:D,quantite,note:notes.concat(lecture?[lecture]:[]).join(' ; ')}}
 
@@ -1826,7 +1890,8 @@ const DV_GAP=8,DV_MIN=30;   // cases : écart titre ↔ dessin admis (au moins, 
 const DV_FIL=6,DV_ILOT=4;   // cases : trait ouvert plus long = trait de liaison ; îlot de dessin plus petit (et < 10 % du plus gros), hors de l'emprise des autres = hors emprise (bulle d'axe)
 const DV_POS=0.1,DV_W=0.45,DV_H=0.6,DV_AIRE=0.3,DV_RECOUV=0.5;   // position relative admise entre vues (± 10 %) ; fractions de la page : composante trop étendue pour un titre voisin ; région trop étendue ; recouvrement
 const TYPES={plan:'plan',coupe:'coupe',elevation:'élévation',detail:'détail',ferraillage:'ferraillage',ferraillage_superieur:'ferraillage supérieur',ferraillage_inferieur:'ferraillage inférieur',autre:'autre'};
-const CLES=['ferraillage','renfort','armatures','elevation','facade','detail','coupe','dessus','plan','vue','partie'];
+const CLES=['ferraillage','renfort','armatures','elevation','facade','detail','coupe','dessus','dessous','plan','vue','partie'];
+const DV_HT=1.8,DV_HT_MIN=1.45;   // hauteur d'un titre / médiane de la page ; de 1,45 à 1,8 : seulement un mot portant lui-même un mot-clé de vue
 const PARTIES=['dalle','radier','voile','poutre','puisard','longrine','semelle','plancher','acrotere','escalier','fosse','regard','cuve','mur'];
 // distance d'édition bornée (mots lus par OCR : « FERRKAILTAGE »)
 function lev(a,b){const m=a.length,n=b.length;if(Math.abs(m-n)>2)return 9;let p=Array.from({length:n+1},(x,j)=>j);
@@ -1835,19 +1900,21 @@ function lev(a,b){const m=a.length,n=b.length;if(Math.abs(m-n)>2)return 9;let p=
 // « plan » : premier mot ou « vue en plan » (pas « n° du plan » d'un cartouche) ; « partie » : avec supérieure / inférieure
 function motsCles(s){const W=sansAcc(s).toLowerCase().split(/[^a-z]+/).filter(Boolean),K=new Set();let approx=false;
   W.forEach((w,i)=>CLES.forEach(k=>{let ok=w===k||w===k+'s';if(!ok&&k.length>=8&&w.length>=6&&lev(w,k)<=2){ok=true;approx=true}if(!ok)return;
-    if(k==='plan'&&!(i===0||W[i-1]==='en'))return;if(k==='dessus'&&!W.includes('vue'))return;if(k==='partie'&&!W.some(x=>/^(sup|inf)/.test(x)))return;K.add(k)}));
+    if(k==='plan'&&!(i===0||W[i-1]==='en'||W[i-1]==='vue'))return;if((k==='dessus'||k==='dessous')&&!W.includes('vue'))return;if(k==='partie'&&!W.some(x=>/^(sup|inf)/.test(x)))return;K.add(k)}));
   return{K,approx,W}}
 function typeVue(K,W){const sup=W.some(w=>/^sup/.test(w)),inf=W.some(w=>/^inf/.test(w));
-  if(K.has('ferraillage')||K.has('renfort')||K.has('armatures')||K.has('partie')&&(sup||inf))return sup?'ferraillage_superieur':inf?'ferraillage_inferieur':'ferraillage';
+  // « Renforts réservations » : détails des renforts autour des réservations, jamais une vue où compter des occurrences
+  if(K.has('renfort')&&!K.has('ferraillage')&&!K.has('armatures'))return'detail';
+  if(K.has('ferraillage')||K.has('armatures')||K.has('partie')&&(sup||inf))return sup?'ferraillage_superieur':inf?'ferraillage_inferieur':'ferraillage';
   if(K.has('coupe'))return'coupe';if(K.has('elevation')||K.has('facade'))return'elevation';if(K.has('detail'))return'detail';
-  if(K.has('plan')||K.has('dessus'))return'plan';return'autre'}
+  if(K.has('plan')||K.has('dessus')||K.has('dessous'))return'plan';return'autre'}
 const partieDe=W=>PARTIES.find(p=>W.includes(p)||W.includes(p+'s'))||null;
 const med=a=>{const s=a.slice().sort((x,y)=>x-y);return s.length?s[s.length>>1]:0};
 const boite=t=>{const w=t.w||String(t.texte).length*0.7*t.h;return[t.x-w/2,t.y-t.h/2,t.x+w/2,t.y+t.h/2]};
 
 // Titres de vue d'une page : grands textes réunis en lignes puis en blocs de 2 lignes au plus, avec un mot-clé
 function titres(textes){const T=textes.filter(t=>t.h>0&&String(t.texte).trim()),hm=med(T.map(t=>t.h)),
-    G=T.filter(t=>t.h>=1.8*hm&&!t.rot&&(!t.ocr||t.ocr.conf>=60||motsCles(t.texte).K.size)&&/\p{L}.*\p{L}|\d/u.test(t.texte));   // mot lu à moins de 60 % : bruit, sauf mot-clé reconnu
+    G=T.filter(t=>(t.h>=DV_HT*hm||t.h>=DV_HT_MIN*hm&&motsCles(t.texte).K.size)&&!t.rot&&(!t.ocr||t.ocr.conf>=60||motsCles(t.texte).K.size)&&/\p{L}.*\p{L}|\d/u.test(t.texte));   // mot lu à moins de 60 % : bruit, sauf mot-clé reconnu
   const par=G.map((t,i)=>i),f=i=>par[i]===i?i:(par[i]=f(par[i]));
   G.forEach((a,i)=>G.forEach((b,j)=>{if(j<=i||Math.max(a.h,b.h)>1.3*Math.min(a.h,b.h))return;const A=boite(a),B=boite(b),h=Math.max(a.h,b.h);
     const ligne=Math.abs(a.y-b.y)<=0.4*h&&Math.max(B[0]-A[2],A[0]-B[2])<=2.5*h,
@@ -1859,7 +1926,12 @@ function titres(textes){const T=textes.filter(t=>t.h>0&&String(t.texte).trim()),
     const lignes=[];L.forEach(t=>{const l=lignes.find(l=>Math.abs(l[0].y-t.y)<=0.4*t.h);l?l.push(t):lignes.push([t])});
     const texte=lignes.map(l=>l.sort((a,b)=>a.x-b.x).map(t=>t.texte).join(' ')).join(' ').replace(/\s+/g,' ').trim(),m=motsCles(texte);
     if(!m.K.size||m.K.size===1&&m.K.has('vue')&&m.W.length<2)return;
+    // paragraphe (notes, cartouche) ou renvoi (« Vue en plan : voir plan n° … ») : pas un titre de vue
+    if(lignes.length>2||m.W.some(w=>w==='voir'||w==='cf'))return;
     const bx=L.map(boite),b=[Math.min(...bx.map(x=>x[0])),Math.min(...bx.map(x=>x[1])),Math.max(...bx.map(x=>x[2])),Math.max(...bx.map(x=>x[3]))];
+    // dans un bloc de texte (3 textes ou plus de même hauteur à moins de 2,5 hauteurs : notes, cartouche) : pas un titre isolé
+    const hT=Math.max(...L.map(t=>t.h)),pres=T.filter(t=>!L.includes(t)&&Math.abs(t.h-hT)<=0.3*hT&&(()=>{const c=boite(t);return Math.max(c[0]-b[2],b[0]-c[2],c[1]-b[3],b[1]-c[3])<=2.5*hT})());
+    if(pres.length>=3)return;
     const cf=Math.min(...L.map(t=>t.ocr?t.ocr.conf:100));
     out.push({texte,b,h:Math.max(...L.map(t=>t.h)),ids:L.map(t=>t.id),type:typeVue(m.K,m.W),partie:partieDe(m.W),approx:m.approx,conf:cf,
       sous:m.K.size===1&&m.K.has('partie')})});
@@ -1900,10 +1972,10 @@ function detecter(geo,textes,o){o=o||{};const n=geo.page,W=geo.w,H=geo.h,C=Math.
     for(let p=0;p<P.length;p++){const k=P[p],i=k%nx,j=(k-i)/nx;for(let di=-2;di<=2;di++)for(let dj=-2;dj<=2;dj++){const a=i+di,b=j+dj;if(a<0||b<0||a>=nx||b>=ny)continue;const q=b*nx+a;if(occ[q]&&comp[q]<0){comp[q]=id;P.push(q)}}}
     const D=P.filter(k=>occ[k]===1);K.push({P,D,b:emprise(D)})}
   const GMAX=Math.max(DV_GAP*C,0.12*Math.min(W,H)),ecart=(t,b)=>{const dx=Math.max(0,b[0]-t.b[2],t.b[0]-b[2]),dy=Math.max(0,b[1]-t.b[3],t.b[1]-b[3]);return Math.hypot(dx,dy)*(b[1]>t.b[3]-1?2:1)};
-  const grand=b=>b[2]-b[0]>DV_W*W||b[3]-b[1]>DV_H*H;
+  const grand=b=>b[2]-b[0]>DV_W*W||b[3]-b[1]>DV_H*H,cadre=b=>b[2]-b[0]>=0.9*W&&b[3]-b[1]>=0.9*H;   // cadre de feuille : jamais rattaché à un titre
   const own=new Int16Array(N).fill(-1),dans=(t,b)=>b[0]>=t.b[0]-1.5*t.h&&b[2]<=t.b[2]+1.5*t.h&&b[1]>=t.b[1]-1.5*t.h&&b[3]<=t.b[3]+1.5*t.h;   // tracés du titre lui-même (lettres dessinées)
-  const prefere=S.map(t=>{let best=-1,bd=GMAX;K.forEach((c,i)=>{if(c.D.length<4||dans(t,c.b))return;const d=ecart(t,c.b);if(d<bd){bd=d;best=i}});return best});
-  const choix=K.map((c,ci)=>{if(!c.D.length||grand(c.b)&&!prefere.includes(ci))return -1;let best=-1,bd=GMAX;S.forEach((t,v)=>{const d=ecart(t,c.b);if(d<=bd){bd=d;best=v}});return best});
+  const prefere=S.map(t=>{let best=-1,bd=GMAX;K.forEach((c,i)=>{if(c.D.length<4||dans(t,c.b)||cadre(c.b))return;const d=ecart(t,c.b);if(d<bd){bd=d;best=i}});return best});
+  const choix=K.map((c,ci)=>{if(!c.D.length||cadre(c.b)||grand(c.b)&&!prefere.includes(ci))return -1;let best=-1,bd=GMAX;S.forEach((t,v)=>{const d=ecart(t,c.b);if(d<=bd){bd=d;best=v}});return best});
   K.forEach((c,ci)=>{const T=[...new Set(S.map((t,v)=>prefere[v]===ci?v:-1).filter(v=>v>=0).concat(choix[ci]>=0?[choix[ci]]:[]))];
     if(T.length<=1){if(T.length)c.P.forEach(k=>own[k]=T[0]);return}
     // partage : propagation dans la composante depuis la case la plus proche de chaque titre
@@ -1917,14 +1989,18 @@ function detecter(geo,textes,o){o=o||{};const n=geo.page,W=geo.w,H=geo.h,C=Math.
   V.forEach(v=>{v.cases=v.D.length;if(!v.D.length){v.b=[Infinity,Infinity,-Infinity,-Infinity];return}
     const I=ilots(v.D).sort((a,b)=>b.length-a.length),seuil=Math.max(DV_ILOT,0.1*I[0].length),gros=I.filter(P=>P.length>=seuil),b0=emprise((gros.length?gros:I.slice(0,1)).flat());
     v.b=emprise(I.filter(P=>P.length>=seuil||P.every(k=>{const i=k%nx,j=(k-i)/nx;return i*C>=b0[0]&&(i+1)*C<=b0[2]&&j*C>=b0[1]&&(j+1)*C<=b0[3]})).flat())});
+  // dessin sans titre à 80 % au moins dans l'emprise d'une vue titrée (partie de cette vue séparée par un blanc) : rattaché à cette vue
+  const sf=b=>Math.max(0,b[2]-b[0])*Math.max(0,b[3]-b[1]),dedans=(u,v)=>sf([Math.max(u[0],v[0]),Math.max(u[1],v[1]),Math.min(u[2],v[2]),Math.min(u[3],v[3])])/Math.max(1e-9,sf(u));
+  V.forEach((u,iu)=>{if(u.t||!u.D.length)return;let iv=-1,m=0.8;V.forEach((v,j)=>{if(v.t&&v.D.length){const f=dedans(u.b,v.b);if(f>=m){m=f;iv=j}}});if(iv<0)return;
+    for(let k=0;k<N;k++)if(own[k]===iu)own[k]=iv;V[iv].D=V[iv].D.concat(u.D);V[iv].cases+=u.cases;u.D=[];u.cases=0;u.b=[Infinity,Infinity,-Infinity,-Infinity]});
   // vues : région = cases dessinées et titre ; échelle « 1/50 » écrite près du titre ; identifiant dans l'ordre de lecture
   // cases hors emprise (trait de liaison, bulle d'axe) : rendues, jamais situées dans la vue
   for(let k=0;k<N;k++){const v=own[k]>=0&&V[own[k]];if(!v)continue;const i=k%nx,j=(k-i)/nx;if(!(i*C>=v.b[0]-C&&(i+1)*C<=v.b[2]+C&&j*C>=v.b[1]-C&&(j+1)*C<=v.b[3]+C))own[k]=-1}
   const ech=textes.map(t=>{const m=sansAcc(t.texte).match(/(?:^|[^0-9.,\/])1\s*[\/:]\s*(\d{1,4})(?![0-9.,])/);return m&&+m[1]>1?{t,v:+m[1]}:null}).filter(Boolean);
   const out=V.map((v,k)=>{const t=v.t,b=t?[Math.min(v.b[0],t.b[0]),Math.min(v.b[1],t.b[1]),Math.max(v.b[2],t.b[2]),Math.max(v.b[3],t.b[3])]:v.b;
-    if(!(b[2]>b[0]))return null;const motifs=[];let conf=t?(t.conf>=80&&!t.approx?'forte':t.conf>=50?'moyenne':'faible'):'faible';
-    if(!t)motifs.push('dessin sans titre reconnu');else{if(t.approx)motifs.push('titre lu avec des erreurs (mot-clé rapproché)');if(t.conf<80)motifs.push(`titre lu par OCR à ${t.conf} %`);
-      if(!v.cases){motifs.push('aucun tracé rattaché au titre');conf='faible'}}
+    // titre sans aucun tracé (cartouche, notes) : pas une vue
+    if(!(b[2]>b[0])||t&&!v.cases)return null;const motifs=[];let conf=t?(t.conf>=80&&!t.approx?'forte':t.conf>=50?'moyenne':'faible'):'faible';
+    if(!t)motifs.push('dessin sans titre reconnu');else{if(t.approx)motifs.push('titre lu avec des erreurs (mot-clé rapproché)');if(t.conf<80)motifs.push(`titre lu par OCR à ${t.conf} %`);}
     const e=t&&ech.find(x=>x.t.x>=t.b[0]-4*t.h&&x.t.x<=t.b[2]+4*t.h&&x.t.y>=t.b[1]-3*t.h&&x.t.y<=t.b[3]+1.5*t.h);
     const nv=t&&sansAcc(t.texte).match(/\bniv(?:eau)?\.?\s*:?\s*([+\-]?\d+[.,]?\d*|R\s*\+?\s*\d+|r\s*d\s*c|sous[- ]sol)/i);
     return{k,page:n,region:b.map(x=>Math.round(x*100)/100),titre:t?t.texte:null,titreIds:t?t.ids:[],type:t?t.type:'autre',partie:t?t.partie:null,
@@ -1932,7 +2008,8 @@ function detecter(geo,textes,o){o=o||{};const n=geo.page,W=geo.w,H=geo.h,C=Math.
   out.sort((a,b)=>b.region[3]-a.region[3]||a.region[0]-b.region[0]).forEach((v,i)=>{v.id='V'+n+'-'+(i+1);v.libelle=TYPES[v.type]});
   // régions incohérentes : jamais utilisées pour confirmer seules une correspondance (situer : cases dessinées seulement)
   const aire=b=>Math.max(0,b[2]-b[0])*Math.max(0,b[3]-b[1]),inter=(a,b)=>aire([Math.max(a[0],b[0]),Math.max(a[1],b[1]),Math.min(a[2],b[2]),Math.min(a[3],b[3])]);
-  out.forEach(v=>{const M=[],r=v.region;if(aire(r)>DV_AIRE*W*H)M.push(`région très étendue (${Math.round(100*aire(r)/(W*H))} % de la page : cartouche, notes, vues reliées ?)`);
+  // une grande vue titrée est légitime (vue en plan d'un A0) : seule une région sans titre très étendue est douteuse par son aire
+  out.forEach(v=>{const M=[],r=v.region;if(!v.titre&&aire(r)>DV_AIRE*W*H)M.push(`région sans titre très étendue (${Math.round(100*aire(r)/(W*H))} % de la page : cadre, cartouche, notes, vues reliées ?)`);
     out.forEach(u=>{if(u===v)return;const tu=V[u.k].t;
       if(tu&&(tu.b[0]+tu.b[2])/2>=r[0]&&(tu.b[0]+tu.b[2])/2<=r[2]&&(tu.b[1]+tu.b[3])/2>=r[1]&&(tu.b[1]+tu.b[3])/2<=r[3])M.push(`recouvre le titre de la vue ${u.id}`);
       else if(tu&&aire(r)>=aire(u.region)&&inter(r,u.region)>DV_RECOUV*aire(u.region))M.push(`empiète sur la vue ${u.id} (${Math.round(100*inter(r,u.region)/aire(u.region))} %)`)});
@@ -1949,18 +2026,24 @@ function situer(carte,x,y){if(!carte)return null;const{C,nx,ny,own,ids,regions}=
   const K=Object.keys(n).sort((a,b)=>n[b]-n[a]);return K.length?K[0]:null}
 
 // Occurrences physiques d'une ligne : la quantité du tableau est la référence, jamais multipliée par les vues. Vues « physiques »
-// (plan, puis ferraillage, puis vue sans titre) : la plus fournie donne les occurrences localisées ; les repères des autres vues
+// (plan, puis ferraillage si aucune vue en plan n'est douteuse ; jamais une vue sans titre) : la plus fournie donne les occurrences localisées ; les repères des autres vues
 // physiques de même partie, à la même position relative (± 10 % de la vue), sont des représentations de ces occurrences ;
 // coupes, élévations, détails : jamais comptés. Observation qu'aucune occurrence ne peut recevoir sans ambiguïté : non rattachée.
 // → {attendue, localisees, representations (observations rattachées), nonRattachees, observations, restantes, physiques, roles, notes}
-const RANG={plan:0,ferraillage_superieur:1,ferraillage_inferieur:1,ferraillage:1,autre:2};
+// vue sans titre : jamais comptée (une vue de détail, de renforts ou un cartouche n'est pas reconnaissable sans titre)
+const RANG={plan:0,ferraillage_superieur:1,ferraillage_inferieur:1,ferraillage:1};
 function consolider(L,r,vues){const Vx=new Map(vues.map(v=>[v.id,v])),Q=/^\s*\d+\s*$/.test(String(L.quantite==null?'':L.quantite))?parseInt(L.quantite,10):null;
   const O=(r&&r.occurrences||[]).map((o,j)=>Object.assign({j},o,{v:Vx.get(o.vue)||null})),notes=[];
   // lecture incertaine du repère : comptée seulement dans une vue en plan (ailleurs : non rattachée) ; vue aux limites
   // incertaines : jamais comptée
-  const par=new Map();O.forEach(o=>{if(o.v&&!o.v.incertaine&&o.v.type in RANG&&(o.fiable||o.v.type==='plan'))(par.get(o.v.id)||par.set(o.v.id,[]).get(o.v.id)).push(o)});
+  // mention qui n'est pas un repère isolé (identifiant d'armature « 1-D1 », multiplicateur « 2x D10 », annotation, ligne de tableau) :
+  // jamais une occurrence ; vue en plan aux limites incertaines dans le document : pas de repli sur une vue de ferraillage
+  const rep=o=>!o.nature||o.nature==='repere',planDouteux=vues.some(v=>v.type==='plan'&&v.incertaine);
+  const par=new Map();O.forEach(o=>{if(rep(o)&&o.v&&!o.v.incertaine&&o.v.type in RANG&&(o.v.type==='plan'||o.fiable&&!planDouteux))(par.get(o.v.id)||par.set(o.v.id,[]).get(o.v.id)).push(o)});
   const cand=[...par.entries()].map(([id,X])=>({v:Vx.get(id),X})).sort((a,b)=>RANG[a.v.type]-RANG[b.v.type]||b.X.length-a.X.length||b.X.filter(o=>o.fiable).length-a.X.filter(o=>o.fiable).length);
-  const meilleur=cand.length?cand.filter(c=>RANG[c.v.type]===RANG[cand[0].v.type]).sort((a,b)=>b.X.length-a.X.length)[0]:null;
+  let meilleur=cand.length?cand.filter(c=>RANG[c.v.type]===RANG[cand[0].v.type]).sort((a,b)=>b.X.length-a.X.length)[0]:null;
+  // même repère plusieurs fois dans la vue retenue sans quantité au tableau : une ou plusieurs réservations, nombre non décidé
+  const amb=meilleur&&Q==null&&meilleur.X.length>1?{v:meilleur.v,J:new Set(meilleur.X.map(o=>o.j))}:null;if(amb)meilleur=null;
   const rel=(o,v)=>[(o.x-v.region[0])/Math.max(1,v.region[2]-v.region[0]),(o.y-v.region[1])/Math.max(1,v.region[3]-v.region[1])];
   const phys=meilleur?meilleur.X.slice().sort((a,b)=>b.y-a.y||a.x-b.x).map((o,k)=>({n:k+1,vue:meilleur.v.id,page:o.page,x:o.x,y:o.y,occurrence:o.j,representations:[o.j],fiable:o.fiable})):[];
   // autres observations : représentation d'une occurrence seulement si elle lui est rattachée sans ambiguïté (même position
@@ -1969,6 +2052,8 @@ function consolider(L,r,vues){const Vx=new Map(vues.map(v=>[v.id,v])),Q=/^\s*\d+
   const lie=(o,p)=>{p.representations.push(o.j);o.role='representation';o.de=p.n},nr=(o,m)=>{o.role='non_rattachee';o.motif=m};
   O.forEach(o=>{if(phys.some(p=>p.occurrence===o.j)){o.role='physique';return}
     const dv=o.v?`vue ${o.v.id} (${TYPES[o.v.type]}${o.v.partie?' '+o.v.partie:''})`:'';
+    if(!rep(o))return nr(o,o.motifNature||'mention qui n\'est pas un repère de réservation isolé');
+    if(amb&&amb.J.has(o.j))return nr(o,`repère présent ${amb.J.size} fois dans la vue ${amb.v.id} sans quantité au tableau : une ou plusieurs réservations, nombre non décidé`);
     if(!o.v)return nr(o,`localisation p. ${o.page} hors de toute vue reconnue`);
     if(o.v.incertaine)return nr(o,`${dv} aux limites incertaines`);
     if(!meilleur)return nr(o,`${dv} : aucune occurrence physique localisée à laquelle la rattacher`);
@@ -1982,8 +2067,9 @@ function consolider(L,r,vues){const Vx=new Map(vues.map(v=>[v.id,v])),Q=/^\s*\d+
     nr(o,`${dv} : ${phys.length} occurrences possibles, celle représentée n'est pas identifiable`)});
   const loc=phys.length,NR=O.filter(o=>o.role==='non_rattachee');
   if(meilleur&&cand.length>1)notes.push(`occurrences comptées dans la vue ${meilleur.v.id} (${TYPES[meilleur.v.type]}${meilleur.v.partie?' '+meilleur.v.partie:''}) seulement`);
-  if(!meilleur&&O.length)notes.push('repère vu seulement en coupe, élévation, détail, hors vue, dans une vue aux limites incertaines ou en lecture incertaine hors d\'une vue en plan : aucune occurrence physique comptée');
-  if(meilleur&&meilleur.v.type==='autre')notes.push('occurrences comptées dans une vue sans titre reconnu : à vérifier');
+  if(!meilleur&&!amb&&O.length)notes.push('repère vu seulement en coupe, élévation, détail, vue sans titre, hors vue, dans une vue aux limites incertaines ou en lecture incertaine hors d\'une vue en plan : aucune occurrence physique comptée');
+  if(amb)notes.push(`repère présent ${amb.J.size} fois dans la vue ${amb.v.id} et quantité non indiquée au tableau : aucune occurrence comptée (une ou plusieurs réservations ?) — à vérifier`);
+  if(!meilleur&&!amb&&planDouteux&&O.some(o=>rep(o)&&o.v&&/^ferraillage/.test(o.v.type)))notes.push('vue en plan aux limites incertaines : occurrences non comptées dans les vues de ferraillage (pas de repli)');
   if(Q!=null&&loc>Q)notes.push(`${loc} occurrences localisées pour une quantité de ${Q} au tableau : vues superposées ou repère réutilisé ? (la quantité du tableau est gardée)`);
   NR.forEach(o=>notes.push(`observation non rattachée (p. ${o.page}) : ${o.motif} — à vérifier`));
   return{attendue:Q,localisees:loc,representations:O.length-NR.length,nonRattachees:NR.length,observations:O.length,restantes:Q==null?null:Math.max(0,Q-loc),depasse:Q!=null&&loc>Q,
@@ -2195,7 +2281,8 @@ function dxiHead(){const D=DXI,d=D.doc,pdf=D.fmt==='pdf';if(!el('dxiN'))return;
     :`<b>${esc(D.nom)}</b>${d.version?' · DXF '+esc(d.version):''} · unité : ${d.unite?`<b>${d.unite}</b> (donnée par le fichier)`:'<b style="color:var(--redt)">absente du fichier</b>'}`}
 function dxiRender(){const D=DXI,Z=el('dxiZ');if(!Z||!D)return;const d=D.doc,pdf=D.fmt==='pdf';dxiHead();
   const L=[...new Set(D.C.map(c=>c.source.calque))].sort(_cmp),nb=k=>D.C.filter(c=>c.source.calque===k&&c.statut==='a_confirmer').length,
-    NA=D.NA,E=NA.ecartes.map(e=>`${esc(e.id)}${e.titre?' « '+esc(e.titre.replace(/\n/g,' '))+' »':''} (${dxnOu(e)}, ${e.nLignes} ligne(s)) : ${esc(e.raison)}`).concat(NA.signalements.map(esc));
+    NA=D.NA,E=NA.ecartes.map(e=>`${esc(e.id)}${e.titre?' « '+esc(e.titre.replace(/\n/g,' '))+' »':''} (${dxnOu(e)}, ${e.nLignes} ligne(s)) : ${esc(e.raison)}`
+      +(e.lignes?`<ul class="dxi-trp">${e.lignes.map(L=>`<li>${esc(L.cellules.filter(Boolean).join(' · ').replace(/\n/g,' '))}</li>`).join('')}</ul>`:'')).concat(NA.signalements.map(esc));
   Z.innerHTML=(d.unite||pdf?'':`<div class="dxi-u">⚠ Le fichier ne donne pas son unité ($INSUNITS absent ou nul, toujours le cas en R12). Unité des cotes du dessin :
     <select class="fi" id="dxiU" onchange="DXI.u=this.value;dxnAssoc();dxiRows()"><option value="">— choisir —</option>${['mm','cm','m'].map(u=>`<option${D.u===u?' selected':''}>${u}</option>`).join('')}</select></div>`)
   +`<div class="dxi-g"><div class="fd"><label>Chantier</label><input class="fi" id="dxiCh" value="${esc(D.ch)}" onchange="DXI.ch=this.value;DXI.M=null;dxiUpd()"></div>
@@ -2292,7 +2379,8 @@ function dxiCreate(){const D=DXI;if(!D)return;dxiEval();const L=dxiReady(),LN=dx
 const DXN_ST={trouvee:'✓ trouvée, cohérente',probable:'≈ probable, à vérifier',multiple:'⋯ plusieurs possibles',absente:'∅ non retrouvée',choisie:'✓ choisie'};
 const DXN_CC={forte:'✓✓ concordance forte',partielle:'✓ concordance partielle',probable:'≈ correspondance probable',conflit:'⚠ conflit à examiner',absente:'∅ non retrouvée sur le dessin',rejete:'✕ rapprochement rejeté'};
 const DXN_OPT=12;   // shortcut: au plus 12 géométries proposées par ligne (les autres sont comptées) ; liste filtrable si un vrai plan l'exige
-const dxnU=(N,L)=>L.dims&&L.dims.unite||DXI.NU[N.id]||N.unite||'';
+// unité contradictoire dans la cellule (conflitUnite) : jamais résolue par l'unité lue dans l'en-tête, seulement par un choix de l'utilisateur
+const dxnU=(N,L)=>L.dims&&L.dims.unite||DXI.NU[N.id]||(L.dims&&L.dims.conflitUnite?'':N.unite)||'';
 const dxnDims=r=>CPI.nomenclatures.cotes(r.cotes,'mm',true);
 function dxnDef(dm){return dm.etat==='circ'?'circ':dm.etat==='rect'?(Math.abs(dm.a-dm.b)<0.5?'carre':'rect'):''}
 function dxnFormes(dm){return dm.etat==='circ'?['circ']:dm.etat==='rect'?(dxnDef(dm)==='carre'?['carre','carre_fond']:['rect','rect_fond']):['','rect','carre','rect_fond','carre_fond','circ']}
@@ -2588,6 +2676,7 @@ function dxoGrilleLue(job,r,pdfTexte){const D=DXI,z=job.z,msg=el('dxpZr'),s=Math
   const G=Object.assign({fichier:D.doc.fichier,format:'pdf',id:'G'},r.G),cles=O0&&O0.src&&O0.src.nc===Math.max(0,...r.G.lignes.map(l=>l.length))?O0.src.cles:null;
   const {N,entete}=CPI.nomenclatures.depuisGrille(G,cles);
   if(N.nature==='aciers')return dxoRien(s,r,[`${N.titre?'« '+N.titre.replace(/\n/g,' ')+' » ':''}tableau reconnu comme nomenclature d'aciers (ferraillage)`]);
+  if(N.nature==='trappes')return dxoRien(s,r,[`${N.titre?'« '+N.titre.replace(/\n/g,' ')+' » ':''}${CPI.nomenclatures.RAISON_TRAPPES}`]);
   if(!N.lignes.length){msg.innerHTML=`Lecture terminée (${s} s) : grille de ${r.mesures.rangees} rangée(s) × ${r.mesures.colonnes} colonne(s) trouvée(s), mais aucune cellule lisible sous l'en-tête. Rien n'est ajouté : saisie assistée possible ci-dessous.`;return}
   const rows=dxoLignesGrille(N,r.textes),{R2,sup,gard}=dxoGarder(rows,O0,'cle0');
   D.OC={page:z.page,zone:z,mesures:r.mesures,titre:N.titre,unite:N.unite||'',uniteLue:N.unite||'',rows:R2,suppr:sup,ecartes:[],nT:r.textes.length,sel:-1,pdfTexte:!!pdfTexte,
@@ -2624,7 +2713,7 @@ function dxoGrille(){const D=DXI,G=el('dxoG');if(!G||!D)return;const O=D.OC;if(!
     </tbody></table></div>
     <div class="dxp-b" style="margin-top:6px"><button class="btn bs bo" onclick="dxoAjout(-1)">＋ Ajouter une ligne</button>${O.suppr.length?`<button class="btn bs bo" onclick="dxoRetablir()">Rétablir les ${O.suppr.length} ligne(s) retirée(s)</button>`:''}
       <button class="btn bs bpr" id="dxoV" onclick="dxoValider()">Ajouter à la nomenclature (${O.rows.length} ligne(s))</button><button class="btn bs bo" onclick="dxoFermer()">Fermer la grille</button></div><div id="dxoR" class="mu" style="margin-top:4px"></div></fieldset>`}
-const DXO_CH=[['repere','Repère'],['quantite','Quantité (Nb)'],['largeur','Largeur'],['hauteur','Hauteur (de l\'ouverture)'],['diametre','Diamètre Ø'],['ouverture','Ouverture l × h'],
+const DXO_CH=[['repere','Repère'],['quantite','Quantité (Nb)'],['largeur','Largeur'],['hauteur','Hauteur (de l\'ouverture)'],['longueur','Longueur'],['diametre','Diamètre Ø'],['ouverture','Ouverture l × h'],
   ['description','Désignation / fonction'],['type','Type ou nature'],['reseau','Réseau (DN)'],['niveau','Niveau ou altitude'],['angle','Angle'],['observations','Observations'],['lot','Lot / entreprise'],['autre','Autre (gardée telle quelle)']];
 function dxoEtat(w){const n=Object.keys(w.doute).filter(k=>w.doute[k]&&!w.edite.includes(k)).length,c=w.edite.length;
   return [!w.src?'＋ ajoutée':'',!String(w.cells.repere||'').trim()?'<span style="color:var(--redt)">repère absent</span>':'',n?`<span style="color:var(--acct)">⚠ ${n} incertaine(s)</span>`:'',c?`✎ ${c} corrigée(s)`:'',(w.notes||[]).length?esc(w.notes.join(' · ')):'',
@@ -2650,18 +2739,31 @@ function dxoFermer(){const D=DXI;D.OC=null;D.ohl=null;dxoGrille();dxpOver()}
 // Ajout à la nomenclature : lignes vérifiées → nomenclature OCR (même contrat, mêmes contrôles, aucune ligne cochée) ; une ligne dont
 // le repère est déjà lu par le texte du PDF (ou saisi) sur la page n'est pas ajoutée ; un nouvel ajout depuis la même zone remplace
 // le précédent en gardant les choix déjà faits dans l'onglet Nomenclature (forme, cotes, hauteur, référence, case cochée)
-function dxoValider(){const D=DXI,O=D&&D.OC;if(!O)return;const R=el('dxoR'),cle=CPI.nomenclatures.cleRep;
-  const deja=new Set(D.NL.filter(x=>!x.N.ocr&&!x.N.grilleTexte&&x.N.page===O.page&&x.L.repere).map(x=>cle(x.L.repere)));
+// Tableau déjà lu automatiquement (texte du PDF) que la zone recouvre : remplacement proposé explicitement (jamais un ajout en double) ;
+// lignes en correspondance (même repère, sinon même rang si les deux tableaux ont autant de lignes) : choix déjà faits gardés ; lignes
+// de l'ancien tableau sans correspondance : retirées seulement après confirmation (leur nombre est annoncé)
+function dxoValider(remplacer){const D=DXI,O=D&&D.OC;if(!O)return;const R=el('dxoR'),cle=CPI.nomenclatures.cleRep;
+  const zN=N=>N.zone||(N.cadre?{page:N.page,x0:N.cadre[0],y0:N.cadre[1],x1:N.cadre[2],y1:N.cadre[3]}:null);
+  const auto=new Set(D.NA.nomenclatures.filter(N=>!N.ocr&&!N.grilleTexte&&!N.saisie&&N.page===O.page&&dxoChevauche(zN(N),O.zone)));
+  const deja=new Set(D.NL.filter(x=>!x.N.ocr&&!x.N.grilleTexte&&!auto.has(x.N)&&x.N.page===O.page&&x.L.repere).map(x=>cle(x.L.repere)));
   const rows=O.rows.filter(w=>!(dxoCle(w)&&deja.has(dxoCle(w)))),dbl=O.rows.length-rows.length;
   if(!rows.length){R.textContent=dbl?`Toutes les lignes (${dbl}) sont déjà dans la nomenclature (lecture du texte ou saisie) : rien n'est ajouté.`:'Aucune ligne à ajouter.';return}
-  const vieux=new Set(D.NA.nomenclatures.filter(N=>(N.ocr||N.grilleTexte)&&dxoChevauche(N.zone,O.zone))),old=new Map();
-  D.NL.forEach((x,k)=>{if(vieux.has(x.N)&&x.L.repere)old.set(cle(x.L.repere),D.NR[k])});
+  const AL=D.NL.map((x,k)=>({x,k})).filter(({x})=>auto.has(x.N)),byK=new Map(AL.map(a=>[cle(a.x.L.repere||''),a]).filter(([k])=>k)),M=new Map();
+  rows.forEach((w,i)=>{const a=byK.get(dxoCle(w));if(a)M.set(i,a)});
+  if(!M.size&&rows.length===AL.length)rows.forEach((w,i)=>M.set(i,AL[i]));   // repères illisibles d'un côté : même rang
+  if(auto.size&&!remplacer){const ids=[...auto].map(N=>N.id).join(', '),sans=AL.length-new Set([...M.values()]).size;
+    R.textContent=`La zone recouvre le tableau ${ids} déjà lu automatiquement : rien n'est ajouté tant que son remplacement n'est pas confirmé.`;
+    return uiConfirm(`La zone recouvre le tableau ${ids} déjà lu automatiquement (${AL.length} ligne(s)). Le remplacer par la lecture vérifiée (${rows.length} ligne(s)) ?\n`
+      +`· ${M.size} ligne(s) en correspondance : leurs choix (cotes, forme, hauteur, référence, coche) sont gardés ;\n· ${sans} ligne(s) de l'ancien tableau sans correspondance seront retirées.\n`
+      +`Annuler : rien n'est ajouté ni retiré (corriger la grille, ou garder le tableau existant).`,()=>dxoValider(true),{ok:'Remplacer le tableau'})}
+  const vieux=new Set(D.NA.nomenclatures.filter(N=>(N.ocr||N.grilleTexte)&&dxoChevauche(N.zone,O.zone)||auto.has(N))),old=new Map();
+  D.NL.forEach((x,k)=>{if(vieux.has(x.N)&&!auto.has(x.N)&&x.L.repere)old.set(cle(x.L.repere),D.NR[k])});
   const N=CPI.ocr.versNomenclature(rows,{id:(O.pdfTexte?'Z':'O')+(++D.nz),fichier:D.doc.fichier,page:O.page,zone:O.zone,titre:O.titre,unite:O.unite,mesures:O.mesures,texte:O.pdfTexte});
   const keep=D.NL.map((x,k)=>vieux.has(x.N)?-1:k).filter(k=>k>=0),NL2=N.lignes.map(L=>({N,L}));
-  D.NL=keep.map(k=>D.NL[k]).concat(NL2);D.NR=keep.map(k=>D.NR[k]).concat(NL2.map(({L})=>{const o=L.repere&&old.get(cle(L.repere));return o?Object.assign(o,{x:null}):dxnNR(L)}));
+  D.NL=keep.map(k=>D.NL[k]).concat(NL2);D.NR=keep.map(k=>D.NR[k]).concat(NL2.map(({L},i)=>{const o=L.repere&&old.get(cle(L.repere))||M.has(i)&&D.NR[M.get(i).k];return o?Object.assign(o,{x:null}):dxnNR(L)}));
   D.NA.nomenclatures=D.NA.nomenclatures.filter(N=>!vieux.has(N)).concat([N]);D.hl=-1;D.nsel=-1;
   dxnAssoc();dxnRefresh();dxpOver();
-  R.innerHTML=`✓ ${rows.length} ligne(s) ajoutée(s) à la nomenclature (tableau ${esc(N.id)})`+(vieux.size?`, en remplacement de l'ajout précédent depuis cette zone`:'')
+  R.innerHTML=`✓ ${rows.length} ligne(s) ajoutée(s) à la nomenclature (tableau ${esc(N.id)})`+(auto.size?`, en remplacement du tableau ${esc([...auto].map(N=>N.id).join(', '))} lu automatiquement (${M.size} ligne(s) en correspondance, choix gardés)`:vieux.size?`, en remplacement de l'ajout précédent depuis cette zone`:'')
     +(dbl?` · ${dbl} ligne(s) déjà lue(s) par le texte du PDF ou saisie(s), non ajoutée(s)`:'')+` : hauteur et sélection dans l'onglet <a href="#" onclick="dxiVue('n');return false">Nomenclature</a>.`}
 
 // ==== PDF : repérage des réservations sur le dessin (geometrie.js, fonctions dxr*) ====
@@ -2744,7 +2846,7 @@ function dxrLoc(k,j){const D=DXI,o=(dxnAS(D.NL[k].L).occurrences||[])[j];if(!o)r
 // confiance, corrections, contour), état de chaque cote du tableau, quantité, rejet par l'utilisateur ; les cotes créées restent celles retenues
 function dxrRapProv(a,r,cs){const q=x=>Math.round(x*100)/100,vu=id=>{const v=id&&dxrVueDe(id);return v?{id:v.id,type:v.type,titre:v.titre,partie:v.partie}:null};
   return{concordance:r.rej?'rejete':a.concordance||'absente',rejete:!!r.rej,note:a.note||'',
-    localisations:(a.occurrences||[]).map((o,j)=>({page:o.page,x:q(o.x),y:q(o.y),texte:o.texte,source:o.source,brut:o.brut,confiance:o.conf,corrections:o.corrections.slice(),
+    localisations:(a.occurrences||[]).map((o,j)=>({page:o.page,x:q(o.x),y:q(o.y),texte:o.texte,nature:o.nature||'repere',source:o.source,brut:o.brut,confiance:o.conf,corrections:o.corrections.slice(),
       zone:o.box?{page:o.box.page,x0:q(o.box.x0),y0:q(o.box.y0),x1:q(o.box.x1),y1:q(o.box.y1),unite:'pt'}:null,vue:vu(o.vue),role:cs?(cs.roles.find(x=>x.occurrence===j)||{}).role||null:null,motif:cs?(cs.roles.find(x=>x.occurrence===j)||{}).motif||null:null,fiable:o.fiable,doutes:o.doutes.slice(),contour:o.contour,cotes_voisines:o.cotes.slice()})),
     cotes:Object.fromEntries(Object.entries(a.dims||{}).map(([n,x])=>[n,{valeur:x.valeur,etat:x.etat,preuves:x.preuves.slice()}])),quantite:a.quantite?JSON.parse(JSON.stringify(a.quantite)):null,
     occurrences:cs?{attendue:cs.attendue,localisees:cs.localisees,representations:cs.representations,non_rattachees:cs.nonRattachees,restantes:cs.restantes,notes:cs.notes.slice()}:null}}
@@ -2752,9 +2854,11 @@ function dxrRapProv(a,r,cs){const q=x=>Math.round(x*100)/100,vu=id=>{const v=id&
 // graphiques (contours, repères localisés), occurrences physiques, associations, preuves des cotes, incertitudes
 function dxrJSON(){const D=DXI,q=x=>Math.round(x*100)/100,bx=b=>b?b.map(q):null,J={format:'coffraplan-analyse-plan',v:1,fichier:D.doc.fichier,
     tables:D.NA.nomenclatures.map(N=>({id:N.id,page:N.page,titre:N.titre||null,cadre:bx(N.cadre||(N.zone?[N.zone.x0,N.zone.y0,N.zone.x1,N.zone.y1]:null)),rotation:N.rotation||0,
-      source:N.saisie?'saisie':N.ocr?'ocr':N.grilleTexte?'grille':'pdf',colonnes:N.colonnes.map(c=>({titre:c.titre,cle:c.cle,unite:c.unite||null})),qualite:N.qualite})),
+      source:N.saisie?'saisie':N.ocr?'ocr':N.grilleTexte?'grille':'pdf',nature:N.nature||'reservations',colonnes:N.colonnes.map(c=>({titre:c.titre,cle:c.cle,unite:c.unite||null,groupe:c.groupe||null})),qualite:N.qualite})),
+    // tableaux non retenus (aciers, trappes / ouvertures équipées, autres) : signalés, jamais utilisés pour créer des réservations
+    excludedTables:D.NA.ecartes.map(e=>({id:e.id,page:e.page||null,titre:e.titre||null,nature:e.nature,raison:e.raison,cadre:bx(e.cadre),lignes:e.lignes?e.lignes.map(L=>L.cellules.slice()):null})),
     tableRows:D.NL.map(({N,L},k)=>({id:L.id,table:N.id,rang:L.rang,repere:L.repere||null,designation:L.description||null,quantite:{texte:L.quantite||null,valeur:L.nb||null},
-      dims:L.dims?{type:L.dims.type,texte:L.dims.texte,unite:dxnU(N,L)||null}:null,cellules:L.cellules.slice(),a_verifier:(L.a_verifier||[]).slice()})),
+      dims:L.dims?{type:L.dims.type,texte:L.dims.texte,unite:dxnU(N,L)||null,origineUnite:L.dims.unite?L.uniteOrigine||null:null,conflitUnite:!!L.dims.conflitUnite}:null,dn:L.dn||null,cellules:L.cellules.slice(),a_verifier:(L.a_verifier||[]).slice()})),
     views:dxrVues().map(v=>({id:v.id,page:v.page,region:v.region,titre:v.titre,type:v.type,partie:v.partie,echelle:v.echelle,niveau:v.niveau,confiance:v.confiance,incertaine:!!v.incertaine,motifs:v.motifs})),
     graphicalObservations:[],physicalOccurrences:[],associations:[],evidence:[],uncertainties:[]};
   D.C.forEach((c,i)=>{const cl=c.statut==='a_confirmer'&&!D.lk.has(i)?dxrCl(i):null;
@@ -2762,7 +2866,7 @@ function dxrJSON(){const D=DXI,q=x=>Math.round(x*100)/100,bx=b=>b?b.map(q):null,
       classement:cl,repere:c.annot&&c.annot.repere?c.annot.repere.texte:null,cotes:c.annot&&c.annot.cotes?c.annot.cotes.texte:null,remarques:c.remarques.slice()})});
   D.NL.forEach(({L},k)=>{const a=dxnAS(L),cs=D.CS[L.id],r=D.NR[k];
     (a.occurrences||[]).forEach((o,j)=>{const id=`${L.id}/O${j+1}`,ro=cs&&cs.roles.find(x=>x.occurrence===j)||{},role=ro.role||null;
-      J.graphicalObservations.push({id,type:'repere',page:o.page,vue:o.vue||null,x:q(o.x),y:q(o.y),texte:o.texte,source:o.source,brut:o.brut,confiance:o.conf,fiable:o.fiable});
+      J.graphicalObservations.push({id,type:'repere',nature:o.nature||'repere',page:o.page,vue:o.vue||null,x:q(o.x),y:q(o.y),texte:o.texte,source:o.source,brut:o.brut,confiance:o.conf,fiable:o.fiable});
       J.associations.push({ligne:L.id,observation:id,type:'repere',role,occurrence:ro.occurrencePhysique?`${L.id}#${ro.occurrencePhysique}`:null,contour:o.contour});
       if(role==='non_rattachee')J.uncertainties.push({ligne:L.id,observation:id,type:'observation_non_rattachee',message:ro.motif});if(o.contour)J.associations.push({ligne:L.id,observation:o.contour,type:'contour',via:id});
       o.doutes.forEach(m=>J.uncertainties.push({ligne:L.id,observation:id,message:m}))});
