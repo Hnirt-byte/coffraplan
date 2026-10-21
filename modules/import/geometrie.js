@@ -47,16 +47,18 @@ function detecterPage(geo,ctx){const n=geo.page,W=Math.min(geo.w,geo.h),z=ctx.zo
   // classement : ce qui ne peut pas être une réservation est écarté avec sa raison ; le reste est proposé, doutes notés
   C.forEach(c=>{const g=c.geometrie,P=g.type==='cercle'?[[g.centre[0]-g.r,g.centre[1]-g.r],[g.centre[0]+g.r,g.centre[1]+g.r]]:g.points,
       bx=emprise(P),L=c.type==='circ'?c.dims.D:c.dims.L,x=c.cas;
-    c.bbox=bx;const nT=T.filter(t=>dForme([t.x,t.y],g)===0).length,np=m=>{c.statut='non_pris_en_charge';c.remarques.push(m)};
+    c.bbox=bx;const Ti=T.filter(t=>dForme([t.x,t.y],g)===0),nT=Ti.length,np=m=>{c.statut='non_pris_en_charge';c.remarques.push(m)};
+    // repère écrit à l'intérieur (« R5 » dans sa réservation) : ses lettres et le trait du symbole ne font ni une subdivision ni un dessin
+    const rep=nT>=1&&nT<=2&&Ti.some(t=>REP.test(String(t.texte).trim().replace(/^[^A-Za-z0-9]+|[^A-Za-z0-9]+$/g,'')));
     if(z&&!(bx[0]>=z.x0-eps&&bx[1]>=z.y0-eps&&bx[2]<=z.x1+eps&&bx[3]<=z.y1+eps))np('dépasse la zone choisie');
     else if((ctx.cadres||[]).some(b=>dans(b,c.centre,2)))np('dans un tableau (nomenclature, aciers, indices…)');
     else if(L>=0.6*W||c.type==='rect'&&(bx[2]-bx[0]>=0.6*geo.w||bx[3]-bx[1]>=0.6*geo.h))np('cadre de feuille ou de vue');
-    else if(x.te)np('contour subdivisé par d\'autres traits (tableau, cartouche ou légende)');
+    else if(x.te&&!rep)np('contour subdivisé par d\'autres traits (tableau, cartouche ou légende)');
     else if(x.accole>=3)np('cellule d\'un quadrillage (sommets partagés avec d\'autres traits)');
     else if(nT>=3)np(nT+' textes à l\'intérieur (cartouche, légende ou tableau)');
     else if(L>=0.4*W)np('très grand contour (ouvrage, local ou vue) : pas une réservation');
-    else if(x.int>30)np('contient un dessin (cadre de détail, de vue ou de légende, texte dessiné en traits)');
-    else{if(x.accole)c.remarques.push('sommet(s) raccordé(s) à d\'autres traits : contour accolé à un mur ou à une autre forme ?');
+    else if(x.int>30&&!rep)np('contient un dessin (cadre de détail, de vue ou de légende, texte dessiné en traits)');
+    else{if(rep&&(x.te||x.int>4))c.remarques.push('repère écrit à l\'intérieur, traits raccordés (symbole de réservation, lignes de cote ?)');if(x.accole)c.remarques.push('sommet(s) raccordé(s) à d\'autres traits : contour accolé à un mur ou à une autre forme ?');
       if(L>=0.25*W)c.remarques.push('grand contour : pièce, local ou élément architectural ?');
       if(x.int>4)c.remarques.push('traits à l\'intérieur (hachures, symbole ?)');
       if(x.diag)c.remarques.push('diagonales dessinées (réservation traversante probable)')}});
@@ -75,20 +77,31 @@ function detecterPage(geo,ctx){const n=geo.page,W=Math.min(geo.w,geo.h),z=ctx.zo
 // o = {cadres:[[x0,y0,x1,y1]] (tableaux : exclus)} → [{x0,y0,x1,y1,h,n}] ; écarte les groupes trop hauts, trop longs ou trop
 // fins (hachures, quadrillages, traits) : seuls des repères et de courtes annotations horizontales restent, à lire par OCR
 const BT_H=[2.5,30],BT_W=200;   // pt : hauteur de lettre admise, longueur maximale d'une ligne de texte
-function blocsTexte(geo,o){o=o||{};const B=geo.petits||[],N=B.length>>2,par=new Int32Array(N),CS=10,G=new Map();
-  for(let i=0;i<N;i++)par[i]=i;const f=i=>{while(par[i]!==i)i=par[i]=par[par[i]];return i};
-  for(let i=0;i<N;i++){const x0=B[4*i],y0=B[4*i+1],x1=B[4*i+2],y1=B[4*i+3],hi=Math.max(y1-y0,1);if(x1-x0<0.2&&y1-y0<0.2)continue;   // points
-    const m=1.2*hi,c0=Math.floor((x0-m)/CS),c1=Math.floor((x1+m)/CS),r0=Math.floor(y0/CS),r1=Math.floor(y1/CS);
-    for(let c=c0;c<=c1;c++)for(let r=r0;r<=r1;r++){const k=c*1e6+r,L=G.get(k);
-      if(L){for(const j of L){const h=Math.max(hi,B[4*j+3]-B[4*j+1],1),gx=Math.max(B[4*j]-x1,x0-B[4*j+2]),gy=Math.max(B[4*j+1]-y1,y0-B[4*j+3]);
-        if(gx<=1.2*h&&gy<=0.12*h){const a=f(i),b=f(j);if(a!==b)par[a]=b}}L.push(i)}else G.set(k,[i])}}
-  const R=new Map();for(let i=0;i<N;i++){const x0=B[4*i],y0=B[4*i+1],x1=B[4*i+2],y1=B[4*i+3];if(x1-x0<0.2&&y1-y0<0.2)continue;
-    const r=f(i),b=R.get(r);if(b){b.x0=Math.min(b.x0,x0);b.y0=Math.min(b.y0,y0);b.x1=Math.max(b.x1,x1);b.y1=Math.max(b.y1,y1);b.n++}else R.set(r,{x0,y0,x1,y1,n:1})}
-  const cad=o.cadres||[],out=[];
+function blocsTexte(geo,o){o=o||{};const B=geo.petits||[],N=B.length>>2,pt=i=>B[4*i+2]-B[4*i]<0.2&&B[4*i+3]-B[4*i+1]<0.2;   // points
+  const tous=[];for(let i=0;i<N;i++)if(!pt(i))tous.push(i);
+  const R=grouper(B,tous),cad=o.cadres||[],out=[];
+  // étiquette encadrée (« R1 » dans un petit carré) : le cadre relie les lettres aux traits voisins (cotes, flèches) ; les petits
+  // tracés strictement à l'intérieur d'un petit tracé d'au moins 6 pt sont regroupés à part, en plus des groupes ordinaires
+  const G=new Map(),CS=10;tous.forEach(i=>{const k=Math.floor(B[4*i]/CS)*1e6+Math.floor(B[4*i+1]/CS);(G.get(k)||G.set(k,[]).get(k)).push(i)});
+  tous.forEach(i=>{const x0=B[4*i],y0=B[4*i+1],x1=B[4*i+2],y1=B[4*i+3];if(x1-x0<6||y1-y0<6)return;const I=[];
+    for(let c=Math.floor(x0/CS);c<=Math.floor(x1/CS);c++)for(let r=Math.floor(y0/CS);r<=Math.floor(y1/CS);r++)(G.get(c*1e6+r)||[]).forEach(j=>{
+      if(j!==i&&B[4*j]>x0+0.3&&B[4*j+1]>y0+0.3&&B[4*j+2]<x1-0.3&&B[4*j+3]<y1-0.3&&B[4*j+3]-B[4*j+1]<=0.6*(y1-y0))I.push(j)});   // lettres : pas le trait de symbole qui traverse le cadre
+    if(I.length>=2)grouper(B,I).forEach(b=>{if(!R.some(q=>Math.abs(q.x0-b.x0)<0.5&&Math.abs(q.y0-b.y0)<0.5&&Math.abs(q.x1-b.x1)<0.5&&Math.abs(q.y1-b.y1)<0.5))R.push(Object.assign(b,{cadre:true}))})});
   R.forEach(b=>{const h=b.y1-b.y0,w=b.x1-b.x0;b.h=h;
-    if(b.n<2||h<BT_H[0]||h>BT_H[1]||w>BT_W||w>12*h||w<0.5*h)return;
+    if(b.n<2||h<BT_H[0]||h>BT_H[1]||w>(o.wmax||BT_W)||w>(o.rmax||12)*h||w<0.5*h)return;
     if(cad.some(c=>dans(c,[(b.x0+b.x1)/2,(b.y0+b.y1)/2],0)))return;out.push(b)});
   return out}
+// Petits tracés I (indices dans B) réunis en groupes (union-find sur une grille) → [{x0,y0,x1,y1,n}] ; écart admis à la mesure du
+// plus petit des deux tracés quand l'un est 2,5 fois plus haut (trait de cote, ligne de rappel : ils n'attirent pas les lettres voisines)
+function grouper(B,I){const par=new Map(),CS=10,G=new Map();I.forEach(i=>par.set(i,i));const f=i=>{while(par.get(i)!==i){par.set(i,par.get(par.get(i)));i=par.get(i)}return i};
+  for(const i of I){const x0=B[4*i],y0=B[4*i+1],x1=B[4*i+2],y1=B[4*i+3],hi=Math.max(y1-y0,1);
+    const m=1.2*hi,c0=Math.floor((x0-m)/CS),c1=Math.floor((x1+m)/CS),r0=Math.floor(y0/CS),r1=Math.floor(y1/CS);
+    for(let c=c0;c<=c1;c++)for(let r=r0;r<=r1;r++){const k=c*1e6+r,L=G.get(k);
+      if(L){for(const j of L){const hj=Math.max(B[4*j+3]-B[4*j+1],1),h=Math.max(hi,hj)>2.5*Math.min(hi,hj)?Math.min(hi,hj):Math.max(hi,hj),gx=Math.max(B[4*j]-x1,x0-B[4*j+2]),gy=Math.max(B[4*j+1]-y1,y0-B[4*j+3]);
+        if(gx<=1.2*h&&gy<=0.12*h){const a=f(i),b=f(j);if(a!==b)par.set(a,b)}}L.push(i)}else G.set(k,[i])}}
+  const R=new Map();for(const i of I){const x0=B[4*i],y0=B[4*i+1],x1=B[4*i+2],y1=B[4*i+3];
+    const r=f(i),b=R.get(r);if(b){b.x0=Math.min(b.x0,x0);b.y0=Math.min(b.y0,y0);b.x1=Math.max(b.x1,x1);b.y1=Math.max(b.y1,y1);b.n++}else R.set(r,{x0,y0,x1,y1,n:1})}
+  return[...R.values()]}
 
 // Lignes de rappel d'un texte : traits droits (≥ 2 hauteurs de texte) partant à moins d'une hauteur du texte ; l'autre bout est
 // suivi sur un 2e trait s'il s'y raccorde (rappel coudé). → pointes [[x,y]] (là où le rappel désigne quelque chose)

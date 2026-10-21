@@ -55,6 +55,8 @@ def t(s):
                 'nomenclature lue (9 lignes, quantités) ; aucun rapprochement avant « Analyser le dessin »')
         pg.click('#dxiTabP'); pg.wait_for_function('el("dxpPg").textContent.includes("/ 2")')
         pg.click('#dxrGo'); pg.wait_for_function('!DXI.rJob', timeout=180000)
+        # phase 5 : avec une nomenclature, les formes hors nomenclature sont dans une section repliée : l'ouvrir
+        pg.click('#dxrHs')
         m = pg.inner_text('#dxrM')
         s.check('2 page(s)' in m and '1 forte(s), 6 partielle(s), 0 probable(s), 1 conflit(s), 1 non retrouvée(s)' in m, 'bilan du rapprochement : 1 forte, 6 partielles, 1 conflit, 1 non retrouvée', m)
         k = {r: J(f'DXI.NL.findIndex(x=>x.L.repere==="{r}")') for r in ['R12', 'R13', 'R14', 'R15', 'R16', 'R17', 'R18', 'R19', 'R20']}

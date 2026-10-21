@@ -106,6 +106,10 @@ développement : il progresse vite mais n'est pas développeur senior.
   conflit / non retrouvée, occurrences multipages par repère seulement, quantité jamais inventée. Bouton « 🔎 Analyser le
   dessin » (`dxrGo`, toutes les pages ou la zone, `dxrStop`) ; corrections gardées à la relance par identité stable `dxrCle`
   (mémoire `D.RK`) ; provenance `origineImport.rapprochement`. Banc `t_rapprochement.py` (`tests/rapprochement_fictifs.py`).
+  Phase 5 : vues techniques `vues.js` (`CPI.vues.detecter` → vues + carte, `situer`, `consolider` : quantité du tableau =
+  référence, occurrences physiques comptées dans une seule vue, `classer` : formes hors nomenclature à examiner /
+  représentation / parasite) ; état `DXI.VU` (vues par page), `DXI.CS` (occurrences par ligne) ; section repliée `#dxrH` ;
+  export `dxrJSON` (`coffraplan-analyse-plan`). Banc `t_vues.py` (`tests/vues_fictifs.py`).
 - Version affichée : élément `#appVer` (« v3.1 »). t_ux vérifie ce numéro exact ; t_v30 vérifie « v3.x ».
 
 ## Décisions actées (ne pas changer sans l'accord de Kévin)
