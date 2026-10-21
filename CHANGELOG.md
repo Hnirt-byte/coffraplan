@@ -3,6 +3,52 @@
 Détail complet de chaque version (demandes, écarts voulus, tests, non validé) : `docs/historique/HANDOFF_<version>.md`.
 Chaque version est un tag git (`git diff v2.4 v2.5 -- app/` pour voir les changements).
 
+## Phase 6 — moteur de reconnaissance PP-OCRv6 local (non publiée, sans numéro de version)
+**Demande (Kévin, 21/10/2026)** : moderniser le moteur de reconnaissance avec la meilleure technologie gratuite, locale et
+exploitable commercialement ; aucune API payante, aucun abonnement, aucun plan envoyé à un serveur ; HTML autonome ; comparer
+PaddleOCR / PP-OCR, PP-StructureV3, PaddleOCR-VL-1.6, Docling et Tesseract.js sur les plans réels avec des vérités terrain
+indépendantes ; architecture à adaptateurs ; audit et feuille de route des autres domaines ; une seule PR ; aucun tag ni Release ;
+`#appVer` reste v3.1 ; moteur de coffrage, 3D et exports inchangés.
+
+**Fait** (détail : `modules/import/README.md`, § Phase 6 ; provenance et licences : `modules/import/vendor/ppocr/README.md`)
+- `ppocr.js` : PP-OCRv6 small (reconnaissance, Apache-2.0) sur ONNX Runtime Web 1.30.0 (MIT), WebAssembly, embarqué (blocs `ppocr-*`,
+  empreintes vérifiées par `assembler.py`) ; contrat `lire(images) → {texte, conf, chars, orientation}` ; aucune requête réseau.
+- `ocr.js` : choix du moteur (`choisirMoteur`, `moteur`) ; PP-OCRv6 par défaut pour les tableaux à grille et les repères dessinés,
+  Tesseract au choix et pour les zones sans grille ; `bandes` (lignes d'une cellule, traits d'en-tête fusionné effacés, lignes serrées
+  séparées) ; Ø contrôlé sur le premier signe ; `corriger` : × entre nombres, ∅ / Φ devant un nombre, « 一 », pleine chasse ;
+  provenance `ocr.moteur`, `ocr.orientation`.
+- `geometrie.js` : `blocsTexte({verticaux})` : repères écrits à la verticale, lus dans les deux sens (90° / 270°).
+- Fenêtre : sélecteur « Moteur OCR » (`#dxoMot`, clé `resaOcrMot`) ; mode d'emploi mis à jour.
+- `docs/audit-modernisation.md` : candidats (versions, licences, essais), protocole, mesures, audit des autres domaines, feuille de route.
+
+**Mesures** (4 plans réels hors dépôt, Chromium ; vérités : relevé manuel 250 dpi pour A et C, couche texte pour B et D)
+- Qualité brute des tableaux A, B, C (466 cellules, même grille, seul le moteur change) — Tesseract → PP-OCRv6 : repères 61 → 63 / 63,
+  dimensions 90 → 93 / 93, niveaux 70 → 73 / 73, angles 21 → 23 / 23, textes libres 195 → 195 / 214, total 437 → 447 / 466 ;
+  cellules signalées incertaines 59 → 23 ; temps 42 → 98 s.
+- Plan D (46 lignes, OCR de la zone) : repères, cotes et niveaux 43 → 46 / 46 ; cellules incertaines 15 → 0 ; 23 → 50 s.
+- Qualité métier (avant = phase 5.1 / Tesseract → après) : A repères 22 → 23 / 23, cotes 7 / 7, occurrences comptées justes 19 → 22
+  (aucune fausse) ; B identique (30 / 30 repères, cotes et niveaux, 28 occurrences justes) ; C cotes en mm 8 → 10 / 10, repères lus
+  sur le dessin 0 → 3 ; D : repères du dessin issus de la couche texte, concordances partielles 31 → 33.
+- Temps (passages séquentiels) : A 71 → 170 s, B 107 → 120 s, C 61 → 238 s (analyse du dessin 3 à 6 × plus lente : un seul fil
+  WebAssembly en `file://`, et 4 à 10 × plus de blocs lus, verticaux compris).
+- **Meilleur** : repères, cotes, niveaux, angles, en-têtes, signalements ; textes verticaux lus. **Équivalent** : textes libres.
+  **Moins bon** : vitesse ; poids du HTML (6 → 36,5 Mo).
+- Non essayés (hôtes de modèles bloqués dans l'environnement : huggingface.co, modelscope.cn, bcebos.com) : PP-StructureV3,
+  PaddleOCR-VL-1.6, Docling, modèles officiels de PaddleOCR.js, détection PP-OCRv6 dans le navigateur.
+
+**Écarts voulus** (tests existants) : `t_ocr` : le contrôle du bouton « Annuler » choisit Tesseract le temps de l'essai (PP-OCR finit le
+petit tableau avant que la progression soit observable : c'est l'interface qui est contrôlée) ; la provenance attendue nomme
+PP-OCRv6 au lieu de Tesseract. Nouvelle suite `t_ppocr` (18 contrôles).
+
+**Tests** : `python tests/run.py complet -j 4` : 33 / 33 suites vertes (21/10/2026, Chromium), dont t_avap (moteur, feuilles, DXF,
+CSV identiques), t_ocr, t_ppocr.
+
+**Défauts révélés par le plan D, hors OCR, non corrigés ici** : tableau en texte voisin d'un autre tableau coupé à la lecture
+automatique (contournement : zone + « Analyser la zone ») ; titre « Sous Toiture 1 : 25 » non reconnu comme vue (0 occurrence comptée).
+
+**Non validé** : Firefox, Safari, tablette ; ordinateurs lents (mémoire, temps) ; autres plans réels ; repères verticaux en vrai texte
+d'image (scans) ; Ø parfois absent de la lecture PP-OCR (contrôle géométrique seulement).
+
 ## Phase 5.1 — corrections après essais sur trois plans réels (non publiée, sans numéro de version)
 **Demande (Kévin, 21/10/2026)** : corriger les défauts révélés par la campagne de validation de la phase 5 (trois plans réels,
 hors dépôt) avant toute nouvelle fonction ; moteur, 3D et exports inchangés ; `#appVer` reste v3.1 ; aucun ouvrage créé d'office.
