@@ -344,7 +344,7 @@ async function lireGrille(pdf,z,o){o=o||{};const t0=Date.now(),pr=o.progres||(()
 const COLONNES=[['repere','Repère'],['description','Désignation'],['type','Type ou nature'],['ouverture',"Dimensions d'ouverture"],['reseau','Réseau (DN)'],
   ['niveau','Niveau ou altitude'],['angle','Angle'],['observations','Observations'],['lot','Lot / entreprise'],['quantite','Quantité'],['autre','Autres colonnes']];
 const BASE=['repere','description','type','ouverture','niveau','observations'];
-const VERS={repere:'repere',description:'description',type:'type',ouverture:'ouverture',diametre:'ouverture',largeur:'ouverture',hauteur:'ouverture',reseau:'reseau',
+const VERS={repere:'repere',description:'description',type:'type',ouverture:'ouverture',diametre:'ouverture',largeur:'ouverture',hauteur:'ouverture',longueur:'ouverture',reseau:'reseau',
   niveau:'niveau',angle:'angle',observations:'observations',lot:'lot',quantite:'quantite'};
 const unionBox=B=>B.length?{page:B[0].page,x0:Math.min(...B.map(b=>b.x0)),y0:Math.min(...B.map(b=>b.y0)),x1:Math.max(...B.map(b=>b.x1)),y1:Math.max(...B.map(b=>b.y1))}:null;
 // Ø peut-être mal lu devant un nombre seul (« 2250 », « 0250 », « D120 ») dans la colonne des dimensions, mot incertain : signalé seulement
@@ -353,7 +353,10 @@ function grille(N,textes){const tid=new Map(textes.map(t=>[t.id,t]));
   const reps=N.lignes.map(L=>L.repere.trim()),pref={};
   reps.forEach(r=>{const m=r.toUpperCase().match(/^([A-Z]+)\d/);if(m)pref[m[1]]=(pref[m[1]]||0)+1});
   const out=N.lignes.map(L=>{const R={cells:{},brut:{},conf:{},corr:{},doute:{},box:{},edite:[],src:L.id},P={};
-    N.colonnes.forEach((c,j)=>{const k=VERS[c.cle]||'autre',T=((L.idsCellules||[])[j]||[]).map(i=>tid.get(i)).filter(Boolean);(P[k]=P[k]||[]).push({c,v:L.cellules[j]||'',T})});
+    // Diamètre, Largeur, Hauteur, Longueur ne vont dans « Dimensions d'ouverture » que si le tableau n'a pas de colonne Ouverture :
+    // sinon elles restent à part (« Autres colonnes »), jamais fusionnées avec l'ouverture (unité, hauteur d'axe…)
+    const avecO=N.colonnes.some(c=>c.cle==='ouverture');
+    N.colonnes.forEach((c,j)=>{const k0=VERS[c.cle]||'autre',k=avecO&&k0==='ouverture'&&c.cle!=='ouverture'?'autre':k0,T=((L.idsCellules||[])[j]||[]).map(i=>tid.get(i)).filter(Boolean);(P[k]=P[k]||[]).push({c,v:L.cellules[j]||'',T})});
     Object.entries(P).forEach(([k,A])=>{const T=A.flatMap(a=>a.T),O=T.map(t=>t.ocr||{});
       let v=k==='autre'?A.filter(a=>a.v).map(a=>`${(a.c.titre||'colonne').replace(/\n/g,' ')} : ${a.v}`).join(' · '):A.map(a=>a.v).filter(Boolean).join(' — ');
       const corr=O.flatMap(o=>o.corrections||[]),conf=O.length?Math.min(...O.map(o=>o.conf)):null;

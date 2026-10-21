@@ -17,7 +17,8 @@ const ROT=[[1,0],[0,1],[-1,0],[0,-1]],tourne=(p,q)=>{const [c,s]=ROT[(q%4+4)%4];
 
 // Nature d'une colonne d'après son titre : premier motif reconnu (« Réservation » seul = colonne des repères, en dernier)
 const COLS=[
-  ['niveau',mot("niv(eau|\\.)?|alti(metrie|tude)?|ngf|fil d'?eau|arase|cote (d'?axe|ngf|fil)|hauteur ?(\\/|par rapport|d'?axe|sous)|h ?\\/ ?[a-z]+")],
+  // « Hauteur axe », « Axe réservations » : position de l'axe (altitude ou hauteur au-dessus d'un fond), jamais une cote d'ouverture
+  ['niveau',mot("niv(eau|\\.)?|alti(metrie|tude)?|ngf|fil d'?eau|arase|cote (d'?axe|ngf|fil)|hauteur ?(\\/|par rapport|(d'? ?)?axe|sous)|axes? (des? )?(reservations?|tuyaux?|fourreaux?)|h ?\\/ ?[a-z]+")],
   ['angle',mot('angles?|orientation|azimut|gisement')],
   ['ouverture',mot("ouvertures?|tremies?|dim(ension)?s?\\.?|sections?|percements?|carottages?|passages?|encombrement|cotes|taille|l ?[x×*] ?[hl]|b ?[x×*] ?h")],
   ['reseau',mot("dn|reseaux?|canalisations?|tuyaux?|conduits?|gaines?|fluides?")],
@@ -26,21 +27,28 @@ const COLS=[
   ['hauteur',mot('haut(eur|\\.)?')],
   ['quantite',mot('qte|quantites?|nombre|nb(re?)?|qt')],
   ['acier',mot('poids|masses?|faconnages?|nuances?|longueurs? developpees?|aciers?|armatures?|crochets?')],
+  ['longueur',mot('long(ueur|\\.)?')],   // après « acier » : « longueur développée » reste une colonne d'aciers
   ['type',mot('types?|elements?|elts?|supports?|parois?|ouvrages?|localisation|emplacement|zone')],
   ['description',mot('designation|description|libelle|objet|nature|fonctions?|usage|destination|intitule')],
   ['observations',mot('observations?|remarques?|commentaires?|notes?|obs\\.?')],
   ['lot',mot("lots?|entreprises?|corps d'?etat|fournisseurs?|intervenants?|emetteur|responsable|societe|poseur")],
-  ['repere',mot("rep(ere|\\.)?|ref(erence|\\.)?|n°|no\\.?|num(ero|\\.)?|marque|identifiant|id|code|reservations?|resas?")]];
+  // « Réservation(s) » n'est un titre de repères que seul (ou avec n°) : « Axe réservations », « Niveau réservation » n'en sont pas
+  ['repere',new RegExp(mot("rep(ere|\\.)?|ref(erence|\\.)?|n°|no\\.?|num(ero|\\.)?|marque|identifiant|id|code").source+'|^(?:(?:n°|no) ?)?(?:reservations?|resas?)$')]];
 const kinds=n=>COLS.filter(c=>c[1].test(n)).map(c=>c[0]);
 const LIB={repere:'repère',description:'désignation',type:'type / élément',ouverture:'ouverture',reseau:'réseau',diametre:'diamètre',
-  niveau:'niveau (position)',angle:'angle (position)',largeur:'largeur',hauteur:'hauteur',quantite:'quantité',observations:'observations',lot:'lot / entreprise',acier:'acier (ferraillage)',autre:'non reconnue'};
+  niveau:'niveau (position)',angle:'angle (position)',largeur:'largeur',hauteur:'hauteur',longueur:'longueur',quantite:'quantité',observations:'observations',lot:'lot / entreprise',acier:'acier (ferraillage)',autre:'non reconnue'};
 // Nature du tableau : en-tête + titre seulement (un tableau d'aciers a aussi des repères et des diamètres)
 const RESA=mot('reservations?|resas?|tremies?|fourreaux?|ouvertures?|percements?|carottages?|traversees?|incorporations?|passages?|rebouchages?');
 const ACIER=mot('aciers?|fers|ha\\d*|ferraillages?|armatures?|nuances?|faconnages?|barres?|poids|masses?|kg|longueurs? developpees?|crochets?|epingles?|etriers?|cadres?|enrobages?|espacements?|fe ?e?500|b ?500|treillis');
 const AUTRE=mot("indices?|ind\\.?|revisions?|modifications?|dessine|verifie|approuve|folios?|liste des plans|documents?|bordereau|planning");
+// Trappes, regards, tampons (ouvertures équipées d'un cadre ou d'une feuillure) : tableau distinct, jamais des réservations
+const TRAPPE=mot("trappes?|regards?|tampons?|feuillures?|ouvertures? equipees?|chassis|caillebotis");
+const ECART=60;   // en hauteurs de texte : écart horizontal au-delà duquel deux titres (ou deux valeurs d'une ligne) ne sont plus du même tableau (colonne de commentaires large : ≈ 32 h mesurés)
+const RAISON_TRAPPES='nomenclature de trappes / ouvertures équipées (cadres, feuillures) : lignes consultables, jamais créées comme réservations';
 const POIDS={ouverture:2,niveau:1,angle:1,reseau:1,diametre:1};
-function nature(titre,cols){let R=0,A=0,O=0;
-  [titre].concat(cols.map(c=>c.titre)).forEach(t=>{const n=norm(t);if(RESA.test(n))R+=3;if(ACIER.test(n))A+=3;if(AUTRE.test(n))O+=3});
+function nature(titre,cols){let R=0,A=0,O=0,T=0;
+  [titre].concat(cols.map(c=>c.titre)).forEach(t=>{const n=norm(t);if(RESA.test(n))R+=3;if(ACIER.test(n))A+=3;if(AUTRE.test(n))O+=3;if(TRAPPE.test(n))T+=3});
+  if(T&&!RESA.test(norm(titre)))return'trappes';   // titre de trappes, ou colonne « feuillure » sans titre de réservations
   cols.forEach(c=>{R+=POIDS[c.cle]||0});
   return R>=3&&R>A&&R>O?'reservations':A>=3&&A>=R?'aciers':'autre'}
 // unité d'une colonne : « (mm) », « en mm », ou « mm » seul en fin de titre (« Largeur mm », titre sur deux lignes)
@@ -56,38 +64,49 @@ function cotes(s,u0,saisie){
   const t0=String(s==null?'':s).trim(),t=norm(t0).replace(/,/g,'.');
   if(!t)return{etat:'vide'};
   if(VIDE.test(t))return{etat:'manquant',texte:t0};
-  const mu=t.match(/\d\s*(mm|cm|m)(?![a-z0-9])/),u=mu?mu[1]:u0||null,N='(\\d+(?:\\.\\d+)?)',U='\\s*(?:mm|cm|m)?\\s*';
-  let m=t.match(new RegExp(N+U+'[x×*]\\s*'+N+'(?:'+U+'[x×*]\\s*'+N+')?'));
-  if(m)return Object.assign({etat:'rect',a:+m[1],b:+m[2],unite:u},m[3]?{c:+m[3]}:{});
-  if((m=t.match(new RegExp('(?:ø|diam\\.?|diametre|phi'+(saisie?'|d|o':'')+')\\s*'+N))))return{etat:'circ',D:+m[1],unite:u};
+  // unité : seulement celle écrite contre la cote elle-même (« 500x500 mm », « Ø250mm ») ; une autre valeur de la cellule
+  // (« 500x500 — 4,86m » : hauteur d'axe fusionnée) ne donne jamais l'unité de l'ouverture (unité de la cellule seule : cotes(v, null))
+  const N='(\\d+(?:\\.\\d+)?)',U='\\s*(?:mm|cm|m)?\\s*',UF='(?:\\s*(mm|cm|m)(?![a-z0-9]))?',un=s=>({unite:(s.match(/\d\s*(mm|cm|m)(?![a-z0-9])/)||[])[1]||u0||null});
+  let m=t.match(new RegExp(N+U+'[x×*]\\s*'+N+'(?:'+U+'[x×*]\\s*'+N+')?'+UF));
+  if(m)return Object.assign({etat:'rect',a:+m[1],b:+m[2]},un(m[0]),m[3]?{c:+m[3]}:{});
+  if((m=t.match(new RegExp('(?:ø|diam\\.?|diametre|phi'+(saisie?'|d|o':'')+')\\s*'+N+UF))))return Object.assign({etat:'circ',D:+m[1]},un(m[0]));
   if((m=t.match(new RegExp('(?<![a-z])dn\\s*'+N))))return{etat:'dn',D:+m[1]};
-  if((m=t.match(new RegExp('^'+N+'\\s*(mm|cm|m)?$'))))return{etat:'seul',v:+m[1],unite:u};
+  if((m=t.match(new RegExp('^'+N+'\\s*(mm|cm|m)?$'))))return Object.assign({etat:'seul',v:+m[1]},un(m[0]));
   return{etat:'illisible',texte:t0};
 }
 
 // Cotes d'une ligne, dans cet ordre : 1. ouverture explicite exploitable ; 2. diamètre exploitable (cercle) ; 3. Largeur et
 // Hauteur (rectangle). Vide, « - », SO… = valeur absente, jamais une cote contradictoire : on passe à la colonne suivante.
 // Diamètre et Largeur × Hauteur tous deux renseignés : ambiguïté signalée, rien n'est choisi. DN du réseau ≠ diamètre.
-// « Hauteur » d'un tableau = 2e cote de l'ouverture, jamais la hauteur de coffrage (h reste à saisir).
-function dimsLigne(cols,cells,av){
+// « Hauteur » d'un tableau = 2e cote de l'ouverture, jamais la hauteur de coffrage (h reste à saisir) ; « Longueur » sans
+// « Hauteur » = 2e cote (trappes, regards). Unité écrite dans la cellule différente de celle du titre de colonne : cote gardée,
+// unité laissée à confirmer (conflitUnite), jamais convertie. DN dans la colonne Ouverture : réservation circulaire probable,
+// noté dans info.dn, aucune cote tirée du DN (décision de Kévin, 21/10/2026).
+function dimsLigne(cols,cells,av,info){
   const get=k=>cols.map((c,j)=>c.cle===k&&cells[j]?{c,v:cells[j]}:null).filter(Boolean),q=v=>`« ${v.replace(/\n/g,' ')} »`;
-  const dd=(r,c,v)=>r.etat==='rect'?{type:'rect',a:r.a,b:r.b,unite:r.unite,texte:v,colonne:c.titre}:{type:'circ',D:r.D,unite:r.unite,texte:v,colonne:c.titre};
+  // unité écrite dans la cellule contre la cote (ue) ou titre de colonne ; les deux différentes : à confirmer. info.uniteOrigine : provenance
+  const uc=(r,c,v)=>{const ue=cotes(v,null).unite;if(ue&&c.unite&&ue!==c.unite){av.push(`unité « ${ue} » écrite dans la cellule, « ${c.unite} » dans le titre de la colonne « ${c.titre.replace(/\n/g,' ')} » : unité à confirmer (aucune conversion)`);return{unite:null,conflitUnite:true}}
+    if(info)info.uniteOrigine=ue?'cellule':c.unite?'titre de colonne':null;return{unite:r.unite}};
+  const dd=(r,c,v)=>Object.assign(r.etat==='rect'?{type:'rect',a:r.a,b:r.b}:{type:'circ',D:r.D},uc(r,c,v),{texte:v,colonne:c.titre});
   const absent=r=>r.etat==='vide'||r.etat==='manquant',dn='DN du réseau, diamètre de la réservation à saisir';
   const O=get('ouverture');
   if(O.length){const {c,v}=O[0],r=cotes(v,c.unite);
     if(r.etat==='rect'){if(r.c!=null)av.push(`ouverture ${q(v)} : 3e cote ignorée`);return dd(r,c,v)}
     if(r.etat==='circ')return dd(r,c,v);
-    if(!absent(r))av.push(`ouverture ${q(v)} : `+(r.etat==='dn'?dn:r.etat==='seul'?'une seule cote, forme et cotes à préciser':'cotes non lues'))}
+    if(r.etat==='dn'&&info)info.dn={D:r.D,texte:v.replace(/\n/g,' ')};
+    if(!absent(r))av.push(`ouverture ${q(v)} : `+(r.etat==='dn'?'DN : réservation circulaire probable, diamètre réel de réservation à confirmer (aucune cote tirée du DN)':r.etat==='seul'?'une seule cote, forme et cotes à préciser':'cotes non lues'))}
   let circ=null;
   const Dm=get('diametre');
   if(Dm.length){const {c,v}=Dm[0],r=cotes(v,c.unite);
-    if(r.etat==='rect'||r.etat==='circ'||r.etat==='seul'){circ=dd(r.etat==='seul'?{etat:'circ',D:r.v,unite:r.unite}:r,c,v);
+    if(r.etat==='rect'||r.etat==='circ'||r.etat==='seul'){circ=dd(r.etat==='seul'?Object.assign({},r,{etat:'circ',D:r.v}):r,c,v);
       av.push(`cote prise dans la colonne « ${c.titre.replace(/\n/g,' ')} » : à confirmer comme cote de la réservation`)}
     else if(!absent(r))av.push(`colonne « ${c.titre.replace(/\n/g,' ')} » ${q(v)} : `+(r.etat==='dn'?dn:'cotes non lues'))}
   let rect=null;
-  const La=get('largeur'),Ha=get('hauteur');
+  const La=get('largeur'),Ha=get('hauteur').length?get('hauteur'):get('longueur');
   if(La.length||Ha.length){const a=La.length?cotes(La[0].v,La[0].c.unite):{etat:'vide'},b=Ha.length?cotes(Ha[0].v,Ha[0].c.unite):{etat:'vide'};
-    if(a.etat==='seul'&&b.etat==='seul')rect={type:'rect',a:a.v,b:b.v,unite:a.unite===b.unite?a.unite:a.unite&&b.unite?null:a.unite||b.unite,texte:La[0].v+' × '+Ha[0].v,colonne:La[0].c.titre+' / '+Ha[0].c.titre};
+    if(a.etat==='seul'&&b.etat==='seul'){const ua=uc(a,La[0].c,La[0].v),ub=uc(b,Ha[0].c,Ha[0].v),cf=ua.conflitUnite||ub.conflitUnite||ua.unite&&ub.unite&&ua.unite!==ub.unite;
+      if(cf&&!ua.conflitUnite&&!ub.conflitUnite)av.push(`unités différentes « ${ua.unite} » / « ${ub.unite} » pour Largeur et Hauteur : unité à confirmer (aucune conversion)`);
+      rect=Object.assign({type:'rect',a:a.v,b:b.v},cf?{unite:null,conflitUnite:true}:{unite:ua.unite||ub.unite},{texte:La[0].v+' × '+Ha[0].v,colonne:La[0].c.titre+' / '+Ha[0].c.titre})}
     else if(!absent(a)||!absent(b))av.push(a.etat==='seul'||b.etat==='seul'?'une seule des cotes Largeur / Hauteur lue : cotes à compléter':'cotes Largeur / Hauteur non lues')}
   if(circ&&rect){av.push(`diamètre ${q(circ.texte)} et Largeur × Hauteur ${q(rect.texte)} tous deux renseignés : forme et cotes à confirmer`);return null}
   if(circ)return circ;
@@ -117,7 +136,7 @@ function etendue(H,y,x0,x1,hm){const S=H.filter(h=>Math.abs(h.y-y)<=0.2*hm).sort
 
 // Un tableau à partir d'une ligne d'en-tête hg (textes) ; renvoie null si aucune colonne lisible
 function construire(g,hg,used,K){
-  const hm=med(hg.map(t=>t.h)),yH=hg.reduce((s,t)=>s+t.y,0)/hg.length,xL=Math.min(...hg.map(t=>t.x0)),xR=Math.max(...hg.map(t=>t.x1));
+  const hm=med(hg.map(t=>t.h)),yH=hg.reduce((s,t)=>s+t.y,0)/hg.length;let xL=Math.min(...hg.map(t=>t.x0)),xR=Math.max(...hg.map(t=>t.x1));
   const libre=t=>!used.has(t.i);
   // bande d'en-tête : entre deux traits horizontaux de la grille, sinon textes à mot-clé ou sous-titres « (mm) » juste au-dessus / au-dessous
   const Hy=fusion(g.A.H.filter(h=>couvre([h],xL,xR)>=0.5*(xR-xL)).map(h=>h.y),0.2*hm),   // croissant
@@ -125,8 +144,16 @@ function construire(g,hg,used,K){
   let band,grL=false;
   if(dessus!==undefined&&dessous!==undefined&&dessus-dessous<=8*hm){band=[dessous,dessus];grL=true}
   else{band=[Math.min(...hg.map(t=>t.y))-0.6*hm,Math.max(...hg.map(t=>t.y))+0.6*hm];
-    for(let k=0;k<3;k++)g.T.forEach(t=>{if(!libre(t)||t.x<xL-2*hm||t.x>xR+2*hm||t.y>=band[0]&&t.y<=band[1])return;
-      const d=t.y<band[0]?band[0]-t.y:t.y-band[1];if(d<=1.3*hm&&(K[t.i].length||SOUS.test(t.n))){band[0]=Math.min(band[0],t.y-0.6*t.h);band[1]=Math.max(band[1],t.y+0.6*t.h)}})}
+    // largeur du tableau : celle de la 1re ligne de valeurs (texte chiffré) contre l'en-tête, suivie de proche en proche (écart ≤ 30 h) :
+    // des colonnes éloignées des autres (IDENTIFIANT, COMMENTAIRES larges) restent dans le tableau
+    const pres=t=>Math.min(Math.abs(t.y-band[0]),Math.abs(t.y-band[1])),ln=g.T.filter(t=>libre(t)&&/\d/.test(t.n)&&t.x>=xL&&t.x<=xR&&(t.y<band[0]||t.y>band[1])&&pres(t)<=3*hm).sort((a,b)=>pres(a)-pres(b))[0];
+    if(ln){const L=g.T.filter(t=>libre(t)&&Math.abs(t.y-ln.y)<=0.5*Math.max(t.h,ln.h)).sort((a,b)=>a.x0-b.x0);let i=L.indexOf(ln),j=i;
+      while(i>0&&L[i].x0-L[i-1].x1<=ECART*hm)i--;while(j<L.length-1&&L[j+1].x0-L[j].x1<=ECART*hm)j++;xL=Math.min(xL,L[i].x0);xR=Math.max(xR,L[j].x1)}
+    // en-tête sur plusieurs lignes (titres de groupe « DIMENSIONS (mm) » au-dessus de « Hauteur », « Largeur ») : lignes voisines dont
+    // aucun texte n'a de chiffre (une ligne de valeurs a toujours un repère, une cote ou un niveau chiffrés)
+    const sansChiffre=t=>!g.T.some(u=>Math.abs(u.y-t.y)<=0.5*Math.max(u.h,t.h)&&u.x>=xL-2*hm&&u.x<=xR+2*hm&&/\d/.test(u.n));
+    for(let k=0;k<6;k++)g.T.forEach(t=>{if(!libre(t)||t.x<xL-2*hm||t.x>xR+2*hm||t.y>=band[0]&&t.y<=band[1])return;
+      const d=t.y<band[0]?band[0]-t.y:t.y-band[1];if(d<=1.3*hm&&(K[t.i].length||SOUS.test(t.n)||t.h<=1.1*hm&&!/\d/.test(t.n)&&sansChiffre(t))){band[0]=Math.min(band[0],t.y-0.6*t.h);band[1]=Math.max(band[1],t.y+0.6*t.h)}})}
   // traits verticaux de la grille : ils traversent l'en-tête, entre les extrémités du trait qui la borde (grille) ou en
   // partant de son bord (un cadre de feuille ou le tableau voisin ne comptent pas)
   const yM=(band[0]+band[1])/2,ext=grL?etendue(g.A.H,dessus,xL,xR,hm):null,
@@ -135,7 +162,13 @@ function construire(g,hg,used,K){
   if(ext&&xs.length){if(xs[0]>ext[0]+0.3*hm)xs.unshift(ext[0]);if(xs[xs.length-1]<ext[1]-0.3*hm)xs.push(ext[1])}
   const grC=xs.length>=2;
   const BT0=g.T.filter(t=>libre(t)&&t.y>=band[0]&&t.y<=band[1]&&t.x>=(grC?Math.min(xs[0],xL-2*hm):xL-2*hm)&&t.x<=(grC?Math.max(xs[xs.length-1],xR+2*hm):xR+2*hm));
-  const Cl=[];BT0.slice().sort((a,b)=>a.x0-b.x0).forEach(t=>{const c=Cl[Cl.length-1];if(c&&t.x0<=c.x1+0.3*hm)c.x1=Math.max(c.x1,t.x1);else Cl.push({x0:t.x0,x1:t.x1})});
+  // colonnes d'en-tête de bas en haut : un titre au-dessus de plusieurs colonnes (« DIMENSIONS (mm) », « FINITIONS ») est un titre de
+  // groupe : il ne fait pas une colonne, il donne son unité aux colonnes qu'il couvre
+  const Cl=[],GR=new Map(),sur=(t,c)=>t.x0<=c.x1+0.3*hm&&t.x1>=c.x0-0.3*hm;
+  BT0.slice().sort((a,b)=>a.y-b.y||a.x0-b.x0).forEach(t=>{const C=Cl.filter(c=>sur(t,c));
+    if(C.length>=2&&C.every(c=>t.y>c.y+0.5*hm)){GR.set(t,C);return}
+    if(C.length){const c=C[0];c.x0=Math.min(c.x0,t.x0);c.x1=Math.max(c.x1,t.x1);c.y=Math.max(c.y,t.y)}else Cl.push({x0:t.x0,x1:t.x1,y:t.y})});
+  Cl.sort((a,b)=>a.x0-b.x0);for(let j=1;j<Cl.length;j++)if(Cl[j].x0<=Cl[j-1].x1+0.3*hm){Cl[j-1].x1=Math.max(Cl[j-1].x1,Cl[j].x1);Cl.splice(j--,1)}
   const pad=Math.max(4*hm,med(Cl.map(c=>c.x1-c.x0))),P0=ext&&grC?xs[0]:Cl[0].x0-pad,PN=ext&&grC?xs[xs.length-1]:Cl[Cl.length-1].x1+pad;
   // une ligne qui contient un chiffre (repère, cote, niveau) n'est pas un en-tête, même si ses mots ressemblent à des titres
   const enTete=T=>{const k=new Set();let c=0;T.forEach(t=>{if(K[t.i].length){c++;k.add(K[t.i][0])}});return c>=3&&k.size>=2&&!T.some(t=>/\d/.test(t.n))};
@@ -168,8 +201,9 @@ function construire(g,hg,used,K){
   if(!(ext&&grC)){if(!B.length||xmin<B[0]-0.3*hm)B.unshift(xmin-0.5*hm);if(xmax>B[B.length-1]+0.3*hm)B.push(xmax+0.5*hm)}
   const B0=B[0],BN=B[B.length-1],col=x=>{for(let j=0;j+1<B.length;j++)if(x<B[j+1])return j;return B.length-2};
   const BT=BT0.filter(t=>t.x>=B0&&t.x<=BN);
-  const colonnes=B.slice(1).map((b,j)=>{const titre=cellule(BT.filter(t=>col(t.x)===j)),n=norm(titre),u=n.match(UNIT);
-    return{titre,cle:kinds(n)[0]||'autre',unite:uCol(u)}});
+  const colonnes=B.slice(1).map((b,j)=>{const titre=cellule(BT.filter(t=>!GR.has(t)&&col(t.x)===j)),n=norm(titre),u=n.match(UNIT),xc=(B[j]+b)/2,
+      gr=[...GR.keys()].find(t=>t.x0-0.3*hm<=xc&&t.x1+0.3*hm>=xc),gt=gr?gr.texte.trim():'';
+    return Object.assign({titre,cle:kinds(n)[0]||'autre',unite:uCol(u)||(gr?uCol(norm(gt).match(UNIT)):null)},gr?{groupe:gt}:{})});
   if(!colonnes.some(c=>c.cle!=='autre'))return null;
   // lignes du tableau : bandes de la grille ; sans grille, une ligne par repère, les lignes de texte sans repère
   // (valeurs sur plusieurs lignes) rattachées au repère le plus proche en hauteur
@@ -205,7 +239,7 @@ function analyser(doc){
     const cand=[];
     rows.forEach(r=>{const hm=med(r.T.map(t=>t.h));let c=null;
       r.T.sort((a,b)=>a.x-b.x).forEach(t=>{const pk=K[t.i][0];
-        if(!c||t.x0-c.x1>30*hm||pk==='repere'&&c.rep&&c.T.length>=3){c={T:[],x1:-Infinity,rep:false};cand.push(c)}
+        if(!c||t.x0-c.x1>ECART*hm||pk==='repere'&&c.rep&&c.T.length>=3){c={T:[],x1:-Infinity,rep:false};cand.push(c)}
         c.T.push(t);c.x1=Math.max(c.x1,t.x1);c.rep=c.rep||pk==='repere'})});
     cand.map(c=>({T:c.T,k:new Set(c.T.map(t=>K[t.i][0])).size})).filter(c=>c.T.length>=3&&c.k>=2).sort((a,b)=>b.k-a.k||b.T.length-a.T.length)
       .forEach(c=>{if(c.T.some(t=>used.has(t.i)))return;const tb=construire(g,c.T,used,K);if(!tb)return;
@@ -216,7 +250,9 @@ function analyser(doc){
   brut.forEach(tb=>{const nat=nature(tb.titre,tb.colonnes),base={espace:tb.espace,presentation:tb.presentation,...(tb.page?{page:tb.page}:{}),titre:tb.titre,
       colonnes:tb.colonnes,cadre:tb.cadre,...(tb.rotation?{rotation:tb.rotation}:{}),ids:[...tb.BT,...tb.TT,...tb.RT.flat()].map(t=>t.id)};
     if(nat!=='reservations'||!tb.R.length){ecartes.push(Object.assign(base,{id:'T'+(ecartes.length+1),nature:nat,nLignes:tb.R.length,
-      raison:nat==='aciers'?'nomenclature d\'aciers (ferraillage)':nat==='autre'?'tableau non identifié comme nomenclature de réservations':'en-tête de nomenclature sans ligne lisible'}));return}
+      raison:nat==='aciers'?'nomenclature d\'aciers (ferraillage)':nat==='trappes'?RAISON_TRAPPES:nat==='autre'?'tableau non identifié comme nomenclature de réservations':'en-tête de nomenclature sans ligne lisible'},
+      // trappes : lignes gardées pour consultation (saisie manuelle possible), jamais proposées à la création
+      nat==='trappes'?{lignes:tb.R.map((cells,k)=>Object.assign({rang:k+1},ligne(tb.colonnes,cells)))}:{}));return}
     const id='N'+(nomenclatures.length+1);
     const lignes=tb.R.map((cells,k)=>Object.assign({id:id+'-L'+String(k+1).padStart(2,'0'),rang:k+1,ids:tb.RT[k].map(t=>t.id),calques:[...new Set(tb.RT[k].map(t=>t.calque))]},
       ligne(tb.colonnes,cells),{idsCellules:tb.RI[k]}));
@@ -293,9 +329,17 @@ function depuisGrille(G,cles){const R=G.lignes,nc=Math.max(0,...R.map(r=>r.lengt
   const VAL=R.slice(h).map(r=>r.map(v=>String(v||'').trim())),REPV=/^[A-Z]{1,3} ?\d{1,3}[A-Z]?$/i,deduite=j=>{const V=VAL.map(r=>r[j]||'').filter(v=>v&&!VIDE.test(norm(v)));if(!V.length)return null;
     const part=f=>V.filter(f).length/V.length;
     return part(v=>/^[øØ⌀∅] ?\d/.test(v))>=0.5?'diametre':part(v=>cotes(v,null).etat==='rect')>=0.5?'ouverture':part(v=>REPV.test(v))>=0.6?'repere':null};
-  const colonnes=[];for(let j=0;j<nc;j++){const titre=E.map(i=>R[i][j]||'').filter(Boolean).join('\n'),n=norm(titre),u=n.match(UNIT);let lu=kinds(n)[0]||'autre',dd=false;
+  // titre de groupe fusionné sur n colonnes (« DIMENSIONS (mm) » puis « Hauteur Largeur » dans une seule cellule, titres vides à
+  // droite, valeurs dessous) : les mots d'une ligne de n mots vont un par colonne, le groupe donne son unité ; la fonction de chaque
+  // colonne vient de son sous-titre seul
+  const TI=Array.from({length:nc},(x,j)=>E.map(i=>R[i][j]||'').filter(Boolean)),GP=[],val=j=>R.slice(h).some(r=>String(r[j]||'').trim());
+  for(let j=0;j<nc;j++){let n=1;while(j+n<nc&&!TI[j+n].length&&val(j+n))n++;if(n<2)continue;
+    const L=TI[j].join('\n').split('\n').map(x=>x.trim()).filter(Boolean);if(L.length<2)continue;
+    const S=Array.from({length:n},()=>[]),reste=[];L.slice(1).forEach(l=>{const w=l.split(/\s+/);if(w.length===n)w.forEach((x,k)=>S[k].push(x));else reste.push(l)});
+    if(!S[0].length)continue;for(let k=0;k<n;k++){TI[j+k]=S[k].concat(k?[]:reste);GP[j+k]=L[0]}j+=n-1}
+  const colonnes=[];for(let j=0;j<nc;j++){const titre=TI[j].join('\n'),n=norm(titre),u=n.match(UNIT)||GP[j]&&norm(GP[j]).match(UNIT);let lu=kinds(n)[0]||'autre',dd=false;
     if(lu==='autre'){const x=deduite(j);if(x&&!(x==='repere'&&colonnes.some(c=>c.cle==='repere'))){lu=x;dd=true}}
-    colonnes.push({titre:titre||'Colonne '+(j+1),cle:cles&&cles[j]||lu,cleLue:lu,unite:uCol(u),...(dd?{deduite:true}:{})})}
+    colonnes.push({titre:titre||'Colonne '+(j+1),cle:cles&&cles[j]||lu,cleLue:lu,unite:uCol(u),...(dd?{deduite:true}:{}),...(GP[j]?{groupe:GP[j]}:{})})}
   const entete=colonnes.some(c=>c.cleLue!=='autre'),titre=TT.join('\n'),nat=entete?nature(titre,colonnes):'autre',id=G.id||'G1';
   const lignes=[];R.slice(h).forEach((cells0,k)=>{const cells=colonnes.map((c,j)=>String(cells0[j]||'').trim());if(!cells.some(Boolean))return;
     const IDc=(ID[h+k]||[]).map(x=>x||[]),n=lignes.length+1;
@@ -316,8 +360,8 @@ function ligne(cols,cells){const av=[],cj=k=>cols.map((c,j)=>c.cle===k?j:-1).fil
   if(!L.repere)av.push(cj('repere').length?'repère absent de la ligne':'pas de colonne repère dans le tableau');
   const qn=L.quantite.replace(/\n/g,' ').trim(),qm=qn.match(/^(\d{1,4})\s*(u|ex|pcs?|pi[eè]ces?)?\.?$/i);L.nb=qm&&+qm[1]>0?+qm[1]:null;   // quantité du tableau : référence métier
   if(qn&&L.nb==null)av.push(`quantité « ${qn} » non lue comme un nombre entier`);
-  L.dims=dimsLigne(cols,cells,av);
-  if(L.dims&&!L.dims.unite)av.push('unité des cotes non indiquée par le tableau');
+  const info={};L.dims=dimsLigne(cols,cells,av,info);if(info.dn)L.dn=info.dn;if(L.dims&&L.dims.unite)L.uniteOrigine=info.uniteOrigine||null;
+  if(L.dims&&!L.dims.unite&&!L.dims.conflitUnite)av.push('unité des cotes non indiquée par le tableau');
   return L}
 
 // Repère normalisé : majuscules, sans espaces ni séparateurs, zéros de tête des nombres retirés (D03 = D3 = d 3)
@@ -383,11 +427,11 @@ function provenance(N,L,k){
   const pdf=N.format==='pdf'?{page:N.page,zone:L.zone||N.zone||(N.cadre?{page:N.page,x0:N.cadre[0],y0:N.cadre[1],x1:N.cadre[2],y1:N.cadre[3],unite:'pt'}:null)}:{};
   return{fichier:N.fichier,format:N.format||'dxf',type:N.saisie?'saisie':N.ocr?'ocr':'nomenclature',espace:N.espace,presentation:N.presentation,calque:L.calques.join(', '),id:g?g.source.id:null,
     nomenclature:N.id,titre:N.titre,ligne:L.id,rang:L.rang,repere:L.repere,ids:L.ids.slice(),textes,
-    unite_source:d?d.unite:null,unite:uT||null,dims_source:d?JSON.parse(JSON.stringify(d)):null,
+    unite_source:d?d.unite:null,unite_origine:d&&d.unite?L.uniteOrigine||null:null,unite:uT||null,dims_source:d?JSON.parse(JSON.stringify(d)):null,
     geometrie:g?{id:g.source.id,calque:g.source.calque,candidat:g.id,statut:k.geo.statut,unite:k.uniteDessin||null,centre:g.centre,dims_source:JSON.parse(JSON.stringify(g.dims))}:null,
     choix:{forme:k.forme,cotes:k.cotes,ref:k.ref||'',unite_tableau:k.uniteChoisie?k.uniteTableau:null,...(k.nb!=null?{nb:k.nb}:{})},corrige,
     quantite:{texte:L.quantite||'',tableau:L.nb==null?null:L.nb},a_verifier:L.a_verifier.slice(),h_saisie:true,...pdf,...(L.ocr?{ocr:JSON.parse(JSON.stringify(L.ocr))}:{}),...(k.rapprochement?{rapprochement:k.rapprochement}:{})};
 }
 
-root.CPI=Object.assign(root.CPI||{},{nomenclatures:{analyser,associer,cotes,ligne,nature,candidat,provenance,cleRep,dGeo,LIB,grilleTraits,depuisGrille,textesEnGrille,kinds:t=>kinds(norm(t)),tourne}});
+root.CPI=Object.assign(root.CPI||{},{nomenclatures:{analyser,associer,cotes,ligne,nature,candidat,provenance,cleRep,dGeo,LIB,RAISON_TRAPPES,grilleTraits,depuisGrille,textesEnGrille,kinds:t=>kinds(norm(t)),tourne}});
 })(typeof globalThis!=='undefined'?globalThis:this);

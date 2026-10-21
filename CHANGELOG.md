@@ -3,6 +3,51 @@
 Détail complet de chaque version (demandes, écarts voulus, tests, non validé) : `docs/historique/HANDOFF_<version>.md`.
 Chaque version est un tag git (`git diff v2.4 v2.5 -- app/` pour voir les changements).
 
+## Phase 5.1 — corrections après essais sur trois plans réels (non publiée, sans numéro de version)
+**Demande (Kévin, 21/10/2026)** : corriger les défauts révélés par la campagne de validation de la phase 5 (trois plans réels,
+hors dépôt) avant toute nouvelle fonction ; moteur, 3D et exports inchangés ; `#appVer` reste v3.1 ; aucun ouvrage créé d'office.
+**Décision de Kévin (DN)** : un DN dans la colonne Ouverture signale une réservation circulaire probable ; DN gardé comme
+information, jamais utilisé comme diamètre ; « diamètre réel de réservation à confirmer » ; création impossible sans cote confirmée.
+
+**Fait** (détail : `modules/import/README.md`, § Phase 5.1)
+- A1 unités : seule l'unité écrite contre la cote compte ; « 500x500 — 4,86m » n'est plus lu 500 × 500 m ; unité de la cellule
+  contraire à celle de la colonne → `conflitUnite`, unité à confirmer, jamais remplacée par l'en-tête à la création (`dxnU`) ;
+  provenance `L.uniteOrigine` / `origineImport.unite_origine` ; grille OCR : Largeur / Hauteur / Diamètre jamais fusionnées avec une
+  colonne Ouverture.
+- A2 colonnes : « réservation(s) » n'est un titre de repères que seul ; Axe / Niveau réservation, Hauteur (d')axe → niveau ;
+  Longueur ; en-têtes à plusieurs niveaux reconstruits (textes et grille OCR), unité du titre de groupe (« DIMENSIONS (mm) »).
+- A3 nature `trappes` (trappes, regards, feuillures…) : tableau écarté, lignes consultables, jamais créées ; aciers inchangés.
+- A4 OCR sur un tableau déjà lu : remplacement proposé explicitement (correspondances, choix gardés, lignes retirées annoncées).
+- B1 vues : dessus / dessous = plan ; titre de 1,45 à 1,8 × la médiane admis avec un mot-clé de vue ; renvoi, paragraphe, bloc de
+  notes : pas un titre ; « Renforts » = détail ; titre sans dessin : pas une vue ; cadre de feuille jamais rattaché ; partie sans titre
+  d'une vue rattachée ; une grande vue titrée n'est plus incertaine par sa seule aire.
+- B2 repères : nature de chaque mention (repère isolé, identifiant « 1-D1 », multiplicateur « 2x », annotation) ; tiret regroupé
+  avec ses lettres avant OCR ; seules les mentions isolées localisent.
+- B3 comptage : jamais dans une vue sans titre ; pas de repli sur le ferraillage si la vue en plan est douteuse ; repère étiqueté
+  plusieurs fois sans quantité au tableau : nombre non décidé.
+
+**Essai sur les trois plans réels (hors dépôt, Chromium, mêmes scénarios que la campagne)** — avant (phase 5) → après :
+- PDF A (ouvrage circulaire, tableau et repères en tracés, 2 pages ; zone + OCR du tableau) : 23 lignes, 22 repères, 7/7 cotes l × h
+  (inchangé) ; 10 DN gardés sans cote ; vues incertaines 4 → 3 ; vue en plan p. 2 : non reconnue → reconnue ; occurrences comptées
+  15 (toutes fausses : treillis « 1-Dx », détails) → 19, toutes sur la vue en plan ; observations non rattachées 33 → 7.
+- PDF B (texte extractible, vues dessus 1:100 / dessous 1:50) — lecture automatique : repères 0/30 → 30/30, cotes en mm 0 → 30/30,
+  niveaux NGF séparés 0 → 30, trappes mêlées aux réservations 4 → 0 ; vues : dessous « autre » incertaine → plan ; 2 fausses vues de
+  cartouche → 0 ; occurrences comptées justes 0 → 28 (R09, étiqueté deux fois sans quantité : non décidé ; R07 sans étiquette).
+  OCR manuel de la même zone : 64 lignes (doublons) → remplacement proposé puis 30 lignes.
+- PDF C (planche tournée, tout en tracés ; zone + OCR) : cotes lues en mètres 4 → 0 ; cotes justes en mm 0 → 8/10 (R01 / R03 :
+  « 3550 » lu par l'OCR, signalé) ; tableau tourné reconnu (270°) ; aciers écartés. Repères et titres verticaux toujours non lus.
+- Temps (passage séquentiel) : A 91 → 71 s, B (automatique + analyse) 77 s, C 83 → 61 s (passage « avant » en parallèle : majoré).
+
+**Écarts voulus** : aucun test existant modifié. Nouvelle suite `t_phase51` (cas synthétiques anonymes de chaque défaut).
+Comportements changés volontairement : une vue sans titre ne compte plus d'occurrences ; un titre sans dessin n'est plus une vue.
+
+**Tests** : campagne complète `python tests/run.py complet -j 4` : 32/32 suites vertes (21/10/2026, Chromium), dont t_avap
+(moteur, feuilles, DXF, CSV identiques) et t_phase51 (33 contrôles). Hors du bloc généré `cpi-src`, `app/CoffraPlan.html` est identique à
+la phase 5 (vérifié octet par octet).
+
+**Non validé** : Firefox, Safari, tablette ; autres plans réels ; repères et titres verticaux (planche tournée) ; réservations à côtés
+courbes ; un mot isolé de cartouche lu par OCR peut encore former une vue (PDF A, sans occurrence comptée dedans).
+
 ## Phase 5 — lecture des nomenclatures, vues techniques, occurrences (non publiée, sans numéro de version)
 **Demande (Kévin, 20/10/2026)** : améliorer la lecture des nomenclatures, reconnaître les vues techniques d'un plan PDF et
 dédoublonner les occurrences d'une réservation, avec un gain mesurable sur le PDF de référence ; structures JSON pour une

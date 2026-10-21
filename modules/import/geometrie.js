@@ -92,12 +92,15 @@ function blocsTexte(geo,o){o=o||{};const B=geo.petits||[],N=B.length>>2,pt=i=>B[
     if(cad.some(c=>dans(c,[(b.x0+b.x1)/2,(b.y0+b.y1)/2],0)))return;out.push(b)});
   return out}
 // Petits tracés I (indices dans B) réunis en groupes (union-find sur une grille) → [{x0,y0,x1,y1,n}] ; écart admis à la mesure du
-// plus petit des deux tracés quand l'un est 2,5 fois plus haut (trait de cote, ligne de rappel : ils n'attirent pas les lettres voisines)
+// plus petit des deux tracés quand l'un est 2,5 fois plus haut (trait de cote, ligne de rappel : ils n'attirent pas les lettres voisines),
+// sauf un tiret (plat, pas plus long que 1,5 hauteur de lettre)
 function grouper(B,I){const par=new Map(),CS=10,G=new Map();I.forEach(i=>par.set(i,i));const f=i=>{while(par.get(i)!==i){par.set(i,par.get(par.get(i)));i=par.get(i)}return i};
   for(const i of I){const x0=B[4*i],y0=B[4*i+1],x1=B[4*i+2],y1=B[4*i+3],hi=Math.max(y1-y0,1);
     const m=1.2*hi,c0=Math.floor((x0-m)/CS),c1=Math.floor((x1+m)/CS),r0=Math.floor(y0/CS),r1=Math.floor(y1/CS);
     for(let c=c0;c<=c1;c++)for(let r=r0;r<=r1;r++){const k=c*1e6+r,L=G.get(k);
-      if(L){for(const j of L){const hj=Math.max(B[4*j+3]-B[4*j+1],1),h=Math.max(hi,hj)>2.5*Math.min(hi,hj)?Math.min(hi,hj):Math.max(hi,hj),gx=Math.max(B[4*j]-x1,x0-B[4*j+2]),gy=Math.max(B[4*j+1]-y1,y0-B[4*j+3]);
+      if(L){for(const j of L){const hj=Math.max(B[4*j+3]-B[4*j+1],1),lo=hi<hj?i:j,hl=Math.min(hi,hj),wl=B[4*lo+2]-B[4*lo],
+        // tiret d'un identifiant (« 1-D1 ») : tracé plat et court, regroupé avec ses lettres (sinon « D1 » serait lu seul) ; un trait de cote reste à part
+        tiret=wl>=1.5*hl&&wl<=1.5*Math.max(hi,hj),h=Math.max(hi,hj)>2.5*hl&&!tiret?hl:Math.max(hi,hj),gx=Math.max(B[4*j]-x1,x0-B[4*j+2]),gy=Math.max(B[4*j+1]-y1,y0-B[4*j+3]);
         if(gx<=1.2*h&&gy<=0.12*h){const a=f(i),b=f(j);if(a!==b)par.set(a,b)}}L.push(i)}else G.set(k,[i])}}
   const R=new Map();for(const i of I){const x0=B[4*i],y0=B[4*i+1],x1=B[4*i+2],y1=B[4*i+3];
     const r=f(i),b=R.get(r);if(b){b.x0=Math.min(b.x0,x0);b.y0=Math.min(b.y0,y0);b.x1=Math.max(b.x1,x1);b.y1=Math.max(b.y1,y1);b.n++}else R.set(r,{x0,y0,x1,y1,n:1})}

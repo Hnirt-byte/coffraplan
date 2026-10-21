@@ -37,6 +37,19 @@ function egal(vT,uT,vA,uA){const kT=MM[uT]||1,UA=uA?[uA]:uT?['mm','cm','m']:[nul
   for(const u of UA){const kA=u?MM[u]:kT,x=vT*kT,y=vA*kA;if(Math.abs(x-y)<=Math.max(uT||u?2:0,0.01*Math.max(x,y)))return{ok:true,u}}return{ok:false}}
 const comparable=(vT,uT,vA,uA)=>!!uA||(()=>{const r=vA*(MM[uA]||MM[uT]||1)/(vT*(MM[uT]||1));return r>=0.5&&r<=2})();
 
+// Nature d'une mention du repère k dans le texte t : 'repere' (isolé : localise la réservation) ou mention qui n'en localise aucune,
+// gardée comme observation non rattachée avec son motif : 'multiplicateur'
+// (« 2x D10-EXT », « 5x D11 » : note, liste), 'identifiant' (« 1-D1 », « D10-EXT » : panneau, armature, élément standard ; seulement
+// si le repère du tableau n'a pas de tiret), 'annotation' (autres mots autour du repère : renvoi, note). T = textes de la page.
+const MULT=/^\d+\s*[x×]$/i;
+function natureMention(t,k,dashR,T,cleRep,cotes){const s=String(t.texte||''),h=Math.max(t.h||2,1);
+  const W=s.split(/\s+/).filter(Boolean),gauche=T.find(u=>u!==t&&u.page===t.page&&Math.abs(u.y-t.y)<=0.5*h&&u.x<t.x&&t.x-(t.w||0)/2-(u.x+(u.w||0)/2)<=1.5*h&&MULT.test(String(u.texte).trim().split(/\s+/).pop()));
+  if(W.some(w=>MULT.test(w))||gauche)return['multiplicateur',`quantité « ${(W.find(w=>MULT.test(w))||String(gauche.texte).trim())} » devant le repère (note, liste) : pas une localisation`];
+  if(!dashR&&/[\p{L}\p{N}][-–—]|[-–—][\p{L}\p{N}]/u.test(s))return['identifiant',`identifiant composé « ${s.trim()} » (panneau, armature, élément ?) : pas un repère de réservation isolé`];
+  const autres=W.map(w=>w.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu,'')).filter(w=>(w.match(/\p{L}/gu)||[]).length>=2&&cleFloue(cleRep(w))!==cleFloue(k)&&!/^(rect|circ|seul)$/.test(cotes(w,null).etat));   // « DS » lu pour D5 : le repère lui-même
+  if(autres.length)return['annotation',`mention dans un texte (« ${s.trim()} ») : renvoi ou annotation, pas un repère isolé`];
+  return['repere',null]}
+
 // L = {id, repere, dims ({type:'rect',a,b}|{type:'circ',D}|null), unite, quantite, page (page du tableau), ids}
 // textes : textes du dessin (PDF et OCR ; ceux des tableaux déjà retirés) ; C : candidats de CPI.geometrie (toutes pages)
 // o = {mm: candidat → mm par point | null, rappels: texte → pointes [[x,y]] (lignes de rappel), exclus: Set d'ids de textes,
@@ -55,7 +68,8 @@ function rapprocher(lignes,textes,C,o){o=o||{};const N=root.CPI.nomenclatures,cl
       // lecture presque illisible (« —— DS) | » à 2 %) : bruit, pas un indice
       const pq=[],cf=confRep(t,k,cleRep);if(t.ocr&&cf<OCR_MIN)return;if(t.ocr&&(cf<root.CPI.ocr.SEUIL||(t.ocr.corrections||[]).length))pq.push(`lecture OCR incertaine (« ${t.ocr.brut} », confiance ${cf} %)`);
       if(flou)pq.push(`lu « ${t.texte} » : rapproché par confusion de lettres et de chiffres`);if(num)pq.push('repère purement numérique');
-      occ.push({t,fiable:!pq.length,doutes:pq,conf:cf})});
+      const [nat,mn]=natureMention(t,k,/[-–—]/.test(L.repere||''),T,cleRep,cotes);if(mn)pq.push(mn);
+      occ.push({t,fiable:!pq.length,doutes:pq,conf:cf,nature:nat,motifNature:mn})});
     // contour désigné par chaque localisation : le plus proche du repère ou du bout de sa ligne de rappel (≤ 4 hauteurs de texte)
     occ.forEach(x=>{const t=x.t,P=[[t.x,t.y]],h=Math.max(t.h||2,1),vt=x.vue=vue(t.page,t.x,t.y);x.vinc=!!(vt&&o.vueIncertaine&&o.vueIncertaine(vt));if(o.rappels)try{x.rappels=o.rappels(t)}catch(e){x.rappels=[]}else x.rappels=[];P.push(...x.rappels);
       const V=OK.filter(({c,i})=>c.source.page===t.page&&vC.get(i)===vt).map(({c,i})=>{let d=Infinity;for(const p of P)d=Math.min(d,dGeo(p,c.geometrie));return{i,d}}).filter(v=>v.d<=4*h).sort((a,b)=>a.d-b.d);
@@ -128,7 +142,7 @@ function verifier(L,occ,C,o){const d=L.dims,uT=L.unite||null,D={},notes=[];
   if(princ.length>1)notes.push(unique?`${princ.length} contours désignés, un par page (vues) : celui de la 1re page est proposé`:`${princ.length} contours désignés sur une même page (occurrences ?) : à choisir`);
   return{concordance:cc,libelle:LB[cc],statut,options,principal:princ.length?princ.slice().sort((a,b)=>C[a].source.page-C[b].source.page)[0]:null,preuves:ctr,
     occurrences:occ.map(x=>({id:x.t.id,texte:x.t.texte,page:x.t.page,x:x.t.x,y:x.t.y,h:x.t.h,source:x.t.ocr?'ocr':'pdf',conf:x.t.ocr?x.conf:null,brut:x.t.ocr?x.t.ocr.brut:null,
-      corrections:x.t.ocr?x.t.ocr.corrections:[],box:x.t.ocr?x.t.ocr.box:null,vue:x.vue||null,fiable:x.fiable,doutes:x.doutes,rappels:x.rappels,contour:x.contour!=null?C[x.contour].id:null,
+      corrections:x.t.ocr?x.t.ocr.corrections:[],box:x.t.ocr?x.t.ocr.box:null,vue:x.vue||null,fiable:x.fiable,nature:x.nature,motifNature:x.motifNature,doutes:x.doutes,rappels:x.rappels,contour:x.contour!=null?C[x.contour].id:null,
       cotes:x.cotes.map(q=>q.texte)})),
     reperes:occ.map(x=>({x:x.t.x,y:x.t.y,id:x.t.id})),dims:D,quantite,note:notes.concat(lecture?[lecture]:[]).join(' ; ')}}
 
