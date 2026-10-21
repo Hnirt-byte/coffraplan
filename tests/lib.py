@@ -4,6 +4,11 @@ from playwright.sync_api import sync_playwright
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 APP = os.path.abspath(os.environ.get('APP', os.path.join(HERE, '..', 'app', 'CoffraPlan.html')))
+# phase 8 : app/CoffraPlan.html est construit (non versionné). Lancée seule, une suite le reconstruit depuis les sources ; tests/run.py
+# le construit une fois pour toutes les suites (CP_CONSTRUIT=1). Une autre version se teste avec APP=chemin (rien n'est construit).
+if 'APP' not in os.environ and not os.environ.get('CP_CONSTRUIT'):
+    import subprocess
+    subprocess.run([sys.executable, os.path.join(HERE, '..', 'modules', 'import', 'assembler.py')], check=True, stdout=subprocess.DEVNULL)
 NOFS = 'window.showSaveFilePicker = undefined; window.showOpenFilePicker = undefined;'  # v2.6 : repli téléchargement
 OUT = os.path.join(HERE, 'out'); os.makedirs(OUT, exist_ok=True)
 

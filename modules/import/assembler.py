@@ -1,15 +1,19 @@
-"""Intègre le module d'import dans app/CoffraPlan.html (bibliothèque standard seulement, résultat déterministe).
-  python modules/import/assembler.py           → réécrit les blocs générés du HTML depuis les sources
-  python modules/import/assembler.py --check   → échoue (code 1) si un bloc du HTML diffère des sources (CI, tests)
-Blocs générés : <script id="cpi-src"> (modules/import/*.js) ; PDF.js tel que publié (vendor/pdfjs, empreintes SHA-256
-vérifiées) dans <script type="text/plain" id="pdfjs-src"> et id="pdfjs-worker-src", chargés seulement à l'ouverture d'un PDF ;
-moteur OCR Tesseract.js (vendor/tesseract, empreintes vérifiées) dans les blocs tess-src, tess-worker-src, tess-core-src
-(scripts tels que publiés), tess-wasm et tess-fra (fichiers .gz en base64), chargés seulement au 1er « Reconnaître (OCR) ».
-Le reste du HTML s'édite toujours à la main. Ne pas modifier ces blocs dans le HTML."""
-import base64, gzip, hashlib, os, sys
+"""Construit le livrable app/CoffraPlan.html (fichier unique, hors connexion) à partir des sources versionnées (phase 8).
+  python modules/import/assembler.py           → construit app/CoffraPlan.html (non versionné : .gitignore)
+  python modules/import/assembler.py --check   → échoue (code 1) si app/CoffraPlan.html est absent ou différent de ce que
+                                                 donnent les sources (CI, tests) ; ne l'écrit pas
+Source : app/CoffraPlan.source.html (HTML, CSS, script principal : s'édite à la main) ; chaque marqueur <!--@bloc ID--> y est
+remplacé par son bloc généré : <script id="cpi-src"> (modules/import/*.js, dans l'ordre ORDRE) ; dépendances publiées, copiées
+sans modification et vérifiées par empreinte SHA-256, dans des <script type="text/plain" id="…"> chargés au premier besoin :
+three.js r170 (app/vendor/three), PDF.js (vendor/pdfjs), Tesseract.js (vendor/tesseract), ONNX Runtime Web + PP-OCRv6
+(vendor/ppocr) ; fichiers .gz en base64. Bibliothèque standard Python seulement ; résultat déterministe (mêmes sources, mêmes
+octets). Ne jamais modifier app/CoffraPlan.html à la main : il est réécrit à chaque construction."""
+import base64, gzip, hashlib, os, re, sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-HTML = os.path.join(HERE, '..', '..', 'app', 'CoffraPlan.html')
+APPD = os.path.join(HERE, '..', '..', 'app')
+HTML = os.path.join(APPD, 'CoffraPlan.html')
+SOURCE = os.path.join(APPD, 'CoffraPlan.source.html')
 ORDRE = ['lecteur.js', 'dxf.js', 'pdf.js', 'ocr.js', 'ppocr.js', 'detecteur.js', 'nomenclatures.js', 'geometrie.js', 'rapprochement.js', 'vues.js', 'adaptateur.js', 'fenetre.js']   # dxf.js après lecteur.js (DECODEURS)
 DEBUT, FIN = '<script id="cpi-src">', '</script>'
 # PDF.js 6.4.299 (Apache-2.0), fichiers legacy/build/ (compatibles navigateurs plus anciens) du paquet npm pdfjs-dist@6.4.299, copiés sans modification
@@ -34,6 +38,9 @@ PPOCR = [('ppocr-ort-src', 'ort.min.js', '7ae472a8ec976bcb69ad46b89b0a6ec8f3c5db
          ('ppocr-rec', 'PP-OCRv6_rec_small.onnx.gz', 'de992e86c5af5515a4709c43d22a6bc49033259736c2835859e6cd88040e76b7',
           '6f327246b50388f3c176ae304bd95767ea6dc0c9ae92153ef8cbe210b3c14884'),
          ('ppocr-dict', 'PP-OCRv6_rec_small.dict.txt', 'f7aa897ca828a4c7c9e2739c30f9161a33306d532f020bcdb91dcfb664a5507e', None)]
+
+# three.js r170 (MIT) : build/three.module.min.js du paquet npm three@0.170.0, sans modification ; chargé à la 1re vue 3D (v3Three)
+THREE = ('three-src', 'three.module.min.js', '08fd7545d13d2c7fb65ab691530a802dafefd638596501854f267d0fb13c39e7')
 
 
 def bloc():
@@ -70,33 +77,53 @@ def tess(ident, nom, sha, sha_gz, dossier='tesseract'):
     return f'<script type="text/plain" id="{ident}">' + src + '\n</script>'
 
 
+def tous():
+    """Blocs générés : identifiant → texte complet du bloc (<script …>…</script>)."""
+    B = {'cpi-src': bloc()}
+    i, n, h = THREE
+    B[i] = tess(i, n, h, None, os.path.join('..', '..', '..', 'app', 'vendor', 'three'))
+    B.update({i: pdfjs(i, n, h) for i, n, h in PDFJS})
+    B.update({i: tess(i, n, h, g) for i, n, h, g in TESS})
+    B.update({i: tess(i, n, h, g, 'ppocr') for i, n, h, g in PPOCR})
+    return B
+
+
+def construire():
+    src = open(SOURCE, encoding='utf-8', newline='').read()
+    B = tous()
+    vus = re.findall(r'<!--@bloc ([\w-]+)-->', src)
+    if sorted(vus) != sorted(B) or len(set(vus)) != len(vus):
+        sys.exit(f'app/CoffraPlan.source.html : marqueurs <!--@bloc …--> attendus une fois chacun : {sorted(B)} ; trouvés : {vus}')
+    for i, t in B.items():
+        if t in src:
+            sys.exit(f'bloc {i} déjà présent dans la source : la source ne doit contenir que son marqueur')
+    return re.sub(r'<!--@bloc ([\w-]+)-->', lambda m: B[m.group(1)], src)
+
+
 def main(check):
-    html = open(HTML, encoding='utf-8', newline='').read()
-    blocs = [(DEBUT, bloc(), 'cpi-src')] + [(f'<script type="text/plain" id="{i}">', pdfjs(i, n, h), i) for i, n, h in PDFJS] \
-        + [(f'<script type="text/plain" id="{i}">', tess(i, n, h, g), i) for i, n, h, g in TESS] \
-        + [(f'<script type="text/plain" id="{i}">', tess(i, n, h, g, 'ppocr'), i) for i, n, h, g in PPOCR]
-    faits = []
-    for debut, neuf, nom in blocs:
-        a = html.find(debut)
-        if a < 0:   # premier assemblage d'un bloc PDF.js ou OCR : ajouté en fin de document
-            if nom == 'cpi-src':
-                sys.exit(f'{DEBUT} absent de app/CoffraPlan.html')
-            a = b = html.rindex('</body>')
-            neuf += '\n'
-        else:
-            b = html.index(FIN, a) + len(FIN)
-        if html[a:b] != neuf:
-            faits.append(nom)
-            html = html[:a] + neuf + html[b:]
-    if not faits:
-        print('module d\'import : HTML à jour')
-        return
+    html = construire()
     if check:
-        sys.exit(f'module d\'import : bloc(s) {", ".join(faits)} de app/CoffraPlan.html différent(s) des sources '
-                 '→ lancer python modules/import/assembler.py')
-    with open(HTML, 'w', encoding='utf-8', newline='') as f:
-        f.write(html)
-    print('module d\'import : bloc(s) réécrit(s) : ' + ', '.join(faits))
+        try:
+            cur = open(HTML, encoding='utf-8', newline='').read()
+        except FileNotFoundError:
+            sys.exit('app/CoffraPlan.html absent → lancer python modules/import/assembler.py')
+        if cur != html:
+            sys.exit('app/CoffraPlan.html différent de ce que donnent les sources (app/CoffraPlan.source.html, modules/import, '
+                     'vendor) → lancer python modules/import/assembler.py ; ne jamais modifier app/CoffraPlan.html à la main')
+        print(f'CoffraPlan.html à jour ({len(html.encode())} octets, SHA-256 {hashlib.sha256(html.encode()).hexdigest()[:16]}…)')
+        return
+    # écriture atomique (fichier temporaire puis remplacement) et seulement si le contenu change : un navigateur ou une suite de tests
+    # qui ouvre le livrable pendant une construction ne lit jamais un fichier à moitié écrit
+    try:
+        same = open(HTML, encoding='utf-8', newline='').read() == html
+    except FileNotFoundError:
+        same = False
+    if not same:
+        tmp = HTML + '.tmp'
+        with open(tmp, 'w', encoding='utf-8', newline='') as f:
+            f.write(html)
+        os.replace(tmp, HTML)
+    print(f'CoffraPlan.html {"inchangé" if same else "construit"} ({len(html.encode())} octets, SHA-256 {hashlib.sha256(html.encode()).hexdigest()[:16]}…)')
 
 
 if __name__ == '__main__':

@@ -28,6 +28,13 @@ jobs:
           pip install -r tests/requirements.txt
           python -m playwright install --with-deps chromium
           sudo apt-get install -y --no-install-recommends libreoffice-calc fonts-liberation fonts-dejavu-core
+      # phase 8 : le livrable n'est plus versionné ; il est construit ici depuis les sources (déterministe), puis vérifié
+      - name: Construction de CoffraPlan.html
+        id: build
+        run: |
+          python modules/import/assembler.py
+          python modules/import/assembler.py --check
+          echo "commit=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
       - name: Syntaxe
         run: sh tests/syntax.sh
       - name: Tests
@@ -37,6 +44,31 @@ jobs:
           else
             python tests/run.py -j 4
           fi
+      # Livrable autonome téléchargeable (onglet Actions → ce run → Artifacts) : seulement si tous les tests passent ; aucune Release
+      - name: Fiche de construction
+        if: success()
+        run: |
+          mkdir -p livrable && cp app/CoffraPlan.html livrable/
+          {
+            echo "CoffraPlan.html construit par GitHub Actions"
+            echo "Commit construit : ${{ steps.build.outputs.commit }}"
+            echo "Branche ou PR : ${{ github.head_ref || github.ref_name }}"
+            if [ -n "${{ github.event.pull_request.head.sha }}" ]; then
+              echo "Tête de la PR : ${{ github.event.pull_request.head.sha }} (commit construit = fusion d'essai de cette tête dans ${{ github.base_ref }})"
+            fi
+            echo "Run : ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            echo "Date (UTC) : $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            echo "Taille : $(stat -c %s livrable/CoffraPlan.html) octets"
+            echo "SHA-256 : $(sha256sum livrable/CoffraPlan.html | cut -d' ' -f1)"
+          } > livrable/CONSTRUCTION.txt
+          cat livrable/CONSTRUCTION.txt
+      - name: Livrable CoffraPlan.html
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: CoffraPlan-${{ github.event.pull_request.head.sha || github.sha }}
+          path: livrable/
+          retention-days: 90
       - name: Résultats détaillés
         if: always()
         uses: actions/upload-artifact@v4

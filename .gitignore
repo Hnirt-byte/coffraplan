@@ -7,3 +7,7 @@ docs/manuel/*.pdf
 Thumbs.db
 .vscode/*
 !.vscode/extensions.json
+
+# livrable construit par python modules/import/assembler.py (phase 8) : jamais versionné
+app/CoffraPlan.html
+app/CoffraPlan.html.tmp
