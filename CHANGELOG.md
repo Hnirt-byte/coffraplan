@@ -37,7 +37,9 @@ seul transporte le travail). Firefox, Safari, Edge, tablette : non essayés.
   attendu (« refuse d'enregistrer ») est inchangé.
 Nouvelle suite `t_stockage` (13 scénarios demandés + IndexedDB absent, ancien stockage illisible, fermeture pendant un enregistrement).
 
-**Tests** : RESULTATS_A_COMPLETER
+**Tests** : `python tests/run.py complet -j 4` : 34 / 34 suites vertes (22/10/2026, Chromium), dont `t_stockage` (45 contrôles), `t_ux`,
+`t_ppocr`, `t_3d`, `t_export` ; `t_avap` relancé contre le main validé (`AVAP_REF=origin/main`) : 1 090 / 1 090, moteur, feuilles, DXF
+et CSV identiques.
 
 **Non validé, limites** : Firefox / Safari / Edge / tablette ; vraie saturation d'un disque (quota simulé) ; base non chiffrée et partagée
 par tous les HTML locaux du profil en file:// ; copie de secours limitée par la taille de `localStorage` ; une version précédente de
