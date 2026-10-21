@@ -25,10 +25,16 @@ développement : il progresse vite mais n'est pas développeur senior.
   Firefox / Safari, tablette réelle, Excel. Seul Chromium est testé automatiquement.
 
 ## Architecture
-- **`app/CoffraPlan.html` est la seule source** : HTML, CSS et JS vanilla, sans étape de construction ; environ 36 Mo (dont PDF.js ≈ 1,8 Mo, Tesseract ≈ 2,65 Mo, PP-OCR ≈ 30 Mo).
-  Seule dépendance : **three.js r170** (licence MIT), intégrée telle quelle en fin de fichier dans
-  `<script type="text/plain" id="three-src">`, chargée à la première ouverture de la vue 3D (`v3Three`). Ne pas la modifier ;
-  pour la mettre à jour, remplacer ce bloc par `build/three.module.min.js` d'une version publiée.
+- **Source : `app/CoffraPlan.source.html`** (HTML, CSS, JS vanilla : le seul fichier de l'appli à éditer à la main) ; **livrable :
+  `app/CoffraPlan.html`**, construit (phase 8) par `python modules/import/assembler.py` (déterministe, environ 2 s ; `--check` vérifie),
+  **non versionné** (.gitignore) ; environ 36 Mo (PDF.js ≈ 1,8 Mo, Tesseract ≈ 2,65 Mo, PP-OCR ≈ 30 Mo). Chaque marqueur
+  `<!--@bloc ID-->` de la source est remplacé par son bloc généré (`cpi-src`, `three-src`, `pdfjs-*`, `tess-*`, `ppocr-*`).
+  Ne jamais modifier `app/CoffraPlan.html` à la main (réécrit à chaque construction) ni chercher le code de l'appli dedans pour l'éditer.
+  Dépendance 3D : **three.js r170** (MIT), `app/vendor/three/three.module.min.js` = `build/three.module.min.js` du paquet npm
+  three@0.170.0 (empreinte SHA-256 vérifiée par l'assembleur), chargée à la première vue 3D (`v3Three`). Mise à jour : remplacer ce
+  fichier par celui d'une version publiée et l'empreinte dans `assembler.py` (`THREE`).
+  CI : construction + `--check`, tests, puis artefact `CoffraPlan-<commit>` (HTML + `CONSTRUCTION.txt`) si tout est vert ; aucune Release.
+  Release (tag) : `.github/workflows/release.yml` construit le HTML avant de le publier.
   - Un `<script id="thm">` dans le `<head>` applique le thème avant l'affichage. Un seul `<script>` principal suit.
   - Certaines fonctions sont **redéfinies plus loin** par enveloppe (`{const _f=f;f=function(){…}}`), par exemple
     `gen` et `printAll`. Avant de modifier une fonction, chercher toutes ses définitions (`grep -n "function nom("`).
@@ -124,6 +130,9 @@ développement : il progresse vite mais n'est pas développeur senior.
   `assembler.py` dans les blocs `ppocr-*` (ne pas les éditer). Moteur par défaut des tableaux à grille et des repères dessinés
   (`CPI.ocr.choisirMoteur`, sélecteur `#dxoMot`, clé `resaOcrMot`) ; Tesseract au choix et pour `lireZone`. Découpage des cellules
   `bandes`, textes verticaux `blocsTexte({verticaux})`. Banc `t_ppocr.py`. Audit et feuille de route : `docs/audit-modernisation.md`.
+  Phase 8 : tableaux juxtaposés : `construire` borné par le couloir des autres en-têtes (`g.entetes`, `limL` / `limR`) ; titres de vue sans
+  mot-clé reconnus par leur échelle écrite (`titres` → `deduit`, vue en plan si niveau nommé, `NIVEAUX`, et dessin ≥ `DV_DEDUIT` cases) ;
+  titre de cartouche écarté (`cart` dans `detecter`). Banc `t_plan_d.py` (`tests/plan_d_fictif.py`).
 - Version affichée : élément `#appVer` (« v3.1 »). t_ux vérifie ce numéro exact ; t_v30 vérifie « v3.x ».
 
 ## Décisions actées (ne pas changer sans l'accord de Kévin)
@@ -149,16 +158,18 @@ python tests/run.py complet -j 4      # + avant/après, revue de 420 plans, gaba
 python tests/run.py t_v25             # une suite
 sh tests/syntax.sh                    # syntaxe JS
 ```
-- `tests/lib.py` (`open_app`, `Suite`) teste `app/CoffraPlan.html`. Une autre version se teste avec la variable
-  `APP=chemin`.
-- **t_avap** (avant / après) donne les mêmes entrées à la version git `AVAP_REF` (défaut `HEAD`) et au fichier de travail,
+- `tests/lib.py` (`open_app`, `Suite`) teste `app/CoffraPlan.html`, construit d'abord depuis les sources (`run.py` : une fois pour
+  toutes les suites ; une suite lancée seule le reconstruit). Une autre version se teste avec la variable `APP=chemin` (rien construit).
+  Banc `t_build.py` (construction, livrable en file:// sans réseau).
+- **t_avap** (avant / après) donne les mêmes entrées à la version git `AVAP_REF` (défaut `HEAD` ; HTML construit depuis les sources de
+  cette révision quand il n'y est pas versionné) et au fichier de travail,
   puis compare débit, feuilles, DXF et CSV. Le lancer avant chaque commit qui touche au moteur. Tout écart doit être
   voulu, et expliqué dans t_avap et CHANGELOG.md.
 - Chaque nouvelle version ajoute sa suite `tests/t_vXY.py`, qui vérifie ce qu'apporte la version.
 - `tests/ref/v18.html` est une référence figée pour t_forme. Ne pas la modifier.
 
 ## Version, livraison
-1. Fixer le numéro dans `#appVer`, dans t_ux et dans CHANGELOG.md (section en tête : demandes, fait, écarts voulus,
+1. Fixer le numéro dans `#appVer` (dans `app/CoffraPlan.source.html`), dans t_ux et dans CHANGELOG.md (section en tête : demandes, fait, écarts voulus,
    tests, non validé).
 2. Lancer `python tests/run.py complet -j 4` : tout doit passer.
 3. Commit, puis tag `vX.Y` poussé : GitHub Actions publie une *Release* avec `CoffraPlan_vX.Y.html` et le mode d'emploi

@@ -1,7 +1,7 @@
 # Stockage des projets (phase 7)
 
 Ce document décrit où CoffraPlan garde les projets dans le navigateur. Il détaille la migration depuis l'ancien stockage, la gestion des erreurs et des conflits, et ce qui a réellement été essayé en `file://`.
-Code : `app/CoffraPlan.html`, fonctions `sto*` (après `svP`). Essais : `tests/t_stockage.py`.
+Code : `app/CoffraPlan.source.html` (livrable construit : `app/CoffraPlan.html`), fonctions `sto*` (après `svP`). Essais : `tests/t_stockage.py`.
 
 ## 1. Principe
 - **Stockage principal : IndexedDB.**

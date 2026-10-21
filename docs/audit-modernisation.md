@@ -78,7 +78,7 @@ Qualité métier finale (nomenclature et analyse du dessin) : voir CHANGELOG, §
 Plan D (46 lignes, OCR de la zone du tableau, vérité = couche texte) : PP-OCRv6 46 / 46 repères, cotes et niveaux, 0 cellule
 douteuse, 50 s ; Tesseract 43 / 46, 15 douteuses, 23 s.
 
-## 2. Défauts révélés par le plan D (hors moteur OCR, à corriger dans une PR suivante)
+## 2. Défauts révélés par le plan D (hors moteur OCR) — corrigés en phase 8
 - **Lecture automatique d'un tableau en texte voisin d'un autre tableau** (`nomenclatures.js`) [C, mesuré] : le tableau des
   réservations (46 lignes) est coupé après la 14e ligne ; la suite est mêlée au tableau des trappes et au « NOTA GENERAL ». Contournement
   actuel : zone choisie + « Analyser la zone » → 46 lignes justes. Correction proposée : découper par le cadre (traits) avant les
@@ -86,6 +86,18 @@ douteuse, 50 s ; Tesseract 43 / 46, 15 douteuses, 23 s.
 - **Titre de vue « Sous Toiture » + « 1 : 25 »** non reconnu (`vues.js`) [C] : la vue reste « autre », sans titre ; la règle prudente
   de la phase 5.1 interdit alors tout comptage d'occurrences (0 compté). Proposition : un titre suivi d'une échelle écrite est un
   titre de vue, le type venant du mot-clé ou, à défaut, de l'unique grande vue de la page.
+
+- **Phase 8, résultat sur le plan D réel** (hors dépôt, lecture automatique sans zone) :
+  - nomenclature : 46 / 46 lignes (repères, cotes mm, niveaux, finitions, désignations) ;
+  - trappes : tableau distinct ;
+  - vue « Sous Toiture » 1:25 : vue en plan ;
+  - occurrences : 31 comptées, toutes justes. 33 repères sont dessinés ; R01 et R02, présents deux fois sans quantité, restent non décidés.
+- **Cause réelle du défaut de tableau** [C, mesuré] :
+  - aucun trait du tableau n'est relevé, car le plafond `SEG_MAX` de 60 000 traits par page est atteint (environ 400 000 sur ce plan) ;
+  - le tableau voisin, construit en premier, s'étendait le long d'une ligne de valeurs jusqu'à la nomenclature.
+  - Corrigé par les couloirs des en-têtes.
+  - **Reste** : `SEG_MAX` lui-même (régions de vue partielles sur les plans très chargés). À traiter avec le moteur natif ou un relevé
+    des traits par zone.
 
 ## 3. Autres domaines (audit en lecture seule du code, 21/10/2026)
 Indicateurs [C] : HTML 36,5 Mo (modèle PP-OCR 24,9 Mo en base64, soit 68 %) ; script principal 642 ko, 5 751 lignes, 518 fonctions
@@ -112,7 +124,7 @@ nommées ; 12 redéfinitions par enveloppe sur 7 fonctions (`showChantier`, `pre
      - le suivi de la sauvegarde externe par fichier ;
      - les essais Firefox / Safari ;
      - la suppression de l'ancien stockage, dans une phase ultérieure et avec l'accord de Kévin.
-2. Défauts du plan D : tableaux en texte voisins (découpe par cadre) et titre de vue suivi d'une échelle.
+2. ~~Défauts du plan D~~ : **fait en phase 8** (couloirs des en-têtes, titre reconnu par son échelle, cartouche écarté). Reste `SEG_MAX`.
 3. Validateurs tiers dans les tests : ezdxf audit, glTF-Validator, `ifcopenshell.validate`.
 4. Suites rapides sous Playwright WebKit et Firefox (non bloquantes d'abord) : prépare Safari et Tauri macOS.
 5. Moteur OCR local pour la version Windows (ONNX Runtime natif, multi-fil, DirectML / CUDA ; même contrat) + détection PP-OCRv6 ;
@@ -123,5 +135,5 @@ nommées ; 12 redéfinitions par enveloppe sur 7 fonctions (`showChantier`, `pre
 8. ESLint + `@ts-check` ; puis remplacement progressif des enveloppes par des points d'extension (d'abord `gen` / `FS`).
 9. Gabarits 1:1 en PDF natif (jsPDF + svg2pdf.js), barre de contrôle 100 mm gardée ; impression réelle à valider.
 10. Accessibilité des fenêtres (`#md`, retour du focus) + axe-core en test.
-11. Taille : dans la version installable, modèles OCR en fichiers séparés ; pour le dépôt, décider entre Git LFS et un HTML de livraison
-    produit en CI (chaque version du HTML de 36 Mo alourdit l'historique) [H sur l'ampleur].
+11. ~~HTML produit par la CI~~ : **fait en phase 8**. Livrable construit depuis les sources, non versionné, sans Git LFS. Artefact CI
+    `CoffraPlan-<commit>`. Reste, pour la version installable : modèles OCR en fichiers séparés.
