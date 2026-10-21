@@ -3,6 +3,57 @@
 Détail complet de chaque version (demandes, écarts voulus, tests, non validé) : `docs/historique/HANDOFF_<version>.md`.
 Chaque version est un tag git (`git diff v2.4 v2.5 -- app/` pour voir les changements).
 
+## Phase 7 — stockage fiable et sauvegarde des projets (non publiée, sans numéro de version)
+**Demande (Kévin, 22/10/2026)** : supprimer le risque de perte silencieuse des projets lié au stockage du navigateur, sans toucher aux
+fonctions métier ; IndexedDB en stockage principal ; migration non destructive ; sauvegarde et restauration vérifiées ; erreurs
+explicites ; essais réels en file:// ; OCR, calculs, GAMMA, géométrie, 3D, feuilles et exports inchangés ; pas de Tauri, pas de
+changement du packaging ; `#appVer` reste v3.1 ; aucun tag ni Release.
+
+**Fait** (détail : `docs/stockage.md`)
+- Stockage principal IndexedDB (base `coffraplan`, schéma 1) : projet entier (plans, profils, modèles, cartouche) en une transaction ;
+  données de travail toujours en mémoire (calculs synchrones) ; écritures en file, chacune sur l'état le plus récent ; révision `rev`
+  contrôlée dans la transaction (autre onglet, autre copie du HTML : écriture refusée et signalée, jamais d'écrasement silencieux).
+- Migration de l'ancien stockage (`resa3`, `resaProf`, `resaLib`, `resaEnt`) : validation, copie, relecture, comparaison, marque ;
+  ancien stockage jamais modifié ni supprimé ; échec → mode de secours (ancien enregistrement), erreur visible, export, « Réessayer » ;
+  migration interrompue reprise ; ancien stockage différent du projet enregistré → choix explicite (exporter les deux, garder,
+  reprendre, décider plus tard) ; ancien stockage illisible → signalé, exportable tel quel.
+- Copie de secours synchrone à la fermeture pendant un enregistrement (`resaSecours.<onglet>`), reprise au démarrage suivant seulement si
+  elle prolonge exactement le projet enregistré.
+- Interface : indicateur d'enregistrement local (« ✓ Enregistré ici », « ⏳ Enregistrement… », « ⚠ Non enregistré », « ⚠ Modifié
+  ailleurs », « ⚠ Stockage de secours ») distinct du rappel de sauvegarde fichier, qui est conservé ; bandeau d'actions (exporter,
+  réessayer, recharger, choisir) ; chargement d'un fichier : contenu annoncé avant remplacement, projet non sauvegardé signalé,
+  confirmation après enregistrement réel ; téléchargement : « fichier remis au navigateur » au lieu de « enregistrée ».
+- Fichier de sauvegarde inchangé (`{app:'plans-reservation', v:10, plans, profils, modeles, ent}`).
+- Relecture de la PR #17 (corrections avant fusion) :
+  - A : un projet enregistré n'est jamais remplacé d'office par l'ancien stockage, même sans plan ni modèle (profils, cartouche,
+    projet vidé) : choix proposé ; migration automatique seulement sans projet enregistré, création contrôlée dans la transaction
+    (onglets démarrés en même temps) ;
+  - B : plusieurs copies de secours différentes de même révision de départ : aucune reprise ni suppression, récupération explicite
+    (export séparé, reprise sur confirmation) ; reprise automatique gardée pour une copie unique non ambiguë ;
+  - forçage : autorisation à usage unique, limitée à la révision vue, retirée même après un échec d'écriture.
+- Documentation : `docs/stockage.md`, mode d'emploi (§ 6), audit (décisions actées après la phase 6, section stockage), CLAUDE.md.
+
+**Essais file:// (Chromium, profils persistants)** : rechargement, fermeture / réouverture, autre HTML du même dossier, HTML renommé et
+déplacé : projets retrouvés (origine `file://` unique pour tous les fichiers locaux) ; nouveau profil : aucun projet (le fichier .json
+seul transporte le travail). Firefox, Safari, Edge, tablette : non essayés.
+
+**Écarts voulus (tests existants)** — l'ancien stockage n'est plus écrit en fonctionnement normal :
+- `t_dxf_ui` (12) : l'état après « Annuler » est relu dans IndexedDB (`stoEnregistre`) au lieu de `localStorage.resa3` ;
+- `t_v26` : le cartouche enregistré est relu dans IndexedDB au lieu de `localStorage.resaEnt` ;
+- `t_v24` : le stockage plein est simulé sur IndexedDB (`QuotaExceededError` à l'écriture) au lieu de `localStorage` ; le message
+  attendu (« refuse d'enregistrer ») est inchangé.
+Nouvelle suite `t_stockage` (13 scénarios demandés + IndexedDB absent, ancien stockage illisible, fermeture pendant un enregistrement ;
++ relecture : projet enregistré vide, zéro plan avec profil et cartouche, migration initiale concurrente, deux copies de secours de même
+révision, forçage après échec : 58 contrôles).
+
+**Tests** : `python tests/run.py complet -j 4` : 34 / 34 suites vertes (22/10/2026, Chromium), dont `t_stockage` (58 contrôles), `t_ux`,
+`t_ppocr`, `t_3d`, `t_export` ; `t_avap` relancé contre le main validé (`AVAP_REF=origin/main`) : 1 090 / 1 090, moteur, feuilles, DXF
+et CSV identiques.
+
+**Non validé, limites** : Firefox / Safari / Edge / tablette ; vraie saturation d'un disque (quota simulé) ; base non chiffrée et partagée
+par tous les HTML locaux du profil en file:// ; copie de secours limitée par la taille de `localStorage` ; une version précédente de
+CoffraPlan ouverte dans le même navigateur voit les projets d'avant la migration (ses modifications sont détectées comme conflit).
+
 ## Phase 6 — moteur de reconnaissance PP-OCRv6 local (non publiée, sans numéro de version)
 **Demande (Kévin, 21/10/2026)** : moderniser le moteur de reconnaissance avec la meilleure technologie gratuite, locale et
 exploitable commercialement ; aucune API payante, aucun abonnement, aucun plan envoyé à un serveur ; HTML autonome ; comparer

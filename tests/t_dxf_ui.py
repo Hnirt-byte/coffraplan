@@ -204,7 +204,8 @@ def t(s):
         s.check(J('P.length') == 3 and J('P[1].origineImport.unite_source') is None and J('P[1].origineImport.unite') == 'm' and J('P[1].origineImport.indice') == 'B',
                 '4. unité choisie notée dans la provenance (unité du fichier : absente) ; indice du plan source', json.dumps(J('P[1].origineImport')))
         pg.click('#toast button:has-text("Annuler")')
-        s.check(J('JSON.stringify(P)') == Pa and J('localStorage.getItem("resa3")') == Pa, '12. « Annuler » : retour exact à l\'état d\'avant l\'import')
+        # phase 7 : le projet est enregistré dans IndexedDB (l'ancien stockage resa3 n'est plus écrit) : relu dans la base
+        s.check(J('JSON.stringify(P)') == Pa and J('stoAttendre().then(()=>stoEnregistre()).then(r=>JSON.stringify(r.plans))') == Pa, '12. « Annuler » : retour exact à l\'état d\'avant l\'import')
 
         # références automatiques du lot : jamais celles saisies dans le lot ni celles du projet (relecture PR #5)
         J('''()=>{el('iCh').value='CHANTIER_DEMO_A';el('iOuv').value='OUVRAGE_REF';el('iForme').value='rect';updF();

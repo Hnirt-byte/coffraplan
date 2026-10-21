@@ -46,7 +46,12 @@ développement : il progresse vite mais n'est pas développeur senior.
   - liste des plans : `rnL` ; aperçu : `onEdit` (différé à partir de 300 ms de calcul) ;
   - fonctions avancées : `openSeries`, `showCmp`, `openChm` (mode chantier), `autoControl` ;
   - sauvegarde : `projHash` avec le rappel de sauvegarde.
-- Stockage navigateur : clés `resa*` (`resaTheme`, `resaPrint`, `resaFold`, `resaChk`…). Fichier projet :
+- Stockage des projets (phase 7, `docs/stockage.md`) : IndexedDB, base `coffraplan`, magasin `projet` : `courant` (projet entier :
+  plans, profils, modèles, cartouche ; `rev`) et `meta` (migration). Fonctions `sto*` (`stoDemarrer`, `stoSauver`, `stoMigrer`, `stoUI`,
+  `stoAttendre` / `stoEnregistre` pour les essais) ; `svP` / `svProf` / `svLib` / `svEnt` passent par `stoEcrit`. L'interface démarre après
+  `stoDemarrer` (`_ready`). Ancien stockage `resa3`, `resaProf`, `resaLib`, `resaEnt` : source de migration, jamais modifié ni supprimé
+  (sauf mode `local` si IndexedDB est indisponible). Copie de secours `resaSecours.<onglet>` à la fermeture. Banc `t_stockage.py`.
+- Préférences du navigateur : clés `resa*` (`resaTheme`, `resaPrint`, `resaFold`, `resaChk`, `resaSavedH`…). Fichier projet :
   `{app:'plans-reservation', v:10, plans, profils, modeles}`. **Ne pas casser la lecture des anciens fichiers** :
   ajouter une migration dans `migr`.
 - v2.6 : `CPT` (catalogue CP par âme) et `CPMEC` (modules EN 789 + sources) ; `flecheCP` / `plateW` (flèche des joues,

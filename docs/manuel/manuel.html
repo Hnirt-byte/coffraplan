@@ -265,11 +265,17 @@ code{font:9pt 'DejaVu Sans Mono',monospace;background:#f1f3f7;padding:0 1mm;bord
 
 <!-- ======================= 6 ======================= -->
 <h1 class="chap">6. Sauvegarder et charger</h1>
+<h3>Deux niveaux de protection</h3>
+<ul><li><b>Enregistrement dans le navigateur (automatique)</b> : chaque modification est enregistrée dans le navigateur, sur cet ordinateur. L'indicateur à côté de 💾 affiche <b>✓ Enregistré ici</b>, <b>⏳ Enregistrement…</b> ou <b>⚠ Non enregistré</b> (avec un bandeau rouge qui explique quoi faire). Fermer puis rouvrir CoffraPlan dans le même navigateur retrouve le travail, même si le fichier HTML a été renommé ou déplacé (essayé dans Chrome).</li>
+<li><b>Sauvegarde en fichier .json (vous)</b> : c'est la seule protection contre un navigateur nettoyé, un autre navigateur, un autre poste, une panne. La pastille orange et le bandeau « Modifications non sauvegardées » parlent de ce fichier, pas du navigateur.</li></ul>
+<div class="note"><b>Première ouverture de cette version</b>Les plans des versions précédentes (ancien stockage du navigateur) sont transférés automatiquement : copiés, relus, comparés ; un message le confirme. L'ancien stockage n'est ni modifié ni effacé. Si le transfert échoue, un bandeau le dit, propose d'exporter le projet et de réessayer ; rien n'est perdu.</div>
+<div class="warn"><b>Deux versions trouvées</b>Si l'ancien stockage a été modifié depuis (par une ancienne version de CoffraPlan ouverte dans le même navigateur), CoffraPlan ne choisit pas à votre place : il propose d'exporter les deux, puis de garder le projet enregistré ou de reprendre l'ancien stockage.</div>
+<div class="warn"><b>Deux onglets ou deux fichiers CoffraPlan ouverts</b>Ils partagent les mêmes projets. Si l'un enregistre, l'autre l'indique (« Modifié ailleurs ») et refuse d'écraser : recharger le projet enregistré, exporter la version de l'onglet, ou la garder en connaissance de cause.</div>
 <h3>Sauvegarder (fichier .json)</h3>
 <p>💾 <b>Sauvegarder</b> (<kbd>Ctrl</kbd>+<kbd>S</kbd>) enregistre <b>tous</b> les plans, profils de chantier, modèles et le cartouche entreprise dans un fichier <code>.json</code>. Le ranger dans le dossier du chantier (réseau, cloud) : c'est la vraie sauvegarde.</p>
 <ul><li><b>Chrome / Edge</b> : au premier enregistrement, choisir le fichier et son dossier ; ensuite <kbd>Ctrl</kbd>+<kbd>S</kbd> <b>réécrit ce même fichier</b>, comme dans un traitement de texte. Un projet ouvert avec 📂 Charger devient le fichier enregistré. <kbd>Ctrl</kbd>+<kbd>Maj</kbd>+<kbd>S</kbd> : enregistrer sous un autre nom. Après un rechargement de la page, le premier enregistrement redemande le fichier.</li><li><b>Autres navigateurs</b> : le fichier <code>coffraplan_AAAA-MM-JJ.json</code> est téléchargé à chaque sauvegarde.</li></ul>
 <h3>Charger</h3>
-<p>📂 <b>Charger</b> (<kbd>Ctrl</kbd>+<kbd>O</kbd>) relit un fichier .json. S'il y a déjà des plans, l'application demande de les <b>remplacer</b> (les profils et modèles du fichier sont ajoutés). Les fichiers des versions précédentes sont convertis automatiquement.</p>
+<p>📂 <b>Charger</b> (<kbd>Ctrl</kbd>+<kbd>O</kbd>) relit un fichier .json. S'il y a déjà des plans, l'application montre ce que contient le fichier (plans, chantiers, profils, modèles, cartouche, date) et demande de les <b>remplacer</b> ; si le projet actuel a des modifications qui ne sont dans aucun fichier, elle le signale : <b>Annuler</b> puis 💾 Sauvegarder d'abord. Les profils et modèles du fichier sont ajoutés. Le message final confirme que le projet chargé est <b>enregistré dans ce navigateur</b>. Les fichiers des versions précédentes sont convertis automatiquement.</p>
 <h3>Rappel de sauvegarde</h3>
 <div class="row"><div>
 <ul><li><b>Pastille orange</b> sur 💾 et bandeau dans le panneau dès que le projet diffère du dernier fichier sauvegardé ou chargé.</li>
@@ -278,7 +284,8 @@ code{font:9pt 'DejaVu Sans Mono',monospace;background:#f1f3f7;padding:0 1mm;bord
 <li>Aucune sauvegarde automatique de fichier : c'est toujours vous qui sauvegardez.</li></ul></div>
 <div class="fig" style="flex:0 0 40%"><img src="img/13_rappel.png"><div class="cap">Rappel après 5 minutes</div></div></div>
 <div class="note"><b>Ce qui compte comme « modifié »</b>Ajouter, mettre à jour, supprimer un plan, modifier un profil ou un modèle. Taper dans le formulaire sans enregistrer le plan ne modifie pas le projet (voir la pastille « Mettre à jour », § 5) : <kbd>Ctrl</kbd>+<kbd>S</kbd> le rappelle dans son message.</div>
-<div class="warn"><b>Stockage du navigateur plein ou bloqué</b>Un message l'indique une fois par séance : sauvegarder immédiatement le fichier .json.</div>
+<div class="warn"><b>Enregistrement impossible (stockage plein, navigateur restreint)</b>Un message et un bandeau rouge l'indiquent : le travail reste dans la page tant qu'elle est ouverte ; sauvegarder immédiatement le fichier .json, puis « Réessayer ». Si le navigateur n'offre pas l'enregistrement fiable (« ⚠ Stockage de secours »), sauvegarder souvent le fichier.</div>
+<div class="note"><b>Fermeture pendant un enregistrement</b>Une copie de secours est posée au moment de fermer ; elle est reprise à l'ouverture suivante et un message le confirme.</div>
 
 <!-- ======================= 7 ======================= -->
 <h1 class="chap">7. Fonctions avancées</h1>
@@ -505,7 +512,7 @@ code{font:9pt 'DejaVu Sans Mono',monospace;background:#f1f3f7;padding:0 1mm;bord
 <li>Modification : nouvel indice (➕ Nouveau), ⇄ Comparer, imprimer la comparaison pour visa.</li></ol>
 <h2>Questions fréquentes</h2>
 <table><tr><th style="width:62mm">Problème</th><th>Solution</th></tr>
-<tr><td>Mes plans ont disparu</td><td>Le navigateur a été vidé ou ce n'est pas le même navigateur / poste : 📂 Charger le dernier .json. D'où l'intérêt de sauvegarder souvent.</td></tr>
+<tr><td>Mes plans ont disparu</td><td>Le navigateur a été vidé, ou ce n'est pas le même navigateur, le même profil ou le même poste : 📂 Charger le dernier .json. D'où l'intérêt de sauvegarder souvent.</td></tr>
 <tr><td>Transférer sur un autre poste ou une tablette</td><td>Copier le fichier HTML et le .json ; ouvrir le HTML puis 📂 Charger.</td></tr>
 <tr><td>Le bouton « Mettre à jour » a une pastille rouge</td><td>Le formulaire diffère du plan enregistré : « Mettre à jour » pour enregistrer, ou ✖ Annuler.</td></tr>
 <tr><td>Un plan est refusé / « Plan incohérent »</td><td>Lire les alertes ⛔, cliquer dessus pour aller au champ ; 🔍 Auto-contrôle propose souvent une correction automatique.</td></tr>
