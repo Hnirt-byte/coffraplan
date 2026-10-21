@@ -137,7 +137,13 @@ function etendue(H,y,x0,x1,hm){const S=H.filter(h=>Math.abs(h.y-y)<=0.2*hm).sort
 // Un tableau à partir d'une ligne d'en-tête hg (textes) ; renvoie null si aucune colonne lisible
 function construire(g,hg,used,K){
   const hm=med(hg.map(t=>t.h)),yH=hg.reduce((s,t)=>s+t.y,0)/hg.length;let xL=Math.min(...hg.map(t=>t.x0)),xR=Math.max(...hg.map(t=>t.x1));
-  const libre=t=>!used.has(t.i);
+  // phase 8 : couloir du tableau. L'en-tête d'un autre tableau, à une autre hauteur et sans recouvrement horizontal avec celui-ci
+  // (tableaux juxtaposés : nomenclature et tableau de trappes côte à côte), borne ce tableau de son côté : ni l'extension de largeur
+  // par la 1re ligne de valeurs, ni les lignes, ni les traits ne passent dans son couloir (sinon une même hauteur suffit à mêler deux
+  // tableaux voisins, et le premier construit prend les lignes de l'autre)
+  const h0=xL,h1=xR,AU=(g.entetes||[]).filter(e=>Math.abs(e.y-yH)>2*hm&&(e.x1<h0||e.x0>h1)),
+    limL=Math.max(-Infinity,...AU.filter(e=>e.x1<h0).map(e=>e.x1+0.5*hm)),limR=Math.min(Infinity,...AU.filter(e=>e.x0>h1).map(e=>e.x0-0.5*hm));
+  const libre=t=>!used.has(t.i)&&t.x>=limL&&t.x<=limR;   // centre dans le couloir (un titre peut déborder du tableau)
   // bande d'en-tête : entre deux traits horizontaux de la grille, sinon textes à mot-clé ou sous-titres « (mm) » juste au-dessus / au-dessous
   const Hy=fusion(g.A.H.filter(h=>couvre([h],xL,xR)>=0.5*(xR-xL)).map(h=>h.y),0.2*hm),   // croissant
     dessus=Hy.find(y=>y>yH+0.3*hm),dessous=Hy.filter(y=>y<yH-0.3*hm).pop();
@@ -147,7 +153,7 @@ function construire(g,hg,used,K){
     // largeur du tableau : celle de la 1re ligne de valeurs (texte chiffré) contre l'en-tête, suivie de proche en proche (écart ≤ 30 h) :
     // des colonnes éloignées des autres (IDENTIFIANT, COMMENTAIRES larges) restent dans le tableau
     const pres=t=>Math.min(Math.abs(t.y-band[0]),Math.abs(t.y-band[1])),ln=g.T.filter(t=>libre(t)&&/\d/.test(t.n)&&t.x>=xL&&t.x<=xR&&(t.y<band[0]||t.y>band[1])&&pres(t)<=3*hm).sort((a,b)=>pres(a)-pres(b))[0];
-    if(ln){const L=g.T.filter(t=>libre(t)&&Math.abs(t.y-ln.y)<=0.5*Math.max(t.h,ln.h)).sort((a,b)=>a.x0-b.x0);let i=L.indexOf(ln),j=i;
+    if(ln){const L=g.T.filter(t=>libre(t)&&Math.abs(t.y-ln.y)<=0.5*Math.max(t.h,ln.h)).sort((a,b)=>a.x0-b.x0);let i=L.indexOf(ln),j=i;   // libre : dans le couloir
       while(i>0&&L[i].x0-L[i-1].x1<=ECART*hm)i--;while(j<L.length-1&&L[j+1].x0-L[j].x1<=ECART*hm)j++;xL=Math.min(xL,L[i].x0);xR=Math.max(xR,L[j].x1)}
     // en-tête sur plusieurs lignes (titres de groupe « DIMENSIONS (mm) » au-dessus de « Hauteur », « Largeur ») : lignes voisines dont
     // aucun texte n'a de chiffre (une ligne de valeurs a toujours un repère, une cote ou un niveau chiffrés)
@@ -157,7 +163,7 @@ function construire(g,hg,used,K){
   // traits verticaux de la grille : ils traversent l'en-tête, entre les extrémités du trait qui la borde (grille) ou en
   // partant de son bord (un cadre de feuille ou le tableau voisin ne comptent pas)
   const yM=(band[0]+band[1])/2,ext=grL?etendue(g.A.H,dessus,xL,xR,hm):null,
-    garde=v=>ext?v.x>=ext[0]-0.3*hm&&v.x<=ext[1]+0.3*hm:v.x>=xL-15*hm&&v.x<=xR+15*hm&&(Math.abs(v.y1-band[1])<=0.5*hm||Math.abs(v.y0-band[0])<=0.5*hm);
+    garde=v=>v.x>=limL&&v.x<=limR&&(ext?v.x>=ext[0]-0.3*hm&&v.x<=ext[1]+0.3*hm:v.x>=xL-15*hm&&v.x<=xR+15*hm&&(Math.abs(v.y1-band[1])<=0.5*hm||Math.abs(v.y0-band[0])<=0.5*hm));
   let xs=fusion(g.A.V.filter(v=>v.y0-0.2*hm<=yM&&yM<=v.y1+0.2*hm&&garde(v)).map(v=>v.x),0.3*hm);
   if(ext&&xs.length){if(xs[0]>ext[0]+0.3*hm)xs.unshift(ext[0]);if(xs[xs.length-1]<ext[1]-0.3*hm)xs.push(ext[1])}
   const grC=xs.length>=2;
@@ -169,7 +175,7 @@ function construire(g,hg,used,K){
     if(C.length>=2&&C.every(c=>t.y>c.y+0.5*hm)){GR.set(t,C);return}
     if(C.length){const c=C[0];c.x0=Math.min(c.x0,t.x0);c.x1=Math.max(c.x1,t.x1);c.y=Math.max(c.y,t.y)}else Cl.push({x0:t.x0,x1:t.x1,y:t.y})});
   Cl.sort((a,b)=>a.x0-b.x0);for(let j=1;j<Cl.length;j++)if(Cl[j].x0<=Cl[j-1].x1+0.3*hm){Cl[j-1].x1=Math.max(Cl[j-1].x1,Cl[j].x1);Cl.splice(j--,1)}
-  const pad=Math.max(4*hm,med(Cl.map(c=>c.x1-c.x0))),P0=ext&&grC?xs[0]:Cl[0].x0-pad,PN=ext&&grC?xs[xs.length-1]:Cl[Cl.length-1].x1+pad;
+  const pad=Math.max(4*hm,med(Cl.map(c=>c.x1-c.x0))),P0=Math.max(limL,ext&&grC?xs[0]:Cl[0].x0-pad),PN=Math.min(limR,ext&&grC?xs[xs.length-1]:Cl[Cl.length-1].x1+pad);
   // une ligne qui contient un chiffre (repère, cote, niveau) n'est pas un en-tête, même si ses mots ressemblent à des titres
   const enTete=T=>{const k=new Set();let c=0;T.forEach(t=>{if(K[t.i].length){c++;k.add(K[t.i][0])}});return c>=3&&k.size>=2&&!T.some(t=>/\d/.test(t.n))};
   // lignes de texte d'un côté de l'en-tête (dir -1 : dessous, +1 : dessus) : bandes de la grille, sinon regroupement par hauteur
@@ -241,7 +247,10 @@ function analyser(doc){
       r.T.sort((a,b)=>a.x-b.x).forEach(t=>{const pk=K[t.i][0];
         if(!c||t.x0-c.x1>ECART*hm||pk==='repere'&&c.rep&&c.T.length>=3){c={T:[],x1:-Infinity,rep:false};cand.push(c)}
         c.T.push(t);c.x1=Math.max(c.x1,t.x1);c.rep=c.rep||pk==='repere'})});
-    cand.map(c=>({T:c.T,k:new Set(c.T.map(t=>K[t.i][0])).size})).filter(c=>c.T.length>=3&&c.k>=2).sort((a,b)=>b.k-a.k||b.T.length-a.T.length)
+    const CA=cand.map(c=>({T:c.T,k:new Set(c.T.map(t=>K[t.i][0])).size})).filter(c=>c.T.length>=3&&c.k>=2);
+    // emprises des en-têtes possibles (couloirs des tableaux juxtaposés, voir construire)
+    g.entetes=CA.map(c=>({x0:Math.min(...c.T.map(t=>t.x0)),x1:Math.max(...c.T.map(t=>t.x1)),y:c.T.reduce((s,t)=>s+t.y,0)/c.T.length}));
+    CA.sort((a,b)=>b.k-a.k||b.T.length-a.T.length)
       .forEach(c=>{if(c.T.some(t=>used.has(t.i)))return;const tb=construire(g,c.T,used,K);if(!tb)return;
         if(g.q){const c=tb.cadre,P=[[c[0],c[1]],[c[2],c[3]],[c[0],c[3]],[c[2],c[1]]].map(p=>tourne(p,g.q));tb.cadre=[Math.min(...P.map(p=>p[0])),Math.min(...P.map(p=>p[1])),Math.max(...P.map(p=>p[0])),Math.max(...P.map(p=>p[1]))];tb.rotation=90*g.q}
         brut.push(Object.assign(tb,{espace:g.espace,presentation:g.presentation},g.page?{page:g.page}:{}))})});
