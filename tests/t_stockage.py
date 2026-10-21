@@ -246,7 +246,81 @@ def t(s):
         s.check(json.load(open(os.path.join(tmp, 'brut.json')))['cles']['resa3'] == V['resa3'], 'ancien stockage illisible : exporté tel quel (texte brut) pour récupération')
         N10.fermer()
 
-        s.check(not [e for e in N.errs + N8.errs + N9.errs + N10.errs], 'aucune erreur JS', json.dumps((N.errs + N8.errs)[:3]))
+        # ==== Relecture de la PR #17 : corrections A (projet vide ≠ absence de projet), B (copies de secours concurrentes), forçage ====
+        # A1. projet enregistré vidé de ses plans + ancien stockage de 4 plans : aucun remplacement d'office
+        NA = Nav(pw, os.path.join(tmp, 'pA1')); pg = NA.ouvrir(); J = pg.evaluate
+        J("()=>{T.mk('rect',{dL:600,dl:600,dh:200});el('iRef').value='A1';addP(false);if(dlgOpen())dlgEnd(true);dlP(0)}"); J('stoAttendre()')
+        r1 = J('stoEnregistre().then(r=>[r.rev,r.plans.length,r.modeles.length])'); pg.goto('file://' + seme); V = semer(pg, O); NA.fermer()
+        pg = NA.ouvrir(); J = pg.evaluate; pg.wait_for_timeout(700)
+        r = J('stoEnregistre().then(r=>({n:P.length,rev:r.rev,nr:r.plans.length,cas:STO.ancien&&STO.ancien.cas,md:el("md").style.display==="flex",migre:STO.migre}))')
+        s.check(r1[1:] == [0, 0] and r == {'n': 0, 'rev': r1[0], 'nr': 0, 'cas': 'conflit', 'md': True, 'migre': False}
+                and J('v=>Object.keys(v).every(k=>localStorage.getItem(k)===v[k])', V),
+                'A1. projet enregistré sans plan + ancien stockage de 4 plans : rien remplacé, choix proposé, ancien stockage intact', json.dumps([r1, r]))
+        NA.fermer()
+        # A2. zéro plan mais profil et cartouche enregistrés + ancien stockage différent : profil et cartouche gardés, choix proposé
+        NA2 = Nav(pw, os.path.join(tmp, 'pA2')); pg = NA2.ouvrir(); J = pg.evaluate
+        J("()=>{PROF['CHANTIER_A2']={kerf:7};svProf();ENT=entOk({nom:'CARTOUCHE A2'});svEnt()}"); J('stoAttendre()')
+        pg.goto('file://' + seme); semer(pg, O); NA2.fermer()
+        pg = NA2.ouvrir(); J = pg.evaluate; pg.wait_for_timeout(700)
+        r = J("stoEnregistre().then(r=>({n:P.length,prof:(PROF.CHANTIER_A2||{}).kerf,ent:ENT.nom,rprof:(r.profils.CHANTIER_A2||{}).kerf,rent:r.ent.nom,cas:STO.ancien&&STO.ancien.cas}))")
+        s.check(r == {'n': 0, 'prof': 7, 'ent': 'CARTOUCHE A2', 'rprof': 7, 'rent': 'CARTOUCHE A2', 'cas': 'conflit'},
+                'A2. zéro plan, profil et cartouche enregistrés : conservés, ancien stockage proposé au choix, jamais migré d\'office', json.dumps(r))
+        NA2.fermer()
+        # A3. migration initiale contrôlée : création refusée si un projet existe déjà (onglets démarrés en même temps)
+        NA3 = Nav(pw, os.path.join(tmp, 'pA3')); pg = NA3.ouvrir(); J = pg.evaluate
+        J("()=>{T.mk('rect',{dL:800,dl:500,dh:200});el('iRef').value='A3';addP(false);if(dlgOpen())dlgEnd(true)}"); J('stoAttendre()')
+        avant = J('stoEnregistre()')
+        r = J("""(o)=>{localStorage.setItem('resa3',JSON.stringify(o.plans));const A=stoAncien();STO.rev=0;
+              return stoMigrer(A,true).then(()=>stoEnregistre()).then(r=>({rev:r.rev,refs:r.plans.map(p=>p.ref),cas:STO.ancien&&STO.ancien.cas,mode:STO.mode,mem:P.map(p=>p.ref)}))}""", O)
+        s.check(r['rev'] == avant['rev'] and r['refs'] == ['A3'] and r['cas'] == 'conflit' and r['mode'] == 'idb' and r['mem'] == ['A3'],
+                'A3. migration initiale lancée alors qu\'un projet vient d\'être créé par un autre onglet : refusée, projet existant ouvert, choix proposé', json.dumps(r))
+        J("()=>{localStorage.setItem('resa3',JSON.stringify(P));localStorage.setItem('resaProf',JSON.stringify(PROF));localStorage.setItem('resaLib',JSON.stringify(LIBU));localStorage.setItem('resaEnt',JSON.stringify(ENT));STO.rev=0}")
+        r = J("stoMigrer(stoAncien(),true).then(()=>stoEnregistre()).then(r=>({rev:r.rev,cas:STO.ancien&&STO.ancien.cas,m:(STO.meta.migration||{}).etat}))")
+        s.check(r == {'rev': avant['rev'], 'cas': None, 'm': 'ok'}, 'A3. même cas, données identiques : migration simplement marquée, rien réécrit', json.dumps(r))
+        NA3.fermer()
+
+        # B. deux copies de secours différentes, même révision de départ : aucune reprise, aucune suppression, choix explicite
+        NB = Nav(pw, os.path.join(tmp, 'pB')); pg = NB.ouvrir(); J = pg.evaluate
+        J("()=>{T.mk('rect',{dL:900,dl:500,dh:200});el('iRef').value='B0';addP(false);if(dlgOpen())dlgEnd(true)}"); J('stoAttendre()')
+        rev = J('STO.rev')
+        J("""(rev)=>{const pr=x=>Object.assign(JSON.parse(JSON.stringify({plans:P,profils:PROF,modeles:LIBU,ent:ENT})),{});
+              const a=pr(),b=pr();a.plans[0].desc='copie onglet 1';b.plans[0].desc='copie onglet 2';b.plans.push(Object.assign({},b.plans[0],{ref:'B9',uid:'b9'}));
+              localStorage.setItem('resaSecours.ong1',JSON.stringify({base:rev,date:'2026-10-22T08:00:00Z',projet:a}));
+              localStorage.setItem('resaSecours.ong2',JSON.stringify({base:rev,date:'2026-10-22T08:01:00Z',projet:b}))}""", rev)
+        NB.fermer(); pg = NB.ouvrir(); J = pg.evaluate; pg.wait_for_timeout(800)
+        r = J("stoEnregistre().then(r=>({mem:P.map(p=>p.desc||''),rec:r.plans.map(p=>p.desc||''),rev:r.rev,cles:Object.keys(localStorage).filter(k=>k.startsWith('resaSecours.')).sort(),n:STO.secours.length,md:el('mdBody').textContent,b:el('zSto').textContent}))")
+        s.check(r['mem'] == [''] and r['rec'] == [''] and r['rev'] == rev and r['cles'] == ['resaSecours.ong1', 'resaSecours.ong2'] and r['n'] == 2,
+                'B. deux copies de secours différentes de même révision : aucune reprise, aucune suppression, projet enregistré intact', json.dumps(r, ensure_ascii=False)[:400])
+        s.check('Rien n\'a été remplacé' in r['md'] and r['md'].count('Exporter') >= 2 and 'Reprendre' in r['md'] and 'copie(s) de secours' in r['b'],
+                'B. récupération explicite proposée (fenêtre et bandeau), une ligne par copie', r['md'][:300])
+        with pg.expect_download() as d:
+            J('stoSecoursExport(1)')
+        d.value.save_as(os.path.join(tmp, 'sec2.json')); c2 = json.load(open(os.path.join(tmp, 'sec2.json')))
+        s.check(len(c2['plans']) == 2 and c2['plans'][0]['desc'] == 'copie onglet 2', 'B. chaque copie exportable séparément (fichier CoffraPlan lisible)')
+        J('stoSecoursReprendre(1)'); s.check(J('dlgOpen()'), 'B. reprise d\'une copie : confirmation demandée avant remplacement')
+        J('dlgEnd(true)'); pg.wait_for_timeout(300); J('stoAttendre()')
+        r = J("stoEnregistre().then(r=>({rec:r.plans.map(p=>p.desc||''),rev:r.rev,cles:Object.keys(localStorage).filter(k=>k.startsWith('resaSecours.'))}))")
+        s.check(r['rec'] == ['copie onglet 2', 'copie onglet 2'] and r['rev'] == rev + 1 and r['cles'] == ['resaSecours.ong1'],
+                'B. copie choisie reprise et enregistrée ; l\'autre copie conservée', json.dumps(r, ensure_ascii=False))
+        NB.fermer()
+
+        # F. forçage : autorisation consommée par une écriture en échec, jamais réutilisée contre une révision plus récente
+        NF = Nav(pw, os.path.join(tmp, 'pF'), init=CASSE); pg = NF.ouvrir(); J = pg.evaluate
+        J("()=>{T.mk('rect',{dL:900,dl:500,dh:200});el('iRef').value='F0';addP(false);if(dlgOpen())dlgEnd(true)}"); J('stoAttendre()')
+        pgB = NF.onglet(); JB = pgB.evaluate
+        J("()=>{P[0].desc='A1';svP()}"); J('stoAttendre()')
+        JB("()=>{P[0].desc='B1';svP()}"); JB('stoAttendre()')
+        s.check(JB('STO.etat') == 'conflit', 'F. onglet B en conflit après l\'écriture de A')
+        JB("()=>{window.__casse='UnknownError';STO.alerte=true;stoForcer()}"); JB('dlgEnd(true)'); JB('stoAttendre()'); JB("window.__casse=null")
+        s.check(JB('[STO.etat,STO.forcer]') == ['erreur', None], 'F. remplacement confirmé mais écriture en échec : autorisation de forçage retirée', json.dumps(JB('[STO.etat,STO.forcer]')))
+        J("()=>{P[0].desc='A2';svP()}"); J('stoAttendre()')
+        JB("()=>{P[0].desc='B2';svP()}"); r = JB('stoAttendre().then(()=>stoEnregistre()).then(r=>[r.plans[0].desc,STO.etat])')
+        s.check(r == ['A2', 'conflit'], 'F. écriture suivante de B : refusée, la nouvelle révision de A n\'est pas écrasée', json.dumps(r))
+        JB("()=>stoForcer()"); JB('dlgEnd(true)'); r = JB('stoAttendre().then(()=>stoEnregistre()).then(r=>[r.plans[0].desc,STO.etat,STO.forcer])')
+        s.check(r == ['B2', 'ok', None], 'F. nouveau choix explicite sur la révision vue : version de B enregistrée, autorisation consommée', json.dumps(r))
+        pgB.close(); NF.fermer()
+
+        s.check(not [e for e in N.errs + N8.errs + N9.errs + N10.errs + NA.errs + NB.errs + NF.errs], 'aucune erreur JS', json.dumps((N.errs + N8.errs + NB.errs + NF.errs)[:3]))
 
 
 if __name__ == '__main__':

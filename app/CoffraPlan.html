@@ -3340,12 +3340,15 @@ function stoCharger(r){P=(r.plans||[]).map(migr);PROF=r.profils&&typeof r.profil
 function stoSauver(){STO.demande++;if(STO.mode!=='idb')return Promise.resolve(false);if(!STO.cours){STO.etat='ecriture';stoUI();STO.cours=stoBoucle()}return STO.cours}
 async function stoBoucle(){let ok=true;try{while(STO.fait<STO.demande){const d=STO.demande;ok=await stoPut();STO.fait=d;if(!ok)break}}finally{STO.cours=null}
   if(ok&&STO.fait<STO.demande)return stoSauver();stoUI();return ok}
-function stoPut(){return new Promise(res=>{let tx,refus=null,errPut=null;try{tx=STO.db.transaction('projet','readwrite')}catch(e){return res(stoEchec(e))}
-  const st=tx.objectStore('projet'),g=st.get('courant'),base=STO.rev,forcer=STO.forcer;let rec=null;
-  g.onsuccess=()=>{const c=g.result;if(c&&c.rev!==base&&!forcer){refus=c;tx.abort();return}
+// o.absent : création (migration initiale) : refusée si un projet existe déjà (autre onglet démarré en même temps).
+// STO.forcer = {rev} : remplacement confirmé par l'utilisateur de la révision qu'il a vue, et d'elle seule ; consommé par cette écriture
+// quelle qu'en soit l'issue (un échec ne laisse aucune autorisation active pour une écriture suivante)
+function stoPut(o){o=o||{};const forcer=STO.forcer;STO.forcer=null;return new Promise(res=>{let tx,refus=null,errPut=null;try{tx=STO.db.transaction('projet','readwrite')}catch(e){return res(stoEchec(e))}
+  const st=tx.objectStore('projet'),g=st.get('courant'),base=STO.rev;let rec=null;
+  g.onsuccess=()=>{const c=g.result;if(c&&(o.absent||c.rev!==base)&&!(forcer&&c.rev===forcer.rev)){refus=c;tx.abort();return}
     rec=Object.assign({schema:STO_SCHEMA,rev:(c?c.rev:base)+1,date:new Date().toISOString(),app:'CoffraPlan '+appV(),onglet:STO.id},stoProj());
     try{st.put(rec,'courant')}catch(e){errPut=e;tx.abort()}};
-  tx.oncomplete=()=>{STO.rev=rec.rev;STO.forcer=false;try{localStorage.removeItem('resaSecours.'+STO.id)}catch(e){}STO.etat='ok';STO.err=null;STO.perime=false;STO.autre=null;try{STO.canal&&STO.canal.postMessage({rev:rec.rev,id:STO.id})}catch(e){}res(true)};
+  tx.oncomplete=()=>{STO.rev=rec.rev;try{localStorage.removeItem('resaSecours.'+STO.id)}catch(e){}STO.etat='ok';STO.err=null;STO.perime=false;STO.autre=null;try{STO.canal&&STO.canal.postMessage({rev:rec.rev,id:STO.id})}catch(e){}res(true)};
   tx.onabort=()=>{if(refus){STO.etat='conflit';STO.autre={rev:refus.rev,date:refus.date,plans:(refus.plans||[]).length};STO.perime=true;res(false)}else res(stoEchec(errPut||tx.error))}})}
 const stoMsg=e=>{const n=e&&e.name||'';return n==='QuotaExceededError'?'espace de stockage insuffisant sur cet ordinateur ou pour ce navigateur':n==='DataCloneError'?'données impossibles à enregistrer':
   n==='AbortError'||n==='TransactionInactiveError'?'enregistrement interrompu':(e&&e.message||n||'erreur inconnue')};
@@ -3361,29 +3364,40 @@ async function stoDemarrer(){const A=stoAncien();STO.ancien=null;
   // copie de secours d'une page fermée pendant un enregistrement : reprise seulement si elle prolonge exactement le projet enregistré
   // copie identique au projet enregistré (l'écriture avait abouti malgré la fermeture) : sans objet, effacée
   const SC2=SC.filter(c=>{if(L.courant&&stoJ(c.projet)===stoJ(L.courant)){try{localStorage.removeItem(c.cle)}catch(e){}return false}return true});
-  const sc=SC2.find(c=>c.base===r0);STO.secours=SC2.filter(c=>c!==sc);
+  // une seule copie prolongeant la révision enregistrée (ou plusieurs identiques) : reprise ; plusieurs copies différentes : aucune
+  // reprise ni suppression, récupération explicite (stoSecoursChoix)
+  const cand=SC2.filter(c=>c.base===r0),dist=new Set(cand.map(c=>stoJ(c.projet))),sc=dist.size===1?cand[0]:null;
+  STO.secours=SC2.filter(c=>!sc||stoJ(c.projet)!==stoJ(sc.projet));if(sc)STO.reprisCles=cand.map(c=>c.cle);
   if(sc){stoCharger(sc.projet);STO.rev=r0;STO.etat='ok';STO.demande++;STO.repris=sc;if(L.courant&&A&&!connu&&stoJ(A.data)!==stoJ(L.courant))STO.ancien=Object.assign(A,{cas:A.valide?'conflit':'illisible'});return}
   if(L.courant){stoCharger(L.courant);STO.rev=L.courant.rev||0;STO.etat='ok';
     if(!A||connu)return;
     if(!A.valide){STO.ancien=Object.assign(A,{cas:'illisible'});return}
     if(stoJ(A.data)===stoJ(L.courant)){await stoMeta(Object.assign(meta,{migration:{etat:'ok',date:new Date().toISOString(),empreinte:A.empreinte,plans:A.data.plans.length}})).catch(()=>{});return}
-    if(!(L.courant.plans||[]).length&&!(L.courant.modeles||[]).length){await stoMigrer(A);return}   // projet enregistré vide : rien à écraser
+    // projet enregistré différent, même sans plan ni modèle (vidé volontairement, profils, cartouche) : jamais remplacé d'office
     STO.ancien=Object.assign(A,{cas:'conflit'});return}
   if(!A){STO.etat='ok';return}
   if(!A.valide){STO.ancien=Object.assign(A,{cas:'illisible'});STO.etat='ok';return}
-  await stoMigrer(A)}
+  await stoMigrer(A,true)}
 // Migration : copie → relecture → comparaison → marque « réussie » ; échec : ancien stockage intact, mode local, erreur visible
-async function stoMigrer(A){const etape=x=>STO.migEtape=x;try{stoCharger(A.data);etape('copie');STO.rev=0;STO.forcer=true;STO.demande++;
-    if(!await stoPut())throw new Error(STO.err||'écriture refusée');etape('relecture');const L=await stoLire(['courant']);etape('comparaison');
+// initiale = aucun projet enregistré (création refusée si un autre onglet l'a créé entre-temps) ; sinon reprise choisie par
+// l'utilisateur, par-dessus la révision ouverte dans cet onglet seulement
+async function stoMigrer(A,initiale){const etape=x=>STO.migEtape=x;try{stoCharger(A.data);etape('copie');if(initiale)STO.rev=0;STO.demande++;
+    if(!await stoPut({absent:!!initiale})){if(STO.etat==='conflit')return await stoMigrerCourue(A);throw new Error(STO.err||'écriture refusée')}etape('relecture');const L=await stoLire(['courant']);etape('comparaison');
     if(!L.courant||stoJ(L.courant)!==stoJ(A.data))throw new Error('données relues différentes des données copiées');etape('marque');
     await stoMeta(Object.assign(STO.meta||{ignorees:[]},{schema:STO_SCHEMA,migration:{etat:'ok',date:new Date().toISOString(),empreinte:A.empreinte,plans:A.data.plans.length}}));
     STO.migre=true;STO.ancien=null;STO.etat='ok';STO.err=null;STO.fait=STO.demande;return true}
   catch(e){stoCharger(A.data);STO.mode='local';STO.etat='migration';STO.err=stoMsg(e)+(STO.migEtape?' (étape : '+STO.migEtape+')':'');STO.ancien=Object.assign(A,{cas:'migration'});return false}}
+// Création refusée (projet enregistré entre-temps par un autre onglet) : ce projet est ouvert ; identique à l'ancien stockage →
+// migration simplement marquée ; différent → choix proposé (jamais d'écrasement)
+async function stoMigrerCourue(A){const L=await stoLire(['courant','meta']);if(!L.courant)throw new Error('projet enregistré introuvable');
+  stoCharger(L.courant);STO.rev=L.courant.rev||0;STO.meta=L.meta||STO.meta;STO.etat='ok';STO.perime=false;STO.autre=null;STO.err=null;STO.fait=STO.demande;
+  if(stoJ(L.courant)===stoJ(A.data)){const m=STO.meta||{ignorees:[]};if((m.migration||{}).empreinte!==A.empreinte)await stoMeta(Object.assign(m,{schema:STO_SCHEMA,migration:{etat:'ok',date:new Date().toISOString(),empreinte:A.empreinte,plans:A.data.plans.length}})).catch(()=>{});STO.ancien=null}
+  else STO.ancien=Object.assign(A,{cas:'conflit'});return true}
 // Après le démarrage de l'interface : rattrape les écritures demandées pendant le démarrage, présente ce qui demande un choix
-function stoApres(){if(STO.mode==='idb'&&STO.demande>STO.fait)stoSauver().then(ok=>{if(ok&&STO.repris){try{localStorage.removeItem(STO.repris.cle)}catch(e){}
+function stoApres(){if(STO.mode==='idb'&&STO.demande>STO.fait)stoSauver().then(ok=>{if(ok&&STO.repris){(STO.reprisCles||[STO.repris.cle]).forEach(k=>{try{localStorage.removeItem(k)}catch(e){}});
     toast(`✓ Dernières modifications d'une session fermée pendant un enregistrement reprises (${P.length} plan(s))`);STO.repris=null}});stoUI();
   if(STO.migre)toast(`✓ ${P.length} plan(s) transféré(s) vers le nouveau stockage du navigateur (ancien stockage conservé)`);
-  if(STO.ancien&&STO.ancien.cas==='conflit')setTimeout(stoConflit,400);
+  if(STO.ancien&&STO.ancien.cas==='conflit')setTimeout(stoConflit,400);else if((STO.secours||[]).length)setTimeout(stoSecoursChoix,400);
   document.addEventListener('visibilitychange',()=>{if(!document.hidden)stoVerifier()})}
 // Fermeture ou rechargement pendant un enregistrement : IndexedDB abandonne une transaction non terminée quand la page se ferme ;
 // copie synchrone du projet dans localStorage (clé propre à l'onglet : resaSecours.<id>), reprise au démarrage suivant (stoDemarrer)
@@ -3391,9 +3405,17 @@ function stoSecoursPoser(){if(STO.mode!=='idb'||!(STO.cours||STO.demande>STO.fai
   try{localStorage.setItem('resaSecours.'+STO.id,JSON.stringify({base:STO.rev,date:new Date().toISOString(),projet:stoProj()}))}catch(e){}}
 function stoSecoursLire(){const R=[];try{for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(!k||k.indexOf('resaSecours.')!==0)continue;
     try{const o=JSON.parse(localStorage.getItem(k));if(o&&o.projet&&Array.isArray(o.projet.plans))R.push(Object.assign(o,{cle:k}))}catch(e){}}}catch(e){}return R}
-function stoSecoursExport(){(STO.secours||[]).forEach((c,i)=>{const o={app:'plans-reservation',v:10,date:c.date,plans:c.projet.plans,profils:c.projet.profils,modeles:c.projet.modeles,ent:c.projet.ent};
+function stoSecoursExport(n){(STO.secours||[]).forEach((c,i)=>{if(n!=null&&i!==n)return;const o={app:'plans-reservation',v:10,date:c.date,plans:c.projet.plans,profils:c.projet.profils,modeles:c.projet.modeles,ent:c.projet.ent};
   try{const b=new Blob([JSON.stringify(o,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='coffraplan_copie_secours_'+String(c.date).slice(0,10)+(i?'_'+i:'')+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)}catch(e){}});
   toast('Copie(s) de secours remise(s) au navigateur en fichier (dossier Téléchargements)')}
+// récupération explicite : chaque copie exportable seule, reprise seulement sur confirmation (par-dessus la révision ouverte)
+function stoSecoursChoix(){const S=STO.secours||[];if(!S.length)return;
+  modal(`<div class="ct">⚠ Copie(s) de secours non reprise(s)</div><div class="dlgm">${S.length} copie(s) d'une session fermée pendant un enregistrement, différente(s) du projet enregistré (${P.length} plan(s))${S.length>1?' et entre elles':''}. <b>Rien n'a été remplacé.</b> Exportez celles dont vous avez besoin, puis choisissez.</div>
+    ${S.map((c,i)=>`<div class="rb" style="flex-wrap:wrap;align-items:center"><span style="flex:1">Copie ${i+1} : ${(c.projet.plans||[]).length} plan(s), ${esc(String(c.date||'').slice(0,16).replace('T',' '))}</span><button class="btn bs bo" onclick="stoSecoursExport(${i})">💾 Exporter</button><button class="btn bs bo" onclick="stoSecoursReprendre(${i})">Reprendre</button></div>`).join('')}
+    <div class="rb"><button class="btn bs bo" onclick="closeModal()">Décider plus tard</button><button class="btn bs bo" onclick="stoSecoursOublier()">Supprimer les copies</button></div>`)}
+function stoSecoursReprendre(i){const c=(STO.secours||[])[i];if(!c||STO.mode!=='idb')return;uiConfirm(`Remplacer le projet enregistré (${P.length} plan(s)) par la copie de secours ${i+1} (${(c.projet.plans||[]).length} plan(s)) ? Exportez d'abord ce que vous voulez garder.`,
+  async()=>{stoCharger(c.projet);const ok=await stoSauver();if(ok){try{localStorage.removeItem(c.cle)}catch(e){}STO.secours=STO.secours.filter(x=>x!==c)}
+    profLists();libUI();rnL();updBtn();prev();updExp();stoUI();closeModal();toast(ok?`✓ Copie de secours reprise (${P.length} plan(s))`:'⛔ Reprise impossible : '+(STO.err||''))},{t:'Copie de secours',ok:'Remplacer',danger:true})}
 function stoSecoursOublier(){uiConfirm('Supprimer définitivement la copie de secours ? Exportez-la d\'abord si vous n\'êtes pas sûr.',()=>{(STO.secours||[]).forEach(c=>{try{localStorage.removeItem(c.cle)}catch(e){}});STO.secours=[];stoUI()},{t:'Copie de secours',ok:'Supprimer',danger:true})}
 window.addEventListener('pagehide',stoSecoursPoser);
 // pour les essais et le diagnostic : fin des écritures en cours ; projet enregistré tel que relu dans la base
@@ -3402,8 +3424,8 @@ function stoEnregistre(){return stoLire(['courant']).then(L=>L.courant||null)}
 async function stoVerifier(){if(STO.mode!=='idb'||!STO.db)return;try{const L=await stoLire(['courant']);if(L.courant&&L.courant.rev!==STO.rev&&!STO.cours){STO.perime=true;stoUI()}}catch(e){}}
 async function stoRecharger(){try{const L=await stoLire(['courant']);if(!L.courant)return;stoCharger(L.courant);STO.rev=L.courant.rev;STO.perime=false;STO.etat='ok';STO.autre=null;STO.fait=STO.demande;
     profLists();libUI();rnL();updBtn();prev();updExp();stoUI();toast(`Projet enregistré rechargé (${P.length} plan(s))`)}catch(e){uiAlert('Le projet enregistré n\'a pas pu être relu : '+stoMsg(e),'Stockage')}}
-function stoForcer(){uiConfirm('Remplacer le projet enregistré par la version de cet onglet ? La version enregistrée depuis l\'autre onglet sera perdue (exportez-la d\'abord depuis cet autre onglet si besoin).',
-  ()=>{STO.forcer=true;stoSauver()},{t:'Conflit d\'enregistrement',ok:'Remplacer',danger:true})}
+function stoForcer(){const r=STO.autre&&STO.autre.rev;uiConfirm('Remplacer le projet enregistré par la version de cet onglet ? La version enregistrée depuis l\'autre onglet sera perdue (exportez-la d\'abord depuis cet autre onglet si besoin).',
+  ()=>{STO.forcer=r?{rev:r}:null;stoSauver()},{t:'Conflit d\'enregistrement',ok:'Remplacer',danger:true})}
 function stoReessayer(){if(STO.mode==='local'&&STO.ancien&&STO.ancien.cas==='migration'){const A=stoAncien();if(A&&A.valide){STO.mode='idb';stoMigrer(A).then(ok=>{stoUI();rnL();updBtn();
       toast(ok?'✓ Transfert réussi':'⛔ Le transfert a encore échoué : '+STO.err)})}return}
   if(STO.mode==='idb'){STO.alerte=false;stoSauver().then(ok=>toast(ok?'✓ Projet enregistré dans ce navigateur':'⛔ Enregistrement toujours impossible : '+(STO.err||'')))}}
@@ -3417,7 +3439,7 @@ function stoExportAncien(){const A=stoAncien();if(!A){toast('Aucun ancien stocka
 function stoIgnorer(){const A=stoAncien();if(!A||STO.mode!=='idb')return;const m=STO.meta||{ignorees:[]};m.ignorees=(m.ignorees||[]).concat(A.empreinte).slice(-20);
   stoMeta(m).then(()=>{STO.ancien=null;stoUI();closeModal();toast('Projet enregistré gardé ; ancien stockage conservé tel quel')}).catch(e=>uiAlert('Choix non enregistré : '+stoMsg(e),'Stockage'))}
 function stoReprendre(){const A=stoAncien();if(!A||!A.valide)return;uiConfirm(`Remplacer le projet enregistré (${P.length} plan(s)) par l'ancien stockage (${A.data.plans.length} plan(s)) ? Exportez d'abord le projet enregistré si vous voulez le garder.`,
-  async()=>{STO.forcer=true;const ok=await stoMigrer(A);profFromPlans(P);profLists();libUI();rnL();updBtn();prev();updExp();stoUI();closeModal();
+  async()=>{const ok=await stoMigrer(A,false);profFromPlans(P);profLists();libUI();rnL();updBtn();prev();updExp();stoUI();closeModal();
     toast(ok?`✓ Ancien stockage repris (${P.length} plan(s))`:'⛔ Reprise impossible : '+STO.err)},{t:'Reprendre l\'ancien stockage',ok:'Remplacer',danger:true})}
 function stoConflit(){const A=STO.ancien;if(!A||A.cas!=='conflit')return;
   modal(`<div class="ct">⚠ Deux versions de vos projets dans ce navigateur</div><div class="dlgm">Le projet enregistré par CoffraPlan (<b>${P.length} plan(s)</b>) diffère de l'ancien stockage
@@ -3441,7 +3463,7 @@ function stoUI(){const s=el('stoSt'),z=el('zSto');if(!s)return;let t='',c='',ti=
     else if(STO.etat==='ecriture'){t='⏳|Enregistrement…';ti='Enregistrement dans le navigateur en cours'}
     else{t='✓|Enregistré ici';c='ok';ti='Projet enregistré dans ce navigateur (sur cet ordinateur seulement). Seul un fichier .json (💾 Sauvegarder) le protège d\'un nettoyage du navigateur ou d\'un changement de poste.'}
     if(!b&&A&&A.cas==='illisible')b=`⚠ <b>Ancien stockage illisible</b> (${esc(A.erreurs.join(', '))}) : il n'a pas été transféré ni modifié. <a href="#" onclick="event.preventDefault();stoExportAncien()">L'exporter tel quel</a> · <a href="#" onclick="event.preventDefault();stoIgnorer()">Ne plus le signaler</a>`;
-    if(!b&&(STO.secours||[]).length)b=`⚠ <b>Copie de secours d'une session fermée pendant un enregistrement</b>, différente du projet enregistré depuis : elle n'a pas été appliquée. <a href="#" onclick="event.preventDefault();stoSecoursExport()">L'exporter</a> · <a href="#" onclick="event.preventDefault();stoSecoursOublier()">La supprimer</a>`;
+    if(!b&&(STO.secours||[]).length)b=`⚠ <b>${STO.secours.length} copie(s) de secours d'une session fermée pendant un enregistrement</b>, non appliquée(s) : rien n'a été remplacé. <a href="#" onclick="event.preventDefault();stoSecoursChoix()">Examiner et choisir</a>`;
     if(!b&&A&&A.cas==='conflit')b=`⚠ <b>Deux versions de vos projets dans ce navigateur</b> : rien n'a été remplacé. <a href="#" onclick="event.preventDefault();stoConflit()">Choisir</a>`}
   // icône toujours visible, libellé court masqué sur écran étroit (.hdr .lbl), sens complet au survol et dans le bandeau
   const [ic,lb]=t.split('|');s.innerHTML=t?`${ic}<span class="lbl"> ${esc(lb)}</span>`:'';s.title=ti;s.setAttribute('aria-label',ti||lb||'');s.className=c;s.style.display=t?'':'none';if(z){z.innerHTML=b;z.style.display=b?'':'none'}}

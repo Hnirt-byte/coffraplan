@@ -24,6 +24,13 @@ changement du packaging ; `#appVer` reste v3.1 ; aucun tag ni Release.
   réessayer, recharger, choisir) ; chargement d'un fichier : contenu annoncé avant remplacement, projet non sauvegardé signalé,
   confirmation après enregistrement réel ; téléchargement : « fichier remis au navigateur » au lieu de « enregistrée ».
 - Fichier de sauvegarde inchangé (`{app:'plans-reservation', v:10, plans, profils, modeles, ent}`).
+- Relecture de la PR #17 (corrections avant fusion) :
+  - A : un projet enregistré n'est jamais remplacé d'office par l'ancien stockage, même sans plan ni modèle (profils, cartouche,
+    projet vidé) : choix proposé ; migration automatique seulement sans projet enregistré, création contrôlée dans la transaction
+    (onglets démarrés en même temps) ;
+  - B : plusieurs copies de secours différentes de même révision de départ : aucune reprise ni suppression, récupération explicite
+    (export séparé, reprise sur confirmation) ; reprise automatique gardée pour une copie unique non ambiguë ;
+  - forçage : autorisation à usage unique, limitée à la révision vue, retirée même après un échec d'écriture.
 - Documentation : `docs/stockage.md`, mode d'emploi (§ 6), audit (décisions actées après la phase 6, section stockage), CLAUDE.md.
 
 **Essais file:// (Chromium, profils persistants)** : rechargement, fermeture / réouverture, autre HTML du même dossier, HTML renommé et
@@ -35,9 +42,11 @@ seul transporte le travail). Firefox, Safari, Edge, tablette : non essayés.
 - `t_v26` : le cartouche enregistré est relu dans IndexedDB au lieu de `localStorage.resaEnt` ;
 - `t_v24` : le stockage plein est simulé sur IndexedDB (`QuotaExceededError` à l'écriture) au lieu de `localStorage` ; le message
   attendu (« refuse d'enregistrer ») est inchangé.
-Nouvelle suite `t_stockage` (13 scénarios demandés + IndexedDB absent, ancien stockage illisible, fermeture pendant un enregistrement).
+Nouvelle suite `t_stockage` (13 scénarios demandés + IndexedDB absent, ancien stockage illisible, fermeture pendant un enregistrement ;
++ relecture : projet enregistré vide, zéro plan avec profil et cartouche, migration initiale concurrente, deux copies de secours de même
+révision, forçage après échec : 58 contrôles).
 
-**Tests** : `python tests/run.py complet -j 4` : 34 / 34 suites vertes (22/10/2026, Chromium), dont `t_stockage` (45 contrôles), `t_ux`,
+**Tests** : `python tests/run.py complet -j 4` : 34 / 34 suites vertes (22/10/2026, Chromium), dont `t_stockage` (58 contrôles), `t_ux`,
 `t_ppocr`, `t_3d`, `t_export` ; `t_avap` relancé contre le main validé (`AVAP_REF=origin/main`) : 1 090 / 1 090, moteur, feuilles, DXF
 et CSV identiques.
 

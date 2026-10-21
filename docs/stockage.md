@@ -19,6 +19,9 @@ Code : `app/CoffraPlan.html`, fonctions `sto*` (après `svP`). Essais : `tests/t
 - **Révision `rev`.**
   - Chaque écriture vérifie, dans la même transaction, que le projet enregistré est encore celui que l'onglet a lu ou écrit.
   - Sinon, l'écriture est **refusée** et signalée (« Modifié ailleurs »). Aucune écriture n'est faite sans un choix explicite.
+  - **Forçage** (« Garder la version de cet onglet », confirmé) : autorisation **à usage unique**, limitée à la révision que l'utilisateur
+    a vue (`STO.forcer = {rev}`), retirée dès l'écriture suivante, **même si elle échoue**. Une révision plus récente écrite ensuite
+    ailleurs provoque un nouveau refus.
 - **Format du fichier de sauvegarde inchangé** : `{app:'plans-reservation', v:10, date, plans, profils, modeles, ent}`.
 - **Préférences d'affichage non concernées** : thème, tri, impression, cases du mode chantier, brouillon du formulaire et suivi de la sauvegarde externe (`resaSavedH`, `resaExpAt`) restent dans `localStorage`. Ce sont de petites valeurs propres au navigateur.
 
@@ -29,16 +32,22 @@ Code : `app/CoffraPlan.html`, fonctions `sto*` (après `svP`). Essais : `tests/t
    - indicateur « ⚠ Stockage de secours » et bandeau « enregistrement automatique fiable indisponible ».
 3. La base est relue. En cas d'échec, le mode passe à **`bloque`** : aucune écriture, pour ne rien écraser, avec un bandeau qui propose l'export.
 4. Copie de secours (voir § 4) :
-   - si elle prolonge exactement le projet enregistré (même `rev` de départ), elle est reprise puis effacée ;
-   - si elle est identique au projet enregistré, elle est effacée ;
-   - sinon, elle est présentée pour export ou suppression, jamais appliquée.
+   - une seule copie (ou plusieurs copies identiques) prolongeant exactement le projet enregistré (même `rev` de départ) : reprise,
+     puis effacée une fois enregistrée ;
+   - copie identique au projet enregistré : effacée ;
+   - **plusieurs copies différentes de même révision de départ** (onglets fermés pendant un enregistrement) : aucune reprise, aucune
+     suppression ; fenêtre « Copie(s) de secours non reprise(s) » : export de chaque copie séparément, reprise d'une copie sur
+     confirmation seulement, « Décider plus tard », suppression sur confirmation ;
+   - toute autre copie : présentée de la même façon, jamais appliquée d'office.
 5. Si le projet enregistré existe, il est ouvert. L'ancien stockage est ensuite comparé :
    - **déjà migré ou écarté** par l'utilisateur (empreinte connue) : rien ;
    - **illisible** : bandeau ; il n'est ni transféré ni modifié, et peut être exporté tel quel ;
    - **identique** au projet enregistré (cas d'une migration interrompue avant sa marque) : la migration est marquée réussie ;
-   - **projet enregistré vide** (aucun plan, aucun modèle) : migration, puisqu'il n'y a rien à écraser ;
-   - **différent** : **conflit**. Rien n'est remplacé. Une fenêtre propose d'exporter les deux, de garder le projet enregistré, de reprendre l'ancien stockage (avec confirmation) ou de décider plus tard (question reposée à l'ouverture suivante).
-6. S'il n'y a pas de projet enregistré mais un ancien stockage valide : **migration**.
+   - **différent**, **même sans plan ni modèle** (projet vidé volontairement, profils ou cartouche seuls) : **conflit**. Un projet
+     enregistré n'est jamais remplacé d'office par l'ancien stockage. Rien n'est remplacé. Une fenêtre propose d'exporter les deux, de garder le projet enregistré, de reprendre l'ancien stockage (avec confirmation) ou de décider plus tard (question reposée à l'ouverture suivante).
+6. S'il n'y a pas de projet enregistré mais un ancien stockage valide : **migration**. La création est contrôlée dans la transaction :
+   si un autre onglet a créé le projet entre-temps, elle est refusée ; le projet existant est ouvert, la migration simplement marquée
+   s'il est identique à l'ancien stockage, sinon le choix est proposé.
 
 ## 3. Migration (`stoMigrer`), non destructive
 1. L'ancien stockage est lu avec les mêmes conversions que les versions précédentes (`migr` sur chaque plan).
