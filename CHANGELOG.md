@@ -49,7 +49,9 @@ du format JSON ; pas de Tauri ni de nouveau modèle ; `#appVer` reste v3.1 ; auc
 **Écarts voulus** : aucun test existant modifié. Nouvelles suites `t_build` et `t_plan_d` (plan fictif anonyme `tests/plan_d_fictif.py`,
 cas négatif « Sous Toiture » dans une note ou sans échelle, cartouche).
 
-**Tests** : RESULTATS_A_COMPLETER
+**Tests** : `python tests/run.py complet -j 4` : 36 / 36 suites vertes (22/10/2026, Chromium), dont `t_build` (19), `t_plan_d` (17),
+`t_stockage`, `t_ppocr`, `t_3d`, `t_export` ; `t_avap` : 1 090 / 1 090 avec la référence par défaut (construite depuis HEAD) et contre le main
+validé `b94a01e` (`AVAP_REF=origin/main`) : moteur, feuilles, DXF et CSV identiques. Livrable construit : 36 519 403 octets.
 
 **Non validé, limites** : `SEG_MAX` (60 000 traits par page) reste un plafond : sur un plan très chargé, les régions de vue sont
 partielles et les tableaux sont lus par leurs textes ; artefact CI : téléchargement manuel depuis l'onglet Actions (90 jours) ;
