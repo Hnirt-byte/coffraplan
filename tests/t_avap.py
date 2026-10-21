@@ -21,7 +21,7 @@ def old_app():
     except subprocess.CalledProcessError:   # phase 8 : construit depuis les sources de cette révision (copie temporaire)
         import tempfile, tarfile, io
         d = tempfile.mkdtemp()
-        tarfile.open(fileobj=io.BytesIO(subprocess.check_output(['git', 'archive', ref], cwd=HERE))).extractall(d, filter='data')
+        tarfile.open(fileobj=io.BytesIO(subprocess.check_output(['git', 'archive', ref], cwd=os.path.join(HERE, '..')))).extractall(d, filter='data')   # depuis la racine : tout le dépôt
         subprocess.run([sys.executable, os.path.join(d, 'modules', 'import', 'assembler.py')], check=True, stdout=subprocess.DEVNULL)
         h = open(os.path.join(d, 'app', 'CoffraPlan.html'), 'rb').read()
     with open(p, 'wb') as f:
