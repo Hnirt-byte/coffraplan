@@ -77,8 +77,9 @@ def t(s):
         s.check(r[0] <= 3, f'goulotte : géométrie calculée {r[0]} fois par recalcul (11 avant le cache), {r[1]} ms')
         r = ev("()=>{T.mk('goulotte',{});const d=canon(coll()),a=JSON.stringify(gouGeo0(d));gen(coll());debit(d,null);cutNest(d,debit(d,null));model3(d,debit(d,null));return a===JSON.stringify(gouGeo(d))}")
         s.check(r, 'cache gouGeo : résultat non modifié par les appelants (identique au calcul direct)')
-        r = ev("""()=>{const o=Storage.prototype.setItem;Storage.prototype.setItem=function(k,v){if(k==='resa3')throw new Error('QuotaExceededError');return o.call(this,k,v)};
-          try{T.mk('rect',{dL:1200,dl:800,dh:300});el('iRef').value='';addP(false);if(dlgOpen())dlgEnd(true)}finally{Storage.prototype.setItem=o}}""")
+        # phase 7 : stockage principal IndexedDB ; écriture refusée pour quota dépassé (simulée)
+        r = ev("""async()=>{const o=IDBObjectStore.prototype.put;IDBObjectStore.prototype.put=function(v,k){if(k==='courant')throw new DOMException('plein','QuotaExceededError');return o.apply(this,arguments)};
+          try{T.mk('rect',{dL:1200,dl:800,dh:300});el('iRef').value='';addP(false);if(dlgOpen())dlgEnd(true);await stoAttendre()}finally{IDBObjectStore.prototype.put=o}}""")
         pg.wait_for_timeout(100); r = ev("dlgOpen()?el('dlgB').textContent:''")
         s.check('refuse d\'enregistrer' in r, 'stockage du navigateur plein : l\'utilisateur est prévenu (au lieu d\'une perte silencieuse)', r)
         ev("dlgEnd(true)")

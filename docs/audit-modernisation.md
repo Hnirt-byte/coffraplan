@@ -1,4 +1,4 @@
-# Audit technique et feuille de route de modernisation (phase 6, 21/10/2026)
+# Audit technique et feuille de route de modernisation (phase 6, 21/10/2026 ; mis à jour en phase 7)
 
 Demande de Kévin (directive « modernisation du moteur de reconnaissance ») : technologies gratuites, locales, exploitables
 commercialement ; aucune API payante, aucun abonnement, aucun plan envoyé à un serveur ; HTML autonome pour l'essentiel, moteur
@@ -6,6 +6,17 @@ local CPU / GPU permis pour les fonctions avancées (future distribution Windows
 unités et quantités validées de façon déterministe.
 
 Légende : **certain** = lu dans le code ou mesuré ; **probable** = déduit de plusieurs indices ; **hypothèse** = à vérifier.
+
+## 0. Décisions actées après la phase 6 (Kévin, 21/10/2026)
+- **GAMMA reste à 25 kN/m³** jusqu'à une revue normative propre au calcul des coffrages. EN 1991-1-1, tableau A.1, donne 26 kN/m³ pour un béton
+  ordinaire armé frais ; EN 12812 retient 25 kN/m³ pour les situations d'étaiement concernées. La revue vérifiera l'édition applicable et
+  proposera un paramètre réglable. Ne pas modifier `GAMMA` avant.
+- **Priorité actuelle : IndexedDB et protection des projets** (phase 7 : `docs/stockage.md`). Protéger les projets passe avant toute
+  nouvelle fonction.
+- **Packaging, choix futur** : le HTML autonome de distribution sera produit par la CI à partir des sources versionnées, plutôt que de
+  garder un HTML de plus de 36 Mo à chaque commit. Pas de Git LFS par défaut. À préparer après la sécurisation du stockage.
+- **Étapes ultérieures** : modernisation de la reconnaissance documentaire (tableaux voisins du plan D, titres de vues atypiques,
+  PP-StructureV3 et modèles visuels documentaires) et moteur OCR natif accéléré pour l'application Windows.
 
 ## 1. Reconnaissance (OCR) — fait dans cette phase
 
@@ -90,10 +101,17 @@ nommées ; 12 redéfinitions par enveloppe sur 7 fonctions (`showChantier`, `pre
 | 3D (three.js r170, `v3GL*`, `render3`) | adapté | permutation d'états globaux (`glWith`) fragile [P] | garder three.js | — · — · basse |
 | Exports DXF R12 / IFC4 / glTF | adapté | aucune relecture par un lecteur tiers hors IFC [C] | en tests seulement : ezdxf `audit` (MIT), glTF-Validator Khronos (Apache-2.0), `ifcopenshell.validate` | robustesse · S · haute |
 | Interface (`uiDlg`, `#md`, `onEdit`) | améliorable | `#md` sans `role="dialog"` ni gestion du focus ; focus non rendu après `dlgEnd` [C] | axe-core (MPL-2.0) en test | accessibilité, marchés publics · S · moyenne |
-| Architecture, données, distribution | améliorable, prioritaire | tous les plans dans `localStorage['resa3']` (quota ≈ 5 Mo [P], échec signalé une fois [C]) ; 36 Mo chargés à chaque ouverture ; enveloppes ; pas de linter ; seul Chromium testé | IndexedDB (natif) ; Playwright WebKit / Firefox ; ESLint (MIT) + `@ts-check` ; Tauri (MIT / Apache-2.0 : WebView2 sous Windows, WebKit sous macOS) avec modèles OCR en fichiers séparés et ONNX Runtime natif | données, maintenance, distribution · S à M · haute |
+| Architecture, données, distribution | améliorable (stockage traité en phase 7) | phase 6 : tous les plans dans `localStorage['resa3']` (quota ≈ 5 Mo [P], échec signalé une fois [C]) → **phase 7 : IndexedDB, migration vérifiée, erreurs visibles, conflits signalés (`docs/stockage.md`)** ; 36 Mo chargés à chaque ouverture ; enveloppes ; pas de linter ; seul Chromium testé | IndexedDB (natif) ; Playwright WebKit / Firefox ; ESLint (MIT) + `@ts-check` ; Tauri (MIT / Apache-2.0 : WebView2 sous Windows, WebKit sous macOS) avec modèles OCR en fichiers séparés et ONNX Runtime natif | données, maintenance, distribution · S à M · haute |
 
 ## 4. Feuille de route (ordre : gain, précision, effort, commercialisation ; une PR par ligne, aucune réécriture d'ensemble)
-1. Plans hors de `localStorage` : IndexedDB avec migration de `resa3`, lecture de repli, alerte persistante (risque de perte de données).
+1. ~~Plans hors de `localStorage`~~ : **fait en phase 7**.
+   - IndexedDB, avec migration non destructive de `resa3` (copie, relecture, comparaison, marque).
+   - Copie de secours à la fermeture, refus d'écraser une version écrite ailleurs.
+   - Mode de secours annoncé, et sauvegarde ou restauration contrôlée.
+   - Restent :
+     - le suivi de la sauvegarde externe par fichier ;
+     - les essais Firefox / Safari ;
+     - la suppression de l'ancien stockage, dans une phase ultérieure et avec l'accord de Kévin.
 2. Défauts du plan D : tableaux en texte voisins (découpe par cadre) et titre de vue suivi d'une échelle.
 3. Validateurs tiers dans les tests : ezdxf audit, glTF-Validator, `ifcopenshell.validate`.
 4. Suites rapides sous Playwright WebKit et Firefox (non bloquantes d'abord) : prépare Safari et Tauri macOS.

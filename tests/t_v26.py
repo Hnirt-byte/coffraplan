@@ -88,7 +88,7 @@ def t(s):
         pg.fill('#enNom', 'ENTREPRISE <b>TEST</b>'); pg.fill('#enDes', 'K. T.')
         ev("u=>{el('enImg').src=u;el('enImg').style.display=''}", logo)
         ev("saveEnt()")
-        e1 = ev("JSON.parse(localStorage.getItem('resaEnt'))")
+        e1 = ev("stoAttendre().then(()=>stoEnregistre()).then(r=>r.ent)")   # phase 7 : cartouche enregistré avec le projet (IndexedDB)
         g1 = ev("gen(coll())")
         s.check(e1['nom'] == 'ENTREPRISE <b>TEST</b>' and e1['logo'].startswith('data:image/png') and 'ENTREPRISE &lt;b&gt;TEST&lt;/b&gt;' in g1 and '<b>TEST</b>' not in g1 and 'Dessiné : K. T.' in g1 and '<img src="data:image/png' in g1,
                 'cartouche : nom (échappé), dessinateur, logo, mémorisés')

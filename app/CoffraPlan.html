@@ -163,6 +163,7 @@ body.pm .inf{font-size:calc(9.5px + 2pt);line-height:1.25}body.pm .inf .nt{font-
 .fi.flash{box-shadow:0 0 0 3px var(--accent);transition:box-shadow .25s}
 .ps .btn.bo{border-color:#c9cfdb;color:#56627a;background:transparent}.ps .btn.bo:hover{border-color:#e8820c;color:#b45309}/* boutons d'écran posés sur les feuilles : couleurs fixes, indépendantes du thème */
 #zExp a{color:var(--accent2)}
+#zSto a{color:var(--accent2)}#stoSt{font:600 11px 'Barlow',sans-serif;white-space:nowrap;color:var(--muted);align-self:center}#stoSt.ko{color:var(--red)}#stoSt.ok{color:var(--muted)}
 .pv svg text{pointer-events:none}.drg{fill:transparent;stroke:none;cursor:move;touch-action:none}.drg:hover,.drg.on{fill:rgba(232,130,12,.28);stroke:#e8820c;stroke-width:1}
 #dragTip{position:fixed;z-index:500;pointer-events:none;background:#1a2035;color:#fff;font:600 12px 'JetBrains Mono',monospace;padding:4px 8px;border-radius:4px;border:1px solid #e8820c;display:none}
 @media print{.drg{display:none}}
@@ -184,6 +185,7 @@ body.pm .inf{font-size:calc(9.5px + 2pt);line-height:1.25}body.pm .inf .nt{font-
 <button class="btn bs bo no-print" id="bUndo" onclick="undo()" title="Annuler la dernière modification du formulaire (Ctrl+Z)" aria-label="Annuler">↶</button>
 <button class="btn bs bo no-print" id="bRedo" onclick="redo()" title="Rétablir (Ctrl+Y ou Ctrl+Maj+Z)" aria-label="Rétablir">↷</button>
 <button class="btn bs bo no-print" onclick="printAll()" title="Imprimer les plans (Ctrl+P)" aria-label="Imprimer">🖨<span class="lbl"> Imprimer</span></button>
+<span id="stoSt" class="no-print" role="status" aria-live="polite" style="display:none"></span>
 <button class="btn bs bo no-print" id="bSave" onclick="expJ()" title="Sauvegarder tous les plans, profils et modèles dans un fichier .json (Ctrl+S)" aria-label="Sauvegarder">💾<span class="lbl"> Sauvegarder</span></button>
 <button class="btn bs bo no-print" onclick="impJ()" title="Charger une sauvegarde .json (Ctrl+O)" aria-label="Charger">📂<span class="lbl"> Charger</span></button>
 <button class="btn bs bo no-print" id="bDxi" onclick="dxiOpen()" title="Importer un plan (DXF ou PDF) : nomenclatures et réservations, à confirmer avant création" aria-label="Importer un plan">📥<span class="lbl"> Importer un plan</span></button>
@@ -262,6 +264,7 @@ body.pm .inf{font-size:calc(9.5px + 2pt);line-height:1.25}body.pm .inf .nt{font-
 <button class="btn bs bo" onclick="openGab()" style="width:100%">📏 Gabarit 1:1 des pièces cintrées</button>
 <div class="hint" style="margin:8px 0 0">Un gabarit par pièce cintrée de la feuille CP À DÉCOUPER : même repère, même orientation, même position depuis le coin ● du panneau. Pièces à coupes droites : cotes du plan, pas de gabarit. Pièce plus grande que la feuille : feuilles à assembler (recouvrement 20 mm, croix ✚).</div></div>
 <div class="sep"></div>
+<div id="zSto" class="hint" role="alert" style="display:none;border-left-color:var(--red);margin:0 0 10px"></div>
 <div id="zExp" class="hint" style="display:none;border-left-color:var(--red);margin:0 0 10px"></div>
 <div class="cd"><div class="ct">📑 Plans (<span id="pc">0</span>)</div>
 <div style="display:flex;gap:6px;margin-bottom:8px"><input class="fi" id="plQ" type="search" placeholder="Rechercher : réf., ouvrage, forme…" aria-label="Rechercher un plan" oninput="this.dataset.fresh=1;event.stopPropagation();rnL()" onchange="event.stopPropagation()">
@@ -3295,7 +3298,153 @@ let P=ldP(),EI=-1;
 function ldP(){try{const r=JSON.parse(localStorage.getItem('resa3'));return Array.isArray(r)?r.map(migr):[]}catch(e){return[]}}
 // v2.4 — écriture refusée par le navigateur (stockage plein, navigation privée stricte) : prévenir une fois par session
 let _lsWarned=false;function lsFail(){if(_lsWarned)return;_lsWarned=true;setTimeout(()=>uiAlert('Le navigateur refuse d\'enregistrer les plans (stockage plein ou bloqué). Les dernières modifications ne sont pas gardées dans ce navigateur : sauvegarder le fichier maintenant (Ctrl+S).','Stockage du navigateur'),0)}
-function svP(){try{localStorage.setItem('resa3',JSON.stringify(P))}catch(e){lsFail()}try{markDirty()}catch(e){}}
+function svP(){stoEcrit('resa3',()=>JSON.stringify(P))}
+// ---------- Phase 7 — stockage des projets : IndexedDB, migration non destructive de l'ancien stockage ----------
+// Base « coffraplan » (version 1), magasin « projet » : 'courant' = {schema, rev, date, app, onglet, plans, profils, modeles, ent}
+// (tout le projet en une seule écriture transactionnelle) ; 'meta' = {migration:{etat, date, empreinte, plans}, ignorees:[empreintes]}.
+// Les données de travail restent en mémoire (P, PROF, LIBU, ENT : calculs synchrones) ; chaque modification demande une écriture.
+// Écritures en file, une à la fois, chacune reprenant l'état le plus récent : une écriture lente ne peut pas rétablir un état ancien.
+// rev = version du projet enregistré : une écriture partie d'une rev dépassée (autre onglet, autre copie du HTML ; en file://, tous
+// les fichiers locaux partagent la même base) est refusée et signalée, jamais écrasée sans choix explicite.
+// Ancien stockage (localStorage resa3, resaProf, resaLib, resaEnt) : lu, copié, relu, comparé ; jamais modifié ni supprimé ici.
+// Modes : 'init' (démarrage), 'idb' (normal), 'local' (IndexedDB indisponible ou migration impossible : ancien enregistrement,
+// signalé), 'bloque' (base illisible : aucune écriture, rien n'est écrasé).
+const STO_DB='coffraplan',STO_SCHEMA=1,STO_CLES=['resa3','resaProf','resaLib','resaEnt'];
+const STO={mode:'init',db:null,rev:0,etat:'',err:null,demande:0,fait:0,cours:null,forcer:false,perime:false,autre:null,ancien:null,
+  migre:false,alerte:false,id:Math.random().toString(36).slice(2),canal:null,meta:null};
+const stoH=s=>{let h=2166136261;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619)}return (h>>>0).toString(36)+'.'+s.length};
+const stoProj=()=>({plans:P,profils:PROF,modeles:LIBU,ent:ENT});
+const stoJ=o=>JSON.stringify([o.plans||[],o.profils||{},o.modeles||[],o.ent||{}]);
+// mode local (ancien enregistrement) ou en attente du démarrage ; sinon écriture IndexedDB
+function stoEcrit(k,v){if(STO.mode==='local'){try{localStorage.setItem(k,v())}catch(e){lsFail()}}else if(STO.mode==='idb')stoSauver();else if(STO.mode==='init')STO.demande++;
+  try{markDirty()}catch(e){}}
+function stoOuvrir(){return new Promise((res,rej)=>{let r;try{if(!window.indexedDB)throw new Error('IndexedDB absent');r=indexedDB.open(STO_DB,STO_SCHEMA)}catch(e){return rej(e)}
+  const t=setTimeout(()=>rej(new Error('ouverture trop longue (base occupée par un autre onglet ?)')),8000);
+  r.onupgradeneeded=()=>{const db=r.result;if(!db.objectStoreNames.contains('projet'))db.createObjectStore('projet')};
+  r.onblocked=()=>{};r.onerror=()=>{clearTimeout(t);rej(r.error)};
+  r.onsuccess=()=>{clearTimeout(t);const db=r.result;db.onversionchange=()=>{db.close();STO.db=null;STO.mode='bloque';STO.etat='ferme';stoUI()};res(db)}})}
+function stoLire(cles){return new Promise((res,rej)=>{let tx;try{tx=STO.db.transaction('projet','readonly')}catch(e){return rej(e)}const st=tx.objectStore('projet'),o={};
+  cles.forEach(k=>{const g=st.get(k);g.onsuccess=()=>o[k]=g.result});tx.oncomplete=()=>res(o);tx.onabort=tx.onerror=()=>rej(tx.error||new Error('lecture interrompue'))})}
+function stoMeta(m){return new Promise((res,rej)=>{let tx;try{tx=STO.db.transaction('projet','readwrite')}catch(e){return rej(e)}tx.objectStore('projet').put(m,'meta');
+  tx.oncomplete=()=>{STO.meta=m;res(true)};tx.onabort=()=>rej(tx.error||new Error('écriture interrompue'))})}
+// Ancien stockage : textes bruts, empreinte, validité, contenu (mêmes lectures que les versions précédentes)
+function stoAncien(){const b={};let n=0;STO_CLES.forEach(k=>{let v=null;try{v=localStorage.getItem(k)}catch(e){}if(v!=null){b[k]=v;n++}});if(!n)return null;
+  const A={brut:b,empreinte:stoH(STO_CLES.map(k=>k+'='+(b[k]==null?'':b[k])).join('\n')),valide:true,erreurs:[]};
+  const lit=(k,ok,def)=>{if(b[k]==null)return def;try{const v=JSON.parse(b[k]);if(v==null)return def;if(!ok(v))throw 0;return v}catch(e){A.valide=false;A.erreurs.push(k);return def}};
+  const pl=lit('resa3',Array.isArray,[]);
+  A.data={plans:A.valide?pl.map(migr):[],profils:lit('resaProf',v=>typeof v==='object'&&!Array.isArray(v),{}),modeles:lit('resaLib',Array.isArray,[]),
+    ent:entOk(lit('resaEnt',v=>typeof v==='object'&&!Array.isArray(v),{}))};
+  return A}
+function stoCharger(r){P=(r.plans||[]).map(migr);PROF=r.profils&&typeof r.profils==='object'?r.profils:{};LIBU=Array.isArray(r.modeles)?r.modeles:[];ENT=entOk(r.ent||{});EI=-1}
+// Écriture du projet : file d'attente ; → promesse vraie si tout ce qui a été demandé est enregistré
+function stoSauver(){STO.demande++;if(STO.mode!=='idb')return Promise.resolve(false);if(!STO.cours){STO.etat='ecriture';stoUI();STO.cours=stoBoucle()}return STO.cours}
+async function stoBoucle(){let ok=true;try{while(STO.fait<STO.demande){const d=STO.demande;ok=await stoPut();STO.fait=d;if(!ok)break}}finally{STO.cours=null}
+  if(ok&&STO.fait<STO.demande)return stoSauver();stoUI();return ok}
+function stoPut(){return new Promise(res=>{let tx,refus=null,errPut=null;try{tx=STO.db.transaction('projet','readwrite')}catch(e){return res(stoEchec(e))}
+  const st=tx.objectStore('projet'),g=st.get('courant'),base=STO.rev,forcer=STO.forcer;let rec=null;
+  g.onsuccess=()=>{const c=g.result;if(c&&c.rev!==base&&!forcer){refus=c;tx.abort();return}
+    rec=Object.assign({schema:STO_SCHEMA,rev:(c?c.rev:base)+1,date:new Date().toISOString(),app:'CoffraPlan '+appV(),onglet:STO.id},stoProj());
+    try{st.put(rec,'courant')}catch(e){errPut=e;tx.abort()}};
+  tx.oncomplete=()=>{STO.rev=rec.rev;STO.forcer=false;try{localStorage.removeItem('resaSecours.'+STO.id)}catch(e){}STO.etat='ok';STO.err=null;STO.perime=false;STO.autre=null;try{STO.canal&&STO.canal.postMessage({rev:rec.rev,id:STO.id})}catch(e){}res(true)};
+  tx.onabort=()=>{if(refus){STO.etat='conflit';STO.autre={rev:refus.rev,date:refus.date,plans:(refus.plans||[]).length};STO.perime=true;res(false)}else res(stoEchec(errPut||tx.error))}})}
+const stoMsg=e=>{const n=e&&e.name||'';return n==='QuotaExceededError'?'espace de stockage insuffisant sur cet ordinateur ou pour ce navigateur':n==='DataCloneError'?'données impossibles à enregistrer':
+  n==='AbortError'||n==='TransactionInactiveError'?'enregistrement interrompu':(e&&e.message||n||'erreur inconnue')};
+function stoEchec(e){STO.etat='erreur';STO.err=stoMsg(e);if(!STO.alerte){STO.alerte=true;setTimeout(()=>uiAlert(`Le navigateur refuse d'enregistrer les plans (${STO.err}). Vos modifications restent dans cette page tant qu'elle reste ouverte, mais ne sont pas enregistrées : sauvegardez le projet dans un fichier maintenant (Ctrl+S). CoffraPlan réessaiera à la prochaine modification.`,'Enregistrement impossible'),0)}
+  return false}
+// Démarrage : décide quelles données ouvrir ; ne remplace jamais un projet par un autre sans choix (voir docs/stockage.md)
+async function stoDemarrer(){const A=stoAncien();STO.ancien=null;
+  try{STO.db=await stoOuvrir()}catch(e){STO.mode='local';STO.etat='indispo';STO.err=stoMsg(e);return}
+  let L;try{L=await stoLire(['courant','meta'])}catch(e){STO.mode='bloque';STO.etat='lecture';STO.err=stoMsg(e);return}
+  const meta=STO.meta=L.meta||{schema:STO_SCHEMA,ignorees:[]};meta.ignorees=meta.ignorees||[];STO.mode='idb';
+  try{STO.canal=new BroadcastChannel('coffraplan-stockage');STO.canal.onmessage=ev=>{const m=ev.data||{};if(m.id!==STO.id&&m.rev>STO.rev){STO.perime=true;stoUI()}}}catch(e){}
+  const connu=A&&(A.empreinte===(meta.migration||{}).empreinte||meta.ignorees.includes(A.empreinte)),SC=stoSecoursLire(),r0=L.courant?L.courant.rev||0:0;
+  // copie de secours d'une page fermée pendant un enregistrement : reprise seulement si elle prolonge exactement le projet enregistré
+  // copie identique au projet enregistré (l'écriture avait abouti malgré la fermeture) : sans objet, effacée
+  const SC2=SC.filter(c=>{if(L.courant&&stoJ(c.projet)===stoJ(L.courant)){try{localStorage.removeItem(c.cle)}catch(e){}return false}return true});
+  const sc=SC2.find(c=>c.base===r0);STO.secours=SC2.filter(c=>c!==sc);
+  if(sc){stoCharger(sc.projet);STO.rev=r0;STO.etat='ok';STO.demande++;STO.repris=sc;if(L.courant&&A&&!connu&&stoJ(A.data)!==stoJ(L.courant))STO.ancien=Object.assign(A,{cas:A.valide?'conflit':'illisible'});return}
+  if(L.courant){stoCharger(L.courant);STO.rev=L.courant.rev||0;STO.etat='ok';
+    if(!A||connu)return;
+    if(!A.valide){STO.ancien=Object.assign(A,{cas:'illisible'});return}
+    if(stoJ(A.data)===stoJ(L.courant)){await stoMeta(Object.assign(meta,{migration:{etat:'ok',date:new Date().toISOString(),empreinte:A.empreinte,plans:A.data.plans.length}})).catch(()=>{});return}
+    if(!(L.courant.plans||[]).length&&!(L.courant.modeles||[]).length){await stoMigrer(A);return}   // projet enregistré vide : rien à écraser
+    STO.ancien=Object.assign(A,{cas:'conflit'});return}
+  if(!A){STO.etat='ok';return}
+  if(!A.valide){STO.ancien=Object.assign(A,{cas:'illisible'});STO.etat='ok';return}
+  await stoMigrer(A)}
+// Migration : copie → relecture → comparaison → marque « réussie » ; échec : ancien stockage intact, mode local, erreur visible
+async function stoMigrer(A){const etape=x=>STO.migEtape=x;try{stoCharger(A.data);etape('copie');STO.rev=0;STO.forcer=true;STO.demande++;
+    if(!await stoPut())throw new Error(STO.err||'écriture refusée');etape('relecture');const L=await stoLire(['courant']);etape('comparaison');
+    if(!L.courant||stoJ(L.courant)!==stoJ(A.data))throw new Error('données relues différentes des données copiées');etape('marque');
+    await stoMeta(Object.assign(STO.meta||{ignorees:[]},{schema:STO_SCHEMA,migration:{etat:'ok',date:new Date().toISOString(),empreinte:A.empreinte,plans:A.data.plans.length}}));
+    STO.migre=true;STO.ancien=null;STO.etat='ok';STO.err=null;STO.fait=STO.demande;return true}
+  catch(e){stoCharger(A.data);STO.mode='local';STO.etat='migration';STO.err=stoMsg(e)+(STO.migEtape?' (étape : '+STO.migEtape+')':'');STO.ancien=Object.assign(A,{cas:'migration'});return false}}
+// Après le démarrage de l'interface : rattrape les écritures demandées pendant le démarrage, présente ce qui demande un choix
+function stoApres(){if(STO.mode==='idb'&&STO.demande>STO.fait)stoSauver().then(ok=>{if(ok&&STO.repris){try{localStorage.removeItem(STO.repris.cle)}catch(e){}
+    toast(`✓ Dernières modifications d'une session fermée pendant un enregistrement reprises (${P.length} plan(s))`);STO.repris=null}});stoUI();
+  if(STO.migre)toast(`✓ ${P.length} plan(s) transféré(s) vers le nouveau stockage du navigateur (ancien stockage conservé)`);
+  if(STO.ancien&&STO.ancien.cas==='conflit')setTimeout(stoConflit,400);
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden)stoVerifier()})}
+// Fermeture ou rechargement pendant un enregistrement : IndexedDB abandonne une transaction non terminée quand la page se ferme ;
+// copie synchrone du projet dans localStorage (clé propre à l'onglet : resaSecours.<id>), reprise au démarrage suivant (stoDemarrer)
+function stoSecoursPoser(){if(STO.mode!=='idb'||!(STO.cours||STO.demande>STO.fait))return;
+  try{localStorage.setItem('resaSecours.'+STO.id,JSON.stringify({base:STO.rev,date:new Date().toISOString(),projet:stoProj()}))}catch(e){}}
+function stoSecoursLire(){const R=[];try{for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(!k||k.indexOf('resaSecours.')!==0)continue;
+    try{const o=JSON.parse(localStorage.getItem(k));if(o&&o.projet&&Array.isArray(o.projet.plans))R.push(Object.assign(o,{cle:k}))}catch(e){}}}catch(e){}return R}
+function stoSecoursExport(){(STO.secours||[]).forEach((c,i)=>{const o={app:'plans-reservation',v:10,date:c.date,plans:c.projet.plans,profils:c.projet.profils,modeles:c.projet.modeles,ent:c.projet.ent};
+  try{const b=new Blob([JSON.stringify(o,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='coffraplan_copie_secours_'+String(c.date).slice(0,10)+(i?'_'+i:'')+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)}catch(e){}});
+  toast('Copie(s) de secours remise(s) au navigateur en fichier (dossier Téléchargements)')}
+function stoSecoursOublier(){uiConfirm('Supprimer définitivement la copie de secours ? Exportez-la d\'abord si vous n\'êtes pas sûr.',()=>{(STO.secours||[]).forEach(c=>{try{localStorage.removeItem(c.cle)}catch(e){}});STO.secours=[];stoUI()},{t:'Copie de secours',ok:'Supprimer',danger:true})}
+window.addEventListener('pagehide',stoSecoursPoser);
+// pour les essais et le diagnostic : fin des écritures en cours ; projet enregistré tel que relu dans la base
+function stoAttendre(){return (STO.cours||Promise.resolve()).then(()=>STO.cours?stoAttendre():null)}
+function stoEnregistre(){return stoLire(['courant']).then(L=>L.courant||null)}
+async function stoVerifier(){if(STO.mode!=='idb'||!STO.db)return;try{const L=await stoLire(['courant']);if(L.courant&&L.courant.rev!==STO.rev&&!STO.cours){STO.perime=true;stoUI()}}catch(e){}}
+async function stoRecharger(){try{const L=await stoLire(['courant']);if(!L.courant)return;stoCharger(L.courant);STO.rev=L.courant.rev;STO.perime=false;STO.etat='ok';STO.autre=null;STO.fait=STO.demande;
+    profLists();libUI();rnL();updBtn();prev();updExp();stoUI();toast(`Projet enregistré rechargé (${P.length} plan(s))`)}catch(e){uiAlert('Le projet enregistré n\'a pas pu être relu : '+stoMsg(e),'Stockage')}}
+function stoForcer(){uiConfirm('Remplacer le projet enregistré par la version de cet onglet ? La version enregistrée depuis l\'autre onglet sera perdue (exportez-la d\'abord depuis cet autre onglet si besoin).',
+  ()=>{STO.forcer=true;stoSauver()},{t:'Conflit d\'enregistrement',ok:'Remplacer',danger:true})}
+function stoReessayer(){if(STO.mode==='local'&&STO.ancien&&STO.ancien.cas==='migration'){const A=stoAncien();if(A&&A.valide){STO.mode='idb';stoMigrer(A).then(ok=>{stoUI();rnL();updBtn();
+      toast(ok?'✓ Transfert réussi':'⛔ Le transfert a encore échoué : '+STO.err)})}return}
+  if(STO.mode==='idb'){STO.alerte=false;stoSauver().then(ok=>toast(ok?'✓ Projet enregistré dans ce navigateur':'⛔ Enregistrement toujours impossible : '+(STO.err||'')))}}
+// Ancien stockage → fichier (projet CoffraPlan lisible s'il est valide ; sinon textes bruts, pour récupération)
+function stoExportAncien(){const A=stoAncien();if(!A){toast('Aucun ancien stockage dans ce navigateur');return}
+  const o=A.valide?{app:'plans-reservation',v:10,date:new Date().toISOString(),plans:A.data.plans,profils:A.data.profils,modeles:A.data.modeles,ent:A.data.ent}:
+    {app:'coffraplan-ancien-stockage-brut',date:new Date().toISOString(),note:'Données illisibles par CoffraPlan, gardées telles quelles pour récupération',cles:A.brut};
+  try{const b=new Blob([JSON.stringify(o,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(b);
+    a.download='coffraplan_ancien_stockage_'+new Date().toISOString().slice(0,10)+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+    toast('Ancien stockage remis au navigateur en fichier (dossier Téléchargements)')}catch(e){toast('⛔ Export impossible : '+(e&&e.message||e))}}
+function stoIgnorer(){const A=stoAncien();if(!A||STO.mode!=='idb')return;const m=STO.meta||{ignorees:[]};m.ignorees=(m.ignorees||[]).concat(A.empreinte).slice(-20);
+  stoMeta(m).then(()=>{STO.ancien=null;stoUI();closeModal();toast('Projet enregistré gardé ; ancien stockage conservé tel quel')}).catch(e=>uiAlert('Choix non enregistré : '+stoMsg(e),'Stockage'))}
+function stoReprendre(){const A=stoAncien();if(!A||!A.valide)return;uiConfirm(`Remplacer le projet enregistré (${P.length} plan(s)) par l'ancien stockage (${A.data.plans.length} plan(s)) ? Exportez d'abord le projet enregistré si vous voulez le garder.`,
+  async()=>{STO.forcer=true;const ok=await stoMigrer(A);profFromPlans(P);profLists();libUI();rnL();updBtn();prev();updExp();stoUI();closeModal();
+    toast(ok?`✓ Ancien stockage repris (${P.length} plan(s))`:'⛔ Reprise impossible : '+STO.err)},{t:'Reprendre l\'ancien stockage',ok:'Remplacer',danger:true})}
+function stoConflit(){const A=STO.ancien;if(!A||A.cas!=='conflit')return;
+  modal(`<div class="ct">⚠ Deux versions de vos projets dans ce navigateur</div><div class="dlgm">Le projet enregistré par CoffraPlan (<b>${P.length} plan(s)</b>) diffère de l'ancien stockage
+    (<b>${A.data.plans.length} plan(s)</b>), écrit par une version précédente de CoffraPlan ou par un autre fichier CoffraPlan ouvert dans ce navigateur. <b>Rien n'a été remplacé.</b>
+    Exportez les deux si vous avez un doute, puis choisissez.</div>
+    <div class="rb" style="flex-wrap:wrap"><button class="btn bs bo" onclick="expJ()">💾 Exporter le projet enregistré</button><button class="btn bs bo" onclick="stoExportAncien()">💾 Exporter l'ancien stockage</button></div>
+    <div class="rb" style="flex-wrap:wrap"><button class="btn bs bo" onclick="closeModal()">Décider plus tard</button><button class="btn bs bo" onclick="stoReprendre()">Reprendre l'ancien stockage</button><button class="btn bs bpr" onclick="stoIgnorer()">Garder le projet enregistré</button></div>`)}
+// État affiché : enregistrement dans le navigateur (indicateur) ; problème à traiter (bandeau, avec actions)
+function stoUI(){const s=el('stoSt'),z=el('zSto');if(!s)return;let t='',c='',ti='',b='';const A=STO.ancien;
+  if(STO.mode==='local'){t='⚠|Stockage de secours';c='ko';ti='Enregistrement automatique fiable indisponible : sauvegardez régulièrement le projet dans un fichier (Ctrl+S).';
+    b=STO.etat==='migration'?`⚠ <b>Transfert de vos projets vers le nouveau stockage impossible</b> (${esc(STO.err)}). Vos projets restent dans l'ancien stockage du navigateur, intacts. <a href="#" onclick="event.preventDefault();expJ()">Exporter le projet</a> · <a href="#" onclick="event.preventDefault();stoReessayer()">Réessayer</a>`:
+      `⚠ <b>Enregistrement automatique fiable indisponible dans ce navigateur</b> (${esc(STO.err||'')}) : les plans sont gardés dans l'ancien stockage, limité. Sauvegardez souvent : <a href="#" onclick="event.preventDefault();expJ()">Sauvegarder le projet</a>`}
+  else if(STO.mode==='bloque'){t='⚠|Non enregistré';c='ko';ti='Base du navigateur illisible : rien n\'est écrit pour ne rien écraser.';
+    b=`⚠ <b>Les projets enregistrés dans ce navigateur n'ont pas pu être lus</b> (${esc(STO.err||STO.etat)}). Rien n'est enregistré ni écrasé ; votre travail de cette page peut être exporté : <a href="#" onclick="event.preventDefault();expJ()">Exporter le projet</a> · <a href="#" onclick="event.preventDefault();location.reload()">Recharger CoffraPlan</a>`}
+  else if(STO.mode==='idb'){
+    if(STO.etat==='conflit'||STO.perime){t='⚠|Modifié ailleurs';c='ko';ti='Le projet enregistré a été modifié dans un autre onglet ou une autre copie de CoffraPlan.';
+      b=`⚠ <b>Le projet enregistré a été modifié dans un autre onglet</b> (ou une autre copie de CoffraPlan)${STO.etat==='conflit'?' : <b>les modifications de cet onglet ne sont pas enregistrées</b>':''}. Rien n'a été écrasé.
+        <a href="#" onclick="event.preventDefault();stoRecharger()">Recharger le projet enregistré</a>${STO.etat==='conflit'?' (les modifications de cet onglet seront abandonnées)':''} · <a href="#" onclick="event.preventDefault();expJ()">Exporter la version de cet onglet</a>${STO.etat==='conflit'?' · <a href="#" onclick="event.preventDefault();stoForcer()">Garder la version de cet onglet</a>':''}`}
+    else if(STO.etat==='erreur'){t='⚠|Non enregistré';c='ko';ti='Dernière modification non enregistrée dans le navigateur : '+(STO.err||'');
+      b=`⚠ <b>Dernières modifications non enregistrées</b> (${esc(STO.err||'')}). Elles restent dans cette page tant qu'elle reste ouverte. <a href="#" onclick="event.preventDefault();expJ()">Sauvegarder le projet dans un fichier</a> · <a href="#" onclick="event.preventDefault();stoReessayer()">Réessayer</a>`}
+    else if(STO.etat==='ecriture'){t='⏳|Enregistrement…';ti='Enregistrement dans le navigateur en cours'}
+    else{t='✓|Enregistré ici';c='ok';ti='Projet enregistré dans ce navigateur (sur cet ordinateur seulement). Seul un fichier .json (💾 Sauvegarder) le protège d\'un nettoyage du navigateur ou d\'un changement de poste.'}
+    if(!b&&A&&A.cas==='illisible')b=`⚠ <b>Ancien stockage illisible</b> (${esc(A.erreurs.join(', '))}) : il n'a pas été transféré ni modifié. <a href="#" onclick="event.preventDefault();stoExportAncien()">L'exporter tel quel</a> · <a href="#" onclick="event.preventDefault();stoIgnorer()">Ne plus le signaler</a>`;
+    if(!b&&(STO.secours||[]).length)b=`⚠ <b>Copie de secours d'une session fermée pendant un enregistrement</b>, différente du projet enregistré depuis : elle n'a pas été appliquée. <a href="#" onclick="event.preventDefault();stoSecoursExport()">L'exporter</a> · <a href="#" onclick="event.preventDefault();stoSecoursOublier()">La supprimer</a>`;
+    if(!b&&A&&A.cas==='conflit')b=`⚠ <b>Deux versions de vos projets dans ce navigateur</b> : rien n'a été remplacé. <a href="#" onclick="event.preventDefault();stoConflit()">Choisir</a>`}
+  // icône toujours visible, libellé court masqué sur écran étroit (.hdr .lbl), sens complet au survol et dans le bandeau
+  const [ic,lb]=t.split('|');s.innerHTML=t?`${ic}<span class="lbl"> ${esc(lb)}</span>`:'';s.title=ti;s.setAttribute('aria-label',ti||lb||'');s.className=c;s.style.display=t?'':'none';if(z){z.innerHTML=b;z.style.display=b?'':'none'}}
 // Migration des plans v3 → v4
 function migr(d){
   const o=migr11(d);if(!o||typeof o!=='object'||(o.v||0)>=12)return o;
@@ -5823,7 +5972,7 @@ async function expJ(asNew){if(window.showSaveFilePicker){try{
 function expDl(){let a;try{const b=new Blob([projJson()],{type:'application/json'});
   a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='coffraplan_'+new Date().toISOString().slice(0,10)+'.json';a.click()}catch(e){toast('⛔ Sauvegarde impossible : '+(e&&e.message||e));return}
   /* le navigateur ne signale pas la fin du téléchargement : sauvegarde = fichier généré et remis au navigateur sans erreur */
-  savedMsg('Sauvegarde enregistrée');setTimeout(()=>URL.revokeObjectURL(a.href),1000)}
+  savedMsg('Fichier de sauvegarde remis au navigateur (dossier Téléchargements)');setTimeout(()=>URL.revokeObjectURL(a.href),1000)}
 async function impJ(){if(window.showOpenFilePicker){let h;try{[h]=await showOpenFilePicker({types:[{description:'Projet CoffraPlan',accept:{'application/json':['.json']}}]})}catch(e){if(e&&e.name==='AbortError')return;h=null}
     if(h){try{loadText(await (await h.getFile()).text(),h.name,h)}catch(e){uiAlert(`« ${h.name} » n'a pas pu être lu : ${e.message||e}`,'Fichier invalide')}return}}
   const i=document.createElement('input');i.type='file';i.accept='.json';i.onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();
@@ -5834,8 +5983,13 @@ function loadText(txt,name,handle){const f={name};{let o,arr;try{o=JSON.parse(tx
     if(o.profils&&typeof o.profils==='object')Object.keys(o.profils).forEach(k=>{PROF[k]=Object.assign({},PROF[k]||{},o.profils[k],{ouv:Object.assign({},(PROF[k]||{}).ouv,o.profils[k].ouv)})});
     if(Array.isArray(o.modeles))o.modeles.forEach(m=>{if(m&&m.d&&!LIBU.some(x=>x.name===m.name))LIBU.push(m)});svLib();libUI();
     if(o.ent&&typeof o.ent==='object'){ENT=entOk(o.ent);svEnt()}
-    FH=handle||null;profFromPlans(P);svProf();svP();rnL();updBtn();profLists();markSaved();toast('✓ '+P.length+' plan(s) chargé(s)'+(handle?' — Ctrl+S réenregistre « '+name+' »':''))}catch(er){uiAlert(`« ${f.name} » n'a pas pu être chargé : ${er.message||er}`,'Fichier invalide')}};
-    if(P.length)uiConfirm(`Remplacer les ${P.length} plan(s) actuels par les ${arr.filter(x=>x&&typeof x==='object'&&x.forme).length} du fichier « ${f.name} » ?`,apply,{t:'Charger un projet',ok:'Remplacer'});else apply()}}
+    FH=handle||null;profFromPlans(P);svProf();svP();rnL();updBtn();profLists();markSaved();const fin=' — Ctrl+S réenregistre « '+name+' »';toast('✓ '+P.length+' plan(s) chargé(s)'+(handle?fin:''));
+    // phase 7 : confirmé seulement après l'écriture réelle dans le navigateur (échec : alerte et bandeau de stoEchec)
+    if(STO.mode==='idb')stoSauver().then(ok=>{if(ok)toast('✓ '+P.length+' plan(s) chargé(s) et enregistré(s) dans ce navigateur'+(handle?fin:''))})}catch(er){uiAlert(`« ${f.name} » n'a pas pu être chargé : ${er.message||er}`,'Fichier invalide')}};
+    // contenu vérifié avant remplacement : nombre de plans, chantiers, profils, modèles, cartouche, date ; projet actuel non sauvegardé signalé
+    const ok=arr.filter(x=>x&&typeof x==='object'&&x.forme),ign=arr.length-ok.length,nch=new Set(ok.map(x=>x.ch||'')).size,
+      det=`Contenu du fichier : ${ok.length} plan(s) sur ${nch} chantier(s)${o.profils&&typeof o.profils==='object'?', '+Object.keys(o.profils).length+' profil(s)':''}${Array.isArray(o.modeles)?', '+o.modeles.length+' modèle(s)':''}${o.ent&&o.ent.nom?', cartouche « '+o.ent.nom+' »':''}${o.date?', enregistré le '+String(o.date).slice(0,10):''}${ign?` ; ${ign} élément(s) illisible(s) ignoré(s)`:''}.`;
+    if(P.length)uiConfirm(`Remplacer les ${P.length} plan(s) actuels par les ${ok.length} du fichier « ${f.name} » ?\n${det}${isDirty()?"\n⚠ Le projet actuel contient des modifications qui ne sont dans aucun fichier : elles seront remplacées. Pour les garder, choisissez Annuler puis Sauvegarder (Ctrl+S).":''}\nProfils et modèles du fichier s'ajoutent aux vôtres.`,apply,{t:'Charger un projet',ok:'Remplacer'});else apply()}}
 
 try{const r=localStorage.getItem('resaRoll');if(r)el('iRoll').value=r;const g=localStorage.getItem('resaGabFmt');if(g)el('iGabFmt').value=g}catch(e){}
 // ====== v15 — LOT 1 : SAISIE (cotes avec unités, bornes, profils, bibliothèque, aide, annuler / rétablir) ======
@@ -5973,7 +6127,7 @@ function markFields(d){
 const PROF_DEF={cp:null,mont:'',kerf:4,ent:500,bois:[4000,5000,6000],fmt:'A3',fl:300,ouv:{}};
 // v2.6 — cartouche entreprise (navigateur + fichier projet)
 let ENT=(()=>{try{const r=JSON.parse(localStorage.getItem('resaEnt'));return r&&typeof r==='object'&&!Array.isArray(r)?r:{}}catch(e){return{}}})();
-function svEnt(){try{localStorage.setItem('resaEnt',JSON.stringify(ENT))}catch(e){lsFail()}try{markDirty()}catch(e){}}
+function svEnt(){stoEcrit('resaEnt',()=>JSON.stringify(ENT))}
 function entOk(o){const r={};['nom','ligne','des'].forEach(k=>{if(typeof o[k]==='string')r[k]=o[k].slice(0,120)});if(typeof o.logo==='string'&&/^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/.test(o.logo)&&o.logo.length<400000)r.logo=o.logo;return r}
 function entBlock(){const e=ENT||{};return `<div class="ps-ent">${e.logo?`<img src="${e.logo}" alt="">`:''}<div>${e.nom?`<b>${esc(e.nom)}</b>`:''}${e.ligne?`<div>${esc(e.ligne)}</div>`:''}<div>Dessiné : ${esc(e.des||'—')} · Vérifié : ________ · Visa : ________</div><div class="ech-c">Non à l'échelle — fabriquer aux cotes</div></div></div>`}
 function openEnt(){const e=ENT||{};modal(`<div class="ct">🏢 Cartouche entreprise</div>
@@ -5988,7 +6142,7 @@ function entLogo(inp){const f=inp.files&&inp.files[0];if(!f)return;if(!/^image\/
     cv.getContext('2d').drawImage(im,0,0,cv.width,cv.height);const u=cv.toDataURL('image/png');el('enImg').src=u;el('enImg').style.display=''};im.onerror=()=>toast('⛔ Image illisible');im.src=r.result};r.readAsDataURL(f)}
 function saveEnt(){const src=el('enImg').style.display==='none'?'':el('enImg').getAttribute('src')||'';ENT=entOk({nom:S('enNom','').trim(),ligne:S('enLig','').trim(),des:S('enDes','').trim(),logo:src});svEnt();closeModal();prev();toast('✓ Cartouche entreprise enregistré')}
 let PROF=(()=>{try{const r=JSON.parse(localStorage.getItem('resaProf'));return r&&typeof r==='object'&&!Array.isArray(r)?r:{}}catch(e){return{}}})();
-function svProf(){try{localStorage.setItem('resaProf',JSON.stringify(PROF))}catch(e){lsFail()}try{markDirty()}catch(e){}}
+function svProf(){stoEcrit('resaProf',()=>JSON.stringify(PROF))}
 const chKey=s=>String(s||'').trim().toUpperCase(),ouKey=s=>String(s||'').trim();
 function profCh(ch){const k=chKey(ch);if(!k)return null;return PROF[k]?Object.assign({},PROF_DEF,PROF[k],{ouv:PROF[k].ouv||{}}):null}
 function profOu(ch,ou){const c=profCh(ch);if(!c)return null;const k=Object.keys(c.ouv).find(x=>x.toLowerCase()===ouKey(ou).toLowerCase());return k?c.ouv[k]:null}
@@ -6106,7 +6260,7 @@ const LIB_STD=[
  ['Baie voile cintré 900 × 2100 · voile 250 · Ø 12 m','voile',{L:900,l:250,h:2100,DcuveM:12}],
 ];
 let LIBU=(()=>{try{const r=JSON.parse(localStorage.getItem('resaLib'));return Array.isArray(r)?r:[]}catch(e){return[]}})();
-function svLib(){try{localStorage.setItem('resaLib',JSON.stringify(LIBU))}catch(e){lsFail()}try{markDirty()}catch(e){}}
+function svLib(){stoEcrit('resaLib',()=>JSON.stringify(LIBU))}
 function libUI(){const z=el('selLib');if(!z)return;
   z.innerHTML=`<option value="">📚 Bibliothèque — choisir un modèle…</option><optgroup label="Modèles courants">${LIB_STD.map((m,i)=>`<option value="s${i}">${esc(m[0])}</option>`).join('')}</optgroup>`+
   (LIBU.length?`<optgroup label="Mes modèles">${LIBU.map((m,i)=>`<option value="u${i}">${esc(m.name)}</option>`).join('')}</optgroup>`:'')}
@@ -6196,7 +6350,7 @@ function updExp(){const z=el('zExp'),dirty=isDirty();let t=0;try{t=+localStorage
   const b=el('bSave');if(b){b.classList.toggle('dirty',dirty);b.title=(dirty?'Modifications non sauvegardées — ':'')+'Sauvegarder tous les plans, profils et modèles dans un fichier .json (Ctrl+S)'}
   if(!z)return;const days=t?Math.floor((Date.now()-t)/864e5):null;
   z.style.display=dirty?'':'none';
-  z.innerHTML=`💾 Modifications non sauvegardées${days!=null?' · dernière sauvegarde il y a '+(days?days+' j':'moins d\'un jour'):' · jamais sauvegardé'} — <a href="#" onclick="event.preventDefault();expJ()">Sauvegarder maintenant</a><br><span style="font-size:10px;opacity:.8">Les plans sont aussi gardés dans ce navigateur, mais seul le fichier .json les protège (cache vidé, autre poste).</span>`}
+  z.innerHTML=`💾 Modifications non sauvegardées${days!=null?' · dernière sauvegarde il y a '+(days?days+' j':'moins d\'un jour'):' · jamais sauvegardé'} — <a href="#" onclick="event.preventDefault();expJ()">Sauvegarder maintenant</a><br><span style="font-size:10px;opacity:.8">Les plans sont enregistrés dans ce navigateur, sur cet ordinateur seulement : seul le fichier .json les protège (navigateur nettoyé, autre navigateur ou poste).</span>`}
 function remHide(){const r=el('saveRem');if(r)r.style.display='none'}
 function remShown(){const r=el('saveRem');return !!r&&r.style.display==='block'}
 function remLater(){_remAt=Date.now()+REM_LATER;remHide()}
@@ -6205,7 +6359,7 @@ function remTick(){if(!isDirty()){updExp();return}if(!_remAt||Date.now()<_remAt|
   if(el('md').style.display==='flex'||(typeof V3D!=='undefined'&&V3D.on))return;
   const mn=Math.max(1,Math.round((Date.now()-_dirtySince)/60e3));el('saveRemD').textContent=`Projet modifié depuis ${mn} min sans sauvegarde (${P.length} plan${P.length>1?'s':''}).`;el('saveRem').style.display='block'}
 setInterval(remTick,15e3);
-window.addEventListener('beforeunload',e=>{if(isDirty()){e.preventDefault();e.returnValue=''}});
+window.addEventListener('beforeunload',e=>{stoSecoursPoser();if(isDirty()||STO.cours||STO.mode==='idb'&&(STO.etat==='erreur'||STO.etat==='conflit')){e.preventDefault();e.returnValue=''}});
 
 // ---------- v2.2 — Thème de l'interface (auto / clair / sombre) ----------
 const _mqL=window.matchMedia?matchMedia('(prefers-color-scheme: light)'):null;
@@ -8919,9 +9073,11 @@ function openExport(){const cur=EI>=0&&P[EI]?P[EI]:coll(),list=P.length?chantier
   if(EI<0&&!list.length)el('exSc').value='cur'}
 
 {const _g=gen;gen=function(d){const p0=ESCX.pre,n0=ESCX.n;try{ESCX.pre=d?glKey(d,0):'';ESCX.n=0;if(d){ESCX.d.delete(ESCX.pre);ESCX.d.set(ESCX.pre,d);if(ESCX.d.size>300)ESCX.d.delete(ESCX.d.keys().next().value)}return _g.apply(this,arguments)}finally{ESCX.pre=p0;ESCX.n=n0}}}
+// phase 7 : l'interface démarre une fois les projets ouverts (IndexedDB, migration) ; _ready signale la fin du démarrage
+stoDemarrer().catch(e=>{STO.mode='bloque';STO.etat='lecture';STO.err=stoMsg(e)}).finally(()=>{
 applyPage();prtUI();updF();if(draftRestore())setTimeout(()=>toast('Brouillon restauré'),300);profFromPlans(P);profLists();libUI();rnL();updBtn();prev();_ready=true;hisPush();
 try{if(localStorage.getItem('resaSavedH')==null&&localStorage.getItem('resaDirty')==='0'&&localStorage.getItem('resaExpAt'))localStorage.setItem('resaSavedH',projHash());localStorage.removeItem('resaDirty')}catch(e){}
-foldInit();themeApply();try{const so=localStorage.getItem('resaSort');if(so&&el('plS').querySelector(`option[value="${so}"]`)){el('plS').value=so;rnL()}}catch(e){}updBtn();updExp();
+foldInit();themeApply();try{const so=localStorage.getItem('resaSort');if(so&&el('plS').querySelector(`option[value="${so}"]`)){el('plS').value=so;rnL()}}catch(e){}updBtn();updExp();stoApres()});
 el('iCh').addEventListener('change',()=>{profLists();if(EI<0)applyProf()});el('iOuv').addEventListener('change',()=>{profLists();if(EI<0)applyProf()});
 </script>
 <script type="text/plain" id="three-src">/**
