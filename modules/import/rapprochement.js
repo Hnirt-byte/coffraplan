@@ -40,7 +40,8 @@ const comparable=(vT,uT,vA,uA)=>!!uA||(()=>{const r=vA*(MM[uA]||MM[uT]||1)/(vT*(
 // L = {id, repere, dims ({type:'rect',a,b}|{type:'circ',D}|null), unite, quantite, page (page du tableau), ids}
 // textes : textes du dessin (PDF et OCR ; ceux des tableaux déjà retirés) ; C : candidats de CPI.geometrie (toutes pages)
 // o = {mm: candidat → mm par point | null, rappels: texte → pointes [[x,y]] (lignes de rappel), exclus: Set d'ids de textes,
-//      vue: (page, x, y) → id de vue | null (CPI.vues.situer) : contours et cotes voisines cherchés dans la vue du repère seulement}
+//      vue: (page, x, y) → id de vue | null (CPI.vues.situer) : contours et cotes voisines cherchés dans la vue du repère seulement,
+//      vueIncertaine: id → vrai si les limites de la vue sont incertaines (aucune confirmation automatique)}
 // → {lignes: {idLigne: résultat}, hors: [{texte, page, x, y, conf}], colonnes: nb de textes écartés (colonnes de tableau)}
 function rapprocher(lignes,textes,C,o){o=o||{};const N=root.CPI.nomenclatures,cleRep=N.cleRep,cotes=N.cotes,dGeo=N.dGeo,ex=o.exclus||new Set();
   const T0=textes.filter(t=>!ex.has(t.id)&&t.page),col=colonnes(T0),T=T0.filter(t=>!col.has(t.id));
@@ -56,7 +57,7 @@ function rapprocher(lignes,textes,C,o){o=o||{};const N=root.CPI.nomenclatures,cl
       if(flou)pq.push(`lu « ${t.texte} » : rapproché par confusion de lettres et de chiffres`);if(num)pq.push('repère purement numérique');
       occ.push({t,fiable:!pq.length,doutes:pq,conf:cf})});
     // contour désigné par chaque localisation : le plus proche du repère ou du bout de sa ligne de rappel (≤ 4 hauteurs de texte)
-    occ.forEach(x=>{const t=x.t,P=[[t.x,t.y]],h=Math.max(t.h||2,1),vt=x.vue=vue(t.page,t.x,t.y);if(o.rappels)try{x.rappels=o.rappels(t)}catch(e){x.rappels=[]}else x.rappels=[];P.push(...x.rappels);
+    occ.forEach(x=>{const t=x.t,P=[[t.x,t.y]],h=Math.max(t.h||2,1),vt=x.vue=vue(t.page,t.x,t.y);x.vinc=!!(vt&&o.vueIncertaine&&o.vueIncertaine(vt));if(o.rappels)try{x.rappels=o.rappels(t)}catch(e){x.rappels=[]}else x.rappels=[];P.push(...x.rappels);
       const V=OK.filter(({c,i})=>c.source.page===t.page&&vC.get(i)===vt).map(({c,i})=>{let d=Infinity;for(const p of P)d=Math.min(d,dGeo(p,c.geometrie));return{i,d}}).filter(v=>v.d<=4*h).sort((a,b)=>a.d-b.d);
       x.contours=V;x.contour=V.length===1||V.length>1&&V[1].d>1.25*V[0].d+0.5*h?V[0].i:null;
       // cotes écrites voisines : près du repère (6 hauteurs) ou du contour désigné (4 hauteurs)
@@ -64,6 +65,8 @@ function rapprocher(lignes,textes,C,o){o=o||{};const N=root.CPI.nomenclatures,cl
       T.forEach(u=>{if(u===t||u.page!==t.page||[...K.get(u.id)].some(z=>toutes.has(z))||vue(u.page,u.x,u.y)!==vt)return;const q=cotes(u.texte,null);if(!/^(rect|circ|seul)$/.test(q.etat))return;
         const d=Math.hypot(u.x-t.x,u.y-t.y),dc=cc?dGeo([u.x,u.y],cc):Infinity;if(d<=6*h||dc<=4*Math.max(u.h||h,1))x.cotes.push(Object.assign({texte:u.texte,id:u.id,d:Math.min(d,dc),ocr:!!u.ocr},q))});
       x.cotes.sort((a,b)=>a.d-b.d);x.cotes=x.cotes.slice(0,4)});
+    // vue aux limites incertaines : son contour n'est jamais proposé d'office ni ses cotes voisines tenues pour une confirmation forte
+    occ.forEach(x=>{if(x.vinc)x.doutes.push(`vue ${x.vue} aux limites incertaines : contour et cotes voisines à confirmer`)});
     R[L.id]=verifier(L,occ,C,o)});
   // dimensions seules : contours de la page du tableau, de mêmes cotes mesurées, non désignés par un repère → « probable »
   const pris=new Set();Object.values(R).forEach(r=>r.preuves.forEach(i=>pris.add(i)));
@@ -104,9 +107,9 @@ function verifier(L,occ,C,o){const d=L.dims,uT=L.unite||null,D={},notes=[];
     if(x.contour!=null&&o.mm){const c=C[x.contour],k=o.mm(c),m=mesure(L,c,k);
       if(m==='ok')noms.forEach(([n])=>met(n,'mesuree',`contour ${c.id} mesuré à l'échelle de la page ${c.source.page}`));
       else if(m==='diff')x.doutes.push(`contour ${c.id} : mesure différente des cotes du tableau (vue, coupe, échelle de détail ?)`)}});
-  const fi=occ.filter(x=>x.fiable),ctr=[...new Set(occ.filter(x=>x.contour!=null).map(x=>x.contour))],princ=[...new Set(fi.filter(x=>x.contour!=null).map(x=>x.contour))];
+  const fi=occ.filter(x=>x.fiable),ctr=[...new Set(occ.filter(x=>x.contour!=null).map(x=>x.contour))],princ=[...new Set(fi.filter(x=>x.contour!=null&&!x.vinc).map(x=>x.contour))];
   let cc;if(!occ.length)cc='absente';else if(!fi.length)cc='probable';else if(Object.values(D).some(x=>x.etat==='conflit'))cc='conflit';
-  else if(noms.length&&Object.values(D).every(x=>x.etat==='confirmee'||x.etat==='mesuree'))cc='forte';else cc='partielle';
+  else if(noms.length&&Object.values(D).every(x=>x.etat==='confirmee'||x.etat==='mesuree')&&fi.some(x=>!x.vinc))cc='forte';else cc='partielle';
   // localisations : vues multiples (pages différentes) ou occurrences physiques (quantité) ; jamais de quantité inventée
   const Q=/^\s*\d+/.test(L.quantite||'')?parseInt(L.quantite,10):null,pp={};fi.forEach(x=>pp[x.t.page]=(pp[x.t.page]||0)+1);
   const pages=Object.keys(pp).map(Number).sort((a,b)=>a-b),mx=Math.max(0,...Object.values(pp));let lecture='';

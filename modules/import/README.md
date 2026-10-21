@@ -361,14 +361,22 @@ automatique), unite_tableau}, corrige:['cotes','ref'], a_verifier, h_saisie, ind
   2 lettres près pour les mots longs) ; « Partie supérieure / inférieure » seul = sous-titre du ferraillage le plus proche ;
   partie d'ouvrage (dalle, radier, voile, poutre…) ; échelle « 1/n » et niveau écrits près du titre. Régions : grille
   d'occupation des tracés (cases de 0,8 % de la page, tableaux exclus), composantes connexes rattachées au titre le plus
-  proche ; composante sans titre assez grande = vue `autre`. Champs : `id` stable `V<page>-<n>` (ordre de lecture), `page`,
+  proche ; composante sans titre assez grande = vue `autre`. Trait long ouvert (une extrémité libre : axe, ligne de cote,
+  trait de liaison) : relie des cases mais n'étend pas une région ; composante très étendue (> 45 % de la largeur ou 60 % de
+  la hauteur) qu'aucun titre ne préfère : jamais rattachée au titre voisin ; îlot de dessin < 10 % du plus gros, hors de
+  l'emprise : hors de la vue (cases rendues). Région > 30 % de la page, couvrant le titre d'une autre vue ou recouvrant à
+  plus de 50 % une autre vue titrée → `incertaine` (+ motif) : retirée des régions de `situer` (cases dessinées seulement),
+  jamais comptée par `consolider`, et le rapprochement (`vueIncertaine`) n'en tire ni contour proposé d'office ni concordance
+  forte. Champs : `id` stable `V<page>-<n>` (ordre de lecture), `page`,
   `region` (pt), `titre`, `type` (plan, coupe, elevation, detail, ferraillage_superieur, ferraillage_inferieur, ferraillage,
   autre), `partie`, `echelle`, `niveau`, `confiance` + `motifs`. `situer(carte, x, y)` → id de vue ou `null`.
 - Rapprochement : option `vue(page, x, y)` ; contour et cotes voisines cherchés dans la vue du repère seulement.
 - `CPI.vues.consolider(ligne, résultat, vues)` : quantité du tableau = référence ; occurrences physiques comptées dans la
   meilleure vue (plan, sinon ferraillage, sinon autre ; lecture incertaine comptée seulement en plan) ; les repères des autres
   vues de même partie à la même position relative (± 10 %) sont des représentations de ces occurrences ; coupe, élévation,
-  détail : représentations seulement. → `{attendue, localisees, representations, restantes, depasse, physiques, roles, notes}`.
+  détail : rattachées seulement à une occurrence unique. Toute autre observation (positions incompatibles ou ambiguës, autre
+  partie, vue incertaine, hors vue, aucune occurrence) : rôle `non_rattachee` + `motif`, dans les notes « à vérifier ».
+  → `{attendue, localisees, representations, nonRattachees, observations, restantes, depasse, physiques, roles, notes}`.
 - `CPI.vues.classer(contour, vue, repères)` (formes hors nomenclature, section repliée `#dxrH`) : `examiner` (repère, cote
   écrite, diagonales), `representation` (repère du tableau), `parasite` (vue de ferraillage, coupe / élévation / détail sans
   indice, forme isolée) avec sa raison ; rien n'est supprimé.

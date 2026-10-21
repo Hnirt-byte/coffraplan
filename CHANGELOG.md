@@ -26,20 +26,39 @@ future IA locale (aucune IA ici) ; `#appVer` reste v3.1 ; moteur, 3D et exports 
 - Export « ⬇ Analyse (JSON) » : tables, tableRows, views, graphicalObservations, physicalOccurrences, associations,
   evidence, uncertainties.
 
+**Corrections après relecture indépendante (Kévin, 21/10/2026)**
+- A — limites des vues : un trait long ouvert (axe, ligne de cote, trait de liaison) relie des cases sans étendre une
+  région ; un bloc très étendu (cartouche, notes) n'est plus rattaché au titre voisin ; un petit îlot accroché par un trait
+  (bulle d'axe) reste hors de l'emprise ; région trop étendue, couvrant le titre d'une autre vue ou empiétant sur une autre
+  vue titrée → vue **aux limites incertaines** : jamais comptée pour les occurrences, contour jamais proposé d'office ni
+  concordance forte par elle seule (`vueIncertaine` du rapprochement).
+- B — observations : occurrence physique, représentation **rattachée** à une occurrence (même position relative, ou
+  occurrence unique pour une coupe / élévation / détail) et **observation non rattachée ou ambiguë** (rôle `non_rattachee`,
+  motif, compte « non rattachée(s) », incertitude `observation_non_rattachee` du JSON). Quantité du tableau inchangée, aucun
+  ouvrage ajouté.
+
 **Écarts voulus (tests)** : t_detection et t_rapprochement ouvrent la section repliée « Formes du dessin hors nomenclature »
 avant de la lire ; t_pdf lit la colonne Source en 11e position (colonne Nb ajoutée). Nouvelle suite `t_vues` (plans fictifs anonymes).
+Après relecture : t_vues attend 3 représentations (et non plus 5) dans le cas « coupe + ferraillage à une autre position »,
+les deux autres observations étant non rattachées (correction B) ; ajout des cas « vues reliées par une ligne de cote, axe
+à bulle, bloc de notes » (A) et « même repère, positions incompatibles » (B).
 
-**Essai sur le PDF de référence (hors dépôt, 20/10/2026, Chromium)** — v3.1 → phase 5 :
+**Essai sur le PDF de référence (hors dépôt, Chromium)** — v3.1 → phase 5 (20/10) → après corrections (21/10) :
 - tableau (OCR de la zone) : 0/7 ligne lue → 7/7 lignes, 7/7 quantités, 7/7 cotes ; R4 Ø65 (Ø50 de la désignation non pris) ;
-- vues : 24 reconnues (plan, coupe, détail, ferraillage sup / inf…) ;
-- occurrences : 7 localisées sur 9 attendues (R1 1/2, R4 0/1 : repères mal lus par l'OCR) ; aucune multiplication par les vues ;
-- formes : 44 proposées au même niveau → 5 rattachées à leur ligne, 41 classées « parasite probable » dans la section repliée.
+- vues : 24 → 25 ; la vue « ferraillage radier » couvrait 1621…3376 × 0…2384 pt (moitié droite de la page : cartouche,
+  notes) ; elle est ramenée à 744…1983 × 0…992 pt, marquée incertaine (elle touche le titre d'une vue voisine) ; le bloc de
+  droite devient une vue sans titre incertaine ; 4 vues incertaines sur 25 ;
+- occurrences : 7 localisées sur 9 (R1 1/2, R4 0/1) ; R1 et R5 sont des lectures OCR incertaines (« ri », « RS ») contrôlées
+  à l'œil sur un rendu de la page : bonnes ; la 2e R1 et R4 sont dessinées sur la page 1 mais non lues par l'OCR ; la seule
+  localisation de R4 (page 2, vue de ferraillage) est une observation non rattachée, à vérifier ; aucune multiplication ;
+- formes : 44 proposées au même niveau → 5 rattachées, 41 reclassées automatiquement « parasite probable » dans la section
+  repliée (aucune vérifiée une à une).
 
 **Tests** : campagne complète `python tests/run.py complet -j 4` : 31/31 suites vertes (20/10/2026, Chromium), dont t_avap
 (moteur, feuilles, DXF, CSV identiques).
 
-**Non validé** : Firefox, Safari, tablette ; autres plans réels que celui de référence ; une vue de ferraillage peut
-s'étendre à tort sur une grande partie de la page (régions qui se touchent) ; titres de vue tournés non lus.
+**Non validé** : Firefox, Safari, tablette ; autres plans réels que celui de référence ; deux vues dessinées l'une contre
+l'autre sans blanc restent partagées approximativement (signalé « limites incertaines ») ; titres de vue tournés non lus.
 
 ## v3.1 — importer un plan DXF ou PDF
 **Demande (Kévin, 20/10/2026)** : préparer la version v3.1 à partir des travaux faits depuis v3.0, sans fonction nouvelle.

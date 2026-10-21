@@ -1718,7 +1718,8 @@ const comparable=(vT,uT,vA,uA)=>!!uA||(()=>{const r=vA*(MM[uA]||MM[uT]||1)/(vT*(
 // L = {id, repere, dims ({type:'rect',a,b}|{type:'circ',D}|null), unite, quantite, page (page du tableau), ids}
 // textes : textes du dessin (PDF et OCR ; ceux des tableaux déjà retirés) ; C : candidats de CPI.geometrie (toutes pages)
 // o = {mm: candidat → mm par point | null, rappels: texte → pointes [[x,y]] (lignes de rappel), exclus: Set d'ids de textes,
-//      vue: (page, x, y) → id de vue | null (CPI.vues.situer) : contours et cotes voisines cherchés dans la vue du repère seulement}
+//      vue: (page, x, y) → id de vue | null (CPI.vues.situer) : contours et cotes voisines cherchés dans la vue du repère seulement,
+//      vueIncertaine: id → vrai si les limites de la vue sont incertaines (aucune confirmation automatique)}
 // → {lignes: {idLigne: résultat}, hors: [{texte, page, x, y, conf}], colonnes: nb de textes écartés (colonnes de tableau)}
 function rapprocher(lignes,textes,C,o){o=o||{};const N=root.CPI.nomenclatures,cleRep=N.cleRep,cotes=N.cotes,dGeo=N.dGeo,ex=o.exclus||new Set();
   const T0=textes.filter(t=>!ex.has(t.id)&&t.page),col=colonnes(T0),T=T0.filter(t=>!col.has(t.id));
@@ -1734,7 +1735,7 @@ function rapprocher(lignes,textes,C,o){o=o||{};const N=root.CPI.nomenclatures,cl
       if(flou)pq.push(`lu « ${t.texte} » : rapproché par confusion de lettres et de chiffres`);if(num)pq.push('repère purement numérique');
       occ.push({t,fiable:!pq.length,doutes:pq,conf:cf})});
     // contour désigné par chaque localisation : le plus proche du repère ou du bout de sa ligne de rappel (≤ 4 hauteurs de texte)
-    occ.forEach(x=>{const t=x.t,P=[[t.x,t.y]],h=Math.max(t.h||2,1),vt=x.vue=vue(t.page,t.x,t.y);if(o.rappels)try{x.rappels=o.rappels(t)}catch(e){x.rappels=[]}else x.rappels=[];P.push(...x.rappels);
+    occ.forEach(x=>{const t=x.t,P=[[t.x,t.y]],h=Math.max(t.h||2,1),vt=x.vue=vue(t.page,t.x,t.y);x.vinc=!!(vt&&o.vueIncertaine&&o.vueIncertaine(vt));if(o.rappels)try{x.rappels=o.rappels(t)}catch(e){x.rappels=[]}else x.rappels=[];P.push(...x.rappels);
       const V=OK.filter(({c,i})=>c.source.page===t.page&&vC.get(i)===vt).map(({c,i})=>{let d=Infinity;for(const p of P)d=Math.min(d,dGeo(p,c.geometrie));return{i,d}}).filter(v=>v.d<=4*h).sort((a,b)=>a.d-b.d);
       x.contours=V;x.contour=V.length===1||V.length>1&&V[1].d>1.25*V[0].d+0.5*h?V[0].i:null;
       // cotes écrites voisines : près du repère (6 hauteurs) ou du contour désigné (4 hauteurs)
@@ -1742,6 +1743,8 @@ function rapprocher(lignes,textes,C,o){o=o||{};const N=root.CPI.nomenclatures,cl
       T.forEach(u=>{if(u===t||u.page!==t.page||[...K.get(u.id)].some(z=>toutes.has(z))||vue(u.page,u.x,u.y)!==vt)return;const q=cotes(u.texte,null);if(!/^(rect|circ|seul)$/.test(q.etat))return;
         const d=Math.hypot(u.x-t.x,u.y-t.y),dc=cc?dGeo([u.x,u.y],cc):Infinity;if(d<=6*h||dc<=4*Math.max(u.h||h,1))x.cotes.push(Object.assign({texte:u.texte,id:u.id,d:Math.min(d,dc),ocr:!!u.ocr},q))});
       x.cotes.sort((a,b)=>a.d-b.d);x.cotes=x.cotes.slice(0,4)});
+    // vue aux limites incertaines : son contour n'est jamais proposé d'office ni ses cotes voisines tenues pour une confirmation forte
+    occ.forEach(x=>{if(x.vinc)x.doutes.push(`vue ${x.vue} aux limites incertaines : contour et cotes voisines à confirmer`)});
     R[L.id]=verifier(L,occ,C,o)});
   // dimensions seules : contours de la page du tableau, de mêmes cotes mesurées, non désignés par un repère → « probable »
   const pris=new Set();Object.values(R).forEach(r=>r.preuves.forEach(i=>pris.add(i)));
@@ -1782,9 +1785,9 @@ function verifier(L,occ,C,o){const d=L.dims,uT=L.unite||null,D={},notes=[];
     if(x.contour!=null&&o.mm){const c=C[x.contour],k=o.mm(c),m=mesure(L,c,k);
       if(m==='ok')noms.forEach(([n])=>met(n,'mesuree',`contour ${c.id} mesuré à l'échelle de la page ${c.source.page}`));
       else if(m==='diff')x.doutes.push(`contour ${c.id} : mesure différente des cotes du tableau (vue, coupe, échelle de détail ?)`)}});
-  const fi=occ.filter(x=>x.fiable),ctr=[...new Set(occ.filter(x=>x.contour!=null).map(x=>x.contour))],princ=[...new Set(fi.filter(x=>x.contour!=null).map(x=>x.contour))];
+  const fi=occ.filter(x=>x.fiable),ctr=[...new Set(occ.filter(x=>x.contour!=null).map(x=>x.contour))],princ=[...new Set(fi.filter(x=>x.contour!=null&&!x.vinc).map(x=>x.contour))];
   let cc;if(!occ.length)cc='absente';else if(!fi.length)cc='probable';else if(Object.values(D).some(x=>x.etat==='conflit'))cc='conflit';
-  else if(noms.length&&Object.values(D).every(x=>x.etat==='confirmee'||x.etat==='mesuree'))cc='forte';else cc='partielle';
+  else if(noms.length&&Object.values(D).every(x=>x.etat==='confirmee'||x.etat==='mesuree')&&fi.some(x=>!x.vinc))cc='forte';else cc='partielle';
   // localisations : vues multiples (pages différentes) ou occurrences physiques (quantité) ; jamais de quantité inventée
   const Q=/^\s*\d+/.test(L.quantite||'')?parseInt(L.quantite,10):null,pp={};fi.forEach(x=>pp[x.t.page]=(pp[x.t.page]||0)+1);
   const pages=Object.keys(pp).map(Number).sort((a,b)=>a-b),mx=Math.max(0,...Object.values(pp));let lecture='';
@@ -1820,6 +1823,8 @@ root.CPI=Object.assign(root.CPI||{},{rapprochement:{rapprocher,colonnes,cleFloue
 (function(root){'use strict';
 const sansAcc=s=>String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'');
 const DV_GAP=8,DV_MIN=30;   // cases : écart titre ↔ dessin admis (au moins, voir GMAX) ; dessin sans titre retenu comme vue à partir de 30 cases
+const DV_FIL=6,DV_ILOT=4;   // cases : trait ouvert plus long = trait de liaison ; îlot de dessin plus petit (et < 10 % du plus gros), hors de l'emprise des autres = hors emprise (bulle d'axe)
+const DV_POS=0.1,DV_W=0.45,DV_H=0.6,DV_AIRE=0.3,DV_RECOUV=0.5;   // position relative admise entre vues (± 10 %) ; fractions de la page : composante trop étendue pour un titre voisin ; région trop étendue ; recouvrement
 const TYPES={plan:'plan',coupe:'coupe',elevation:'élévation',detail:'détail',ferraillage:'ferraillage',ferraillage_superieur:'ferraillage supérieur',ferraillage_inferieur:'ferraillage inférieur',autre:'autre'};
 const CLES=['ferraillage','renfort','armatures','elevation','facade','detail','coupe','dessus','plan','vue','partie'];
 const PARTIES=['dalle','radier','voile','poutre','puisard','longrine','semelle','plancher','acrotere','escalier','fosse','regard','cuve','mur'];
@@ -1865,11 +1870,19 @@ function titres(textes){const T=textes.filter(t=>t.h>0&&String(t.texte).trim()),
 function detecter(geo,textes,o){o=o||{};const n=geo.page,W=geo.w,H=geo.h,C=Math.max(4,0.008*Math.min(W,H)),nx=Math.ceil(W/C)+1,ny=Math.ceil(H/C)+1,N=nx*ny;
   const occ=new Uint8Array(N),cad=o.cadres||[],hors=p=>cad.some(b=>p[0]>=b[0]&&p[0]<=b[2]&&p[1]>=b[1]&&p[1]<=b[3]);
   const cel=(x,y)=>{const i=Math.floor(x/C),j=Math.floor(y/C);return i<0||j<0||i>=nx||j>=ny?-1:j*nx+i};
-  const marque=(x,y)=>{if(hors([x,y]))return;const k=cel(x,y);if(k>=0)occ[k]=1};
-  const Lmax=0.35*Math.min(W,H);
-  (geo.segments||[]).forEach(s=>{const l=Math.hypot(s.b[0]-s.a[0],s.b[1]-s.a[1]);if(l>Lmax)return;const m=Math.max(1,Math.ceil(2*l/C));
-    for(let q=0;q<=m;q++)marque(s.a[0]+(s.b[0]-s.a[0])*q/m,s.a[1]+(s.b[1]-s.a[1])*q/m)});
-  (geo.contours||[]).forEach(k=>{(k.pts||[]).forEach(p=>marque(p[0],p[1]));(k.courbes||[]).forEach(c=>c.forEach(p=>marque(p[0],p[1])))});
+  // occupation : 1 = dessin (traits courts, contours fermés, petits tracés) ; 2 = trait long ouvert seulement (axe, ligne de
+  // cote, trait de liaison) : il relie des cases mais n'étend jamais une région
+  const marque=(x,y,f)=>{if(hors([x,y]))return;const k=cel(x,y);if(k>=0&&!(f&&occ[k]))occ[k]=f?2:1};
+  const Lmax=0.35*Math.min(W,H),Lfil=DV_FIL*C,trace=(a,b,f)=>{const l=Math.hypot(b[0]-a[0],b[1]-a[1]),m=Math.max(1,Math.ceil(2*l/C));
+    for(let q=0;q<=m;q++)marque(a[0]+(b[0]-a[0])*q/m,a[1]+(b[1]-a[1])*q/m,f)};
+  // trait long « ouvert » : une de ses extrémités ne rejoint l'extrémité d'aucun autre trait (axe, ligne de cote) ; les côtés
+  // d'un contour dessiné en traits séparés se rejoignent : dessin
+  const SG=geo.segments||[],tol=Math.max(0.5,0.05*C),ext=new Map(),cle=(x,y)=>Math.round(x/tol)+','+Math.round(y/tol);
+  SG.forEach((s,i)=>[s.a,s.b].forEach(p=>{const k=cle(p[0],p[1]);(ext.get(k)||ext.set(k,[]).get(k)).push(i)}));
+  const libre=(p,i)=>{const X=Math.round(p[0]/tol),Y=Math.round(p[1]/tol);for(let dx=-1;dx<=1;dx++)for(let dy=-1;dy<=1;dy++)if((ext.get((X+dx)+','+(Y+dy))||[]).some(j=>j!==i))return false;return true};
+  SG.forEach((s,i)=>{const l=Math.hypot(s.b[0]-s.a[0],s.b[1]-s.a[1]);if(l<=Lmax)trace(s.a,s.b,l>Lfil&&(libre(s.a,i)||libre(s.b,i)))});
+  (geo.contours||[]).forEach(k=>{const P=k.pts||[];P.forEach((p,i)=>{if(i)trace(P[i-1],p,false)});if(P.length>2)trace(P[P.length-1],P[0],false);
+    (k.courbes||[]).forEach(c=>c.forEach(p=>marque(p[0],p[1])))});
   const B=geo.petits||[];for(let i=0;i<B.length;i+=4)marque((B[i]+B[i+2])/2,(B[i+1]+B[i+3])/2);
   // titres (hors tableaux) ; un sous-titre seul (« Partie supérieure ») prend le titre de ferraillage le plus proche comme parent
   const TT=titres(textes.filter(t=>!hors([t.x,t.y]))),pr=TT.filter(t=>!t.sous&&/^ferraillage/.test(t.type));
@@ -1881,22 +1894,32 @@ function detecter(geo,textes,o){o=o||{};const n=geo.page,W=geo.w,H=geo.h,C=Math.
   // emprises, doublé pour un dessin au-dessus de son titre : un titre est le plus souvent au-dessus de sa vue), à moins de GMAX ;
   // une composante choisie comme la plus proche par plusieurs titres (vues reliées par un axe, une cote) est partagée entre eux
   // par propagation depuis chacun ; sans titre à portée : vue « autre » à partir de DV_MIN cases
+  const emprise=P=>{let b=[Infinity,Infinity,-Infinity,-Infinity];P.forEach(k=>{const i=k%nx,j=(k-i)/nx;b=[Math.min(b[0],i*C),Math.min(b[1],j*C),Math.max(b[2],(i+1)*C),Math.max(b[3],(j+1)*C)]});return b};
   const comp=new Int32Array(N).fill(-1),K=[];
   for(let k0=0;k0<N;k0++){if(!occ[k0]||comp[k0]>=0)continue;const P=[k0],id=K.length;comp[k0]=id;
     for(let p=0;p<P.length;p++){const k=P[p],i=k%nx,j=(k-i)/nx;for(let di=-2;di<=2;di++)for(let dj=-2;dj<=2;dj++){const a=i+di,b=j+dj;if(a<0||b<0||a>=nx||b>=ny)continue;const q=b*nx+a;if(occ[q]&&comp[q]<0){comp[q]=id;P.push(q)}}}
-    let b=[Infinity,Infinity,-Infinity,-Infinity];P.forEach(k=>{const i=k%nx,j=(k-i)/nx;b=[Math.min(b[0],i*C),Math.min(b[1],j*C),Math.max(b[2],(i+1)*C),Math.max(b[3],(j+1)*C)]});K.push({P,b})}
+    const D=P.filter(k=>occ[k]===1);K.push({P,D,b:emprise(D)})}
   const GMAX=Math.max(DV_GAP*C,0.12*Math.min(W,H)),ecart=(t,b)=>{const dx=Math.max(0,b[0]-t.b[2],t.b[0]-b[2]),dy=Math.max(0,b[1]-t.b[3],t.b[1]-b[3]);return Math.hypot(dx,dy)*(b[1]>t.b[3]-1?2:1)};
-  const own=new Int16Array(N).fill(-1),choix=K.map(c=>{let best=-1,bd=GMAX;S.forEach((t,v)=>{const d=ecart(t,c.b);if(d<=bd){bd=d;best=v}});return best});
-  const prefere=S.map(t=>{let best=-1,bd=GMAX;K.forEach((c,i)=>{if(c.P.length<4)return;const d=ecart(t,c.b);if(d<bd){bd=d;best=i}});return best});
+  const grand=b=>b[2]-b[0]>DV_W*W||b[3]-b[1]>DV_H*H;
+  const own=new Int16Array(N).fill(-1),dans=(t,b)=>b[0]>=t.b[0]-1.5*t.h&&b[2]<=t.b[2]+1.5*t.h&&b[1]>=t.b[1]-1.5*t.h&&b[3]<=t.b[3]+1.5*t.h;   // tracés du titre lui-même (lettres dessinées)
+  const prefere=S.map(t=>{let best=-1,bd=GMAX;K.forEach((c,i)=>{if(c.D.length<4||dans(t,c.b))return;const d=ecart(t,c.b);if(d<bd){bd=d;best=i}});return best});
+  const choix=K.map((c,ci)=>{if(!c.D.length||grand(c.b)&&!prefere.includes(ci))return -1;let best=-1,bd=GMAX;S.forEach((t,v)=>{const d=ecart(t,c.b);if(d<=bd){bd=d;best=v}});return best});
   K.forEach((c,ci)=>{const T=[...new Set(S.map((t,v)=>prefere[v]===ci?v:-1).filter(v=>v>=0).concat(choix[ci]>=0?[choix[ci]]:[]))];
     if(T.length<=1){if(T.length)c.P.forEach(k=>own[k]=T[0]);return}
     // partage : propagation dans la composante depuis la case la plus proche de chaque titre
     const F=[];T.forEach(v=>{const t=S[v],cx=(t.b[0]+t.b[2])/2,cy=(t.b[1]+t.b[3])/2;let bk=-1,bd=Infinity;c.P.forEach(k=>{const i=k%nx,j=(k-i)/nx,d=Math.hypot((i+0.5)*C-cx,(j+0.5)*C-cy);if(d<bd){bd=d;bk=k}});if(own[bk]<0){own[bk]=v;F.push(bk)}});
     for(let p=0;p<F.length;p++){const k=F[p],i=k%nx,j=(k-i)/nx;for(let di=-2;di<=2;di++)for(let dj=-2;dj<=2;dj++){const a=i+di,b=j+dj;if(a<0||b<0||a>=nx||b>=ny)continue;const q=b*nx+a;if(comp[q]===ci&&own[q]<0){own[q]=own[k];F.push(q)}}}});
-  const V=S.map(t=>({t,cases:0,b:[Infinity,Infinity,-Infinity,-Infinity]}));
-  for(let k=0;k<N;k++){if(own[k]<0)continue;const v=V[own[k]],i=k%nx,j=(k-i)/nx;v.cases++;v.b=[Math.min(v.b[0],i*C),Math.min(v.b[1],j*C),Math.max(v.b[2],(i+1)*C),Math.max(v.b[3],(j+1)*C)]}
-  K.forEach(c=>{if(own[c.P[0]]>=0||c.P.length<DV_MIN)return;const id=V.length;V.push({t:null,cases:c.P.length,b:c.b});c.P.forEach(k=>own[k]=id)});
+  const V=S.map(t=>({t,D:[]}));
+  for(let k=0;k<N;k++)if(own[k]>=0&&occ[k]===1)V[own[k]].D.push(k);
+  K.forEach(c=>{if(own[c.P[0]]>=0||c.D.length<DV_MIN)return;const id=V.length;V.push({t:null,D:c.D});c.P.forEach(k=>own[k]=id)});
+  const ilots=D=>{const m=new Set(D),vu=new Set(),I=[];D.forEach(k0=>{if(vu.has(k0))return;const P=[k0];vu.add(k0);
+      for(let p=0;p<P.length;p++){const k=P[p],i=k%nx,j=(k-i)/nx;for(let di=-2;di<=2;di++)for(let dj=-2;dj<=2;dj++){const q=(j+dj)*nx+i+di;if(i+di>=0&&i+di<nx&&m.has(q)&&!vu.has(q)){vu.add(q);P.push(q)}}}I.push(P)});return I};
+  V.forEach(v=>{v.cases=v.D.length;if(!v.D.length){v.b=[Infinity,Infinity,-Infinity,-Infinity];return}
+    const I=ilots(v.D).sort((a,b)=>b.length-a.length),seuil=Math.max(DV_ILOT,0.1*I[0].length),gros=I.filter(P=>P.length>=seuil),b0=emprise((gros.length?gros:I.slice(0,1)).flat());
+    v.b=emprise(I.filter(P=>P.length>=seuil||P.every(k=>{const i=k%nx,j=(k-i)/nx;return i*C>=b0[0]&&(i+1)*C<=b0[2]&&j*C>=b0[1]&&(j+1)*C<=b0[3]})).flat())});
   // vues : région = cases dessinées et titre ; échelle « 1/50 » écrite près du titre ; identifiant dans l'ordre de lecture
+  // cases hors emprise (trait de liaison, bulle d'axe) : rendues, jamais situées dans la vue
+  for(let k=0;k<N;k++){const v=own[k]>=0&&V[own[k]];if(!v)continue;const i=k%nx,j=(k-i)/nx;if(!(i*C>=v.b[0]-C&&(i+1)*C<=v.b[2]+C&&j*C>=v.b[1]-C&&(j+1)*C<=v.b[3]+C))own[k]=-1}
   const ech=textes.map(t=>{const m=sansAcc(t.texte).match(/(?:^|[^0-9.,\/])1\s*[\/:]\s*(\d{1,4})(?![0-9.,])/);return m&&+m[1]>1?{t,v:+m[1]}:null}).filter(Boolean);
   const out=V.map((v,k)=>{const t=v.t,b=t?[Math.min(v.b[0],t.b[0]),Math.min(v.b[1],t.b[1]),Math.max(v.b[2],t.b[2]),Math.max(v.b[3],t.b[3])]:v.b;
     if(!(b[2]>b[0]))return null;const motifs=[];let conf=t?(t.conf>=80&&!t.approx?'forte':t.conf>=50?'moyenne':'faible'):'faible';
@@ -1907,8 +1930,15 @@ function detecter(geo,textes,o){o=o||{};const n=geo.page,W=geo.w,H=geo.h,C=Math.
     return{k,page:n,region:b.map(x=>Math.round(x*100)/100),titre:t?t.texte:null,titreIds:t?t.ids:[],type:t?t.type:'autre',partie:t?t.partie:null,
       echelle:e?{valeur:e.v,texte:e.t.texte}:null,niveau:nv?nv[1].replace(/\s+/g,''):null,confiance:conf,motifs,cases:v.cases}}).filter(Boolean);
   out.sort((a,b)=>b.region[3]-a.region[3]||a.region[0]-b.region[0]).forEach((v,i)=>{v.id='V'+n+'-'+(i+1);v.libelle=TYPES[v.type]});
+  // régions incohérentes : jamais utilisées pour confirmer seules une correspondance (situer : cases dessinées seulement)
+  const aire=b=>Math.max(0,b[2]-b[0])*Math.max(0,b[3]-b[1]),inter=(a,b)=>aire([Math.max(a[0],b[0]),Math.max(a[1],b[1]),Math.min(a[2],b[2]),Math.min(a[3],b[3])]);
+  out.forEach(v=>{const M=[],r=v.region;if(aire(r)>DV_AIRE*W*H)M.push(`région très étendue (${Math.round(100*aire(r)/(W*H))} % de la page : cartouche, notes, vues reliées ?)`);
+    out.forEach(u=>{if(u===v)return;const tu=V[u.k].t;
+      if(tu&&(tu.b[0]+tu.b[2])/2>=r[0]&&(tu.b[0]+tu.b[2])/2<=r[2]&&(tu.b[1]+tu.b[3])/2>=r[1]&&(tu.b[1]+tu.b[3])/2<=r[3])M.push(`recouvre le titre de la vue ${u.id}`);
+      else if(tu&&aire(r)>=aire(u.region)&&inter(r,u.region)>DV_RECOUV*aire(u.region))M.push(`empiète sur la vue ${u.id} (${Math.round(100*inter(r,u.region)/aire(u.region))} %)`)});
+    v.incertaine=M.length>0;if(M.length){v.motifs.push('limites incertaines : '+M.join(' ; '));v.confiance='faible'}});
   const ids=[];out.forEach(v=>ids[v.k]=v.id);out.forEach(v=>delete v.k);
-  return{vues:out,carte:{page:n,C,nx,ny,own,ids,regions:out.map(v=>({id:v.id,b:v.region}))}}}
+  return{vues:out,carte:{page:n,C,nx,ny,own,ids,regions:out.filter(v=>!v.incertaine).map(v=>({id:v.id,b:v.region}))}}}
 
 // Vue d'un point de la page (carte de detecter) : case dessinée du point, sinon la plus petite région de vue qui le contient
 // (intérieur d'un contour), sinon la vue la plus présente à 2 cases ; null hors de toute vue
@@ -1921,28 +1951,43 @@ function situer(carte,x,y){if(!carte)return null;const{C,nx,ny,own,ids,regions}=
 // Occurrences physiques d'une ligne : la quantité du tableau est la référence, jamais multipliée par les vues. Vues « physiques »
 // (plan, puis ferraillage, puis vue sans titre) : la plus fournie donne les occurrences localisées ; les repères des autres vues
 // physiques de même partie, à la même position relative (± 10 % de la vue), sont des représentations de ces occurrences ;
-// coupes, élévations, détails : représentations seulement. → {attendue, localisees, representations, restantes, physiques, notes}
+// coupes, élévations, détails : jamais comptés. Observation qu'aucune occurrence ne peut recevoir sans ambiguïté : non rattachée.
+// → {attendue, localisees, representations (observations rattachées), nonRattachees, observations, restantes, physiques, roles, notes}
 const RANG={plan:0,ferraillage_superieur:1,ferraillage_inferieur:1,ferraillage:1,autre:2};
 function consolider(L,r,vues){const Vx=new Map(vues.map(v=>[v.id,v])),Q=/^\s*\d+\s*$/.test(String(L.quantite==null?'':L.quantite))?parseInt(L.quantite,10):null;
   const O=(r&&r.occurrences||[]).map((o,j)=>Object.assign({j},o,{v:Vx.get(o.vue)||null})),notes=[];
-  // lecture incertaine du repère : comptée seulement dans une vue en plan (ailleurs : représentation)
-  const par=new Map();O.forEach(o=>{if(o.v&&o.v.type in RANG&&(o.fiable||o.v.type==='plan'))(par.get(o.v.id)||par.set(o.v.id,[]).get(o.v.id)).push(o)});
+  // lecture incertaine du repère : comptée seulement dans une vue en plan (ailleurs : non rattachée) ; vue aux limites
+  // incertaines : jamais comptée
+  const par=new Map();O.forEach(o=>{if(o.v&&!o.v.incertaine&&o.v.type in RANG&&(o.fiable||o.v.type==='plan'))(par.get(o.v.id)||par.set(o.v.id,[]).get(o.v.id)).push(o)});
   const cand=[...par.entries()].map(([id,X])=>({v:Vx.get(id),X})).sort((a,b)=>RANG[a.v.type]-RANG[b.v.type]||b.X.length-a.X.length||b.X.filter(o=>o.fiable).length-a.X.filter(o=>o.fiable).length);
   const meilleur=cand.length?cand.filter(c=>RANG[c.v.type]===RANG[cand[0].v.type]).sort((a,b)=>b.X.length-a.X.length)[0]:null;
   const rel=(o,v)=>[(o.x-v.region[0])/Math.max(1,v.region[2]-v.region[0]),(o.y-v.region[1])/Math.max(1,v.region[3]-v.region[1])];
   const phys=meilleur?meilleur.X.slice().sort((a,b)=>b.y-a.y||a.x-b.x).map((o,k)=>({n:k+1,vue:meilleur.v.id,page:o.page,x:o.x,y:o.y,occurrence:o.j,representations:[o.j],fiable:o.fiable})):[];
-  O.forEach(o=>{if(phys.some(p=>p.occurrence===o.j))return;o.role='representation';
-    if(!o.v){notes.push(`localisation p. ${o.page} hors de toute vue reconnue : représentation, non comptée`);return}
-    if(meilleur&&o.v.type in RANG&&o.v.id!==meilleur.v.id&&(o.v.partie||null)===(meilleur.v.partie||null)){const q=rel(o,o.v);let best=null,bd=0.1;
-      phys.forEach(p=>{const s=rel(p,meilleur.v),d=Math.max(Math.abs(s[0]-q[0]),Math.abs(s[1]-q[1]));if(d<=bd){bd=d;best=p}});if(best)best.representations.push(o.j)}});
-  O.forEach(o=>{if(!o.role)o.role='physique'});
-  const loc=phys.length;
-  if(meilleur&&cand.length>1)notes.push(`${O.length} représentation(s) dans ${new Set(O.map(o=>o.vue||'?')).size} vue(s) ; occurrences comptées dans la vue ${meilleur.v.id} (${TYPES[meilleur.v.type]}${meilleur.v.partie?' '+meilleur.v.partie:''}) seulement`);
-  if(!meilleur&&O.length)notes.push('repère vu seulement en coupe, élévation, détail, hors vue ou en lecture incertaine hors d\'une vue en plan : aucune occurrence physique comptée');
+  // autres observations : représentation d'une occurrence seulement si elle lui est rattachée sans ambiguïté (même position
+  // relative dans une vue de même partie, ou occurrence unique pour une coupe / élévation / détail) ; sinon non rattachée,
+  // avec son motif, visible dans les incertitudes (quantité jamais modifiée, aucun ouvrage ajouté)
+  const lie=(o,p)=>{p.representations.push(o.j);o.role='representation';o.de=p.n},nr=(o,m)=>{o.role='non_rattachee';o.motif=m};
+  O.forEach(o=>{if(phys.some(p=>p.occurrence===o.j)){o.role='physique';return}
+    const dv=o.v?`vue ${o.v.id} (${TYPES[o.v.type]}${o.v.partie?' '+o.v.partie:''})`:'';
+    if(!o.v)return nr(o,`localisation p. ${o.page} hors de toute vue reconnue`);
+    if(o.v.incertaine)return nr(o,`${dv} aux limites incertaines`);
+    if(!meilleur)return nr(o,`${dv} : aucune occurrence physique localisée à laquelle la rattacher`);
+    if(o.v.id===meilleur.v.id)return nr(o,`${dv} : lecture incertaine du repère, non comptée`);
+    if(o.v.type in RANG){if((o.v.partie||null)!==(meilleur.v.partie||null))return nr(o,`${dv} : autre partie d'ouvrage que la vue ${meilleur.v.id}`);
+      const q=rel(o,o.v),P=phys.map(p=>{const s=rel(p,meilleur.v);return{p,d:Math.max(Math.abs(s[0]-q[0]),Math.abs(s[1]-q[1]))}}).filter(x=>x.d<=DV_POS).sort((a,b)=>a.d-b.d);
+      if(!P.length)return nr(o,`${dv} : position sans correspondance avec les occurrences de la vue ${meilleur.v.id}`);
+      if(P.length>1&&P[1].d<2*P[0].d)return nr(o,`${dv} : position ambiguë entre les occurrences ${P.map(x=>x.p.n).join(', ')}`);
+      return lie(o,P[0].p)}
+    if(phys.length===1)return lie(o,phys[0]);
+    nr(o,`${dv} : ${phys.length} occurrences possibles, celle représentée n'est pas identifiable`)});
+  const loc=phys.length,NR=O.filter(o=>o.role==='non_rattachee');
+  if(meilleur&&cand.length>1)notes.push(`occurrences comptées dans la vue ${meilleur.v.id} (${TYPES[meilleur.v.type]}${meilleur.v.partie?' '+meilleur.v.partie:''}) seulement`);
+  if(!meilleur&&O.length)notes.push('repère vu seulement en coupe, élévation, détail, hors vue, dans une vue aux limites incertaines ou en lecture incertaine hors d\'une vue en plan : aucune occurrence physique comptée');
   if(meilleur&&meilleur.v.type==='autre')notes.push('occurrences comptées dans une vue sans titre reconnu : à vérifier');
   if(Q!=null&&loc>Q)notes.push(`${loc} occurrences localisées pour une quantité de ${Q} au tableau : vues superposées ou repère réutilisé ? (la quantité du tableau est gardée)`);
-  return{attendue:Q,localisees:loc,representations:O.length,restantes:Q==null?null:Math.max(0,Q-loc),depasse:Q!=null&&loc>Q,
-    physiques:phys,roles:O.map(o=>({occurrence:o.j,vue:o.vue||null,type:o.v?o.v.type:null,role:o.role})),notes}}
+  NR.forEach(o=>notes.push(`observation non rattachée (p. ${o.page}) : ${o.motif} — à vérifier`));
+  return{attendue:Q,localisees:loc,representations:O.length-NR.length,nonRattachees:NR.length,observations:O.length,restantes:Q==null?null:Math.max(0,Q-loc),depasse:Q!=null&&loc>Q,
+    physiques:phys,roles:O.map(o=>({occurrence:o.j,vue:o.vue||null,type:o.v?o.v.type:null,role:o.role,occurrencePhysique:o.role==='physique'?phys.find(p=>p.occurrence===o.j).n:o.de||null,motif:o.motif||null})),notes}}
 
 // Contour du dessin hors nomenclature : à examiner (repère, cote écrite, diagonales), représentation d'une ligne (repère du
 // tableau voisin, mais contour non retenu pour elle : autre vue, plusieurs contours possibles) ou parasite probable (cadre de
@@ -2065,7 +2110,7 @@ function dxiCss(){if(el('dxiCss'))return;document.head.insertAdjacentHTML('befor
 #dxpO .rs.cf{stroke:var(--okt);fill:rgba(46,204,113,.22)}#dxpO .rs.on{stroke:var(--accent);stroke-width:3px;fill:rgba(232,130,12,.30)}
 #dxpO .rs.lk{stroke:var(--okt);stroke-dasharray:4 2;fill:none;cursor:default}#dxpO .rs.pr{stroke:var(--accent);stroke-dasharray:5 2;stroke-width:2.5px}
 #dxpO .rl{fill:#7b4dff;pointer-events:none}#dxpO .ca{fill:var(--redt)}#dxpO .cl{stroke:var(--redt);stroke-width:1.5px;vector-effect:non-scaling-stroke}#dxpO.cm{cursor:crosshair}
-#dxpO .vu{fill:none;stroke:#1f77b4;stroke-width:1.2px;vector-effect:non-scaling-stroke;stroke-dasharray:8 4;pointer-events:none}#dxpO .vl{fill:#1f77b4;pointer-events:none}
+#dxpO .vu{fill:none;stroke:#1f77b4;stroke-width:1.2px;vector-effect:non-scaling-stroke;stroke-dasharray:8 4;pointer-events:none}#dxpO .vl{fill:#1f77b4;pointer-events:none}#dxpO .vu.vi{stroke-dasharray:2 4}
 #dxpO .oc{fill:rgba(232,130,12,.12);stroke:var(--accent);stroke-width:1.5px;vector-effect:non-scaling-stroke;stroke-dasharray:3 2}#dxpO .ot{stroke:var(--accent);stroke-width:1.2px;vector-effect:non-scaling-stroke;stroke-dasharray:4 3}
 #dxnT .rp{font-size:11px;margin-top:3px;line-height:1.35}#dxnT .rp .btn{padding:1px 5px;font-size:11px;margin:1px 2px 1px 0}#dxnT .cc-forte{color:var(--okt)}#dxnT .cc-partielle{color:var(--okt)}
 #dxnT .cc-probable,#dxnT .cc-conflit{color:var(--acct)}#dxnT .cc-conflit{font-weight:600}#dxnT .cc-absente,#dxnT .cc-rejete{color:var(--muted)}
@@ -2260,7 +2305,7 @@ function dxnAssoc(){const D=DXI;if(!D.NL.length)return;
   // PDF : seulement après « Analyser le dessin » : rapprochement multi-indices (rapprochement.js), toutes pages
   const ex=D.NA.ecartes.flatMap(e=>e.ids);
   if(D.fmt==='pdf'){D.AS={};D.HR=[];if(D.ana){const RP=CPI.rapprochement.rapprocher(D.NL.map(({N,L})=>({id:L.id,repere:L.repere,dims:L.dims,unite:dxnU(N,L)||null,quantite:L.quantite,page:N.page})),
-      dxrTextes(),D.C,{mm:dxrK,rappels:dxrRappels,vue:dxrVue,exclus:new Set(ex.concat(D.NA.nomenclatures.flatMap(N=>N.ids)))});D.AS=RP.lignes;D.HR=RP.hors;D.ana.colonnes=RP.colonnes;
+      dxrTextes(),D.C,{mm:dxrK,rappels:dxrRappels,vue:dxrVue,vueIncertaine:id=>{const v=dxrVueDe(id);return!!(v&&v.incertaine)},exclus:new Set(ex.concat(D.NA.nomenclatures.flatMap(N=>N.ids)))});D.AS=RP.lignes;D.HR=RP.hors;D.ana.colonnes=RP.colonnes;
       // occurrences physiques : quantité du tableau = référence, vues comptées une fois
       D.CS={};D.NL.forEach(({L})=>D.CS[L.id]=CPI.vues.consolider(L,D.AS[L.id],dxrVues()))}}
   else D.AS=CPI.nomenclatures.associer(D.NA.nomenclatures,D.C,D.doc,{uniteDessin:D.u,unites:D.NU,exclus:ex});
@@ -2683,13 +2728,13 @@ function dxrFusion(n,res,z){const D=DXI,old=D.RK||(D.RK=new Map()),run=++D.rn;D.
 // Détail du rapprochement d'une ligne (onglet Nomenclature) : localisations cliquables, cotes vérifiées, quantité, doutes
 function dxrRap(k,a,r){const D=DXI,O=a.occurrences||[],dm=a.dims||{},f=dxiNum;let h='';
   if(r.perdu)h+=`<div class="av">${esc(r.perdu)}</div>`;
-  const cs=D.CS[D.NL[k].L.id],role=j=>cs&&(cs.roles.find(x=>x.occurrence===j)||{}).role;
+  const cs=D.CS[D.NL[k].L.id],ro=j=>cs&&cs.roles.find(x=>x.occurrence===j)||{},role=j=>ro(j).role,RS={physique:'●',representation:'○',non_rattachee:'◌'};
   if(O.length)h+='<div>'+O.map((o,j)=>{const v=o.vue&&dxrVueDe(o.vue),lv=v?`${v.id} ${v.libelle}${v.partie?' '+v.partie:''}`:'hors vue';
-    return `<button class="btn bs bo" onclick="event.stopPropagation();dxrLoc(${k},${j})" title="${esc((o.source==='ocr'?`lu par OCR « ${o.brut} », confiance ${o.conf} %`:'texte du PDF')+' · vue : '+(v?v.id+(v.titre?' « '+v.titre+' »':' (sans titre)'):'aucune')+(role(j)==='physique'?' · occurrence comptée':' · représentation (non comptée)')+(o.contour?' · contour '+o.contour:'')+(o.doutes.length?' · '+o.doutes.join(' ; '):''))}">${o.fiable?'':'? '}${role(j)==='physique'?'●':'○'} p. ${o.page} · ${esc(o.texte)}${o.source==='ocr'?' (OCR)':''} · ${esc(lv)} ↗</button>`}).join('')+'</div>';
+    return `<button class="btn bs bo" onclick="event.stopPropagation();dxrLoc(${k},${j})" title="${esc((o.source==='ocr'?`lu par OCR « ${o.brut} », confiance ${o.conf} %`:'texte du PDF')+' · vue : '+(v?v.id+(v.titre?' « '+v.titre+' »':' (sans titre)'):'aucune')+(role(j)==='physique'?' · occurrence comptée':role(j)==='representation'?` · représentation de l'occurrence ${ro(j).occurrencePhysique} (non comptée)`:role(j)==='non_rattachee'?' · observation non rattachée : '+ro(j).motif:'')+(o.contour?' · contour '+o.contour:'')+(o.doutes.length?' · '+o.doutes.join(' ; '):''))}">${o.fiable?'':'? '}${RS[role(j)]||'○'} p. ${o.page} · ${esc(o.texte)}${o.source==='ocr'?' (OCR)':''} · ${esc(lv)} ↗</button>`}).join('')+'</div>';
   const E={confirmee:'✓ confirmée',mesuree:'≈ mesurée',conflit:'⚠ contredite',non_verifiable:'non vérifiable'},V=Object.values(dm);
   if(V.length)h+='<div>Cotes du tableau : '+V.map(x=>`<span title="${esc(x.preuves.join(' ; '))}">${esc(x.libelle)} ${E[x.etat]}</span>`).join(' · ')+'</div>';
   else if(O.length)h+='<div class="mu">pas de cotes l × h ou Ø dans le tableau : rien à vérifier sur le dessin</div>';
-  if(cs)h+=`<div><b>Quantité attendue ${cs.attendue==null?'non indiquée':cs.attendue}</b> · localisée(s) : ${cs.localisees} · représentation(s) : ${cs.representations}${cs.restantes==null?'':' · restante(s) : <b>'+cs.restantes+'</b>'}${cs.depasse?' <span style="color:var(--acct)">⚠ plus que la quantité</span>':''}</div>`;
+  if(cs)h+=`<div><b>Quantité attendue ${cs.attendue==null?'non indiquée':cs.attendue}</b> · localisée(s) : ${cs.localisees} · représentation(s) : ${cs.representations}${cs.restantes==null?'':' · restante(s) : <b>'+cs.restantes+'</b>'}${cs.nonRattachees?` · <span style="color:var(--acct)" title="observations qu'aucune occurrence ne reçoit sans ambiguïté : à vérifier">non rattachée(s) : ${cs.nonRattachees}</span>`:''}${cs.depasse?' <span style="color:var(--acct)">⚠ plus que la quantité</span>':''}</div>`;
   // la lecture de la quantité par page (rapprochement) est remplacée par le décompte par vue
   const old=(a.quantite||{}).lecture,M=String(a.note||'').split(' ; ').filter(x=>x&&x!==old).concat(cs?cs.notes:[],[...new Set(O.flatMap(o=>o.doutes))]);
   if(M.length)h+=`<div class="mu">${esc(M.join(' ; '))}</div>`;
@@ -2700,9 +2745,9 @@ function dxrLoc(k,j){const D=DXI,o=(dxnAS(D.NL[k].L).occurrences||[])[j];if(!o)r
 function dxrRapProv(a,r,cs){const q=x=>Math.round(x*100)/100,vu=id=>{const v=id&&dxrVueDe(id);return v?{id:v.id,type:v.type,titre:v.titre,partie:v.partie}:null};
   return{concordance:r.rej?'rejete':a.concordance||'absente',rejete:!!r.rej,note:a.note||'',
     localisations:(a.occurrences||[]).map((o,j)=>({page:o.page,x:q(o.x),y:q(o.y),texte:o.texte,source:o.source,brut:o.brut,confiance:o.conf,corrections:o.corrections.slice(),
-      zone:o.box?{page:o.box.page,x0:q(o.box.x0),y0:q(o.box.y0),x1:q(o.box.x1),y1:q(o.box.y1),unite:'pt'}:null,vue:vu(o.vue),role:cs?(cs.roles.find(x=>x.occurrence===j)||{}).role||null:null,fiable:o.fiable,doutes:o.doutes.slice(),contour:o.contour,cotes_voisines:o.cotes.slice()})),
+      zone:o.box?{page:o.box.page,x0:q(o.box.x0),y0:q(o.box.y0),x1:q(o.box.x1),y1:q(o.box.y1),unite:'pt'}:null,vue:vu(o.vue),role:cs?(cs.roles.find(x=>x.occurrence===j)||{}).role||null:null,motif:cs?(cs.roles.find(x=>x.occurrence===j)||{}).motif||null:null,fiable:o.fiable,doutes:o.doutes.slice(),contour:o.contour,cotes_voisines:o.cotes.slice()})),
     cotes:Object.fromEntries(Object.entries(a.dims||{}).map(([n,x])=>[n,{valeur:x.valeur,etat:x.etat,preuves:x.preuves.slice()}])),quantite:a.quantite?JSON.parse(JSON.stringify(a.quantite)):null,
-    occurrences:cs?{attendue:cs.attendue,localisees:cs.localisees,representations:cs.representations,restantes:cs.restantes,notes:cs.notes.slice()}:null}}
+    occurrences:cs?{attendue:cs.attendue,localisees:cs.localisees,representations:cs.representations,non_rattachees:cs.nonRattachees,restantes:cs.restantes,notes:cs.notes.slice()}:null}}
 // Analyse du plan en JSON (préparée pour une future IA locale : aucune IA ici) : tableaux, lignes, vues, observations
 // graphiques (contours, repères localisés), occurrences physiques, associations, preuves des cotes, incertitudes
 function dxrJSON(){const D=DXI,q=x=>Math.round(x*100)/100,bx=b=>b?b.map(q):null,J={format:'coffraplan-analyse-plan',v:1,fichier:D.doc.fichier,
@@ -2710,20 +2755,21 @@ function dxrJSON(){const D=DXI,q=x=>Math.round(x*100)/100,bx=b=>b?b.map(q):null,
       source:N.saisie?'saisie':N.ocr?'ocr':N.grilleTexte?'grille':'pdf',colonnes:N.colonnes.map(c=>({titre:c.titre,cle:c.cle,unite:c.unite||null})),qualite:N.qualite})),
     tableRows:D.NL.map(({N,L},k)=>({id:L.id,table:N.id,rang:L.rang,repere:L.repere||null,designation:L.description||null,quantite:{texte:L.quantite||null,valeur:L.nb||null},
       dims:L.dims?{type:L.dims.type,texte:L.dims.texte,unite:dxnU(N,L)||null}:null,cellules:L.cellules.slice(),a_verifier:(L.a_verifier||[]).slice()})),
-    views:dxrVues().map(v=>({id:v.id,page:v.page,region:v.region,titre:v.titre,type:v.type,partie:v.partie,echelle:v.echelle,niveau:v.niveau,confiance:v.confiance,motifs:v.motifs})),
+    views:dxrVues().map(v=>({id:v.id,page:v.page,region:v.region,titre:v.titre,type:v.type,partie:v.partie,echelle:v.echelle,niveau:v.niveau,confiance:v.confiance,incertaine:!!v.incertaine,motifs:v.motifs})),
     graphicalObservations:[],physicalOccurrences:[],associations:[],evidence:[],uncertainties:[]};
   D.C.forEach((c,i)=>{const cl=c.statut==='a_confirmer'&&!D.lk.has(i)?dxrCl(i):null;
     J.graphicalObservations.push({id:c.id,type:'contour',forme:c.type,page:c.source.page,vue:c.vue||null,bbox:bx(c.bbox),statut:c.statut,rattache:D.lk.has(i),
       classement:cl,repere:c.annot&&c.annot.repere?c.annot.repere.texte:null,cotes:c.annot&&c.annot.cotes?c.annot.cotes.texte:null,remarques:c.remarques.slice()})});
   D.NL.forEach(({L},k)=>{const a=dxnAS(L),cs=D.CS[L.id],r=D.NR[k];
-    (a.occurrences||[]).forEach((o,j)=>{const id=`${L.id}/O${j+1}`,role=cs?(cs.roles.find(x=>x.occurrence===j)||{}).role:null;
+    (a.occurrences||[]).forEach((o,j)=>{const id=`${L.id}/O${j+1}`,ro=cs&&cs.roles.find(x=>x.occurrence===j)||{},role=ro.role||null;
       J.graphicalObservations.push({id,type:'repere',page:o.page,vue:o.vue||null,x:q(o.x),y:q(o.y),texte:o.texte,source:o.source,brut:o.brut,confiance:o.conf,fiable:o.fiable});
-      J.associations.push({ligne:L.id,observation:id,type:'repere',role,contour:o.contour});if(o.contour)J.associations.push({ligne:L.id,observation:o.contour,type:'contour',via:id});
+      J.associations.push({ligne:L.id,observation:id,type:'repere',role,occurrence:ro.occurrencePhysique?`${L.id}#${ro.occurrencePhysique}`:null,contour:o.contour});
+      if(role==='non_rattachee')J.uncertainties.push({ligne:L.id,observation:id,type:'observation_non_rattachee',message:ro.motif});if(o.contour)J.associations.push({ligne:L.id,observation:o.contour,type:'contour',via:id});
       o.doutes.forEach(m=>J.uncertainties.push({ligne:L.id,observation:id,message:m}))});
     if(cs){cs.physiques.forEach(p=>J.physicalOccurrences.push({id:`${L.id}#${p.n}`,ligne:L.id,n:p.n,vue:p.vue,page:p.page,x:q(p.x),y:q(p.y),fiable:p.fiable,
         representations:p.representations.map(j=>`${L.id}/O${j+1}`)}));
-      J.tableRows[k].occurrences={attendue:cs.attendue,localisees:cs.localisees,representations:cs.representations,restantes:cs.restantes};
-      cs.notes.forEach(m=>J.uncertainties.push({ligne:L.id,message:m}))}
+      J.tableRows[k].occurrences={attendue:cs.attendue,localisees:cs.localisees,representations:cs.representations,non_rattachees:cs.nonRattachees,restantes:cs.restantes};
+      cs.notes.filter(m=>!/^observation non rattachée/.test(m)).forEach(m=>J.uncertainties.push({ligne:L.id,message:m}))}
     Object.entries(a.dims||{}).forEach(([n,x])=>J.evidence.push({ligne:L.id,dimension:n,valeur:x.valeur,etat:x.etat,preuves:x.preuves.slice()}));
     if(r.rej)J.uncertainties.push({ligne:L.id,message:'rapprochement rejeté par l\'utilisateur'})});
   return J}
@@ -2806,7 +2852,7 @@ function dxrEchEff(){const D=DXI;delete D.cal[D.page];dxrApres()}
 // tirets orange : proposés pour la ligne de nomenclature choisie) et points de la calibration
 function dxrOver(H,f){const D=DXI;let h='';const P=D.nsel>=0&&D.NL[D.nsel]?new Set(dxnAS(D.NL[D.nsel].L).options.map(o=>o.c)):new Set();
   // vues techniques de la page : cadre bleu en tirets et identifiant
-  ((D.VU[D.page]||{}).vues||[]).forEach(v=>{const r=v.region;h+=`<rect class="vu" x="${r[0]}" y="${H-r[3]}" width="${r[2]-r[0]}" height="${r[3]-r[1]}"><title>${esc(v.id+(v.titre?' « '+v.titre+' »':' (sans titre)'))}</title></rect><text class="vl" x="${r[0]+2}" y="${H-r[3]+f}" font-size="${f}">${esc(v.id+' '+v.libelle+(v.partie?' '+v.partie:''))}</text>`});
+  ((D.VU[D.page]||{}).vues||[]).forEach(v=>{const r=v.region;h+=`<rect class="vu${v.incertaine?' vi':''}" x="${r[0]}" y="${H-r[3]}" width="${r[2]-r[0]}" height="${r[3]-r[1]}"><title>${esc(v.id+(v.titre?' « '+v.titre+' »':' (sans titre)'))}</title></rect><text class="vl" x="${r[0]+2}" y="${H-r[3]+f}" font-size="${f}">${esc(v.id+' '+v.libelle+(v.partie?' '+v.partie:''))}</text>`});
   // localisations (repères) de la ligne de nomenclature choisie : cadre orange, lignes de rappel suivies en tirets ; repère demandé : surligné
   if(D.nsel>=0&&D.NL[D.nsel])(dxnAS(D.NL[D.nsel].L).occurrences||[]).forEach((o,j)=>{if(o.page!==D.page)return;const w=o.box?o.box.x1-o.box.x0:(o.h||4)*2,m=(o.h||4)*0.4,x0=o.x-w/2-m,y1=o.y+(o.h||4)/2+m;
     h+=`<rect class="${D.hlo&&D.hlo.k===D.nsel&&D.hlo.j===j?'hl':'oc'}" x="${x0}" y="${H-y1}" width="${w+2*m}" height="${(o.h||4)+2*m}"><title>${esc('repère « '+o.texte+' »'+(o.source==='ocr'?' (OCR, confiance '+o.conf+' %)':''))}</title></rect>`
@@ -2830,7 +2876,7 @@ function dxrRender(){const D=DXI,Z=el('dxrZ');if(!Z||!D)return;if(!D.C.length){Z
   // avec une nomenclature : formes hors nomenclature en section secondaire repliée (rien n'est supprimé) ; sans : liste principale
   const nl=D.NL.length,V=dxrVues(),ouv=el('dxrH')&&el('dxrH').open;   // section ouverte par l'utilisateur : le reste après un nouveau rendu
   Z.innerHTML=`<fieldset class="dxo"><legend>${nl?'Formes du dessin hors nomenclature':'Réservations repérées sur le dessin'}</legend>
-    ${V.length?`<div class="mu" style="margin-bottom:4px" id="dxrVu"><b>${V.length} vue(s) reconnue(s)</b> (cadres bleus sur l'aperçu) : ${V.map(v=>`<span title="${esc((v.titre?'« '+v.titre+' »':'sans titre')+' · confiance '+v.confiance+(v.motifs.length?' · '+v.motifs.join(' ; '):'')+(v.echelle?' · échelle 1/'+v.echelle.valeur:''))}">${esc(v.id)} ${esc(v.libelle)}${v.partie?' '+esc(v.partie):''}</span>`).join(' · ')}</div>`:''}
+    ${V.length?`<div class="mu" style="margin-bottom:4px" id="dxrVu"><b>${V.length} vue(s) reconnue(s)</b> (cadres bleus sur l'aperçu) : ${V.map(v=>`<span title="${esc((v.titre?'« '+v.titre+' »':'sans titre')+' · confiance '+v.confiance+(v.motifs.length?' · '+v.motifs.join(' ; '):'')+(v.echelle?' · échelle 1/'+v.echelle.valeur:''))}">${esc(v.id)} ${esc(v.libelle)}${v.partie?' '+esc(v.partie):''}${v.incertaine?' <span style="color:var(--acct)">(limites incertaines)</span>':''}</span>`).join(' · ')}</div>`:''}
     <${nl?'details id="dxrH"'+(ouv?' open':''):'div'}>${nl?'<summary id="dxrHs"></summary>':''}<div id="dxrS" style="margin-bottom:4px"></div>
     <div class="mu" style="margin-bottom:6px">${nl?'Contours non rattachés à une ligne de la nomenclature (les réservations du tableau sont dans l\'onglet Nomenclature), avec la raison de leur proposition ; parasites probables en fin de liste. ':''}Formes du dessin, pas encore des réservations : vérifier chaque ligne sur l'aperçu (clic sur une ligne : contour en orange),
     corriger forme, cotes, hauteur et référence, puis cocher. Cotes proposées : cote écrite à côté du contour, ou mesure à l'échelle de la page (à vérifier).</div>

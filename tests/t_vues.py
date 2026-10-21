@@ -48,9 +48,47 @@ def t(s):
           const b=CPI.vues.consolider({quantite:'1'},{occurrences:[o('C',30,220),o('F',220,80)]},V);
           const d=CPI.vues.consolider({quantite:'1'},{occurrences:[o('P',20,80),o('P',60,30)]},V);
           const e=CPI.vues.consolider({quantite:''},{occurrences:[o('F',220,80,false)]},V);
-          return{a:[a.attendue,a.localisees,a.representations,a.restantes,a.physiques[0].representations.length,a.physiques.map(p=>p.vue).join()],
-            b:[b.localisees,b.restantes,b.physiques.map(p=>p.vue).join()],d:[d.localisees,d.restantes,d.depasse],e:[e.localisees,e.attendue]}}''')
-        s.check(c['a'] == [2, 2, 5, 0, 2, 'P,P'], 'quantité 2, 5 représentations (plan ×2, ferraillage ×2, coupe) : 2 occurrences comptées dans le plan, ferraillage rattaché par position', json.dumps(c['a']))
+          // même repère dans le plan et le ferraillage, positions incompatibles : jamais une représentation résolue
+          const f=CPI.vues.consolider({quantite:'1'},{occurrences:[o('P',20,80),o('F',280,15)]},V);
+          const Vi=V.map(v=>v.id==='P'?Object.assign({},v,{incertaine:true}):v),g=CPI.vues.consolider({quantite:'1'},{occurrences:[o('P',20,80)]},Vi);
+          return{a:[a.attendue,a.localisees,a.representations,a.restantes,a.physiques[0].representations.length,a.physiques.map(p=>p.vue).join()],a2:[a.nonRattachees,a.roles.map(r=>r.role).join()],
+            b:[b.localisees,b.restantes,b.physiques.map(p=>p.vue).join()],d:[d.localisees,d.restantes,d.depasse],e:[e.localisees,e.attendue],
+            f:[f.attendue,f.localisees,f.representations,f.nonRattachees,f.roles[1].role,f.roles[1].motif,f.notes.join(' | ')],g:[g.localisees,g.restantes,g.nonRattachees,g.roles[0].motif]}}''')
+        s.check(c['a'] == [2, 2, 3, 0, 2, 'P,P'], 'quantité 2 : 2 occurrences comptées dans le plan, repère du ferraillage rattaché par position à la 1re', json.dumps(c['a']))
+        s.check(c['a2'] == [2, 'physique,physique,representation,non_rattachee,non_rattachee'],
+                'coupe (2 occurrences possibles) et ferraillage à une position sans correspondance : observations non rattachées, pas des représentations', json.dumps(c['a2']))
+        f = c['f']
+        s.check(f[:5] == [1, 1, 1, 1, 'non_rattachee'] and 'position sans correspondance' in f[5] and 'à vérifier' in f[6],
+                'B : même repère dans deux vues, positions incompatibles : 1 occurrence (quantité 1 gardée), l\'autre observation non rattachée, signalée à vérifier', json.dumps(f, ensure_ascii=False))
+        s.check(c['g'][:3] == [0, 1, 1] and 'limites incertaines' in c['g'][3], 'vue aux limites incertaines : aucune occurrence comptée, observation non rattachée', json.dumps(c['g'], ensure_ascii=False))
+
+        # ---- module : A, rapprochement dans une vue aux limites incertaines : contour jamais proposé d'office, jamais « forte »
+        q = J('''()=>{const L=[{id:'a',repere:'X1',dims:{type:'rect',a:400,b:400},unite:'mm',quantite:'1',page:1}],
+            T=[{id:'t',page:1,texte:'X1',x:100,y:100,h:6,w:10},{id:'u',page:1,texte:'400x400',x:100,y:92,h:5,w:20}],
+            C=[{id:'K',statut:'a_confirmer',source:{page:1},centre:[100,100],geometrie:{type:'rect',points:[[90,90],[110,90],[110,110],[90,110]]}}],
+            f=inc=>{const r=CPI.rapprochement.rapprocher(L,T,C,{vue:()=>'V',vueIncertaine:()=>inc}).lignes.a;return[r.concordance,r.statut,r.occurrences[0].doutes.join(' ; ')]};
+          return{sure:f(false),inc:f(true)}}''')
+        s.check(q['sure'][:2] == ['forte', 'trouvee'] and q['inc'][0] != 'forte' and q['inc'][1] != 'trouvee' and 'limites incertaines' in q['inc'][2],
+                'A : vue aux limites incertaines : ni concordance forte ni contour proposé d\'office (même repère, mêmes cotes que la vue sûre)', json.dumps(q, ensure_ascii=False))
+
+        # ---- module : A, deux vues reliées par une ligne de cote, un axe qui dépasse avec sa bulle, un bloc de notes pleine hauteur
+        r = J('''()=>{const S=[],K=[],seg=(a,b)=>S.push({a,b}),rect=(x0,y0,x1,y1)=>{const P=[[x0,y0],[x1,y0],[x1,y1],[x0,y1]];K.push({pts:P,courbes:[]});P.forEach((p,i)=>seg(p,P[(i+1)%4]))};
+          rect(100,300,300,550);for(let i=1;i<8;i++)seg([100+25*i,300],[100+25*i,330]);rect(150,400,180,430);
+          rect(500,450,750,550);for(let i=1;i<10;i++)seg([500+25*i,450],[500+25*i,470]);
+          seg([300,520],[500,520]);seg([300,515],[300,525]);seg([500,515],[500,525]);   // ligne de cote reliant les deux dessins
+          seg([200,300],[200,90]);const B=[];for(let i=0;i<12;i++){const a=i*Math.PI/6;B.push([200+8*Math.cos(a),82+8*Math.sin(a)])}K.push({pts:B,courbes:[]});   // axe et sa bulle
+          rect(900,10,990,690);for(let y=20;y<690;y+=12)seg([905,y],[985,y]);   // notes, cartouche
+          const T=[];for(let i=0;i<20;i++)T.push({id:'p'+i,texte:'n'+i,x:910,y:20+30*i,h:3,w:6});
+          T.push({id:'t1',texte:'VUE EN PLAN DALLE',x:200,y:600,h:9,w:120},{id:'t2',texte:'COUPE B-B',x:620,y:600,h:9,w:70});
+          const r=CPI.vues.detecter({page:1,w:1000,h:700,segments:S,contours:K,petits:[]},T,{});
+          return{V:r.vues.map(v=>({id:v.id,type:v.type,region:v.region,incertaine:!!v.incertaine})),bulle:CPI.vues.situer(r.carte,200,82),
+            a:CPI.vues.situer(r.carte,165,415),b:CPI.vues.situer(r.carte,600,500),mi:CPI.vues.situer(r.carte,400,520)}}''')
+        vp = next((v for v in r['V'] if v['type'] == 'plan'), None); vc = next((v for v in r['V'] if v['type'] == 'coupe'), None)
+        s.check(vp and vc and vp['region'][2] < 360 and vc['region'][0] > 440 and vp['region'][1] > 250,
+                'A : vues reliées par une ligne de cote : régions séparées ; l\'axe et sa bulle n\'étendent pas la vue en plan', json.dumps(r))
+        s.check(r['a'] == vp['id'] and r['b'] == vc['id'] and r['bulle'] != vp['id'], 'A : un point de chaque dessin situé dans sa vue ; la bulle d\'axe hors de la vue en plan', json.dumps(r))
+        s.check(not vp['incertaine'] and not vc['incertaine'] and all(v['region'][0] < 900 or v['type'] == 'autre' for v in r['V']),
+                'A : bloc de notes pleine hauteur jamais rattaché à un titre voisin ; vues correctes non marquées incertaines', json.dumps(r['V']))
         s.check(c['b'] == [1, 0, 'F'], 'sans vue en plan : occurrence comptée dans le ferraillage, jamais dans la coupe', json.dumps(c['b']))
         s.check(c['d'] == [2, 0, True], '2 occurrences pour une quantité de 1 : signalé, quantité du tableau gardée', json.dumps(c['d']))
         s.check(c['e'] == [0, None], 'lecture incertaine hors vue en plan : non comptée', json.dumps(c['e']))
@@ -82,8 +120,8 @@ def t(s):
         pl, cp, fe = idv['VUE EN PLAN DALLE'], idv['COUPE A-A'], idv['FERRAILLAGE DALLE Partie inférieure']
         CS = J('Object.fromEntries(DXI.NL.map(({L})=>[L.repere,DXI.CS[L.id]]))')
         v1 = CS['V1']
-        s.check([v1['attendue'], v1['localisees'], v1['restantes']] == [2, 2, 0] and v1['representations'] >= 3 and {p['vue'] for p in v1['physiques']} == {pl},
-                'V1 (quantité 2) : 2 occurrences localisées dans le plan, coupe et ferraillage = représentations, 0 restante', json.dumps(v1, ensure_ascii=False)[:500])
+        s.check([v1['attendue'], v1['localisees'], v1['restantes']] == [2, 2, 0] and v1['representations'] == 3 and v1['nonRattachees'] == 1 and {p['vue'] for p in v1['physiques']} == {pl},
+                'V1 (quantité 2) : 2 occurrences localisées dans le plan, ferraillage rattaché, coupe non rattachée (2 occurrences possibles), 0 restante', json.dumps(v1, ensure_ascii=False)[:500])
         rf = [x['occurrence'] for x in v1['roles'] if x['vue'] == fe]
         s.check(rf and any(set(rf) & set(p['representations']) for p in v1['physiques']),
                 'V1 : repère du ferraillage rattaché à l\'occurrence du plan à la même position relative')
@@ -93,7 +131,7 @@ def t(s):
         A = J('DXI.NL.map(({L})=>dxnAS(L).occurrences.filter(o=>o.contour).map(o=>[o.vue,DXI.C.find(c=>c.id===o.contour).vue])).flat()')
         s.check(A and all(a == c for a, c in A), 'chaque contour rattaché à un repère est dans la vue de ce repère', json.dumps(A))
         t1 = pg.inner_text(f'#dxnT tr[data-n="{J("DXI.NL.findIndex(x=>x.L.repere===\'V1\')")}"]')
-        s.check('Quantité attendue 2' in t1 and 'localisée(s) : 2' in t1 and 'restante(s) : 0' in t1 and pl in t1, 'ligne V1 : quantité attendue, localisées, représentations, restantes et vue affichées', t1)
+        s.check('Quantité attendue 2' in t1 and 'localisée(s) : 2' in t1 and 'restante(s) : 0' in t1 and 'non rattachée(s) : 1' in t1 and '◌' in t1 and pl in t1, 'ligne V1 : quantité attendue, localisées, représentations, restantes et vue affichées', t1)
 
         # ---- formes hors nomenclature : section repliée, raisons, rien supprimé
         s.check(J('el("dxrH").tagName') == 'DETAILS' and not J('el("dxrH").open'), 'formes hors nomenclature : section repliée par défaut sous la nomenclature')
@@ -109,6 +147,10 @@ def t(s):
         s.check(X['format'] == 'coffraplan-analyse-plan' and all(k in X for k in ('tables', 'tableRows', 'views', 'graphicalObservations', 'physicalOccurrences', 'associations', 'evidence', 'uncertainties')),
                 'JSON : tables, tableRows, views, graphicalObservations, physicalOccurrences, associations, evidence, uncertainties', ', '.join(X))
         s.check(len(X['physicalOccurrences']) == 6 and not any(p['vue'] == cp for p in X['physicalOccurrences']), 'JSON : 6 occurrences physiques, aucune dans la coupe')
+        u = [x for x in X['uncertainties'] if x.get('type') == 'observation_non_rattachee']
+        s.check(len(u) == 1 and 'occurrences possibles' in u[0]['message']
+                and any(x.get('role') == 'non_rattachee' and x.get('occurrence') is None for x in X['associations']),
+                'JSON : observation non rattachée (V1 en coupe) dans les incertitudes, sans occurrence associée', json.dumps(u, ensure_ascii=False))
         s.check(not J('el("dxrJ").disabled'), 'bouton « Analyse (JSON) » actif après l\'analyse')
 
         # ---- page 2 : nomenclature dessinée en couleur (glyphes magenta, grille bleue) avec un nuage de révision orange → OCR

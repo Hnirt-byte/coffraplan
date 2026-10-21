@@ -8,6 +8,8 @@
 (function(root){'use strict';
 const sansAcc=s=>String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'');
 const DV_GAP=8,DV_MIN=30;   // cases : écart titre ↔ dessin admis (au moins, voir GMAX) ; dessin sans titre retenu comme vue à partir de 30 cases
+const DV_FIL=6,DV_ILOT=4;   // cases : trait ouvert plus long = trait de liaison ; îlot de dessin plus petit (et < 10 % du plus gros), hors de l'emprise des autres = hors emprise (bulle d'axe)
+const DV_POS=0.1,DV_W=0.45,DV_H=0.6,DV_AIRE=0.3,DV_RECOUV=0.5;   // position relative admise entre vues (± 10 %) ; fractions de la page : composante trop étendue pour un titre voisin ; région trop étendue ; recouvrement
 const TYPES={plan:'plan',coupe:'coupe',elevation:'élévation',detail:'détail',ferraillage:'ferraillage',ferraillage_superieur:'ferraillage supérieur',ferraillage_inferieur:'ferraillage inférieur',autre:'autre'};
 const CLES=['ferraillage','renfort','armatures','elevation','facade','detail','coupe','dessus','plan','vue','partie'];
 const PARTIES=['dalle','radier','voile','poutre','puisard','longrine','semelle','plancher','acrotere','escalier','fosse','regard','cuve','mur'];
@@ -53,11 +55,19 @@ function titres(textes){const T=textes.filter(t=>t.h>0&&String(t.texte).trim()),
 function detecter(geo,textes,o){o=o||{};const n=geo.page,W=geo.w,H=geo.h,C=Math.max(4,0.008*Math.min(W,H)),nx=Math.ceil(W/C)+1,ny=Math.ceil(H/C)+1,N=nx*ny;
   const occ=new Uint8Array(N),cad=o.cadres||[],hors=p=>cad.some(b=>p[0]>=b[0]&&p[0]<=b[2]&&p[1]>=b[1]&&p[1]<=b[3]);
   const cel=(x,y)=>{const i=Math.floor(x/C),j=Math.floor(y/C);return i<0||j<0||i>=nx||j>=ny?-1:j*nx+i};
-  const marque=(x,y)=>{if(hors([x,y]))return;const k=cel(x,y);if(k>=0)occ[k]=1};
-  const Lmax=0.35*Math.min(W,H);
-  (geo.segments||[]).forEach(s=>{const l=Math.hypot(s.b[0]-s.a[0],s.b[1]-s.a[1]);if(l>Lmax)return;const m=Math.max(1,Math.ceil(2*l/C));
-    for(let q=0;q<=m;q++)marque(s.a[0]+(s.b[0]-s.a[0])*q/m,s.a[1]+(s.b[1]-s.a[1])*q/m)});
-  (geo.contours||[]).forEach(k=>{(k.pts||[]).forEach(p=>marque(p[0],p[1]));(k.courbes||[]).forEach(c=>c.forEach(p=>marque(p[0],p[1])))});
+  // occupation : 1 = dessin (traits courts, contours fermés, petits tracés) ; 2 = trait long ouvert seulement (axe, ligne de
+  // cote, trait de liaison) : il relie des cases mais n'étend jamais une région
+  const marque=(x,y,f)=>{if(hors([x,y]))return;const k=cel(x,y);if(k>=0&&!(f&&occ[k]))occ[k]=f?2:1};
+  const Lmax=0.35*Math.min(W,H),Lfil=DV_FIL*C,trace=(a,b,f)=>{const l=Math.hypot(b[0]-a[0],b[1]-a[1]),m=Math.max(1,Math.ceil(2*l/C));
+    for(let q=0;q<=m;q++)marque(a[0]+(b[0]-a[0])*q/m,a[1]+(b[1]-a[1])*q/m,f)};
+  // trait long « ouvert » : une de ses extrémités ne rejoint l'extrémité d'aucun autre trait (axe, ligne de cote) ; les côtés
+  // d'un contour dessiné en traits séparés se rejoignent : dessin
+  const SG=geo.segments||[],tol=Math.max(0.5,0.05*C),ext=new Map(),cle=(x,y)=>Math.round(x/tol)+','+Math.round(y/tol);
+  SG.forEach((s,i)=>[s.a,s.b].forEach(p=>{const k=cle(p[0],p[1]);(ext.get(k)||ext.set(k,[]).get(k)).push(i)}));
+  const libre=(p,i)=>{const X=Math.round(p[0]/tol),Y=Math.round(p[1]/tol);for(let dx=-1;dx<=1;dx++)for(let dy=-1;dy<=1;dy++)if((ext.get((X+dx)+','+(Y+dy))||[]).some(j=>j!==i))return false;return true};
+  SG.forEach((s,i)=>{const l=Math.hypot(s.b[0]-s.a[0],s.b[1]-s.a[1]);if(l<=Lmax)trace(s.a,s.b,l>Lfil&&(libre(s.a,i)||libre(s.b,i)))});
+  (geo.contours||[]).forEach(k=>{const P=k.pts||[];P.forEach((p,i)=>{if(i)trace(P[i-1],p,false)});if(P.length>2)trace(P[P.length-1],P[0],false);
+    (k.courbes||[]).forEach(c=>c.forEach(p=>marque(p[0],p[1])))});
   const B=geo.petits||[];for(let i=0;i<B.length;i+=4)marque((B[i]+B[i+2])/2,(B[i+1]+B[i+3])/2);
   // titres (hors tableaux) ; un sous-titre seul (« Partie supérieure ») prend le titre de ferraillage le plus proche comme parent
   const TT=titres(textes.filter(t=>!hors([t.x,t.y]))),pr=TT.filter(t=>!t.sous&&/^ferraillage/.test(t.type));
@@ -69,22 +79,32 @@ function detecter(geo,textes,o){o=o||{};const n=geo.page,W=geo.w,H=geo.h,C=Math.
   // emprises, doublé pour un dessin au-dessus de son titre : un titre est le plus souvent au-dessus de sa vue), à moins de GMAX ;
   // une composante choisie comme la plus proche par plusieurs titres (vues reliées par un axe, une cote) est partagée entre eux
   // par propagation depuis chacun ; sans titre à portée : vue « autre » à partir de DV_MIN cases
+  const emprise=P=>{let b=[Infinity,Infinity,-Infinity,-Infinity];P.forEach(k=>{const i=k%nx,j=(k-i)/nx;b=[Math.min(b[0],i*C),Math.min(b[1],j*C),Math.max(b[2],(i+1)*C),Math.max(b[3],(j+1)*C)]});return b};
   const comp=new Int32Array(N).fill(-1),K=[];
   for(let k0=0;k0<N;k0++){if(!occ[k0]||comp[k0]>=0)continue;const P=[k0],id=K.length;comp[k0]=id;
     for(let p=0;p<P.length;p++){const k=P[p],i=k%nx,j=(k-i)/nx;for(let di=-2;di<=2;di++)for(let dj=-2;dj<=2;dj++){const a=i+di,b=j+dj;if(a<0||b<0||a>=nx||b>=ny)continue;const q=b*nx+a;if(occ[q]&&comp[q]<0){comp[q]=id;P.push(q)}}}
-    let b=[Infinity,Infinity,-Infinity,-Infinity];P.forEach(k=>{const i=k%nx,j=(k-i)/nx;b=[Math.min(b[0],i*C),Math.min(b[1],j*C),Math.max(b[2],(i+1)*C),Math.max(b[3],(j+1)*C)]});K.push({P,b})}
+    const D=P.filter(k=>occ[k]===1);K.push({P,D,b:emprise(D)})}
   const GMAX=Math.max(DV_GAP*C,0.12*Math.min(W,H)),ecart=(t,b)=>{const dx=Math.max(0,b[0]-t.b[2],t.b[0]-b[2]),dy=Math.max(0,b[1]-t.b[3],t.b[1]-b[3]);return Math.hypot(dx,dy)*(b[1]>t.b[3]-1?2:1)};
-  const own=new Int16Array(N).fill(-1),choix=K.map(c=>{let best=-1,bd=GMAX;S.forEach((t,v)=>{const d=ecart(t,c.b);if(d<=bd){bd=d;best=v}});return best});
-  const prefere=S.map(t=>{let best=-1,bd=GMAX;K.forEach((c,i)=>{if(c.P.length<4)return;const d=ecart(t,c.b);if(d<bd){bd=d;best=i}});return best});
+  const grand=b=>b[2]-b[0]>DV_W*W||b[3]-b[1]>DV_H*H;
+  const own=new Int16Array(N).fill(-1),dans=(t,b)=>b[0]>=t.b[0]-1.5*t.h&&b[2]<=t.b[2]+1.5*t.h&&b[1]>=t.b[1]-1.5*t.h&&b[3]<=t.b[3]+1.5*t.h;   // tracés du titre lui-même (lettres dessinées)
+  const prefere=S.map(t=>{let best=-1,bd=GMAX;K.forEach((c,i)=>{if(c.D.length<4||dans(t,c.b))return;const d=ecart(t,c.b);if(d<bd){bd=d;best=i}});return best});
+  const choix=K.map((c,ci)=>{if(!c.D.length||grand(c.b)&&!prefere.includes(ci))return -1;let best=-1,bd=GMAX;S.forEach((t,v)=>{const d=ecart(t,c.b);if(d<=bd){bd=d;best=v}});return best});
   K.forEach((c,ci)=>{const T=[...new Set(S.map((t,v)=>prefere[v]===ci?v:-1).filter(v=>v>=0).concat(choix[ci]>=0?[choix[ci]]:[]))];
     if(T.length<=1){if(T.length)c.P.forEach(k=>own[k]=T[0]);return}
     // partage : propagation dans la composante depuis la case la plus proche de chaque titre
     const F=[];T.forEach(v=>{const t=S[v],cx=(t.b[0]+t.b[2])/2,cy=(t.b[1]+t.b[3])/2;let bk=-1,bd=Infinity;c.P.forEach(k=>{const i=k%nx,j=(k-i)/nx,d=Math.hypot((i+0.5)*C-cx,(j+0.5)*C-cy);if(d<bd){bd=d;bk=k}});if(own[bk]<0){own[bk]=v;F.push(bk)}});
     for(let p=0;p<F.length;p++){const k=F[p],i=k%nx,j=(k-i)/nx;for(let di=-2;di<=2;di++)for(let dj=-2;dj<=2;dj++){const a=i+di,b=j+dj;if(a<0||b<0||a>=nx||b>=ny)continue;const q=b*nx+a;if(comp[q]===ci&&own[q]<0){own[q]=own[k];F.push(q)}}}});
-  const V=S.map(t=>({t,cases:0,b:[Infinity,Infinity,-Infinity,-Infinity]}));
-  for(let k=0;k<N;k++){if(own[k]<0)continue;const v=V[own[k]],i=k%nx,j=(k-i)/nx;v.cases++;v.b=[Math.min(v.b[0],i*C),Math.min(v.b[1],j*C),Math.max(v.b[2],(i+1)*C),Math.max(v.b[3],(j+1)*C)]}
-  K.forEach(c=>{if(own[c.P[0]]>=0||c.P.length<DV_MIN)return;const id=V.length;V.push({t:null,cases:c.P.length,b:c.b});c.P.forEach(k=>own[k]=id)});
+  const V=S.map(t=>({t,D:[]}));
+  for(let k=0;k<N;k++)if(own[k]>=0&&occ[k]===1)V[own[k]].D.push(k);
+  K.forEach(c=>{if(own[c.P[0]]>=0||c.D.length<DV_MIN)return;const id=V.length;V.push({t:null,D:c.D});c.P.forEach(k=>own[k]=id)});
+  const ilots=D=>{const m=new Set(D),vu=new Set(),I=[];D.forEach(k0=>{if(vu.has(k0))return;const P=[k0];vu.add(k0);
+      for(let p=0;p<P.length;p++){const k=P[p],i=k%nx,j=(k-i)/nx;for(let di=-2;di<=2;di++)for(let dj=-2;dj<=2;dj++){const q=(j+dj)*nx+i+di;if(i+di>=0&&i+di<nx&&m.has(q)&&!vu.has(q)){vu.add(q);P.push(q)}}}I.push(P)});return I};
+  V.forEach(v=>{v.cases=v.D.length;if(!v.D.length){v.b=[Infinity,Infinity,-Infinity,-Infinity];return}
+    const I=ilots(v.D).sort((a,b)=>b.length-a.length),seuil=Math.max(DV_ILOT,0.1*I[0].length),gros=I.filter(P=>P.length>=seuil),b0=emprise((gros.length?gros:I.slice(0,1)).flat());
+    v.b=emprise(I.filter(P=>P.length>=seuil||P.every(k=>{const i=k%nx,j=(k-i)/nx;return i*C>=b0[0]&&(i+1)*C<=b0[2]&&j*C>=b0[1]&&(j+1)*C<=b0[3]})).flat())});
   // vues : région = cases dessinées et titre ; échelle « 1/50 » écrite près du titre ; identifiant dans l'ordre de lecture
+  // cases hors emprise (trait de liaison, bulle d'axe) : rendues, jamais situées dans la vue
+  for(let k=0;k<N;k++){const v=own[k]>=0&&V[own[k]];if(!v)continue;const i=k%nx,j=(k-i)/nx;if(!(i*C>=v.b[0]-C&&(i+1)*C<=v.b[2]+C&&j*C>=v.b[1]-C&&(j+1)*C<=v.b[3]+C))own[k]=-1}
   const ech=textes.map(t=>{const m=sansAcc(t.texte).match(/(?:^|[^0-9.,\/])1\s*[\/:]\s*(\d{1,4})(?![0-9.,])/);return m&&+m[1]>1?{t,v:+m[1]}:null}).filter(Boolean);
   const out=V.map((v,k)=>{const t=v.t,b=t?[Math.min(v.b[0],t.b[0]),Math.min(v.b[1],t.b[1]),Math.max(v.b[2],t.b[2]),Math.max(v.b[3],t.b[3])]:v.b;
     if(!(b[2]>b[0]))return null;const motifs=[];let conf=t?(t.conf>=80&&!t.approx?'forte':t.conf>=50?'moyenne':'faible'):'faible';
@@ -95,8 +115,15 @@ function detecter(geo,textes,o){o=o||{};const n=geo.page,W=geo.w,H=geo.h,C=Math.
     return{k,page:n,region:b.map(x=>Math.round(x*100)/100),titre:t?t.texte:null,titreIds:t?t.ids:[],type:t?t.type:'autre',partie:t?t.partie:null,
       echelle:e?{valeur:e.v,texte:e.t.texte}:null,niveau:nv?nv[1].replace(/\s+/g,''):null,confiance:conf,motifs,cases:v.cases}}).filter(Boolean);
   out.sort((a,b)=>b.region[3]-a.region[3]||a.region[0]-b.region[0]).forEach((v,i)=>{v.id='V'+n+'-'+(i+1);v.libelle=TYPES[v.type]});
+  // régions incohérentes : jamais utilisées pour confirmer seules une correspondance (situer : cases dessinées seulement)
+  const aire=b=>Math.max(0,b[2]-b[0])*Math.max(0,b[3]-b[1]),inter=(a,b)=>aire([Math.max(a[0],b[0]),Math.max(a[1],b[1]),Math.min(a[2],b[2]),Math.min(a[3],b[3])]);
+  out.forEach(v=>{const M=[],r=v.region;if(aire(r)>DV_AIRE*W*H)M.push(`région très étendue (${Math.round(100*aire(r)/(W*H))} % de la page : cartouche, notes, vues reliées ?)`);
+    out.forEach(u=>{if(u===v)return;const tu=V[u.k].t;
+      if(tu&&(tu.b[0]+tu.b[2])/2>=r[0]&&(tu.b[0]+tu.b[2])/2<=r[2]&&(tu.b[1]+tu.b[3])/2>=r[1]&&(tu.b[1]+tu.b[3])/2<=r[3])M.push(`recouvre le titre de la vue ${u.id}`);
+      else if(tu&&aire(r)>=aire(u.region)&&inter(r,u.region)>DV_RECOUV*aire(u.region))M.push(`empiète sur la vue ${u.id} (${Math.round(100*inter(r,u.region)/aire(u.region))} %)`)});
+    v.incertaine=M.length>0;if(M.length){v.motifs.push('limites incertaines : '+M.join(' ; '));v.confiance='faible'}});
   const ids=[];out.forEach(v=>ids[v.k]=v.id);out.forEach(v=>delete v.k);
-  return{vues:out,carte:{page:n,C,nx,ny,own,ids,regions:out.map(v=>({id:v.id,b:v.region}))}}}
+  return{vues:out,carte:{page:n,C,nx,ny,own,ids,regions:out.filter(v=>!v.incertaine).map(v=>({id:v.id,b:v.region}))}}}
 
 // Vue d'un point de la page (carte de detecter) : case dessinée du point, sinon la plus petite région de vue qui le contient
 // (intérieur d'un contour), sinon la vue la plus présente à 2 cases ; null hors de toute vue
@@ -109,28 +136,43 @@ function situer(carte,x,y){if(!carte)return null;const{C,nx,ny,own,ids,regions}=
 // Occurrences physiques d'une ligne : la quantité du tableau est la référence, jamais multipliée par les vues. Vues « physiques »
 // (plan, puis ferraillage, puis vue sans titre) : la plus fournie donne les occurrences localisées ; les repères des autres vues
 // physiques de même partie, à la même position relative (± 10 % de la vue), sont des représentations de ces occurrences ;
-// coupes, élévations, détails : représentations seulement. → {attendue, localisees, representations, restantes, physiques, notes}
+// coupes, élévations, détails : jamais comptés. Observation qu'aucune occurrence ne peut recevoir sans ambiguïté : non rattachée.
+// → {attendue, localisees, representations (observations rattachées), nonRattachees, observations, restantes, physiques, roles, notes}
 const RANG={plan:0,ferraillage_superieur:1,ferraillage_inferieur:1,ferraillage:1,autre:2};
 function consolider(L,r,vues){const Vx=new Map(vues.map(v=>[v.id,v])),Q=/^\s*\d+\s*$/.test(String(L.quantite==null?'':L.quantite))?parseInt(L.quantite,10):null;
   const O=(r&&r.occurrences||[]).map((o,j)=>Object.assign({j},o,{v:Vx.get(o.vue)||null})),notes=[];
-  // lecture incertaine du repère : comptée seulement dans une vue en plan (ailleurs : représentation)
-  const par=new Map();O.forEach(o=>{if(o.v&&o.v.type in RANG&&(o.fiable||o.v.type==='plan'))(par.get(o.v.id)||par.set(o.v.id,[]).get(o.v.id)).push(o)});
+  // lecture incertaine du repère : comptée seulement dans une vue en plan (ailleurs : non rattachée) ; vue aux limites
+  // incertaines : jamais comptée
+  const par=new Map();O.forEach(o=>{if(o.v&&!o.v.incertaine&&o.v.type in RANG&&(o.fiable||o.v.type==='plan'))(par.get(o.v.id)||par.set(o.v.id,[]).get(o.v.id)).push(o)});
   const cand=[...par.entries()].map(([id,X])=>({v:Vx.get(id),X})).sort((a,b)=>RANG[a.v.type]-RANG[b.v.type]||b.X.length-a.X.length||b.X.filter(o=>o.fiable).length-a.X.filter(o=>o.fiable).length);
   const meilleur=cand.length?cand.filter(c=>RANG[c.v.type]===RANG[cand[0].v.type]).sort((a,b)=>b.X.length-a.X.length)[0]:null;
   const rel=(o,v)=>[(o.x-v.region[0])/Math.max(1,v.region[2]-v.region[0]),(o.y-v.region[1])/Math.max(1,v.region[3]-v.region[1])];
   const phys=meilleur?meilleur.X.slice().sort((a,b)=>b.y-a.y||a.x-b.x).map((o,k)=>({n:k+1,vue:meilleur.v.id,page:o.page,x:o.x,y:o.y,occurrence:o.j,representations:[o.j],fiable:o.fiable})):[];
-  O.forEach(o=>{if(phys.some(p=>p.occurrence===o.j))return;o.role='representation';
-    if(!o.v){notes.push(`localisation p. ${o.page} hors de toute vue reconnue : représentation, non comptée`);return}
-    if(meilleur&&o.v.type in RANG&&o.v.id!==meilleur.v.id&&(o.v.partie||null)===(meilleur.v.partie||null)){const q=rel(o,o.v);let best=null,bd=0.1;
-      phys.forEach(p=>{const s=rel(p,meilleur.v),d=Math.max(Math.abs(s[0]-q[0]),Math.abs(s[1]-q[1]));if(d<=bd){bd=d;best=p}});if(best)best.representations.push(o.j)}});
-  O.forEach(o=>{if(!o.role)o.role='physique'});
-  const loc=phys.length;
-  if(meilleur&&cand.length>1)notes.push(`${O.length} représentation(s) dans ${new Set(O.map(o=>o.vue||'?')).size} vue(s) ; occurrences comptées dans la vue ${meilleur.v.id} (${TYPES[meilleur.v.type]}${meilleur.v.partie?' '+meilleur.v.partie:''}) seulement`);
-  if(!meilleur&&O.length)notes.push('repère vu seulement en coupe, élévation, détail, hors vue ou en lecture incertaine hors d\'une vue en plan : aucune occurrence physique comptée');
+  // autres observations : représentation d'une occurrence seulement si elle lui est rattachée sans ambiguïté (même position
+  // relative dans une vue de même partie, ou occurrence unique pour une coupe / élévation / détail) ; sinon non rattachée,
+  // avec son motif, visible dans les incertitudes (quantité jamais modifiée, aucun ouvrage ajouté)
+  const lie=(o,p)=>{p.representations.push(o.j);o.role='representation';o.de=p.n},nr=(o,m)=>{o.role='non_rattachee';o.motif=m};
+  O.forEach(o=>{if(phys.some(p=>p.occurrence===o.j)){o.role='physique';return}
+    const dv=o.v?`vue ${o.v.id} (${TYPES[o.v.type]}${o.v.partie?' '+o.v.partie:''})`:'';
+    if(!o.v)return nr(o,`localisation p. ${o.page} hors de toute vue reconnue`);
+    if(o.v.incertaine)return nr(o,`${dv} aux limites incertaines`);
+    if(!meilleur)return nr(o,`${dv} : aucune occurrence physique localisée à laquelle la rattacher`);
+    if(o.v.id===meilleur.v.id)return nr(o,`${dv} : lecture incertaine du repère, non comptée`);
+    if(o.v.type in RANG){if((o.v.partie||null)!==(meilleur.v.partie||null))return nr(o,`${dv} : autre partie d'ouvrage que la vue ${meilleur.v.id}`);
+      const q=rel(o,o.v),P=phys.map(p=>{const s=rel(p,meilleur.v);return{p,d:Math.max(Math.abs(s[0]-q[0]),Math.abs(s[1]-q[1]))}}).filter(x=>x.d<=DV_POS).sort((a,b)=>a.d-b.d);
+      if(!P.length)return nr(o,`${dv} : position sans correspondance avec les occurrences de la vue ${meilleur.v.id}`);
+      if(P.length>1&&P[1].d<2*P[0].d)return nr(o,`${dv} : position ambiguë entre les occurrences ${P.map(x=>x.p.n).join(', ')}`);
+      return lie(o,P[0].p)}
+    if(phys.length===1)return lie(o,phys[0]);
+    nr(o,`${dv} : ${phys.length} occurrences possibles, celle représentée n'est pas identifiable`)});
+  const loc=phys.length,NR=O.filter(o=>o.role==='non_rattachee');
+  if(meilleur&&cand.length>1)notes.push(`occurrences comptées dans la vue ${meilleur.v.id} (${TYPES[meilleur.v.type]}${meilleur.v.partie?' '+meilleur.v.partie:''}) seulement`);
+  if(!meilleur&&O.length)notes.push('repère vu seulement en coupe, élévation, détail, hors vue, dans une vue aux limites incertaines ou en lecture incertaine hors d\'une vue en plan : aucune occurrence physique comptée');
   if(meilleur&&meilleur.v.type==='autre')notes.push('occurrences comptées dans une vue sans titre reconnu : à vérifier');
   if(Q!=null&&loc>Q)notes.push(`${loc} occurrences localisées pour une quantité de ${Q} au tableau : vues superposées ou repère réutilisé ? (la quantité du tableau est gardée)`);
-  return{attendue:Q,localisees:loc,representations:O.length,restantes:Q==null?null:Math.max(0,Q-loc),depasse:Q!=null&&loc>Q,
-    physiques:phys,roles:O.map(o=>({occurrence:o.j,vue:o.vue||null,type:o.v?o.v.type:null,role:o.role})),notes}}
+  NR.forEach(o=>notes.push(`observation non rattachée (p. ${o.page}) : ${o.motif} — à vérifier`));
+  return{attendue:Q,localisees:loc,representations:O.length-NR.length,nonRattachees:NR.length,observations:O.length,restantes:Q==null?null:Math.max(0,Q-loc),depasse:Q!=null&&loc>Q,
+    physiques:phys,roles:O.map(o=>({occurrence:o.j,vue:o.vue||null,type:o.v?o.v.type:null,role:o.role,occurrencePhysique:o.role==='physique'?phys.find(p=>p.occurrence===o.j).n:o.de||null,motif:o.motif||null})),notes}}
 
 // Contour du dessin hors nomenclature : à examiner (repère, cote écrite, diagonales), représentation d'une ligne (repère du
 // tableau voisin, mais contour non retenu pour elle : autre vue, plusieurs contours possibles) ou parasite probable (cadre de
