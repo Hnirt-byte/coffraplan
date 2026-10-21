@@ -422,10 +422,38 @@ automatique), unite_tableau}, corrige:['cotes','ref'], a_verifier, h_saisie, ind
 - Banc `t_phase51.py` (cas synthétiques anonymes de chaque défaut). Limites restantes : repères et titres verticaux non lus (planche
   tournée) ; réservations à côtés courbes non détectées ; mots isolés d'un cartouche lus par OCR peuvent encore former une vue.
 
+## Phase 6 : moteur de reconnaissance PP-OCRv6 (`ppocr.js`, branché dans `ocr.js`)
+- Moteur : **PP-OCRv6 small**, reconnaissance seule (Apache-2.0, PaddleOCR ; ONNX de RapidOCR 3.10.0) sur **ONNX Runtime Web
+  1.30.0** (MIT), WebAssembly SIMD, un fil ; embarqué dans le HTML (blocs `ppocr-*`, empreintes vérifiées par `assembler.py`,
+  provenance et licences : `vendor/ppocr/README.md`). Aucune requête réseau, aucune clé, aucun service. Chargement ≈ 1 s.
+- Contrat commun (`CPI.ppocr.lire(images, {vertical, annule})`) : une image = une ligne → `{texte, conf (0-100, moyenne des
+  probabilités des caractères), chars:[{t, c}], orientation (0 | 90 | 270)}` ; illisible → texte vide, jamais complété.
+- Choix du moteur : `CPI.ocr.choisirMoteur('ppocr' | 'tesseract' | null)`, `CPI.ocr.moteur()` ; sélecteur « Moteur OCR » de la
+  fenêtre (`#dxoMot`, clé `resaOcrMot`) ; PP-OCRv6 par défaut s'il est dans le fichier. `lireZone` (zone sans grille, scan) reste à
+  Tesseract : la reconnaissance seule ne découpe pas une page en lignes (la détection PP-OCR n'est pas embarquée).
+- Tableaux à grille (`lireGrille`) : même grille, mêmes variantes gris / couleur, même détection du tiret seul ; `mosaique` passe à
+  `mosaiquePP` : chaque cellule découpée en lignes par `bandes` (projection horizontale, recadrage serré sur l'encre : une ligne noyée
+  dans une cellule haute perd lettres et espaces ; traits intérieurs d'un en-tête fusionné effacés, ligne coupée à chaque trait
+  vertical ; deux lignes serrées sans interligne coupées à leur rangée la moins encrée) ; Ø contrôlé par `oslash` sur le premier signe
+  (`premier`) ; pas de relecture Tesseract. `corriger` ramène la typographie du modèle multilingue : × entre deux nombres → x,
+  ∅ et Φ devant un nombre → Ø, « 一 » → -, signes pleine chasse → ASCII (brut gardé).
+- Repères dessinés (`lireBlocs` → `lireBlocsPP`) : mêmes tuiles et découpes, marge réduite (¼ de hauteur au lieu de ½ : PP-OCR lit
+  toute la découpe, pas de rognage au caractère) ; signes isolés des bords (« | ») retirés ; `ocr.moteur`, `ocr.orientation`, `rot`.
+  **Textes verticaux** : `blocsTexte(g, {verticaux:true})` (seulement avec PP-OCR) groupe aussi les tracés en colonnes (bloc
+  `vertical:true`, refusé s'il est couvert à plus de moitié par des blocs horizontaux : repères empilés) ; lu dans les deux sens, le
+  plus sûr gardé (90° = de bas en haut, 270° = de haut en bas) ; un bloc horizontal recouvert par un bloc vertical lu (lettre vue
+  seule) : la lecture la plus sûre des deux reste.
+- Mesures avant / après (trois plans réels, hors dépôt, vérités terrain relevées à la main ou lues dans la couche texte,
+  indépendantes de CoffraPlan ; Chromium) : voir CHANGELOG, § Phase 6.
+- Banc `t_ppocr.py` (hors connexion, ligne, vertical, découpage, tableau fictif par les deux moteurs, repères verticaux).
+- Limites : plus lent que Tesseract dans le navigateur (un seul fil en `file://`) ; Ø parfois lu « 0 » ou absent (contrôle
+  géométrique `oslash` seulement) ; zones sans grille toujours à Tesseract ; la détection PP-OCR (pages entières), PP-StructureV3,
+  PaddleOCR-VL et Docling n'ont pas pu être essayés ici (hôtes de téléchargement bloqués) : voir `docs/audit-modernisation.md`.
+
 ## 3. Fichiers séparés et HTML autonome (en place)
 
 - `python modules/import/assembler.py` remplace le bloc `<script id="cpi-src">…</script>` de `app/CoffraPlan.html` (placé
-  avant le `<script>` principal) par `lecteur.js`, `dxf.js`, `pdf.js`, `ocr.js`, `detecteur.js`, `nomenclatures.js`, `adaptateur.js`, `fenetre.js`, dans cet ordre,
+  avant le `<script>` principal) par `lecteur.js`, `dxf.js`, `pdf.js`, `ocr.js`, `ppocr.js`, `detecteur.js`, `nomenclatures.js`, `adaptateur.js`, `fenetre.js`, dans cet ordre,
   chacun précédé de son nom. Résultat déterministe (fins de ligne normalisées), bibliothèque standard Python seulement.
 - `--check` échoue si le bloc diffère des sources : lancé par `tests/syntax.sh` (étape « Syntaxe » de la CI) et par t_dxf_ui.
   Une source modifiée sans réassemblage fait donc échouer la CI.

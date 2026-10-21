@@ -163,7 +163,9 @@ def t(s):
                 'zone B sans résultat après le tableau A : grille A signalée « reconnaissance précédente », corrections gardées', r)
         pg.click('#dxoV')
         s.check(J('DXI.NL.length') == 11, 'deuxième tableau OCR ajouté (11 lignes)')
-        # arrêt d'une reconnaissance en cours
+        # arrêt d'une reconnaissance en cours (phase 6 : sur Tesseract, plus lent ; PP-OCR finit ce petit tableau avant que la
+        # progression soit observée — c'est l'interface qui est contrôlée ici, pas le moteur)
+        J("CPI.ocr.choisirMoteur('tesseract')")
         pg.click('#dxpZo'); pg.wait_for_selector('#dxoP button:has-text("Annuler")')
         # v3.1 : le bouton n'est plus recréé à chaque progression (un clic pouvait être perdu)
         J("()=>{window._ab=document.querySelector('#dxoP button');window._an=0;new MutationObserver(()=>window._an++).observe(el('dxoP'),{subtree:true,childList:true,characterData:true,attributes:true})}")
@@ -171,6 +173,7 @@ def t(s):
         s.check(J("()=>document.querySelector('#dxoP button')===window._ab&&window._ab.isConnected&&!!DXI.ocJob"), 'progression OCR : bouton « Annuler » inchangé pendant les actualisations', str(J('window._an')))
         pg.click('#dxoP button:has-text("Annuler")')
         s.check('annulée' in pg.inner_text('#dxpZr') and not J('DXI.ocJob') and J('DXI.NL.length') == 11 and not pg.is_disabled('#dxpZo'), 'reconnaissance annulée : moteur arrêté, rien modifié')
+        J("CPI.ocr.choisirMoteur(null)")
 
         # ---- création
         pg.click('#dxiTabN')
@@ -194,7 +197,7 @@ def t(s):
         o = Pn[0]['origineImport']
         s.check(o['type'] == 'ocr' and o['format'] == 'pdf' and o['fichier'] == 'OCR_1_CONTOURS.pdf' and o['page'] == 2 and o['zone']['unite'] == 'pt'
                 and abs(o['zone']['x0'] - inf['z1']['x0']) < 1 and o['repere'] == 'RA01' and o['indice'] == 'C' and o['dims_source']['a'] == 650 and o['unite'] == 'mm'
-                and 'brut' in o['ocr'] and 'confiance' in o['ocr'] and 'Tesseract' in o['ocr']['moteur'] and o['textes'].get('Repère') == 'RA01' and len(json.dumps(o)) < 4000,
+                and 'brut' in o['ocr'] and 'confiance' in o['ocr'] and 'PP-OCRv6' in o['ocr']['moteur'] and o['textes'].get('Repère') == 'RA01' and len(json.dumps(o)) < 4000,
                 'provenance OCR : PDF, page, zone, méthode, repère, textes bruts et retenus, unité, cotes, indice (sans image ni PDF)', json.dumps(o, ensure_ascii=False)[:900])
         o3 = Pn[2]['origineImport']
         s.check(o3['ocr']['ajoutee'] and o3['ocr']['corrige'].get('Repère') == 'RA09' and any('à la main' in a for a in o3['a_verifier']), 'provenance : ligne ajoutée et valeurs corrigées par l\'utilisateur')

@@ -25,7 +25,7 @@ développement : il progresse vite mais n'est pas développeur senior.
   Firefox / Safari, tablette réelle, Excel. Seul Chromium est testé automatiquement.
 
 ## Architecture
-- **`app/CoffraPlan.html` est la seule source** : HTML, CSS et JS vanilla, sans étape de construction ; environ 6 Mo (dont PDF.js ≈ 1,8 Mo et OCR ≈ 2,65 Mo).
+- **`app/CoffraPlan.html` est la seule source** : HTML, CSS et JS vanilla, sans étape de construction ; environ 36 Mo (dont PDF.js ≈ 1,8 Mo, Tesseract ≈ 2,65 Mo, PP-OCR ≈ 30 Mo).
   Seule dépendance : **three.js r170** (licence MIT), intégrée telle quelle en fin de fichier dans
   `<script type="text/plain" id="three-src">`, chargée à la première ouverture de la vue 3D (`v3Three`). Ne pas la modifier ;
   pour la mettre à jour, remplacer ce bloc par `build/three.module.min.js` d'une version publiée.
@@ -114,6 +114,11 @@ développement : il progresse vite mais n'est pas développeur senior.
   en-têtes à plusieurs niveaux (`colonne.groupe`), nature `trappes`, DN gardé sans cote (`L.dn`), remplacement explicite d'un tableau
   par l'OCR (`dxoValider`), titres de vue (dessus / dessous, renforts = détail, cadre, cartouche), nature des mentions de repère
   (`natureMention`), comptage conservateur (`consolider`). Banc `t_phase51.py` ; détail dans `modules/import/README.md`.
+  Phase 6 : moteur **PP-OCRv6 small** (reconnaissance, Apache-2.0) sur **ONNX Runtime Web 1.30.0** (MIT) : `ppocr.js`
+  (`CPI.ppocr.lire`), copié dans `modules/import/vendor/ppocr/` (README : empreintes, licences, mise à jour) et recopié par
+  `assembler.py` dans les blocs `ppocr-*` (ne pas les éditer). Moteur par défaut des tableaux à grille et des repères dessinés
+  (`CPI.ocr.choisirMoteur`, sélecteur `#dxoMot`, clé `resaOcrMot`) ; Tesseract au choix et pour `lireZone`. Découpage des cellules
+  `bandes`, textes verticaux `blocsTexte({verticaux})`. Banc `t_ppocr.py`. Audit et feuille de route : `docs/audit-modernisation.md`.
 - Version affichée : élément `#appVer` (« v3.1 »). t_ux vérifie ce numéro exact ; t_v30 vérifie « v3.x ».
 
 ## Décisions actées (ne pas changer sans l'accord de Kévin)
