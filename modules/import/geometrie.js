@@ -74,7 +74,7 @@ function detecterPage(geo,ctx){const n=geo.page,W=Math.min(geo.w,geo.h),z=ctx.zo
 
 // Textes dessinés en traits (export de DAO qui vectorise ses polices) : petits sous-chemins de la page (CPI.pdf.chemins, petits)
 // regroupés en lignes de texte (lettres d'un même mot ou d'une même ligne, écart ≤ 1,2 hauteur : le « 1 » sans empattement des polices de DAO est très espacé, même bande verticale).
-// o = {cadres:[[x0,y0,x1,y1]] (tableaux : exclus)} → [{x0,y0,x1,y1,h,n}] ; écarte les groupes trop hauts, trop longs ou trop
+// o = {cadres:[[x0,y0,x1,y1]] (tableaux : exclus), verticaux (aussi les textes verticaux)} → [{x0,y0,x1,y1,h,n,vertical?}] ; écarte les groupes trop hauts, trop longs ou trop
 // fins (hachures, quadrillages, traits) : seuls des repères et de courtes annotations horizontales restent, à lire par OCR
 const BT_H=[2.5,30],BT_W=200;   // pt : hauteur de lettre admise, longueur maximale d'une ligne de texte
 function blocsTexte(geo,o){o=o||{};const B=geo.petits||[],N=B.length>>2,pt=i=>B[4*i+2]-B[4*i]<0.2&&B[4*i+3]-B[4*i+1]<0.2;   // points
@@ -90,6 +90,14 @@ function blocsTexte(geo,o){o=o||{};const B=geo.petits||[],N=B.length>>2,pt=i=>B[
   R.forEach(b=>{const h=b.y1-b.y0,w=b.x1-b.x0;b.h=h;
     if(b.n<2||h<BT_H[0]||h>BT_H[1]||w>(o.wmax||BT_W)||w>(o.rmax||12)*h||w<0.5*h)return;
     if(cad.some(c=>dans(c,[(b.x0+b.x1)/2,(b.y0+b.y1)/2],0)))return;out.push(b)});
+  // textes écrits verticalement (planche tournée, repère le long d'un voile) : mêmes règles sur les coordonnées transposées ;
+  // vertical:true, h = hauteur de lettre (largeur sur la page) ; un groupe déjà lu à l'horizontale n'est pas repris
+  if(o.verticaux){const T=new Float64Array(B.length);for(let i=0;i<N;i++){T[4*i]=B[4*i+1];T[4*i+1]=B[4*i];T[4*i+2]=B[4*i+3];T[4*i+3]=B[4*i+2]}
+    const sur=(a,b)=>Math.max(0,Math.min(a.x1,b.x1)-Math.max(a.x0,b.x0))*Math.max(0,Math.min(a.y1,b.y1)-Math.max(a.y0,b.y0));
+    grouper(T,tous).forEach(g=>{const h=g.y1-g.y0,w=g.x1-g.x0;
+      if(g.n<2||h<BT_H[0]||h>BT_H[1]||w>(o.wmax||BT_W)||w>(o.rmax||12)*h||w<1.0*h)return;
+      const b={x0:g.y0,y0:g.x0,x1:g.y1,y1:g.x1,n:g.n,h,vertical:true};
+      if(cad.some(c=>dans(c,[(b.x0+b.x1)/2,(b.y0+b.y1)/2],0))||out.reduce((t,q)=>t+(q.vertical?0:sur(q,b)),0)>0.5*(b.x1-b.x0)*(b.y1-b.y0))return;out.push(b)})}   // couvert par des blocs horizontaux (repères empilés) : pas un texte vertical
   return out}
 // Petits tracés I (indices dans B) réunis en groupes (union-find sur une grille) → [{x0,y0,x1,y1,n}] ; écart admis à la mesure du
 // plus petit des deux tracés quand l'un est 2,5 fois plus haut (trait de cote, ligne de rappel : ils n'attirent pas les lettres voisines),

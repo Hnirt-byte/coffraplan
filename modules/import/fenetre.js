@@ -394,6 +394,7 @@ function dxpPane(){
     <fieldset><legend>Réservations dessinées</legend><div class="mu">Toutes les pages (ou la zone choisie) : repères lus (texte du PDF, ou OCR des repères dessinés en traits),
       rectangles et cercles, rapprochés de la nomenclature. Simples propositions : rien n'est coché ni créé.</div>
       <label style="display:block;margin-top:4px"><input type="checkbox" id="dxrOcr" checked> lire les repères dessinés en traits (OCR local, quelques secondes par page)</label>
+      <label class="mu" style="display:block;margin-top:4px">Moteur OCR (repères dessinés, tableaux à grille) : <select class="fi" id="dxoMot" style="width:auto" onchange="dxoMoteur(this.value)">${dxoMotOpt()}</select></label>
       <div class="dxp-b" style="margin-top:6px"><button class="btn bs bpr" id="dxrGo" onclick="dxrGo()">🔎 Analyser le dessin</button><button class="btn bs bo" id="dxrStop" onclick="dxrStop()" style="display:none">Arrêter</button><button class="btn bs bo" id="dxrJ" onclick="dxrExport()" disabled title="Tableaux, vues, observations, occurrences, associations, preuves et incertitudes, en JSON (fichier local)">⬇ Analyse (JSON)</button></div><div id="dxrM" style="margin-top:4px"></div>
       <div id="dxrE" style="margin-top:6px"></div></fieldset>
     <fieldset><legend>Zone du tableau</legend><div id="dxpZi" class="mu">Aucune zone choisie.</div>
@@ -407,6 +408,10 @@ function dxpPane(){
       <div class="fd"><label for="dxpK">Cotes (mm) : l × h ou Ø</label><input class="fi" id="dxpK" placeholder="ex. 650x800 ou Ø250"></div>
       <div class="fd"><label for="dxpNv">Niveau (position, facultatif)</label><input class="fi" id="dxpNv"></div><div class="fd"><label for="dxpOb">Observations (facultatif)</label><input class="fi" id="dxpOb"></div>
       <button class="btn bs bpr" style="margin-top:6px" onclick="dxpAjout()">＋ Ajouter la ligne</button><div id="dxpSm" class="mu" style="margin-top:4px"></div></fieldset></div></div><div id="dxrZ"></div><div id="dxoG"></div></div>`}
+// Moteur OCR choisi (gardé dans le navigateur) : PP-OCRv6 par défaut, Tesseract au choix (lireZone reste à Tesseract dans les deux cas)
+function dxoMotOpt(){let v='';try{v=localStorage.getItem('resaOcrMot')||''}catch(e){}const m=CPI.ocr.choisirMoteur(v||null);
+  return`<option value="ppocr"${m==='ppocr'?' selected':''}>PP-OCRv6 (recommandé)</option><option value="tesseract"${m==='tesseract'?' selected':''}>Tesseract (ancien moteur)</option>`}
+function dxoMoteur(v){CPI.ocr.choisirMoteur(v);try{localStorage.setItem('resaOcrMot',v)}catch(e){}}
 // Rendu de la page affichée : échelle = largeur de la zone × zoom ; un rendu plus récent annule le précédent
 async function dxpPage(){const D=DXI,cv=el('dxpCv'),W=el('dxpW');if(!D||!D.pdf||!cv||!W)return;const p=D.doc.pages[D.page-1],k=D.k=Math.max(0.05,(W.clientWidth-4)/p.w)*D.zoom,tok=++D.tok;
   el('dxpPg').textContent=` Page ${D.page} / ${D.doc.pages.length} `;el('dxpZ').textContent=` ${Math.round(D.zoom*100)} % `;
@@ -660,7 +665,7 @@ async function dxrGo(){const D=DXI;if(!D||!D.pdf||D.rJob||D.ocJob)return;const z
   b.disabled=true;el('dxrStop').style.display='';const msg=t=>{if(ici()&&el('dxrM'))el('dxrM').textContent=t};
   try{for(const n of pages){if(job.stop)throw new Error('annulé');msg(`Page ${n} : lecture des tracés…`);const g=await dxrGeo(n);if(!ici())return fin();
       const cad=dxrCad(n);
-      if(ocr&&!D.OT[n]){const K=CPI.geometrie.blocsTexte(g,{cadres:cad});
+      if(ocr&&!D.OT[n]){const K=CPI.geometrie.blocsTexte(g,{cadres:cad,verticaux:CPI.ocr.moteur()==='ppocr'});
         msg(`Page ${n} : ${K.length} bloc(s) de texte dessiné à lire…`);
         const pf=[...new Set(D.NL.map(({L})=>(CPI.nomenclatures.cleRep(L.repere||'').match(/^[A-Z]{1,4}/)||[''])[0]).filter(Boolean))];
         const r=await CPI.ocr.lireBlocs(D.pdf,n,K.slice(0,DXR_BL),{run:'b'+n,prefixes:pf,annule:()=>job.stop||!ici(),progres:(t,f)=>msg(`Page ${n} : ${t}${f?' ('+Math.round(f*100)+' %)':''}`)});

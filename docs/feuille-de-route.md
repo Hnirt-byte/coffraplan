@@ -2,6 +2,8 @@
 
 Ordre proposé ; chaque étape se termine par des tests verts et une version taguée.
 
+Audit technique et feuille de route de modernisation (phase 6, 21/10/2026) : `docs/audit-modernisation.md`.
+
 1. **Fondations du dépôt** (fait en octobre 2026) : sources, tests, CLAUDE.md, mode d'emploi généré, CI.
 2. **Crédibilité métier** (v2.6 : flèche des boîtes rectangulaires, note d'hypothèses, cartouche, noms retirés — faits)
    - Note d'hypothèses complète (à partir de `hypRows` et des règles du code), relue par un chef coffreur ou un
