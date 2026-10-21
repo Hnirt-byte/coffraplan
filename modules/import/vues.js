@@ -30,6 +30,12 @@ function typeVue(K,W){const sup=W.some(w=>/^sup/.test(w)),inf=W.some(w=>/^inf/.t
   if(K.has('coupe'))return'coupe';if(K.has('elevation')||K.has('facade'))return'elevation';if(K.has('detail'))return'detail';
   if(K.has('plan')||K.has('dessus')||K.has('dessous'))return'plan';return'autre'}
 const partieDe=W=>PARTIES.find(p=>W.includes(p)||W.includes(p+'s'))||null;
+// phase 8 : titre sans mot-clé de vue (« Sous Toiture », « Dessus dalle ») : niveau ou face représentés, vus de dessus ou de dessous =
+// vue en plan. Accepté seulement avec son échelle écrite juste à côté ou dessous (voir titres), type confirmé par le dessin (detecter)
+const NIVEAUX=['toiture','terrasse','dalle','plancher','radier','rdc','rez','etage','niveau','comble','combles','couverture','charpente','plafond','sous-sol','vide'];
+const VU=W=>W.some((w,i)=>/^(sous|dessus|dessous)$/.test(w)&&NIVEAUX.includes(W[i+1]||''))||W[0]==='plan'&&W[1]==='de'&&NIVEAUX.includes(W[2]||'');
+const ECH=/(?:^|[^0-9.,\/])1\s*[\/:]\s*(\d{1,4})(?![0-9.,])/;
+const DV_DEDUIT=120;   // cases dessinées : vue en plan déduite d'un titre sans mot-clé seulement pour un dessin conséquent (sinon « autre »)
 const med=a=>{const s=a.slice().sort((x,y)=>x-y);return s.length?s[s.length>>1]:0};
 const boite=t=>{const w=t.w||String(t.texte).length*0.7*t.h;return[t.x-w/2,t.y-t.h/2,t.x+w/2,t.y+t.h/2]};
 
@@ -46,7 +52,14 @@ function titres(textes){const T=textes.filter(t=>t.h>0&&String(t.texte).trim()),
     // lignes de haut en bas, mots de gauche à droite
     const lignes=[];L.forEach(t=>{const l=lignes.find(l=>Math.abs(l[0].y-t.y)<=0.4*t.h);l?l.push(t):lignes.push([t])});
     const texte=lignes.map(l=>l.sort((a,b)=>a.x-b.x).map(t=>t.texte).join(' ')).join(' ').replace(/\s+/g,' ').trim(),m=motsCles(texte);
-    if(!m.K.size||m.K.size===1&&m.K.has('vue')&&m.W.length<2)return;
+    // sans mot-clé de vue : titre seulement si une échelle écrite (« 1 : 25 », « 1/50 ») est juste dessous ou sur la même ligne, en texte
+    // plus petit ou égal, à moins de 2,6 hauteurs (sinon un mot isolé de notes ou de cartouche deviendrait une vue)
+    let deduit=null;
+    if(!m.K.size){if(lignes.length>2||m.W.length>6||/\d/.test(texte))return;const bx0=L.map(boite),hh=Math.max(...L.map(t=>t.h)),
+        X0=Math.min(...bx0.map(x=>x[0])),X1=Math.max(...bx0.map(x=>x[2])),Y0=Math.min(...bx0.map(x=>x[1])),Y1=Math.max(...bx0.map(x=>x[3]));
+      const e=T.find(t=>!L.includes(t)&&ECH.test(sansAcc(t.texte))&&String(t.texte).trim().length<=12&&t.h<=hh*1.05&&t.x>=X0-3*hh&&t.x<=X1+3*hh&&t.y>=Y0-2.6*hh&&t.y<=Y1);
+      if(!e)return;deduit={echelle:e.texte,plan:VU(m.W)}}
+    else if(m.K.size===1&&m.K.has('vue')&&m.W.length<2)return;
     // paragraphe (notes, cartouche) ou renvoi (« Vue en plan : voir plan n° … ») : pas un titre de vue
     if(lignes.length>2||m.W.some(w=>w==='voir'||w==='cf'))return;
     const bx=L.map(boite),b=[Math.min(...bx.map(x=>x[0])),Math.min(...bx.map(x=>x[1])),Math.max(...bx.map(x=>x[2])),Math.max(...bx.map(x=>x[3]))];
@@ -54,8 +67,8 @@ function titres(textes){const T=textes.filter(t=>t.h>0&&String(t.texte).trim()),
     const hT=Math.max(...L.map(t=>t.h)),pres=T.filter(t=>!L.includes(t)&&Math.abs(t.h-hT)<=0.3*hT&&(()=>{const c=boite(t);return Math.max(c[0]-b[2],b[0]-c[2],c[1]-b[3],b[1]-c[3])<=2.5*hT})());
     if(pres.length>=3)return;
     const cf=Math.min(...L.map(t=>t.ocr?t.ocr.conf:100));
-    out.push({texte,b,h:Math.max(...L.map(t=>t.h)),ids:L.map(t=>t.id),type:typeVue(m.K,m.W),partie:partieDe(m.W),approx:m.approx,conf:cf,
-      sous:m.K.size===1&&m.K.has('partie')})});
+    out.push({texte,b,h:Math.max(...L.map(t=>t.h)),ids:L.map(t=>t.id),type:deduit?(deduit.plan?'plan':'autre'):typeVue(m.K,m.W),partie:partieDe(m.W),approx:m.approx,conf:cf,
+      sous:m.K.size===1&&m.K.has('partie'),...(deduit?{deduit}:{})})});
   return out}
 
 // geo : CPI.pdf.chemins ; textes : textes de la page (PDF et OCR) ; o = {cadres:[[x0,y0,x1,y1]] (tableaux : ignorés)}
@@ -95,6 +108,12 @@ function detecter(geo,textes,o){o=o||{};const n=geo.page,W=geo.w,H=geo.h,C=Math.
   const GMAX=Math.max(DV_GAP*C,0.12*Math.min(W,H)),ecart=(t,b)=>{const dx=Math.max(0,b[0]-t.b[2],t.b[0]-b[2]),dy=Math.max(0,b[1]-t.b[3],t.b[1]-b[3]);return Math.hypot(dx,dy)*(b[1]>t.b[3]-1?2:1)};
   const grand=b=>b[2]-b[0]>DV_W*W||b[3]-b[1]>DV_H*H,cadre=b=>b[2]-b[0]>=0.9*W&&b[3]-b[1]>=0.9*H;   // cadre de feuille : jamais rattaché à un titre
   const own=new Int16Array(N).fill(-1),dans=(t,b)=>b[0]>=t.b[0]-1.5*t.h&&b[2]<=t.b[2]+1.5*t.h&&b[1]>=t.b[1]-1.5*t.h&&b[3]<=t.b[3]+1.5*t.h;   // tracés du titre lui-même (lettres dessinées)
+  // phase 8 : titre de cartouche (« VUE EN PLAN - SOUS TOITURE » dans le cartouche d'une planche) : dans un petit cadre dessiné (≤ 10 % de la
+  // page) qui contient au moins 3 autres textes et touche un angle de la feuille → pas un titre de vue (ni région, ni comptage)
+  const coin=b=>(b[2]>=0.85*W||b[0]<=0.15*W)&&(b[1]<=0.25*H||b[3]>=0.75*H);
+  const cart=t=>{const cx=(t.b[0]+t.b[2])/2,cy=(t.b[1]+t.b[3])/2;return K.some(c=>{const b=c.b;if(!(cx>=b[0]&&cx<=b[2]&&cy>=b[1]&&cy<=b[3])||dans(t,b)||cadre(b))return false;
+    if((b[2]-b[0])*(b[3]-b[1])>0.1*W*H||!coin(b))return false;return textes.filter(u=>!t.ids.includes(u.id)&&u.x>=b[0]&&u.x<=b[2]&&u.y>=b[1]&&u.y<=b[3]).length>=3})};
+  for(let i=S.length-1;i>=0;i--)if(cart(S[i]))S.splice(i,1);
   const prefere=S.map(t=>{let best=-1,bd=GMAX;K.forEach((c,i)=>{if(c.D.length<4||dans(t,c.b)||cadre(c.b))return;const d=ecart(t,c.b);if(d<bd){bd=d;best=i}});return best});
   const choix=K.map((c,ci)=>{if(!c.D.length||cadre(c.b)||grand(c.b)&&!prefere.includes(ci))return -1;let best=-1,bd=GMAX;S.forEach((t,v)=>{const d=ecart(t,c.b);if(d<=bd){bd=d;best=v}});return best});
   K.forEach((c,ci)=>{const T=[...new Set(S.map((t,v)=>prefere[v]===ci?v:-1).filter(v=>v>=0).concat(choix[ci]>=0?[choix[ci]]:[]))];
@@ -117,14 +136,20 @@ function detecter(geo,textes,o){o=o||{};const n=geo.page,W=geo.w,H=geo.h,C=Math.
   // vues : région = cases dessinées et titre ; échelle « 1/50 » écrite près du titre ; identifiant dans l'ordre de lecture
   // cases hors emprise (trait de liaison, bulle d'axe) : rendues, jamais situées dans la vue
   for(let k=0;k<N;k++){const v=own[k]>=0&&V[own[k]];if(!v)continue;const i=k%nx,j=(k-i)/nx;if(!(i*C>=v.b[0]-C&&(i+1)*C<=v.b[2]+C&&j*C>=v.b[1]-C&&(j+1)*C<=v.b[3]+C))own[k]=-1}
-  const ech=textes.map(t=>{const m=sansAcc(t.texte).match(/(?:^|[^0-9.,\/])1\s*[\/:]\s*(\d{1,4})(?![0-9.,])/);return m&&+m[1]>1?{t,v:+m[1]}:null}).filter(Boolean);
+  const ech=textes.map(t=>{const m=sansAcc(t.texte).match(ECH);return m&&+m[1]>1?{t,v:+m[1]}:null}).filter(Boolean);
   const out=V.map((v,k)=>{const t=v.t,b=t?[Math.min(v.b[0],t.b[0]),Math.min(v.b[1],t.b[1]),Math.max(v.b[2],t.b[2]),Math.max(v.b[3],t.b[3])]:v.b;
     // titre sans aucun tracé (cartouche, notes) : pas une vue
     if(!(b[2]>b[0])||t&&!v.cases)return null;const motifs=[];let conf=t?(t.conf>=80&&!t.approx?'forte':t.conf>=50?'moyenne':'faible'):'faible';
     if(!t)motifs.push('dessin sans titre reconnu');else{if(t.approx)motifs.push('titre lu avec des erreurs (mot-clé rapproché)');if(t.conf<80)motifs.push(`titre lu par OCR à ${t.conf} %`);}
+    // titre sans mot-clé de vue (reconnu par son échelle) : vue en plan seulement si le texte nomme un niveau vu de dessus ou de dessous et
+    // si le dessin rattaché est conséquent ; sinon type « autre » (jamais compté) ; confiance au plus moyenne
+    let ty=t?t.type:'autre';
+    if(t&&t.deduit){if(ty==='plan'&&v.cases<DV_DEDUIT){ty='autre';motifs.push(`titre « ${t.texte} » sans « vue » ni « plan », dessin rattaché trop petit pour une vue en plan`)}
+      else motifs.push(ty==='plan'?`titre sans « vue » ni « plan » : vue en plan déduite du niveau nommé (« ${t.texte} »), de l'échelle « ${t.deduit.echelle} » et du dessin rattaché`:`titre reconnu par son échelle « ${t.deduit.echelle} », nature de la vue non déterminée (jamais comptée)`);
+      if(conf==='forte')conf='moyenne'}
     const e=t&&ech.find(x=>x.t.x>=t.b[0]-4*t.h&&x.t.x<=t.b[2]+4*t.h&&x.t.y>=t.b[1]-3*t.h&&x.t.y<=t.b[3]+1.5*t.h);
     const nv=t&&sansAcc(t.texte).match(/\bniv(?:eau)?\.?\s*:?\s*([+\-]?\d+[.,]?\d*|R\s*\+?\s*\d+|r\s*d\s*c|sous[- ]sol)/i);
-    return{k,page:n,region:b.map(x=>Math.round(x*100)/100),titre:t?t.texte:null,titreIds:t?t.ids:[],type:t?t.type:'autre',partie:t?t.partie:null,
+    return{k,page:n,region:b.map(x=>Math.round(x*100)/100),titre:t?t.texte:null,titreIds:t?t.ids:[],type:ty,partie:t?t.partie:null,
       echelle:e?{valeur:e.v,texte:e.t.texte}:null,niveau:nv?nv[1].replace(/\s+/g,''):null,confiance:conf,motifs,cases:v.cases}}).filter(Boolean);
   out.sort((a,b)=>b.region[3]-a.region[3]||a.region[0]-b.region[0]).forEach((v,i)=>{v.id='V'+n+'-'+(i+1);v.libelle=TYPES[v.type]});
   // régions incohérentes : jamais utilisées pour confirmer seules une correspondance (situer : cases dessinées seulement)
