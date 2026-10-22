@@ -521,7 +521,10 @@ métier dupliqué), à la corde = largeur **suivant la paroi** et aux deux parem
     jamais appliquée.
 - **Sortie** : `{repere, observation, ouverture, support, coffrage:{solution_proposee:'a_determiner', pistes, fleche_interieure_mm,
   fleche_exterieure_mm, tolerance_mm}, correspondance_voile, provenance, preuves, incertitudes, validation_utilisateur_requise:true}`.
-  `CPI.support.consolider([…])` réunit les vues d'un même repère (valeurs à 2 % gardées, désaccord → `null` + incertitude).
+  `CPI.support.consolider([…], {sag})` réunit les vues d'un même repère : chaque vue garde ses valeurs, provenances et preuves
+  (`observations[]`, preuves marquées `vue`) ; nature du support en désaccord → `inconnu`, aucune valeur de support, aucune flèche, aucune
+  `correspondance_voile` ; valeurs concordantes à 2 % gardées, sinon `null` + incertitude ; rayon extérieur, flèches (`GEO.sag` sur les
+  valeurs consolidées) et correspondance recalculés ou retirés, jamais hérités d'une vue ; contradiction non résolue → confiance « faible ».
 - **Lecteurs** (sans effet sur le reste) : `CPI.pdf.chemins` renvoie aussi `courbes` (pièces de Bézier des sous-chemins de plus de
   20 pt, plafond 200 000, `coupeCourbes`) et accepte `{zones:[[x0,y0,x1,y1]…]}` : relecture **locale** d'une page très chargée (les
   plafonds s'appliquent après le tri). `dxf.js` relève `arcs` (ARC, CIRCLE, côtés courbes des polylignes à bulge, blocs compris :
@@ -530,7 +533,8 @@ métier dupliqué), à la corde = largeur **suivant la paroi** et aux deux parem
 - **Fenêtre** (`dxsAnalyser`, appelée à la fin de « 🔎 Analyser le dessin ») : localisations fiables des lignes en concordance forte ou
   partielle ; repère sans contour proposé : contour écarté le plus proche du repère, sans rival (réservation dessinée dans l'épaisseur
   d'un voile, sommets raccordés aux faces), repris : support « possible » seulement ; échelle de la page et de la vue comparées ; relecture locale
-  des pages coupées. Résultats dans `DXI.SP` et dans l'export JSON (`supports`) ; nomenclature, contours, ouvrages inchangés ; aucune
+  des pages coupées. Résultats dans `DXI.SP` et dans l'export JSON (`supports`, état `supportsAnalyse` : `reussie` | `echec` + erreur |
+  `non_lancee`) ; un échec (`DXI.SPerr`) est signalé dans le bilan (aperçu et onglet Nomenclature), le reste restant utilisable ; nomenclature, contours, ouvrages inchangés ; aucune
   interface nouvelle (lots suivants).
 - Banc `t_support.py` (plans fictifs `tests/support_fictifs.py`, constructions `tests/support_cas.js`).
 

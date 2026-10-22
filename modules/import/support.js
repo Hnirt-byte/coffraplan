@@ -314,8 +314,11 @@ function largeur(R,L,b,k,o,inc,prov){const O=R.ouverture,Sp=R.support,Cf=R.coffr
       if(isFinite(fe)){Cf.fleche_exterieure_mm=r1(fe);prov['coffrage.fleche_exterieure_mm']={origine:'calcul',detail:`flèche de la corde ${w} mm sur le rayon ${Re} mm (GEO.sag)`}}}}
   else if(Sp.type==='voile_circulaire'&&!w)inc.push('largeur suivant la paroi inconnue : flèche non calculée');
   pistes(R);
-  if(Sp.type==='voile_circulaire'&&(O.type==='rect'||O.type==='carre'))R.correspondance_voile={forme:'voile',L:w||null,l:Sp.epaisseur_mm,h:O.hauteur_mm,
-    DcuveM:Ri?Math.round(Ri*2)/1000:null,dRef:Ri?'int':null,joues:null,note:'proposition pour le voile cintré (L = corde, l = épaisseur, Ø au parement intérieur) : jamais appliquée ; joues parallèles ou radiales à choisir'}}
+  corresp(R)}
+// proposition pour le voile cintré du moteur (voileGeo), à partir des valeurs retenues ; null hors voile circulaire + ouverture rectangulaire
+function corresp(R){const O=R.ouverture,Sp=R.support,Ri=Sp.rayon_interieur_mm;
+  R.correspondance_voile=Sp.type==='voile_circulaire'&&(O.type==='rect'||O.type==='carre')?{forme:'voile',L:O.largeur_suivant_paroi_mm||null,l:Sp.epaisseur_mm,h:O.hauteur_mm,
+    DcuveM:Ri?Math.round(Ri*2)/1000:null,dRef:Ri?'int':null,joues:null,note:'proposition pour le voile cintré (L = corde, l = épaisseur, Ø au parement intérieur) : jamais appliquée ; joues parallèles ou radiales à choisir'}:null}
 // pistes motivées ; la solution reste « a_determiner » (choix du coffrage : lots suivants)
 function pistes(R){const O=R.ouverture,Sp=R.support,Cf=R.coffrage,P=Cf.pistes,tol=Cf.tolerance_mm,f=Math.max(Cf.fleche_interieure_mm||0,Cf.fleche_exterieure_mm||0)||null;
   if(O.type==='circ')P.push({solution:'fourreau_circulaire',motif:'ouverture circulaire : fourreau ou solution circulaire classique à envisager'+(Sp.type==='voile_circulaire'?', même dans un voile cintré':'')+', sous réserve des contraintes de traversée'});
@@ -328,17 +331,40 @@ function pistes(R){const O=R.ouverture,Sp=R.support,Cf=R.coffrage,P=Cf.pistes,to
       else P.push({solution:'a_determiner',motif:'courbure non chiffrée (rayon ou largeur suivant la paroi manquant)'})}}
   if(!P.length)P.push({solution:'a_determiner',motif:'support ou ouverture non déterminés'})}
 
-// plusieurs observations d'un même repère (vues) : valeurs concordantes (à 2 %) gardées, désaccord → null + incertitude
-function consolider(L){const V=L.filter(Boolean);if(!V.length)return null;if(V.length===1)return V[0];
-  const R=JSON.parse(JSON.stringify(V[0]));R.observations=V.map(x=>x.observation);delete R.observation;R.preuves=V.flatMap(x=>x.preuves);R.incertitudes=[...new Set(V.flatMap(x=>x.incertitudes))];
-  const ty=[...new Set(V.map(x=>x.support.type).filter(t=>t!=='inconnu'))];
-  R.support.type=ty.length===1?ty[0]:'inconnu';if(ty.length>1)R.incertitudes.push('vues en désaccord sur le support ('+ty.join(', ')+') : à choisir');
-  const RG={saisie:3,cote_explicite:2,calcul:1,mesure:0};
-  [['support','epaisseur_mm'],['support','rayon_interieur_mm'],['support','rayon_exterieur_mm'],['ouverture','largeur_suivant_paroi_mm'],['ouverture','largeur_mm'],['ouverture','hauteur_mm'],['ouverture','diametre_mm'],['coffrage','fleche_interieure_mm'],['coffrage','fleche_exterieure_mm']].forEach(([a,k])=>{
-    const X=V.map(x=>({v:x[a][k],p:x.provenance[a+'.'+k]})).filter(x=>x.v!=null);if(!X.length){R[a][k]=null;delete R.provenance[a+'.'+k];return}
-    const m=X[0].v;if(X.every(x=>Math.abs(x.v-m)<=0.02*Math.abs(m))){X.sort((x,y)=>(RG[(y.p||{}).origine]||0)-(RG[(x.p||{}).origine]||0));R[a][k]=X[0].v;R.provenance[a+'.'+k]=Object.assign({},X[0].p,{vues:X.length})}
-    else{R[a][k]=null;delete R.provenance[a+'.'+k];R.incertitudes.push(`${a}.${k} : valeurs différentes selon les vues (${X.map(x=>x.v).join(', ')}) : à choisir`)}});
-  const cf=V.map(x=>x.support.confiance).filter(Boolean);R.support.confiance=R.support.type==='inconnu'?null:cf.includes('forte')?'forte':cf.includes('moyenne')?'moyenne':cf[0]||null;
+// plusieurs observations d'un même repère (vues) → un résultat. Chaque observation garde ses propres valeurs, provenances et preuves
+// (observations[]) pour une décision ultérieure. Nature du support : désaccord → inconnu, aucune valeur de support, aucune flèche, aucune
+// correspondance. Valeurs : concordantes à 2 % → gardées (meilleure provenance), sinon null + incertitude ; les valeurs qui en dépendent
+// (rayon extérieur, flèches, correspondance avec le voile cintré) sont recalculées (o.sag : GEO.sag du moteur) ou retirées, jamais
+// héritées d'une vue. Toute contradiction non résolue : confiance au plus « faible ».
+function consolider(L,o){o=o||{};const V=L.filter(Boolean);if(!V.length)return null;if(V.length===1)return V[0];
+  const R=JSON.parse(JSON.stringify(V[0])),inc=[],prov={};delete R.observation;
+  R.observations=V.map(x=>Object.assign({},JSON.parse(JSON.stringify(x.observation)),{support:x.support,ouverture:x.ouverture,coffrage:{fleche_interieure_mm:x.coffrage.fleche_interieure_mm,fleche_exterieure_mm:x.coffrage.fleche_exterieure_mm},
+    correspondance_voile:x.correspondance_voile,provenance:x.provenance,incertitudes:x.incertitudes}));
+  R.preuves=V.flatMap((x,i)=>x.preuves.map(p=>Object.assign({vue:i+1},p)));
+  const ty=[...new Set(V.map(x=>x.support.type).filter(t=>t!=='inconnu'))],desaccord=ty.length>1;
+  R.support={type:ty.length===1?ty[0]:'inconnu',epaisseur_mm:null,rayon_interieur_mm:null,rayon_exterieur_mm:null,confiance:null};
+  if(desaccord)inc.push('vues en désaccord sur le support ('+ty.join(', ')+') : à choisir ; aucune valeur de support retenue');
+  const RG={saisie:3,cote_explicite:2,calcul:1,mesure:0};let conflit=desaccord;
+  const fusion=(a,k,X)=>{X=X.filter(x=>x.v!=null);if(!X.length)return null;const m=X[0].v;
+    if(X.every(x=>Math.abs(x.v-m)<=0.02*Math.abs(m))){X.sort((x,y)=>(RG[(y.p||{}).origine]||0)-(RG[(x.p||{}).origine]||0));prov[a+'.'+k]=Object.assign({},X[0].p,{vues:X.length});return X[0].v}
+    conflit=true;inc.push(`${a}.${k} : valeurs différentes selon les vues (${X.map(x=>x.v).join(', ')}) : à choisir`);return null};
+  const val=(a,k,ok)=>fusion(a,k,V.filter(ok||(()=>true)).map(x=>({v:x[a][k],p:x.provenance[a+'.'+k]})));
+  ['largeur_suivant_paroi_mm','largeur_mm','hauteur_mm','diametre_mm'].forEach(k=>R.ouverture[k]=val('ouverture',k));
+  // valeurs du support : seulement celles des vues de même nature que le support retenu
+  if(R.support.type!=='inconnu'){const de=x=>x.support.type===R.support.type;
+    R.support.epaisseur_mm=val('support','epaisseur_mm',de);
+    if(R.support.type==='voile_circulaire')R.support.rayon_interieur_mm=val('support','rayon_interieur_mm',de);
+    if(R.support.rayon_interieur_mm&&R.support.epaisseur_mm){R.support.rayon_exterieur_mm=r1(R.support.rayon_interieur_mm+R.support.epaisseur_mm);prov['support.rayon_exterieur_mm']={origine:'calcul',detail:'rayon intérieur + épaisseur (vues consolidées)'}}}
+  // flèches : recalculées sur les valeurs consolidées, jamais reprises d'une vue
+  const Cf=R.coffrage,w=R.ouverture.largeur_suivant_paroi_mm,Ri=R.support.rayon_interieur_mm,Re=R.support.rayon_exterieur_mm;Cf.fleche_interieure_mm=Cf.fleche_exterieure_mm=null;
+  if(R.support.type==='voile_circulaire'&&w&&Ri){if(typeof o.sag!=='function')inc.push('flèches non recalculées après consolidation : fonction de calcul du moteur non fournie');
+    else{const fi=o.sag(Ri,w),fe=Re?o.sag(Re,w):NaN;if(isFinite(fi)){Cf.fleche_interieure_mm=r1(fi);prov['coffrage.fleche_interieure_mm']={origine:'calcul',detail:`flèche de la corde ${w} mm sur le rayon ${Ri} mm (GEO.sag, vues consolidées)`}}
+      if(isFinite(fe)){Cf.fleche_exterieure_mm=r1(fe);prov['coffrage.fleche_exterieure_mm']={origine:'calcul',detail:`flèche de la corde ${w} mm sur le rayon ${Re} mm (GEO.sag, vues consolidées)`}}}}
+  ['ouverture.type','coffrage.tolerance_mm'].forEach(k=>{if(R.provenance[k])prov[k]=R.provenance[k]});R.provenance=prov;
+  corresp(R);
+  const cf=V.filter(x=>x.support.type===R.support.type).map(x=>x.support.confiance).filter(Boolean);
+  R.support.confiance=R.support.type==='inconnu'?null:conflit?'faible':cf.includes('forte')?'forte':cf.includes('moyenne')?'moyenne':cf[0]||null;
+  R.incertitudes=[...new Set(V.flatMap(x=>x.incertitudes).concat(inc))];
   R.coffrage.pistes=[];R.coffrage.solution_proposee='a_determiner';pistes(R);R.validation_utilisateur_requise=true;return R}
 
 root.CPI=Object.assign(root.CPI||{},{support:{analyser:(obs,env,o)=>analyser(obs,env,Object.assign({},o)),consolider,envPdf,envDxf,arcsBezier,arcsChaines,arc3}});

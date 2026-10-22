@@ -118,6 +118,30 @@ def t(s):
                 'deux vues concordantes : épaisseur 200 gardée (2 vues)')
         s.check(V[1]['support']['epaisseur_mm'] is None and any('valeurs différentes selon les vues' in m for m in V[1]['incertitudes']),
                 'deux vues discordantes (200 / 250) : épaisseur null, désaccord signalé')
+        s.check(V[1]['support']['confiance'] == 'faible' and [o['support']['epaisseur_mm'] for o in V[1]['observations']] == [200, 250],
+                'vues discordantes : confiance au plus faible ; valeurs de chaque vue gardées (observations)')
+        # régression (relecture PR #19) : voile droit d'une vue, voile circulaire de l'autre
+        C = J('''()=>{const sag=GEO.sag,a=SC.voileDroit({t:200,w:500,ouverture:"rect"}),b=SC.voileCirc({Ri:6000,t:250,w:500,ouverture:"rect"}),
+            c=SC.voileCirc({Ri:8000,t:250,w:500,ouverture:"rect",mode:"arc"}),d=SC.voileCirc({Ri:6000,t:250,w:500,ouverture:"rect",mode:"arc"}),L=SC.ligne({a:500,b:1000,colonnes:true});
+            const f=(x,o)=>CPI.support.analyser(x.obs,x.env,Object.assign({k:x.k,sag,ligne:L},o||{}));const fb=f(b,{cellules:[]});
+            return{dc:CPI.support.consolider([f(a),fb],{sag}),cc:CPI.support.consolider([fb,f(c)],{sag}),ok:CPI.support.consolider([fb,f(d)],{sag}),seule:fb}}''')
+        dc = C['dc']
+        s.check(dc['support'] == {'type': 'inconnu', 'epaisseur_mm': None, 'rayon_interieur_mm': None, 'rayon_exterieur_mm': None, 'confiance': None}
+                and dc['correspondance_voile'] is None and dc['coffrage']['fleche_interieure_mm'] is None and dc['coffrage']['fleche_exterieure_mm'] is None
+                and not any(k.startswith(('support.', 'coffrage.fleche')) for k in dc['provenance']) and any('désaccord sur le support' in m for m in dc['incertitudes']),
+                'voile droit (vue 1) contre voile circulaire (vue 2) : support inconnu, aucune valeur de support, aucune flèche, aucune correspondance héritée', json.dumps(dc['support']))
+        s.check([o['support']['type'] for o in dc['observations']] == ['voile_droit', 'voile_circulaire'] and dc['observations'][1]['correspondance_voile']['DcuveM'] == 12
+                and {p.get('vue') for p in dc['preuves']} == {1, 2}, 'désaccord : valeurs, correspondance et preuves de chaque vue conservées pour la décision')
+        cc = C['cc']
+        s.check(cc['support']['type'] == 'voile_circulaire' and cc['support']['rayon_interieur_mm'] is None and cc['support']['rayon_exterieur_mm'] is None
+                and cc['support']['epaisseur_mm'] == 250 and cc['coffrage']['fleche_interieure_mm'] is None and cc['coffrage']['fleche_exterieure_mm'] is None
+                and cc['correspondance_voile']['DcuveM'] is None and cc['correspondance_voile']['dRef'] is None and cc['support']['confiance'] == 'faible'
+                and any('rayon_interieur_mm' in m and 'valeurs différentes' in m for m in cc['incertitudes']) and [o['support']['rayon_interieur_mm'] for o in cc['observations']] == [6000, 8000],
+                'deux vues circulaires, rayons 6000 / 8000 : rayon null, flèches et Ø cuve retirés, épaisseur concordante gardée, confiance faible, rayons de chaque vue conservés', json.dumps([cc['support'], cc['correspondance_voile']]))
+        ok = C['ok']
+        s.check(ok['support']['rayon_interieur_mm'] == 6000 and ok['coffrage']['fleche_interieure_mm'] == C['seule']['coffrage']['fleche_interieure_mm']
+                and 'consolidées' in ok['provenance']['coffrage.fleche_interieure_mm']['detail'] and ok['correspondance_voile']['DcuveM'] == 12 and ok['support']['confiance'] != 'faible',
+                'deux vues circulaires concordantes (Bézier, ARC) : flèches recalculées par GEO.sag sur les valeurs consolidées, correspondance reconstruite')
 
         # ---- 8. échelle absente, incohérente ; épaisseur absente ; échelle déduite d'une épaisseur cotée
         r = A('const x=SC.voileDroit({t:200,w:500,ouverture:"rect"})', '{k:null}')
@@ -200,7 +224,21 @@ def t(s):
                 'R03 « 1000x500 » : 500 suivant la courbure, hauteur 1000, flèche sur 500', json.dumps(R['R03']['ouverture']))
         s.check(all(r['validation_utilisateur_requise'] and r['coffrage']['solution_proposee'] == 'a_determiner' for r in R.values()), 'toutes : validation requise, solution « a_determiner »')
         js = J('dxrJSON()')
-        s.check(len(js['supports']) == 4 and all('ligne' in x and 'support' in x for x in js['supports']), 'export JSON de l\'analyse : clé « supports » (4)')
+        s.check(len(js['supports']) == 4 and all('ligne' in x and 'support' in x for x in js['supports']) and js['supportsAnalyse'] == {'etat': 'reussie', 'lignes': 4},
+                'export JSON de l\'analyse : clé « supports » (4), état « reussie »')
+        AS0 = J('JSON.stringify(DXI.NL.map(({L})=>dxnAS(L).concordance))')
+        # échec simulé de l'analyse des supports : visible dans le bilan et l'export ; nomenclature et rapprochement utilisables
+        J('()=>{window._an=CPI.support.analyser;CPI.support.analyser=()=>{throw new Error("panne simulée")}}')
+        pg.click('#dxrGo'); pg.wait_for_function('!DXI.rJob', timeout=200000)
+        m, js2 = pg.inner_text('#dxrM'), J('dxrJSON()')
+        J('()=>{CPI.support.analyser=window._an}')
+        s.check('analyse des supports en échec' in m and 'panne simulée' in m and 'rapprochement' in m, 'échec de l\'analyse des supports : avertissement clair dans le bilan d\'import', m[-300:])
+        s.check(js2['supports'] == [] and js2['supportsAnalyse'] == {'etat': 'echec', 'erreur': 'panne simulée'} and len(js2['tableRows']) == 4,
+                'export JSON après échec : état « echec » et message (pas confondu avec une analyse réussie sans résultat)', json.dumps(js2['supportsAnalyse'], ensure_ascii=False))
+        s.check(J('JSON.stringify(DXI.NL.map(({L})=>L))') == NL0 and J('JSON.stringify(DXI.NL.map(({L})=>dxnAS(L).concordance))') == AS0 and 'analyse des supports en échec' in J('el("dxnS").innerHTML'),
+                'après échec : nomenclature et rapprochement inchangés et utilisables ; avertissement aussi dans l\'onglet Nomenclature')
+        pg.click('#dxrGo'); pg.wait_for_function('!DXI.rJob', timeout=200000)
+        s.check(J('DXI.SPerr') is None and J('dxrJSON().supportsAnalyse.etat') == 'reussie' and 'en échec' not in pg.inner_text('#dxrM'), 'nouvelle analyse réussie : l\'avertissement disparaît')
         s.check(J('JSON.stringify(DXI.NL.map(({L})=>L))') == NL0 and J('P.length') == P0 and J('el("iForme").value') != 'voile',
                 'nomenclature d\'origine inchangée ; aucun ouvrage créé ; forme voile non activée')
 

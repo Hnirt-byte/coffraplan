@@ -713,7 +713,7 @@ async function dxsAnalyser(){const D=DXI,SP={},P=new Map();D.SP={};D.SPerr=null;
       const u=dxnU(N,L),lg=Object.assign({},L,{dims:L.dims?Object.assign({},L.dims,{unite:u||null}):null});
       (SP[L.id]=SP[L.id]||[]).push(CPI.support.analyser({repere:L.repere,candidat:c,page:n,vue:v?{id:v.id,type:v.type,titre:v.titre}:null},env,
         {k:e?e.k:kv,echelle:ech,ligne:lg,cadres:cad,repris:rep,sag:typeof GEO!=='undefined'?GEO.sag:null}))})}
-  D.SP=Object.fromEntries(Object.entries(SP).map(([id,R])=>[id,CPI.support.consolider(R)]));return D.SP}
+  D.SP=Object.fromEntries(Object.entries(SP).map(([id,R])=>[id,CPI.support.consolider(R,{sag:typeof GEO!=='undefined'?GEO.sag:null})]));return D.SP}
 // Identité stable d'un contour (page, forme, emprise à 0,5 pt) : une nouvelle analyse garde les corrections du même contour
 // (cotes, hauteur, forme, référence, coche, rattachement à une ligne) ; un contour disparu ne les transmet à aucun autre
 const dxrCle=c=>[c.source.page,c.type].concat(c.bbox.map(v=>Math.round(v*2)/2)).join('|');
@@ -762,7 +762,9 @@ function dxrJSON(){const D=DXI,q=x=>Math.round(x*100)/100,bx=b=>b?b.map(q):null,
     views:dxrVues().map(v=>({id:v.id,page:v.page,region:v.region,titre:v.titre,type:v.type,partie:v.partie,echelle:v.echelle,niveau:v.niveau,confiance:v.confiance,incertaine:!!v.incertaine,motifs:v.motifs})),
     graphicalObservations:[],physicalOccurrences:[],associations:[],evidence:[],uncertainties:[],
     // phase 9A : support (voile droit, voile circulaire…) de chaque réservation associée, valeurs et provenances (jamais appliqué)
-    supports:Object.entries(D.SP||{}).map(([ligne,r])=>Object.assign({ligne},r))};
+    supports:Object.entries(D.SP||{}).map(([ligne,r])=>Object.assign({ligne},r)),
+    // état de l'analyse des supports : une liste vide après un échec ne se confond pas avec une analyse réussie sans résultat
+    supportsAnalyse:D.SPerr?{etat:'echec',erreur:D.SPerr}:D.SP?{etat:'reussie',lignes:Object.keys(D.SP).length}:{etat:'non_lancee'}};
   D.C.forEach((c,i)=>{const cl=c.statut==='a_confirmer'&&!D.lk.has(i)?dxrCl(i):null;
     J.graphicalObservations.push({id:c.id,type:'contour',forme:c.type,page:c.source.page,vue:c.vue||null,bbox:bx(c.bbox),statut:c.statut,rattache:D.lk.has(i),
       classement:cl,repere:c.annot&&c.annot.repere?c.annot.repere.texte:null,cotes:c.annot&&c.annot.cotes?c.annot.cotes.texte:null,remarques:c.remarques.slice()})});
@@ -787,7 +789,9 @@ function dxrBilan(){const D=DXI,n={forte:0,partielle:0,probable:0,conflit:0,abse
   const o={...n,reperes:nr,doublons:D.lk.size,vues,hors,horsReperes:D.HR.length,colonnes:D.ana&&D.ana.colonnes||0};
   o.txt=`${n.forte} forte(s), ${n.partielle} partielle(s), ${n.probable} probable(s), ${n.conflit} conflit(s), ${n.absente} non retrouvée(s)${n.rejete?`, ${n.rejete} rejetée(s)`:''}`
     +` · ${nr} localisation(s) de repère · ${D.lk.size} contour(s) rattaché(s) (pas de doublon) · ${hors} forme(s) hors nomenclature`
-    +(D.HR.length?` · repère(s) hors nomenclature : ${D.HR.slice(0,12).map(x=>esc(x.texte)+' (p. '+x.page+')').join(', ')}${D.HR.length>12?'…':''}`:'');
+    +(D.HR.length?` · repère(s) hors nomenclature : ${D.HR.slice(0,12).map(x=>esc(x.texte)+' (p. '+x.page+')').join(', ')}${D.HR.length>12?'…':''}`:'')
+    // phase 9A : un échec de l'analyse des supports est visible (le rapprochement et la nomenclature restent utilisables)
+    +(D.SPerr?` · <span class="dxs-err" style="color:var(--acct)">⚠ analyse des supports en échec (${esc(D.SPerr)}) : aucun support analysé ; nomenclature et rapprochement utilisables</span>`:'');
   return o}
 // Cotes proposées (mm) : cote écrite à côté du contour (unité écrite, ou déduite de la mesure à 10 % près), sinon mesure à l'échelle
 function dxrPre(i){const D=DXI,c=D.C[i],r=D.R[i],k=dxrK(c),A=c.annot&&c.annot.cotes,f=dxiNum,circ=c.type==='circ';

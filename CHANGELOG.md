@@ -30,6 +30,13 @@ forme voile jamais activée à l'import, aucun LLM ni API ; aucun seuil arbitrai
   proche du repère repris, support seulement « possible » ; pages très chargées relues localement) → `DXI.SP` et clé `supports` de
   l'export JSON. Aucune interface nouvelle.
 
+**Correctifs de relecture (PR #19)** : `consolider` (plusieurs vues) ne garde plus une `correspondance_voile`, des flèches ou une confiance
+forte héritées d'une vue : nature en désaccord → `inconnu` sans valeur de support ; valeur en conflit → `null` et valeurs dépendantes
+(rayon extérieur, flèches, Ø cuve) recalculées par `GEO.sag` ou retirées ; confiance « faible » ; valeurs et preuves de chaque vue
+conservées (`observations[]`). Échec de l'analyse des supports (`DXI.SPerr`) affiché dans le bilan d'import ; export JSON :
+`supportsAnalyse` (`reussie` / `echec` + erreur / `non_lancee`). Tests ajoutés dans `t_support` (voile droit contre voile circulaire,
+deux vues circulaires contradictoires, vues concordantes, échec simulé).
+
 **Plans réels (hors dépôt, Chromium), mêmes scénarios qu'en phase 8** : tableaux, repères, cotes, vues, occurrences et rapprochements
 **identiques** pour A, B (zone et automatique), C, D ; seuls les temps changent (analyse du support et relecture locale : D 67 → 71 s,
 A 161 → 174 s, B 125 → 147 s, C 224 → 242 s ; passages séquentiels, autres processus actifs). Supports analysés : 13 réservations
@@ -42,9 +49,9 @@ contour de la réservation posée dans sa paroi n'est pas repéré par la phase 
 **Écarts voulus** : aucun test existant modifié. Export JSON de l'analyse : nouvelle clé `supports` (les autres clés inchangées).
 Nouvelle suite `t_support` (plans fictifs `tests/support_fictifs.py`, constructions `tests/support_cas.js`), ajoutée aux suites rapides.
 
-**Tests** : `python tests/run.py complet -j 4` : 37 / 37 suites vertes (22/10/2026, Chromium), dont `t_support` (62) ; `t_avap` : 1 090 / 1 090
-contre main `6d5b4e5` (moteur, feuilles, DXF et CSV identiques). Livrable construit : 37 039 727 octets, SHA-256
-`52934d9759c964fb1cb212a89be5e338381bba6df1c4e206946bc2a811a2e2b0`.
+**Tests** : `python tests/run.py complet -j 4` : 37 / 37 suites vertes (22/10/2026, Chromium), dont `t_support` (71 après les correctifs de relecture) ; `t_avap` : 1 090 / 1 090
+contre main `6d5b4e5` (moteur, feuilles, DXF et CSV identiques). Livrable construit (après correctifs) : 37 043 190 octets  SHA-256
+`40e1b0e3bbfab728e9c6fd97bc52e04d79cc02a8983b5e56b7c8b35fbd4f993f`.
 
 **Non validé** : aucun vrai plan ne contient de réservation repérée dans un voile circulaire (plan B : contour non repéré en amont) ;
 seuils géométriques internes (2° de parallélisme, 1 % de centre, 10 % d'accord cote / mesure, rival à 60 %) éprouvés sur cas fictifs
