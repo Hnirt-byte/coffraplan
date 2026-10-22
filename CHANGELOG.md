@@ -3,6 +3,65 @@
 Détail complet de chaque version (demandes, écarts voulus, tests, non validé) : `docs/historique/HANDOFF_<version>.md`.
 Chaque version est un tag git (`git diff v2.4 v2.5 -- app/` pour voir les changements).
 
+## Phase 8 — construction du livrable par la CI ; tableaux juxtaposés et titres de vue (plan D) (non publiée, sans numéro de version)
+**Demande (Kévin, 22/10/2026)** : faire produire le HTML autonome par GitHub Actions sans le versionner ; corriger les deux défauts
+du plan D (tableaux voisins mêlés, titre « Sous Toiture 1 : 25 » non reconnu) ; aucun changement des calculs, de la 3D, des exports,
+du format JSON ; pas de Tauri ni de nouveau modèle ; `#appVer` reste v3.1 ; aucun tag ni Release.
+
+**Lot A, construction** (détail : `modules/import/README.md` § 3, CLAUDE.md)
+- `app/CoffraPlan.source.html` (HTML, CSS, script principal) + marqueurs `<!--@bloc ID-->` ; `modules/import/assembler.py` construit
+  `app/CoffraPlan.html` (déterministe, écriture atomique) ; `--check` le vérifie. three.js r170 extrait dans `app/vendor/three`
+  (identique octet pour octet à `three@0.170.0/build/three.module.min.js`, empreinte SHA-256 vérifiée comme les autres dépendances).
+- Reproductibilité : sur les sources de main `b94a01e`, livrable **identique octet pour octet** au HTML versionné (36 515 091 octets).
+- Correctif de relecture : le livrable demandait les polices à Google Fonts (seule requête réseau, tolérée jusqu'ici par les tests) ;
+  Barlow, Barlow Condensed et JetBrains Mono (mêmes graisses, OFL-1.1, `@fontsource` 5.3.0, sous-ensembles latin / latin-ext)
+  sont maintenant embarquées (`app/vendor/fonts`, bloc `fonts-src`, empreintes vérifiées) ; plus aucune requête réseau, mise en
+  page conservée sans connexion. `t_build` surveille toutes les requêtes dès la 1re navigation, sans domaine exclu.
+- `app/CoffraPlan.html` retiré de l'index (historique non réécrit) et ignoré ; pas de Git LFS ; poids OCR toujours versionnés.
+- CI (`tests.yml`) : construction + `--check`, syntaxe, tests (rapides / complets / hebdomadaire inchangés), puis artefact
+  `CoffraPlan-<commit>` (HTML + `CONSTRUCTION.txt` : commit construit, tête de PR, run, date, taille, SHA-256) seulement si tout est
+  vert, conservé 90 jours ; aucune Release. `release.yml` (tag) construit le HTML avant de le publier.
+- Tests : `run.py` construit une fois ; une suite lancée seule construit ; `t_avap` construit la version de référence si son HTML
+  n'est pas versionné ; nouvelle suite `t_build` (source, reproductibilité, `--check`, dépendance altérée refusée, git, livrable en
+  file:// sans réseau : IndexedDB, PDF.js, PP-OCRv6, Tesseract, three.js, exports DXF / IFC / glTF / CSV).
+
+**Lot B, plan D** (détail : `modules/import/README.md`, § Phase 8)
+- Cause réelle du défaut 1 (mesurée) : les traits du plan D (≈ 400 000) dépassent le plafond `SEG_MAX` (60 000) : aucun trait du
+  tableau n'est relevé, lecture par la position des textes ; le tableau de trappes voisin, construit en premier, s'étendait le long de
+  sa 1re ligne de valeurs (écart ≤ 60 h) jusqu'à la nomenclature et lui prenait R15-V08. Correction générique : couloirs des en-têtes
+  (l'en-tête d'un autre tableau, à une autre hauteur, borne le tableau de son côté).
+- Défaut 2 : titre sans mot-clé de vue reconnu par son échelle écrite juste dessous ; vue en plan si le texte nomme un niveau vu de
+  dessus / dessous et si le dessin rattaché est conséquent ; sinon « autre » (jamais compté) ; confiance au plus moyenne ; échelle
+  rattachée à cette vue seulement.
+- Constaté sur le plan fictif puis sur le plan A : un titre de cartouche (« VUE EN PLAN … », « Plan guide », « voir plan … ») pouvait
+  devenir une vue (jusqu'à une confiance forte sur le fictif). Titre placé dans un petit cadre d'angle de feuille avec au moins 3 autres
+  textes : jamais une vue.
+
+**Mesures sur les plans réels (hors dépôt ; Chromium ; vérités : couche texte pour D, relevés de la phase 6)**
+- **Plan D, lecture automatique sans zone** : nomenclature 14 → **46 / 46 lignes** ; repères, cotes en mm, niveaux, finitions,
+  désignations 46 / 46 ; tableau de trappes distinct (3 lignes, écarté) ; aucune ligne de note, aucun doublon, aucune ligne inventée.
+- **Plan D, vues** : « Sous Toiture » + « 1 : 25 » : vue en plan (confiance moyenne), échelle 1:25 sur cette vue, région = dessin
+  principal ; le cartouche « VUE EN PLAN - SOUS TOITURE » n'est pas une vue. Occurrences comptées 0 → **31, toutes justes** (repères
+  isolés du dessin relevés indépendamment par pdftotext : 33 ; R01 et R02, présents deux fois sans quantité au tableau, restent non
+  décidés comme le veut la règle de la phase 5.1). Le nombre d'occurrences n'est jamais déduit du nombre de lignes.
+- **Plans A, B (zone et automatique), C** : tableaux, repères, cotes, niveaux, occurrences **identiques** à la phase 6 ; plan A,
+  page 1 : 2 fausses vues tirées du cartouche (« Plan », « plan ferraillage 50 ») retirées (vues incertaines 3 → 2 ; aucune
+  occurrence n'y était comptée).
+- Temps (passages séquentiels, mêmes scénarios qu'en phase 6) : A 170 → 161 s, B 120 → 125 s, C 238 → 224 s ; D (lecture automatique
+  sans zone + analyse du dessin) : 67 s.
+
+**Écarts voulus** : `t_avap` adapté (construit la version de référence depuis git quand son HTML n'est pas versionné : sans cela, il ne
+pourrait plus comparer). Aucun autre test existant modifié. Nouvelles suites `t_build` et `t_plan_d` (plan fictif anonyme `tests/plan_d_fictif.py`,
+cas négatif « Sous Toiture » dans une note ou sans échelle, cartouche).
+
+**Tests** : `python tests/run.py complet -j 4` : 36 / 36 suites vertes (22/10/2026, Chromium), dont `t_build` (21), `t_plan_d` (17), `t_ux` (polices réelles),
+`t_stockage`, `t_ppocr`, `t_3d`, `t_export` ; `t_avap` : 1 090 / 1 090 avec la référence par défaut (construite depuis HEAD) et contre le main
+validé `b94a01e` (`AVAP_REF=origin/main`) : moteur, feuilles, DXF et CSV identiques. Livrable construit (polices embarquées) : 36 991 952 octets, SHA-256 `17df713ac45edb454d7ba6b98ae935ee12157d5c9f7cecf13cd20d1746a509dd`.
+
+**Non validé, limites** : `SEG_MAX` (60 000 traits par page) reste un plafond : sur un plan très chargé, les régions de vue sont
+partielles et les tableaux sont lus par leurs textes ; artefact CI : téléchargement manuel depuis l'onglet Actions (90 jours) ;
+reconnaissance des titres déduits éprouvée sur un seul plan réel et des cas fictifs ; Firefox, Safari, tablette non essayés.
+
 ## Phase 7 — stockage fiable et sauvegarde des projets (non publiée, sans numéro de version)
 **Demande (Kévin, 22/10/2026)** : supprimer le risque de perte silencieuse des projets lié au stockage du navigateur, sans toucher aux
 fonctions métier ; IndexedDB en stockage principal ; migration non destructive ; sauvegarde et restauration vérifiées ; erreurs

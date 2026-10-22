@@ -24,6 +24,10 @@ jobs:
           pip install -r tests/requirements.txt
           python -m playwright install --with-deps chromium
           sudo apt-get install -y --no-install-recommends libreoffice-calc fonts-liberation fonts-dejavu-core
+      - name: Construction de CoffraPlan.html
+        run: |
+          python modules/import/assembler.py
+          python modules/import/assembler.py --check
       - name: Version du tag = version de l'appli
         run: |
           V=$(grep -o 'id="appVer"[^>]*>[^<]*' app/CoffraPlan.html | sed 's/.*>//')

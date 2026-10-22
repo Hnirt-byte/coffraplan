@@ -3,13 +3,18 @@
 Plans de coffrage bois pour réservations et petits ouvrages : débit CP et bois, imbrication, gabarits 1:1, 3D, DXF,
 dossier PDF, mode chantier. **Un seul fichier HTML**, hors connexion, sans installation.
 
-- Application : [`app/CoffraPlan.html`](app/CoffraPlan.html). Il suffit de l'ouvrir dans Chrome ou Edge.
+- Application : le fichier unique `CoffraPlan.html`, à ouvrir dans Chrome ou Edge. Depuis la phase 8, il n'est plus enregistré dans
+  le dépôt : il est **construit** à partir des sources (voir « Construire CoffraPlan » ci-dessous).
+- Dernière version construite par GitHub : onglet **Actions** → workflow **Tests** → un run vert (branche `main` ou une PR) → en bas,
+  section **Artifacts** → `CoffraPlan-<commit>` (zip contenant `CoffraPlan.html` et `CONSTRUCTION.txt` : commit exact, date, taille,
+  empreinte SHA-256). Conservé 90 jours. Ce n'est pas une Release.
 - Versions publiées, avec le HTML et le mode d'emploi PDF : onglet **Releases** du dépôt.
 - Historique : [CHANGELOG.md](CHANGELOG.md) · Suite : [docs/feuille-de-route.md](docs/feuille-de-route.md)
 - Règles du projet et carte du code (lues par Claude Code à chaque session) : [CLAUDE.md](CLAUDE.md)
 
 © Kévin TRINH. Tous droits réservés. Dépôt privé.
-Bibliothèque tierce intégrée : [three.js](https://threejs.org) r170 (licence MIT, mention conservée dans le fichier).
+Bibliothèques et ressources tierces intégrées (licences dans les dossiers `vendor`) : [three.js](https://threejs.org) r170 (MIT), PDF.js,
+Tesseract.js, ONNX Runtime Web et PP-OCRv6, polices Barlow, Barlow Condensed et JetBrains Mono (OFL-1.1). Aucune requête réseau.
 
 ## Travailler sur le projet
 
@@ -27,9 +32,14 @@ lance les tests et pousse une branche ou un commit.
    pip install -r tests/requirements.txt
    python -m playwright install chromium
    ```
-4. Ensuite :
+4. Construire CoffraPlan (à refaire après chaque modification des sources ; environ 2 s) :
    ```
-   python tests/run.py -j 4          # tests rapides (environ 2 min)
+   python modules/import/assembler.py           # → app/CoffraPlan.html (à ouvrir dans Chrome ou Edge)
+   python modules/import/assembler.py --check   # vérifie que app/CoffraPlan.html correspond aux sources
+   ```
+5. Ensuite :
+   ```
+   python tests/run.py -j 4          # tests rapides (environ 2 min ; construit d'abord app/CoffraPlan.html)
    python docs/manuel/build.py       # mode d'emploi PDF → docs/manuel/
    ```
    Le test d'export XLSX ouvre le classeur avec LibreOffice (`soffice`). Sans LibreOffice, ce seul contrôle échoue.
@@ -41,7 +51,7 @@ tests, génère le mode d'emploi et crée la Release (HTML + PDF).
 ## Dossiers
 | Dossier | Contenu |
 |---|---|
-| `app/` | l'application (fichier unique, seule source) |
+| `app/` | sources de l'application : `CoffraPlan.source.html` (HTML, CSS, script principal) et `vendor/three` ; `CoffraPlan.html` y est construit (non versionné) |
 | `tests/` | bancs Playwright (`run.py`), références figées (`ref/`, `ref_v19.json`) |
 | `docs/manuel/` | mode d'emploi : `manuel.html`, `captures.py` (captures d'écran), `build.py` (PDF) |
 | `docs/historique/` | notes de passation de chaque version |

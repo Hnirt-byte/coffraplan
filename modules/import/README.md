@@ -450,14 +450,35 @@ automatique), unite_tableau}, corrige:['cotes','ref'], a_verifier, h_saisie, ind
   géométrique `oslash` seulement) ; zones sans grille toujours à Tesseract ; la détection PP-OCR (pages entières), PP-StructureV3,
   PaddleOCR-VL et Docling n'ont pas pu être essayés ici (hôtes de téléchargement bloqués) : voir `docs/audit-modernisation.md`.
 
-## 3. Fichiers séparés et HTML autonome (en place)
+## 3. Construction du livrable (phase 8)
 
-- `python modules/import/assembler.py` remplace le bloc `<script id="cpi-src">…</script>` de `app/CoffraPlan.html` (placé
-  avant le `<script>` principal) par `lecteur.js`, `dxf.js`, `pdf.js`, `ocr.js`, `ppocr.js`, `detecteur.js`, `nomenclatures.js`, `adaptateur.js`, `fenetre.js`, dans cet ordre,
-  chacun précédé de son nom. Résultat déterministe (fins de ligne normalisées), bibliothèque standard Python seulement.
-- `--check` échoue si le bloc diffère des sources : lancé par `tests/syntax.sh` (étape « Syntaxe » de la CI) et par t_dxf_ui.
-  Une source modifiée sans réassemblage fait donc échouer la CI.
-- Le reste du HTML s'édite toujours à la main ; l'appli reste un fichier unique, hors connexion, sans CDN ni serveur.
+- `app/CoffraPlan.source.html` contient le HTML, le CSS et le script principal, avec un marqueur `<!--@bloc ID-->` par bloc généré.
+- `python modules/import/assembler.py` construit `app/CoffraPlan.html` (non versionné). Il remplace :
+  - `cpi-src` par `lecteur.js`, `dxf.js`, `pdf.js`, `ocr.js`, `ppocr.js`, `detecteur.js`, `nomenclatures.js`, `geometrie.js`,
+    `rapprochement.js`, `vues.js`, `adaptateur.js`, `fenetre.js`, dans cet ordre, chacun précédé de son nom ;
+  - `fonts-src` (`<style>`, `@font-face` en base64) par les polices de `app/vendor/fonts` ;
+  - `three-src` par `app/vendor/three` ;
+  - `pdfjs-*`, `tess-*` et `ppocr-*` par `vendor/`, avec les empreintes SHA-256 vérifiées et les `.gz` en base64.
+- Le résultat est déterministe : mêmes sources, mêmes octets. L'écriture est atomique et n'a lieu que si le contenu change.
+- Sur les sources de main `b94a01e`, le livrable était identique octet pour octet au HTML versionné jusque-là.
+- `--check` échoue si `app/CoffraPlan.html` est absent ou différent des sources. Il est lancé par :
+  - `tests/syntax.sh` (étape « Syntaxe » de la CI) ;
+  - t_dxf_ui, t_ocr, t_pdf, t_ppocr et t_build.
+- L'appli reste un fichier unique, hors connexion, sans CDN ni serveur.
+
+## Phase 8 : tableaux juxtaposés, titres de vue sans mot-clé, cartouche
+- **Tableaux juxtaposés** (`construire`) :
+  - Quand les traits d'une page ne sont pas relevés (plafond `SEG_MAX` de `pdf.js`, plan très chargé), un tableau est lu par la position de ses textes.
+  - Avant correction, le tableau construit en premier s'étendait de proche en proche (écart ≤ 60 h) le long d'une ligne de valeurs, jusqu'au tableau voisin dont les lignes sont aux mêmes hauteurs, et lui prenait ses lignes.
+  - Désormais, l'en-tête d'un autre tableau (autre hauteur, sans recouvrement horizontal) borne le tableau de son côté (`g.entetes`, couloir `limL` / `limR`, centre des textes). Cela s'applique à l'extension de largeur, aux lignes, au titre et aux traits.
+  - Aucun seuil propre à un plan.
+- **Titres de vue sans mot-clé** (`titres`) :
+  - Un grand texte sans « vue », « plan », « coupe »… (« Sous Toiture ») devient un titre seulement avec son échelle écrite (« 1 : 25 », « 1/50 ») juste dessous ou sur la même ligne, en texte plus petit, à moins de 2,6 hauteurs.
+  - C'est une vue en plan si le texte nomme un niveau vu de dessus ou de dessous (sous / dessus / dessous + toiture, dalle, plancher…, `NIVEAUX`) et si le dessin rattaché est conséquent (≥ `DV_DEDUIT` cases). Sinon, le type est « autre » et la vue n'est jamais comptée.
+  - Confiance au plus moyenne, motif écrit. L'échelle appartient à cette vue seulement.
+- **Cartouche** (`cart`, dans `detecter`) : un titre placé dans un petit cadre d'angle de feuille (≤ 10 % de la page) contenant au moins 3 autres textes n'est jamais un titre de vue.
+- Banc `t_plan_d.py` : plan fictif anonyme type D (`tests/plan_d_fictif.py`) et cas négatif (« Sous Toiture » dans une note, ou sans échelle).
+- Limite connue : `SEG_MAX` reste à 60 000 traits par page. Sur un plan très chargé, les traits des tableaux et d'une partie du dessin ne sont pas relevés (lecture par textes, régions de vue partielles).
 
 ## Intégration dans l'appli (fenêtre D)
 - Accès : bouton `#bDxi` « 📥 Importer un plan » (barre du haut, carte Plans, accueil). Format reconnu au contenu (`%PDF-`,

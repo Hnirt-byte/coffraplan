@@ -8,7 +8,7 @@ import os, subprocess, sys, time
 from concurrent.futures import ThreadPoolExecutor
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-RAPIDE = ['t_import', 't_dxf', 't_dxf_ui', 't_nomenclature', 't_pdf', 't_ocr', 't_detection', 't_rapprochement', 't_vues', 't_phase51', 't_ppocr', 't_stockage', 't_v30', 't_coh', 't_v210', 't_v29', 't_v28', 't_v26', 't_v25', 't_v24', 't_ux', 't_v23', 't_ui', 't_regress', 't_special', 't_3d', 't_renforts', 't_poutre', 't_export', 't_forme']
+RAPIDE = ['t_import', 't_dxf', 't_dxf_ui', 't_nomenclature', 't_pdf', 't_ocr', 't_detection', 't_rapprochement', 't_vues', 't_phase51', 't_ppocr', 't_stockage', 't_build', 't_plan_d', 't_v30', 't_coh', 't_v210', 't_v29', 't_v28', 't_v26', 't_v25', 't_v24', 't_ux', 't_v23', 't_ui', 't_regress', 't_special', 't_3d', 't_renforts', 't_poutre', 't_export', 't_forme']
 LONG = ['t_avap', 't_audit', 't_gab_ident', 't_gab_dalle']
 
 
@@ -24,6 +24,9 @@ def main(args):
     if '-j' in args:
         i = args.index('-j'); j = int(args[i + 1]); del args[i:i + 2]
     names = RAPIDE + LONG if args == ['complet'] else (args or RAPIDE)
+    if 'APP' not in os.environ:   # phase 8 : livrable construit une fois depuis les sources, puis utilisé par toutes les suites
+        subprocess.run([sys.executable, os.path.join(HERE, '..', 'modules', 'import', 'assembler.py')], check=True)
+        os.environ['CP_CONSTRUIT'] = '1'
     ko = []
     with ThreadPoolExecutor(j) as ex:
         for name, rc, dt, out in ex.map(one, names):

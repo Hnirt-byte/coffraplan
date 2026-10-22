@@ -6,7 +6,7 @@ Comparé : contrôles, débit (CP + bois), feuilles de plan (HTML), feuilles CP 
 v2.10 : écarts voulus — perçage des fonds Ø poteau + 0 mm par défaut, platelage de dalle soulevé en vue éclatée.
 v3.0 : écart voulu — cotes d'implantation sur les vues en plan de toutes les formes (axes X / Y, cotes signées, poteaux), feuilles et DXF ; débit, CSV, découpe, gabarits inchangés.
 Différences neutralisées : le nom de l'application dans le pied des feuilles (« Plans Réservation Coffrage » → « CoffraPlan ») et le n° d'enregistrement 3D du bouton « Ouvrir en 3D » (compteur de session, dépend du nombre de plans déjà générés)."""
-import os, json, hashlib, re, subprocess
+import os, json, hashlib, re, subprocess, sys
 from playwright.sync_api import sync_playwright
 from lib import Suite, open_app, HERE, OUT, APP
 
@@ -16,8 +16,16 @@ def old_app():
         return os.environ['APP_OLD']
     ref = os.environ.get('AVAP_REF', 'HEAD')
     p = os.path.join(OUT, 'avant.html')
+    try:   # jusqu'à la phase 7, le HTML était versionné
+        h = subprocess.check_output(['git', 'show', ref + ':app/CoffraPlan.html'], cwd=HERE, stderr=subprocess.DEVNULL)
+    except subprocess.CalledProcessError:   # phase 8 : construit depuis les sources de cette révision (copie temporaire)
+        import tempfile, tarfile, io
+        d = tempfile.mkdtemp()
+        tarfile.open(fileobj=io.BytesIO(subprocess.check_output(['git', 'archive', ref], cwd=os.path.join(HERE, '..')))).extractall(d, filter='data')   # depuis la racine : tout le dépôt
+        subprocess.run([sys.executable, os.path.join(d, 'modules', 'import', 'assembler.py')], check=True, stdout=subprocess.DEVNULL)
+        h = open(os.path.join(d, 'app', 'CoffraPlan.html'), 'rb').read()
     with open(p, 'wb') as f:
-        f.write(subprocess.check_output(['git', 'show', ref + ':app/CoffraPlan.html'], cwd=HERE))
+        f.write(h)
     return p
 
 
