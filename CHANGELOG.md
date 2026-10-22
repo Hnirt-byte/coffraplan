@@ -3,6 +3,34 @@
 Détail complet de chaque version (demandes, écarts voulus, tests, non validé) : `docs/historique/HANDOFF_<version>.md`.
 Chaque version est un tag git (`git diff v2.4 v2.5 -- app/` pour voir les changements).
 
+## Phase 9A — géométrie du support d'une réservation (non publiée, sans numéro de version)
+**Demande (Kévin, 22/10/2026)** : faire comprendre à CoffraPlan la géométrie du support dans lequel se situe une réservation repérée
+sur un plan PDF ou DXF (voile droit, voile circulaire), en séparant forme de l'ouverture, nature du support et solution de coffrage ;
+moteur indépendant, testable, déterministe ; aucune création d'ouvrage, aucun changement des calculs de débit, panneaux ou gabarits,
+forme voile jamais activée à l'import, aucun LLM ni API ; aucun seuil arbitraire de 500 mm ; `#appVer` reste v3.1 ; aucun tag ni Release.
+
+**Fait** (détail : `modules/import/README.md`, § Phase 9A)
+- `modules/import/support.js` (`CPI.support`) : analyse locale autour du contour ou du repère ; faces droites (lignes parallèles,
+  directions des côtés du contour) ou circulaires (arcs concentriques : ARC / bulge DXF, Bézier PDF, chaînes de segments) ; une
+  réservation qui ne va pas d'une face à l'autre n'est jamais rattachée à un support (bande signalée seulement) ; deux supports d'égale
+  vraisemblance → `inconnu` ; quadrillages, tableaux, cartouches, vues en élévation, contours écartés : non analysés.
+- Valeurs en mm avec leur provenance (`cote_explicite`, `mesure`, `calcul`, `saisie`) ; `null` si absente. Échelle de la page et de la
+  vue comparées ; échelle incohérente (deux échelles, ou largeur mesurée sans rapport avec les cotes du tableau) : mesures non utilisées.
+  Une cote voisine n'est retenue que confirmée par la mesure. Orientation de l'ouverture (largeur suivant la paroi ≠ hauteur) par les
+  colonnes Largeur / Hauteur ou par la mesure le long de la paroi ; sinon `null`.
+- Flèches aux deux parements par `GEO.sag` du moteur (reçu en paramètre, aucun calcul dupliqué) ; pistes motivées (fourreau pour une
+  ouverture circulaire, coffrage rectangulaire en paroi droite, comparaison flèche / tolérance saisie en paroi circulaire) ;
+  `solution_proposee` toujours `a_determiner`, `validation_utilisateur_requise` toujours vrai ; `correspondance_voile` (L, l, h, Ø cuve,
+  `dRef`) proposée pour le voile cintré, jamais appliquée.
+- Lecteurs, sans effet sur l'existant : `CPI.pdf.chemins` renvoie aussi les pièces de Bézier (`courbes`) et relit une page par zones
+  (`{zones}`) ; `dxf.js` relève `arcs` et `traitsArcs` à part (entités, traits, détecteur et tableaux inchangés).
+- Fenêtre d'import : `dxsAnalyser` en fin de « 🔎 Analyser le dessin » (lignes en concordance forte ou partielle ; contour écarté le plus
+  proche du repère repris pour le support seulement, signalé ; pages très chargées relues localement) → `DXI.SP` et clé `supports` de
+  l'export JSON. Aucune interface nouvelle.
+
+**Écarts voulus** : aucun test existant modifié. Export JSON de l'analyse : nouvelle clé `supports` (les autres clés inchangées).
+Nouvelle suite `t_support` (plans fictifs `tests/support_fictifs.py`, constructions `tests/support_cas.js`), ajoutée aux suites rapides.
+
 ## Phase 8 — construction du livrable par la CI ; tableaux juxtaposés et titres de vue (plan D) (non publiée, sans numéro de version)
 **Demande (Kévin, 22/10/2026)** : faire produire le HTML autonome par GitHub Actions sans le versionner ; corriger les deux défauts
 du plan D (tableaux voisins mêlés, titre « Sous Toiture 1 : 25 » non reconnu) ; aucun changement des calculs, de la 3D, des exports,

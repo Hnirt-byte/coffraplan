@@ -480,6 +480,53 @@ automatique), unite_tableau}, corrige:['cotes','ref'], a_verifier, h_saisie, ind
 - Banc `t_plan_d.py` : plan fictif anonyme type D (`tests/plan_d_fictif.py`) et cas négatif (« Sous Toiture » dans une note, ou sans échelle).
 - Limite connue : `SEG_MAX` reste à 60 000 traits par page. Sur un plan très chargé, les traits des tableaux et d'une partie du dessin ne sont pas relevés (lecture par textes, régions de vue partielles).
 
+## Phase 9A : géométrie du support d'une réservation (`support.js`, `CPI.support`)
+Trois notions séparées : **forme de l'ouverture** (rect, carré, circ), **nature du support** (`voile_droit`, `voile_circulaire`,
+`autre`, `inconnu`), **solution de coffrage** (jamais choisie ici : `solution_proposee` reste `a_determiner`, des pistes motivées
+seulement). Aucun seuil de taille d'ouverture : la flèche est calculée par `GEO.sag` du moteur (reçu en paramètre `sag`, aucun calcul
+métier dupliqué), à la corde = largeur **suivant la paroi** et aux deux parements, puis comparée à une tolérance **saisie**.
+
+- **Entrées** : `CPI.support.analyser(obs, env, o)`.
+  - `obs` = `{repere, candidat (contour de CPI.geometrie / CPI.detecteur) | point, h, page, vue}`.
+  - `env` = `CPI.support.envPdf(chemins, textes)` ou `CPI.support.envDxf(doc, {espace, presentation})`.
+  - `o` = `{k (mm par unité du dessin), echelle:{source, autres:[{k, source}]}, ligne (nomenclature, association fiable seulement),
+    saisie:{epaisseur_mm, rayon_interieur_mm, largeur_suivant_paroi_mm}, tolerance_mm, sag, cadres, repris, eps, fenetre}`.
+- **Analyse locale** (fenêtre de 6 fois la taille du contour autour de lui, hors tableaux, sans le contour lui-même) :
+  - faces droites : segments colinéaires réunis en lignes ; paire adjacente de part et d'autre de la réservation, assez longue hors de
+    l'ouverture ; pour un rectangle, seulement les directions de ses côtés ; « traversée » si le contour va d'une face à l'autre ;
+  - faces circulaires : arcs de même centre, rayons de part et d'autre de la réservation, arcs présents près d'elle ; arcs pris dans
+    les ARC / CIRCLE / polylignes à bulge d'un DXF, les courbes de Bézier d'un PDF (`arcsBezier` : cercle par 3 points, contrôlé en
+    4 autres points), les chaînes de segments courts qui suivent un cercle (`arcsChaines`, courbe aplatie : rayon approché, signalé) ;
+  - rejets : quadrillage (au moins 5 lignes régulièrement espacées), réservation plus large que la bande, ligne qui traverse l'ouverture
+    (axe, cote) ; deux supports d'égale vraisemblance (autre direction, autre centre) → `inconnu`, rien n'est choisi ; courbes non
+    circulaires seules → `autre`, aucun rayon ;
+  - refus d'analyse : contour écarté par le repérage (sauf `repris`), observation dans un tableau ou un cartouche, vue en élévation.
+- **Valeurs (mm) et provenance** (`provenance['support.epaisseur_mm'] = {origine:'cote_explicite'|'mesure'|'calcul'|'saisie', source, detail}`) :
+  - échelle : celle donnée (page ou vue) ; deux échelles différentes, ou largeur mesurée qui ne correspond à aucune cote du tableau →
+    « échelle incohérente », mesures non utilisées ; sans échelle, une épaisseur saisie ou cotée au tableau (« ép. 250 mm ») donne une
+    échelle déduite (valeurs en provenance `calcul`, signalées) ;
+  - épaisseur : saisie > cote écrite contre la paroi **confirmée par la mesure** > cote de la nomenclature > mesure ; une cote voisine
+    non confirmée n'est jamais attribuée (proximité ≠ certitude) ;
+  - rayon intérieur : saisie > cote « R=… » / « Ø … » confirmée par la mesure (face intérieure ou extérieure) > nomenclature > mesure ;
+  - largeur suivant la paroi et orientation : colonnes Largeur / Hauteur du tableau (explicite) ; « a x b » orienté par la mesure le
+    long de la paroi (500 × 1 000 : 500 suivant la courbure, hauteur 1 000) ; sinon `null` et « orientation non confirmée » ;
+  - `correspondance_voile` : proposition `{forme:'voile', L, l, h, DcuveM, dRef:'int', joues:null}` pour le voile cintré du moteur,
+    jamais appliquée.
+- **Sortie** : `{repere, observation, ouverture, support, coffrage:{solution_proposee:'a_determiner', pistes, fleche_interieure_mm,
+  fleche_exterieure_mm, tolerance_mm}, correspondance_voile, provenance, preuves, incertitudes, validation_utilisateur_requise:true}`.
+  `CPI.support.consolider([…])` réunit les vues d'un même repère (valeurs à 2 % gardées, désaccord → `null` + incertitude).
+- **Lecteurs** (sans effet sur le reste) : `CPI.pdf.chemins` renvoie aussi `courbes` (pièces de Bézier des sous-chemins de plus de
+  20 pt, plafond 200 000, `coupeCourbes`) et accepte `{zones:[[x0,y0,x1,y1]…]}` : relecture **locale** d'une page très chargée (les
+  plafonds s'appliquent après le tri). `dxf.js` relève `arcs` (ARC, CIRCLE, côtés courbes des polylignes à bulge, blocs compris :
+  rotation, miroir, échelle uniforme) et `traitsArcs` (côtés droits de ces polylignes) **à part** : `entites` et `traits` inchangés
+  (les ARC restent « autre », le détecteur et les tableaux ne les voient pas).
+- **Fenêtre** (`dxsAnalyser`, appelée à la fin de « 🔎 Analyser le dessin ») : localisations fiables des lignes en concordance forte ou
+  partielle ; repère sans contour proposé : contour écarté le plus proche du repère, sans rival (réservation dessinée dans l'épaisseur
+  d'un voile, sommets raccordés aux faces), repris avec une incertitude ; échelle de la page et de la vue comparées ; relecture locale
+  des pages coupées. Résultats dans `DXI.SP` et dans l'export JSON (`supports`) ; nomenclature, contours, ouvrages inchangés ; aucune
+  interface nouvelle (lots suivants).
+- Banc `t_support.py` (plans fictifs `tests/support_fictifs.py`, constructions `tests/support_cas.js`).
+
 ## Intégration dans l'appli (fenêtre D)
 - Accès : bouton `#bDxi` « 📥 Importer un plan » (barre du haut, carte Plans, accueil). Format reconnu au contenu (`%PDF-`,
   DWG `AC10…` refusé avec un message, IFC refusé) puis à l'extension ; glisser-déposer sur la fenêtre. `impJ`

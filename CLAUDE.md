@@ -134,6 +134,13 @@ développement : il progresse vite mais n'est pas développeur senior.
   Phase 8 : tableaux juxtaposés : `construire` borné par le couloir des autres en-têtes (`g.entetes`, `limL` / `limR`) ; titres de vue sans
   mot-clé reconnus par leur échelle écrite (`titres` → `deduit`, vue en plan si niveau nommé, `NIVEAUX`, et dessin ≥ `DV_DEDUIT` cases) ;
   titre de cartouche écarté (`cart` dans `detecter`). Banc `t_plan_d.py` (`tests/plan_d_fictif.py`).
+  Phase 9A : support d'une réservation, `support.js` (`CPI.support.analyser`, `consolider`, `envPdf` / `envDxf`) : forme de l'ouverture,
+  nature du support (`voile_droit`, `voile_circulaire`, `autre`, `inconnu`) et solution de coffrage séparées (solution toujours
+  `a_determiner`, pistes motivées) ; faces parallèles ou arcs concentriques autour de la réservation (analyse locale) ; flèche par
+  `GEO.sag` reçu en paramètre, tolérance saisie, aucun seuil de taille ; provenance de chaque valeur, `null` si absente. Lecteurs :
+  `CPI.pdf.chemins` → `courbes` (Bézier) et `{zones}` (relecture locale) ; `dxf.js` → `arcs`, `traitsArcs` à part (entités et traits
+  inchangés). Fenêtre : `dxsAnalyser` en fin d'analyse du dessin → `DXI.SP`, clé `supports` de l'export JSON ; rien n'est appliqué.
+  Banc `t_support.py` (`tests/support_fictifs.py`, `tests/support_cas.js`).
 - Version affichée : élément `#appVer` (« v3.1 »). t_ux vérifie ce numéro exact ; t_v30 vérifie « v3.x ».
 
 ## Décisions actées (ne pas changer sans l'accord de Kévin)
