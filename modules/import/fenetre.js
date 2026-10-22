@@ -57,6 +57,7 @@ function dxiCss(){if(el('dxiCss'))return;document.head.insertAdjacentHTML('befor
 #dxi .dxp-s legend{font-weight:600;padding:0 4px}
 #dxpO .od{fill:rgba(232,170,12,.18);stroke:var(--acct);stroke-dasharray:3 2;vector-effect:non-scaling-stroke;stroke-width:1px}
 #dxi .dxo{border:1px solid var(--border);border-radius:6px;padding:6px 8px;margin:10px 0 0;font-size:12px}#dxi .dxo legend{font-weight:600;padding:0 4px}
+#dxcZ [hidden]{display:none!important} /* Une .fd a display:flex ; respecter hidden pour les champs inactifs. */
 #dxoT td{vertical-align:top}#dxoT .fi{padding:3px 5px;font-size:12px;min-width:60px;width:100%;box-sizing:border-box}#dxoT th{position:sticky;top:0;background:var(--surface);z-index:1}
 #dxoT .fi.dt{border-color:var(--acct);background:rgba(232,170,12,.14)}#dxoT .fi.ed{border-color:var(--okt)}#dxoT tr.on td{background:rgba(232,130,12,.16)}
 #dxpO .rs{fill:rgba(123,77,255,.10);stroke:#7b4dff;stroke-width:1.5px;vector-effect:non-scaling-stroke;cursor:pointer}

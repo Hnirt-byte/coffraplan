@@ -89,9 +89,17 @@ def t(s):
                 'moteur circ accepte le fourreau sur voile courbe sans paramètres inutilisés',
                 json.dumps(fourreau_prepare,ensure_ascii=False))
         pg.select_option('#dxc_type','circ');pg.select_option('#dxc_support','voile_circulaire')
-        s.check(all(pg.is_hidden('#'+id) for id in ['dxc_R','dxc_joues','dxc_e','dxc_tolerance']),
+        s.check(all(pg.is_hidden('#'+id) for id in ['dxc_L','dxc_h','dxc_R','dxc_joues',
+                                                     'dxc_e','dxc_tolerance','dxc_largeurRef']),
                 'interface fourreau : champs du mannequin cintré masqués')
+        s.check(all(not pg.is_hidden('#'+id) for id in ['dxc_D','dxc_profondeur']),
+                'interface fourreau : diamètre et longueur restent affichés')
         pg.select_option('#dxc_type','rect')
+        s.check(all(not pg.is_hidden('#'+id) for id in ['dxc_L','dxc_h','dxc_R','dxc_joues',
+                                                         'dxc_e','dxc_tolerance','dxc_largeurRef']),
+                'retour au mannequin sur voile courbe : champs nécessaires réaffichés')
+        s.check(all(pg.is_hidden('#'+id) for id in ['dxc_D','dxc_profondeur']),
+                'retour au mannequin : champs du fourreau masqués')
         s.check(pg.input_value('#dxc_L') == '500' and pg.input_value('#dxc_h') == '500', 'tableau carré 500×500 mm : dimensions explicites disponibles sans échelle')
         pg.select_option('#dxc_type','rect');pg.fill('#dxc_h','800');pg.select_option('#dxc_support', 'voile_droit');pg.fill('#dxc_e','20 cm');pg.check('#dxc_traversee');pg.select_option('#dxc_solution','simple')
         pg.click('#dxcRecap')
