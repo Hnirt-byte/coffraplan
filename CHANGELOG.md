@@ -30,8 +30,25 @@ forme voile jamais activée à l'import, aucun LLM ni API ; aucun seuil arbitrai
   proche du repère repris, support seulement « possible » ; pages très chargées relues localement) → `DXI.SP` et clé `supports` de
   l'export JSON. Aucune interface nouvelle.
 
+**Plans réels (hors dépôt, Chromium), mêmes scénarios qu'en phase 8** : tableaux, repères, cotes, vues, occurrences et rapprochements
+**identiques** pour A, B (zone et automatique), C, D ; seuls les temps changent (analyse du support et relecture locale : D 67 → 71 s,
+A 161 → 174 s, B 125 → 147 s, C 224 → 242 s ; passages séquentiels, autres processus actifs). Supports analysés : 13 réservations
+associées (D 4, A 7, B 1, C 1) ; **aucun support affirmé**, tous « inconnu » : vues de détail ou de ferraillage, contours repris
+(support possible), réservations entre deux murs sans les toucher (bande signalée), faces d'un seul côté, deux supports possibles.
+Contrôle visuel des découpes : avant les règles de durcissement, 4 faux voiles (armatures sur A, gaine sur D, lignes de cote sur C,
+bande de pièce sur D), tous retirés. Plan B : la cuve réelle est bien lue (face extérieure en Bézier, intérieure en segments), mais le
+contour de la réservation posée dans sa paroi n'est pas repéré par la phase 4 : support non évalué sur un vrai voile circulaire.
+
 **Écarts voulus** : aucun test existant modifié. Export JSON de l'analyse : nouvelle clé `supports` (les autres clés inchangées).
 Nouvelle suite `t_support` (plans fictifs `tests/support_fictifs.py`, constructions `tests/support_cas.js`), ajoutée aux suites rapides.
+
+**Tests** : `python tests/run.py complet -j 4` : 37 / 37 suites vertes (22/10/2026, Chromium), dont `t_support` (62) ; `t_avap` : 1 090 / 1 090
+contre main `6d5b4e5` (moteur, feuilles, DXF et CSV identiques). Livrable construit : 37 039 727 octets, SHA-256
+`52934d9759c964fb1cb212a89be5e338381bba6df1c4e206946bc2a811a2e2b0`.
+
+**Non validé** : aucun vrai plan ne contient de réservation repérée dans un voile circulaire (plan B : contour non repéré en amont) ;
+seuils géométriques internes (2° de parallélisme, 1 % de centre, 10 % d'accord cote / mesure, rival à 60 %) éprouvés sur cas fictifs
+et quatre plans seulement ; DXF réels avec ARC ou bulge non essayés (seulement DXF écrits par ezdxf) ; Firefox, Safari non essayés.
 
 ## Phase 8 — construction du livrable par la CI ; tableaux juxtaposés et titres de vue (plan D) (non publiée, sans numéro de version)
 **Demande (Kévin, 22/10/2026)** : faire produire le HTML autonome par GitHub Actions sans le versionner ; corriger les deux défauts
