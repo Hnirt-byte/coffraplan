@@ -647,3 +647,40 @@ Fichier confidentiel : il reste sur le poste de Kévin, hors du dépôt.
   cercles seulement ; la fenêtre ne propose que rect / carré (avec ou sans fond) et fourreau.
 - Modèle de plan repris du formulaire (CP, options de la forme affichée, ex. goussets) : vérifier le formulaire avant import.
 - Au-delà de 300 géométries non prises en charge, la liste n'affiche que les 300 premières (le bilan les compte toutes).
+
+## Phase 9C — proposition et création confirmée depuis un PDF
+
+- `CPI.creation.proposer(analyse, saisie, contexte)` : valeurs en mm et provenance,
+  inconnues, flèches, choix possibles et données manquantes ; sans DOM ni stockage.
+  Seules les cotes explicites et les saisies sont disponibles d'emblée ; les autres
+  valeurs de l'analyse exigent `mesuresConfirmees`. Ni les limites reconstruites ni
+  les points PDF ne deviennent des cotes de fabrication ici.
+- `CPI.creation.preparer(proposition, {confirme:true, ref}, {modele, moteur})`
+  réutilise `migr`, `canon`, `voileGeo`, `limErr`, `checks`, `badDims`. Aucune formule
+  de fabrication ajoutée. `para` à angles nuls pour le mannequin droit / simple,
+  `voile` en mannequin ouvert pour le cintré, `circ` pour le fourreau.
+- `creation-ui.js`, fonctions `dxc*` : brouillon en mémoire de la fenêtre, preuves
+  et incertitudes visibles, saisie / correction avec origine, récapitulatif puis
+  case et bouton finaux. Seul `dxcCreer` ajoute à `P`. Modifier une donnée après le
+  récapitulatif invalide sa confirmation. Le projet et ses profils restent intacts
+  pendant la préparation ; les modèles sont lus par le mécanisme existant.
+- Les deux cordes sont celles de `voileGeo` : parallèles = même corde aux deux
+  parements, radiales = `L` extérieure, `cInt` calculée par le moteur. Pas de
+  conversion implicite depuis un développé ou une corde intérieure radiale.
+  Flèches calculées par `GEO.sag` sur chaque corde. Pas de seuil universel.
+- Profils : `tolCourb` facultatif en mm au chantier et dans `ouv[ouvrage]` ; absent
+  ou `null` = non renseigné. Priorité ouvrage puis chantier, correction locale
+  possible sans changer le profil. Zéro est accepté, valeurs négatives / illisibles
+  refusées. Cette tolérance géométrique ne remplace pas la flèche mécanique du CP.
+- `origineImport` garde analyse, proposition, valeurs / origines / corrections,
+  note utilisateur, choix et confirmation. `creationCles` combine empreinte SHA-256
+  du PDF et identité de ligne (page, nomenclature, ID de ligne) / contour stable ; elle est aussi posée et contrôlée
+  par l'ancien chemin PDF. L'empreinte n'embarque aucun contenu du PDF.
+  Les anciens ouvrages dépourvus de cette clé restent lisibles ; leur protection
+  contre les doublons reste le contrôle existant des références.
+- Un clic crée un ouvrage (`nb=1`), pas un lot déduit du nombre de vues. La longueur
+  du fourreau doit être saisie et ses contraintes de traversée confirmées. Pour le
+  moteur `circ`, épaisseur, rayon, joues et tolérance de courbure ne sont pas des
+  prérequis : ils n'entrent pas dans son calcul et restent dans les preuves source.
+- Banc `tests/t_creation.py`, seulement des PDF et géométries fictifs, en campagnes
+  rapide et complète. Exemple pas à pas : manuel §7.22. Les cas réels restent privés.

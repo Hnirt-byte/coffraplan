@@ -3335,10 +3335,11 @@ function openProf(){
 <div class="fd"><label>Format d'impression</label><select class="fi" id="prFmt"><option${c.fmt==='A4'?' selected':''}>A4</option><option${c.fmt!=='A4'?' selected':''}>A3</option></select></div></div>
 <div class="g2"><div class="fd"><label>Longueurs de bois du commerce (mm, séparées par ;)</label><input class="fi" id="prBois" value="${(c.bois||[]).join(' ; ')}"></div>
 <div class="fd"><label>Flèche admise du CP : portée /</label><input class="fi" id="prFl" value="${c.fl||300}" title="300 = critère des fabricants de CP de coffrage (parement) ; une valeur plus faible (200, 150) tolère plus de flèche"></div></div>
+<div class="fd"><label for="prTolCourb">Tolérance de courbure du chantier (mm, facultative)</label><input class="fi" id="prTolCourb" data-u="mm" value="${esc(c.tolCourb??'')}" placeholder="Non renseignée"><div class="hint">Écart géométrique admissible entre corde et parement courbe ; distinct de la flèche mécanique du CP.</div></div>
 ${ou?`<div class="sep"></div><div class="ct">🏛 Ouvrage — ${esc(ou)}</div>
 <div class="g3"><div class="fd"><label>Ø int. cuve (m)</label><input class="fi" id="prDc" data-u="m" value="${o.Dc!=null?o.Dc:''}" placeholder="—"></div>
 <div class="fd"><label>Ép. voile (mm)</label><input class="fi" id="prEv" data-u="mm" value="${o.ev!=null?o.ev:''}" placeholder="—"></div>
-<div class="fd"><label>Prof. poches (mm)</label><input class="fi" id="prPp" data-u="mm" value="${o.pp!=null?o.pp:''}" placeholder="—"></div></div>`:'<div class="hint">Saisir un ouvrage pour définir son Ø de cuve, son épaisseur de voile et la profondeur des poches.</div>'}
+<div class="fd"><label>Prof. poches (mm)</label><input class="fi" id="prPp" data-u="mm" value="${o.pp!=null?o.pp:''}" placeholder="—"></div></div><div class="fd"><label for="prTolOuv">Tolérance de courbure de cet ouvrage (mm)</label><input class="fi" id="prTolOuv" data-u="mm" value="${esc(o.tolCourb??'')}" placeholder="Hériter du chantier"></div>`:'<div class="hint">Saisir un ouvrage pour définir son Ø de cuve, son épaisseur de voile et la profondeur des poches.</div>'}
 <div class="g2" style="margin-top:10px"><button class="btn bs bo" onclick="closeModal()">Annuler</button><button class="btn bs" style="background:var(--accent);color:#fff" onclick="saveProf()">Enregistrer</button></div>`);
   prCpOpts(false,cp);
 }
@@ -3348,12 +3349,14 @@ function prCpOpts(keepE,cp){const T=CPT[S('prCpT','filme')]||CPT.filme,eS=el('pr
 function saveProf(){
   const ch=chKey(S('iCh','')),ou=ouKey(S('iOuv','')),old=JSON.parse(JSON.stringify(PROF[ch]||{}));
   const n=id=>{const v=fieldVal(el(id));return v==null||isNaN(v)?null:v};
+  const tc=n('prTolCourb'),to=ou?n('prTolOuv'):null;
+  if([['prTolCourb',tc],['prTolOuv',to]].some(([id,v])=>S(id,'').trim()&&(v==null||!Number.isFinite(v)||v<0))){toast('Tolérance de courbure : saisir un nombre positif ou nul, ou laisser vide');return;}
   const bs=String(S('prBois',''));let tk=bs.split(/[;\/\n]+/).map(x=>x.trim()).filter(Boolean);if(tk.length===1&&/^[\d\s.,]+$/.test(tk[0])&&/\d\s+\d/.test(tk[0]))tk=tk[0].split(/\s+/);
   const bois=[...new Set(tk.map(x=>parseCote(x)).filter(v=>v>=500&&v<=15000))].sort((a,b)=>a-b);if(bs.trim()&&!bois.length)toast('Longueurs de bois illisibles : valeurs par défaut conservées');
   const e=parseFloat(S('prCpE','18'));const c=Object.assign({},PROF[ch]||JSON.parse(JSON.stringify(PROF_DEF)),{cp:{t:S('prCpT','filme'),e:e>=3&&e<=60?e:18,f:S('prCpF','2500x1250')||'2500x1250'},mont:S('prMont',''),kerf:Math.min(20,Math.max(0,n('prKerf')??4)),ent:Math.min(2500,Math.max(200,n('prEnt')??500)),fmt:S('prFmt','A3'),bois:bois.length?bois:[4000,5000,6000],fl:Math.min(1000,Math.max(100,n('prFl')??300))});
-  c.ouv=c.ouv||{};let oldO=null;
+  c.tolCourb=tc; c.ouv=c.ouv||{};let oldO=null;
   if(ou){const ex=Object.keys(c.ouv).find(x=>x.toLowerCase()===ou.toLowerCase())||ou;oldO=Object.assign({},c.ouv[ex]||{});const o={};const Dc=n('prDc'),ev=n('prEv'),pp=n('prPp');
-    if(Dc>0)o.Dc=Dc;if(ev>0)o.ev=ev;if(pp!=null&&pp>=0)o.pp=pp;c.ouv[ex]=o}
+    o.tolCourb=to;if(Dc>0)o.Dc=Dc;if(ev>0)o.ev=ev;if(pp!=null&&pp>=0)o.pp=pp;c.ouv[ex]=o}
   PROF[ch]=c;svProf();closeModal();
   // Plans héritant des anciennes valeurs de l'ouvrage : proposition de mise à jour
   if(ou&&oldO){const nw=c.ouv[Object.keys(c.ouv).find(x=>x.toLowerCase()===ou.toLowerCase())];

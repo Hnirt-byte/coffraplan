@@ -57,6 +57,7 @@ function dxiCss(){if(el('dxiCss'))return;document.head.insertAdjacentHTML('befor
 #dxi .dxp-s legend{font-weight:600;padding:0 4px}
 #dxpO .od{fill:rgba(232,170,12,.18);stroke:var(--acct);stroke-dasharray:3 2;vector-effect:non-scaling-stroke;stroke-width:1px}
 #dxi .dxo{border:1px solid var(--border);border-radius:6px;padding:6px 8px;margin:10px 0 0;font-size:12px}#dxi .dxo legend{font-weight:600;padding:0 4px}
+#dxcZ [hidden]{display:none!important} /* Une .fd a display:flex ; respecter hidden pour les champs inactifs. */
 #dxoT td{vertical-align:top}#dxoT .fi{padding:3px 5px;font-size:12px;min-width:60px;width:100%;box-sizing:border-box}#dxoT th{position:sticky;top:0;background:var(--surface);z-index:1}
 #dxoT .fi.dt{border-color:var(--acct);background:rgba(232,170,12,.14)}#dxoT .fi.ed{border-color:var(--okt)}#dxoT tr.on td{background:rgba(232,130,12,.16)}
 #dxpO .rs{fill:rgba(123,77,255,.10);stroke:#7b4dff;stroke-width:1.5px;vector-effect:non-scaling-stroke;cursor:pointer}
@@ -86,7 +87,7 @@ function dxiOpen(){dxiCss();modal(`<div class="cd" style="margin:0" id="dxi" ond
 
 function dxiErr(nom,lu){dxiQuit();if(!el('dxiZ'))return;el('dxiN').innerHTML=`<b>${esc(nom)}</b>`;
   el('dxiZ').innerHTML=`<div class="hint" style="margin:10px 0 0;border-left-color:var(--red)">⛔ Fichier non lu : ${esc(lu.message)}${(lu.erreurs||[]).length?' — '+esc(lu.erreurs.slice(0,5).join(' · ')):''}</div>`;dxiBtn()}
-function dxiQuit(){if(DXI&&DXI.ocJob)CPI.ocr.arreter();if(DXI&&DXI.pdf)CPI.pdf.fermer(DXI.pdf);DXI=null}
+function dxiQuit(){if(typeof dxcFermer==='function')dxcFermer();if(DXI&&DXI.ocJob)CPI.ocr.arreter();if(DXI&&DXI.pdf)CPI.pdf.fermer(DXI.pdf);DXI=null}
 // Format reconnu au contenu (en-tête %PDF, DWG « AC10 ») puis à l'extension ; DXF : UTF-8 strict (R2007 et suivants), sinon CP-1252 (R12 à R2004)
 async function dxiFile(f){if(!f)return;let b,txt;
   try{b=await f.arrayBuffer()}catch(e){return dxiErr(f.name,{message:'fichier illisible'})}
@@ -108,7 +109,7 @@ async function dxiFile(f){if(!f)return;let b,txt;
 // Plans modèles (chantier, CP, options) pour chaque forme visée : même méthode que serAnalyse, formulaire rétabli ensuite
 function dxiModels(){const D=DXI,tpl=coll(),tplS=formSnap(),ei=EI,ho=_hisOff,M={},ch=String(D.ch||'').trim().toUpperCase(),ouv=String(D.ouv||'').trim();delete tpl.date;
   _hisOff=true;try{_loading=true;try{el('iCh').value=ch;el('iOuv').value=ouv}finally{_loading=false}
-    ['rect','carre','rect_fond','carre_fond','circ'].forEach(f=>{let d;
+    ['rect','carre','rect_fond','carre_fond','circ','para','voile'].forEach(f=>{let d;
       if(f===tpl.forme)d=JSON.parse(JSON.stringify(tpl));else{_loading=true;try{el('iForme').value=f;updF()}finally{_loading=false}applyProf(true);d=coll();delete d.date}
       M[f]=Object.assign(d,{ch,ouv})})}
   finally{_loading=true;try{setForm(JSON.parse(tplS))}finally{_loading=false}EI=ei;_hisOff=ho;syncVis()}
@@ -236,6 +237,9 @@ function dxiCreate(){const D=DXI;if(!D)return;dxiEval();const L=dxiReady(),LN=dx
   const N=LN.map(k=>{const r=D.NR[k],d=JSON.parse(JSON.stringify(r.x.plan));d.date=today;d.origineImport=Object.assign(dxnProv(k),{indice:ind,date:today});return d})
     .concat(L.map(i=>{const x=D.R[i].x,d=JSON.parse(JSON.stringify(x.plan));d.date=today;
     d.origineImport=Object.assign(JSON.parse(JSON.stringify(x.provenance)),{indice:ind,date:today});return d}));
+  if(D.fmt==='pdf'){const keys=LN.map(k=>dxcCles('n',k)).concat(L.map(i=>dxcCles('g',i)));
+    const seen=new Set();if(keys.some(dxcDeja)||keys.flat().some(k=>seen.has(k)||(seen.add(k),false))){toast('Réservation déjà créée ou sélectionnée deux fois : aucun ouvrage ajouté');return;}
+    N.forEach((d,i)=>d.origineImport.creationCles=keys[i]);}
   // dernière vérification avant de toucher aux plans enregistrés : aucune référence en double, sinon rien n'est créé
   if(!dxiRefs(N)){toast('⛔ Références en double : aucun ouvrage créé');return dxiUpd()}
   N.forEach(d=>{uids.push(planUid(d));P.push(d)});
@@ -298,7 +302,7 @@ function dxnRows(){const D=DXI,T=el('dxnT');if(!T)return;
   T.tBodies[0].innerHTML=D.NL.map(({N,L},k)=>{const r=D.NR[k],det=N.colonnes.map((c,j)=>L.cellules[j]?`${(c.titre||'colonne '+(j+1)).replace(/\n/g,' ')} : ${L.cellules[j].replace(/\n/g,' ')}`:'').filter(Boolean).join('\n'),
       ds=[L.description,L.type&&'Type : '+L.type,L.observations&&'Obs. : '+L.observations,L.lot&&'Lot : '+L.lot].filter(Boolean).join('\n');
     return `<tr data-n="${k}" onclick="dxnSel(${k})" title="${esc(N.id+' ligne '+L.rang+'\n'+det)}"><td><input type="checkbox" data-k="conf"${r.conf?' checked':''} aria-label="Créer ${esc(L.repere||L.id)}" onchange="DXI.NR[${k}].conf=this.checked;dxiUpd()"></td>
-      <td><b>${esc(L.repere||'—')}</b><div class="mu">${esc(N.id)} · ${L.rang}</div></td><td>${esc(ds)}</td>
+      <td><b>${esc(L.repere||'—')}</b>${D.fmt==='pdf'?`<button class="btn bs bo" onclick="event.stopPropagation();dxnSel(${k});dxcOuvrir('n',${k})">Proposer un coffrage</button>`:''}<div class="mu">${esc(N.id)} · ${L.rang}</div></td><td>${esc(ds)}</td>
       <td>${esc(L.ouverture)}${L.reseau?`<div class="mu">réseau : ${esc(L.reseau)}</div>`:''}</td><td>${esc([L.niveau,L.angle].filter(Boolean).join(' · '))}</td>
       <td><select class="fi" data-k="forme" onchange="DXI.NR[${k}].forme=this.value;dxiUpd()"></select></td>
       <td><input class="fi" data-k="cotes" style="width:96px" value="${esc(r.cotes)}" placeholder="${esc(L.dims?L.dims.texte+(dxnU(N,L)?'':' (unité ?)'):'à saisir')}" oninput="DXI.NR[${k}].cotes=this.value;DXI.NR[${k}].cotesT=true;dxiUpd()"></td>
@@ -373,10 +377,11 @@ function dxnPick(i){const D=DXI;if(!D||D.nsel<0)return;const t=document.querySel
 // ==== PDF : lecture, aperçu des pages, zone à analyser, saisie assistée (fonctions dxp*) ====
 const dxnNR=L=>({conf:false,forme:'',cotes:'',cotesT:false,h:'',nb:String(L.nb||1),ref:String(L.repere||'').toUpperCase(),geo:'',geoT:false,rej:false,perdu:''});
 async function dxpFile(nom,b){if(el('dxiZ')){el('dxiN').innerHTML=`<b>${esc(nom)}</b> · lecture du PDF…`;el('dxiZ').innerHTML=''}
+  const empreinte=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',b))).map(x=>x.toString(16).padStart(2,'0')).join('');
   const lu=await CPI.pdf.lire(b,nom);if(!lu.ok)return dxiErr(nom,lu);
   const v=CPI.lecteur.lirePlan({format:'normalise',nom,contenu:lu.document});if(!v.ok){CPI.pdf.fermer(lu.pdf);return dxiErr(nom,v)}
   dxiQuit();const doc=lu.document,cur=coll(),NA=CPI.nomenclatures.analyser(doc),NL=NA.nomenclatures.flatMap(N=>N.lignes.map(L=>({N,L})));
-  DXI={fmt:'pdf',nom,doc,pdf:lu.pdf,C:[],R:[],lay:{},u:'',ch:cur.ch,ouv:cur.ouv,ind:'',hCom:'',sel:-1,M:null,NA,NL,NR:NL.map(({L})=>dxnNR(L)),NU:{},nsel:-1,
+  DXI={fmt:'pdf',nom,empreinte,doc,pdf:lu.pdf,C:[],R:[],lay:{},u:'',ch:cur.ch,ouv:cur.ouv,ind:'',hCom:'',sel:-1,M:null,NA,NL,NR:NL.map(({L})=>dxnNR(L)),NU:{},nsel:-1,
     vue:NL.length?'n':'p',lk:new Set(),page:NL.length?NL[0].N.page:1,zoom:1,zone:null,zm:false,hl:-1,nz:0,ns:0,tok:0,OC:null,ocJob:null,no:0,ohl:null,
     cal:{},GP:{},GI:{},OT:{},OM:{},VU:{},CS:{},calm:null,rsel:-1,rn:0,ana:null,rJob:null,HR:[]};
   dxnAssoc();if(el('dxiZ'))dxiRender()}
@@ -905,7 +910,7 @@ const dxrVis=()=>{const I=DXI.C.map((c,i)=>i).filter(i=>DXI.C[i].statut==='a_con
 function dxrRows(){const D=DXI,T=el('dxrT');if(!T)return;const V=dxrVis(),np=D.C.map((c,i)=>i).filter(i=>D.C[i].statut!=='a_confirmer');T.dataset.v=V.join();
   T.tBodies[0].innerHTML=V.length?V.map(i=>{const c=D.C[i],r=D.R[i],A=c.annot||{},cl=dxrCl(i);
     return `<tr data-r="${i}" onclick="dxrSel(${i})"${i===D.rsel?' class="on"':''}><td><input type="checkbox" data-k="conf"${r.conf?' checked':''} aria-label="Créer ${esc(c.id)}" onchange="DXI.R[${i}].conf=this.checked;dxiUpd()"></td>
-      <td>${esc(c.id)}</td><td>${c.source.page}${c.vue?' · '+esc(c.vue):''}</td><td>${esc(A.repere?A.repere.texte:'—')}</td><td class="mu">${esc(cl.raison)}</td><td><select class="fi" data-k="forme" onchange="DXI.R[${i}].forme=this.value;dxiUpd()"></select></td>
+      <td>${esc(c.id)}<button class="btn bs bo" onclick="event.stopPropagation();dxrSel(${i});dxcOuvrir('g',${i})">Proposer un coffrage</button></td><td>${c.source.page}${c.vue?' · '+esc(c.vue):''}</td><td>${esc(A.repere?A.repere.texte:'—')}</td><td class="mu">${esc(cl.raison)}</td><td><select class="fi" data-k="forme" onchange="DXI.R[${i}].forme=this.value;dxiUpd()"></select></td>
       <td><input class="fi" data-k="cotes" style="width:96px" value="${esc(r.cotes)}" placeholder="${esc(A.cotes?A.cotes.texte:'à saisir')}" oninput="DXI.R[${i}].cotes=this.value;DXI.R[${i}].cotesT=true;dxiUpd()">
         <div class="mu">dessin : ${esc(dxiDims(c))}</div></td><td class="og"></td>
       <td><input class="fi" data-k="h" style="width:62px" value="${esc(r.h)}" placeholder="${esc(D.hCom.trim()||'à saisir')}" oninput="DXI.R[${i}].h=this.value;dxiUpd()"></td>

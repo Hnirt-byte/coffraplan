@@ -14,7 +14,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 APPD = os.path.join(HERE, '..', '..', 'app')
 HTML = os.path.join(APPD, 'CoffraPlan.html')
 SOURCE = os.path.join(APPD, 'CoffraPlan.source.html')
-ORDRE = ['lecteur.js', 'dxf.js', 'pdf.js', 'ocr.js', 'ppocr.js', 'detecteur.js', 'nomenclatures.js', 'support.js', 'geometrie.js', 'contours.js', 'rapprochement.js', 'vues.js', 'adaptateur.js', 'fenetre.js']   # dxf.js après lecteur.js (DECODEURS)
+ORDRE = ['lecteur.js', 'dxf.js', 'pdf.js', 'ocr.js', 'ppocr.js', 'detecteur.js', 'nomenclatures.js', 'support.js', 'geometrie.js', 'contours.js', 'rapprochement.js', 'vues.js', 'adaptateur.js', 'creation.js', 'fenetre.js', 'creation-ui.js']   # dxf.js après lecteur.js (DECODEURS)
 DEBUT, FIN = '<script id="cpi-src">', '</script>'
 # PDF.js 6.4.299 (Apache-2.0), fichiers legacy/build/ (compatibles navigateurs plus anciens) du paquet npm pdfjs-dist@6.4.299, copiés sans modification
 PDFJS = [('pdfjs-src', 'pdf.min.mjs', 'bccc24ea711db8e44503629519904a5292d73b9daaa214bbe7cdcc282b0f4259'),

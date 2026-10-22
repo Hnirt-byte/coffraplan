@@ -3,6 +3,55 @@
 Détail complet de chaque version (demandes, écarts voulus, tests, non validé) : `docs/historique/HANDOFF_<version>.md`.
 Chaque version est un tag git (`git diff v2.4 v2.5 -- app/` pour voir les changements).
 
+## Phase 9C — proposition de coffrage et création confirmée (version v3.1 conservée)
+
+**Demande** : passer d'une réservation PDF à une proposition contrôlée, puis créer
+un seul ouvrage après relecture et confirmation explicite.
+
+**Fait** : `creation.js` prépare les données et appelle les moteurs existants ;
+`creation-ui.js` ajoute « Proposer un coffrage » aux lignes PDF et aux contours
+proposés. Provenance par valeur, inconnues visibles, corrections conservées ; les
+mesures de l'analyse ne deviennent utilisables qu'après confirmation des échelles.
+Rayon et épaisseur sans valeur fiable restent vides. Flèches par `GEO.sag`, cordes
+par `voileGeo` : joues parallèles = corde commune, radiales = corde extérieure,
+aucun développé assimilé à une corde. Tolérance géométrique facultative dans le
+profil chantier, modifiable par ouvrage et pour une création ; sans tolérance,
+aucune nécessité de cintrage décidée. Choix explicite de solution et des joues,
+récapitulatif, case de confirmation finale ; aucun projet modifié auparavant.
+
+Mannequin droit / simple : moteur `para` existant à biais et pente nuls, ouvert sur
+les deux parements. Mannequin cintré : moteur `voile`, construction mannequin.
+Fourreau : moteur `circ`, longueur de traversée saisie, jamais déduite de
+l'épaisseur de la paroi courbe ; pas de rayon, épaisseur ni joues imposés car ces
+paramètres n'entrent pas dans son calcul. La solution simple sur voile circulaire exige
+joues parallèles et deux flèches dans la tolérance confirmée. Le choix cintré peut
+rester explicite sans tolérance. Identité du PDF (SHA-256) et de chaque ligne
+de nomenclature (ou contour) conservée dans `origineImport.creationCles` : validations répétées, réimport et
+chemins d'import PDF historiques ne créent pas de doublon de cette identité.
+
+**Compatibilité / écarts voulus** : aucun algorithme de fabrication modifié,
+aucune migration de projet ; métadonnées facultatives et enveloppe v10 inchangée.
+Les ouvrages antérieurs gardent leur débit, leurs feuilles et leurs exports. Pas
+de changement de version, de configuration Cloud, de tag ou de Release.
+
+**Tests** : nouveau banc fictif `t_creation` (données fiables / manquantes,
+confirmation, joues / cordes / flèches / tolérance, création unique, stockage,
+contrôles / débit / feuilles / visualisation existants). Résultats des campagnes
+et avant/après exacts consignés dans la PR ; exemple utilisateur dans le manuel.
+
+**Correctif du test R04** : suppression de la saisie obsolète de l'épaisseur du
+voile, volontairement masquée pour un fourreau ; assertion de visibilité ajoutée
+(épaisseur masquée, longueur de traversée visible). Les confirmations et assertions
+de création/fabrication sont conservées ; aucun comportement applicatif modifié.
+
+**Limites** : traversées normales sans biais ni pente ; développés et cordes
+intérieures radiales à reporter manuellement en bonne corde. Un chanfrein, une
+feuillure ou un détail particulier du plan ne sont pas reproduits automatiquement
+par cette proposition : compléter l'étude de fabrication. Reconnaissance, cotes
+OCR et réglages de fabrication restent à relire ; aucune validation automatique.
+Pas d'impression physique, d'AutoCAD, de Firefox ou Safari validé dans cette phase.
+Plans réels, rendus et diagnostic détaillé conservés hors du dépôt.
+
 ## Phase 9B — contours contextuels dans les voiles (non publiée, version v3.1 conservée)
 
 **Demande** : retrouver les réservations raccordées aux parements, sans exiger un
