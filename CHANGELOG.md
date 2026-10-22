@@ -22,10 +22,11 @@ récapitulatif, case de confirmation finale ; aucun projet modifié auparavant.
 Mannequin droit / simple : moteur `para` existant à biais et pente nuls, ouvert sur
 les deux parements. Mannequin cintré : moteur `voile`, construction mannequin.
 Fourreau : moteur `circ`, longueur de traversée saisie, jamais déduite de
-l'épaisseur de la paroi courbe. La solution simple sur voile circulaire exige
+l'épaisseur de la paroi courbe ; pas de rayon, épaisseur ni joues imposés car ces
+paramètres n'entrent pas dans son calcul. La solution simple sur voile circulaire exige
 joues parallèles et deux flèches dans la tolérance confirmée. Le choix cintré peut
-rester explicite sans tolérance. Identité du PDF (SHA-256) et de la réservation
-conservée dans `origineImport.creationCles` : validations répétées, réimport et
+rester explicite sans tolérance. Identité du PDF (SHA-256) et de chaque ligne
+de nomenclature (ou contour) conservée dans `origineImport.creationCles` : validations répétées, réimport et
 chemins d'import PDF historiques ne créent pas de doublon de cette identité.
 
 **Compatibilité / écarts voulus** : aucun algorithme de fabrication modifié,

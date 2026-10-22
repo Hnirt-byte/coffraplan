@@ -18,17 +18,17 @@ function proposer(analyse,saisie,ctx){
   origines.tolerance={origine:tolerance==null?'inconnue':Object.hasOwn(s,'tolerance')?'saisie':'profil',source:Object.hasOwn(s,'tolerance')?'ouvrage':o.toleranceSource||'ouvrage'};
   for(const k of ['type','support','joues','largeurRef'])origines[k]={origine:Object.hasOwn(s,k)?'saisie':k==='type'||k==='support'?'analyse':'inconnue'};
   if(Object.hasOwn(s,'tolerance')&&s.tolerance!=null&&!toleranceValide(s.tolerance))manquants.push('tolérance de courbure valide (positive ou nulle)');
-  if(type==='circ'){valeurs.L=valeurs.h=null;}else valeurs.D=null;
+  if(type==='circ'){valeurs.L=valeurs.h=valeurs.e=valeurs.R=null;}else valeurs.D=null;
   if(support!=='voile_circulaire')valeurs.R=null;
   const requis=(k,lib)=>{if(!positif(valeurs[k]))manquants.push(lib)};
   if(!['rect','carre','circ'].includes(type))manquants.push('forme de l’ouverture');
   if(!['voile_droit','voile_circulaire'].includes(support))manquants.push('nature du support');
-  requis('e','épaisseur du voile');
+  if(type!=='circ')requis('e','épaisseur du voile');
   if(type==='circ'){requis('D','diamètre de l’ouverture');valeurs.profondeur=positif(s.profondeur)?s.profondeur:null;origines.profondeur={origine:valeurs.profondeur?'saisie':'inconnue'};requis('profondeur','longueur de traversée du fourreau');}
   else{requis('L','largeur horizontale');requis('h','hauteur de l’ouverture');}
   if(!s.traversee)manquants.push('confirmation de la traversée normale au voile (sans biais ni pente)');
   let geometrie=null,fleches={interieure:null,exterieure:null},recommandation='a_determiner',solutions=[];
-  if(support==='voile_circulaire'){
+  if(support==='voile_circulaire'&&type!=='circ'){
     requis('R','rayon intérieur');
     if(!['par','rad'].includes(joues))manquants.push('joues parallèles ou radiales');
     if(type!=='circ'){
@@ -42,7 +42,7 @@ function proposer(analyse,saisie,ctx){
       }
     }
   }
-  if(type==='circ'){solutions=['fourreau'];recommandation='fourreau';alertes.push('Fourreau : longueur de traversée, orientation, matériau et maintien à vérifier sur le chantier.');}
+  if(type==='circ'){solutions=['fourreau'];recommandation='fourreau';alertes.push('Fourreau : longueur de traversée, orientation, matériau et maintien à vérifier sur le chantier. Épaisseur, rayon et joues du voile ne sont pas utilisés par le modèle de fourreau.');}
   else if(support==='voile_droit'){solutions=['simple'];recommandation='simple';}
   else if(support==='voile_circulaire'){
     solutions=['cintre'];

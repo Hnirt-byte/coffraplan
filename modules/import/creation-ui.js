@@ -3,7 +3,10 @@ let DXC=null;
 const dxcRep=s=>CPI.nomenclatures.cleRep(String(s||'').replace(/^[^A-Za-z0-9]+|[^A-Za-z0-9]+$/g,''));
 function dxcCles(kind,i){const D=DXI,base=D.empreinte||D.nom,keys=[];
   if(kind==='n'){
-    const {L}=D.NL[i],rep=dxcRep(L.repere);keys.push(base+'|ligne|'+(rep||L.id));
+    // Le repère peut être répété sur plusieurs lignes du même PDF : utiliser l'identité de la ligne source.
+    const {N,L}=D.NL[i],rep=dxcRep(L.repere);
+    const ligne=[N.page??'?',N.id||'?',L.id||L.rang||rep||'?'].join('|');
+    keys.push(base+'|ligne|'+ligne);
     const a=dxnAS(L),ids=new Set((a.occurrences||[]).filter(o=>o.fiable&&o.contour).map(o=>o.contour));
     D.C.filter(c=>ids.has(c.id)).forEach(c=>keys.push(base+'|contour|'+dxrCle(c)));
   }else{const c=D.C[i];keys.push(base+'|contour|'+dxrCle(c));}
@@ -84,7 +87,10 @@ function dxcRefresh(){if(!DXC||DXC.D!==DXI||!el('dxcEtat'))return;
   const circ=p.type==='circ',courbe=p.support==='voile_circulaire';
   for(const k of ['L','h'])el('dxc_'+k).parentElement.hidden=circ;
   for(const k of ['D','profondeur'])el('dxc_'+k).parentElement.hidden=!circ;
-  for(const k of ['R','joues'])el('dxc_'+k).parentElement.hidden=!courbe;
+  for(const k of ['R','joues'])el('dxc_'+k).parentElement.hidden=!courbe||circ;
+  el('dxc_e').parentElement.hidden=circ;
+  el('dxc_tolerance').parentElement.hidden=circ;
+  el('dxcTolProfil').hidden=circ;
   el('dxc_largeurRef').parentElement.hidden=!courbe||circ;
   if(!Object.hasOwn(X.saisie,'tolerance'))el('dxc_tolerance').value=p.tolerance==null?'':String(p.tolerance);
   el('dxcOrig_tolerance').textContent=p.origines.tolerance.origine;

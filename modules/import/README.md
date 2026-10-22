@@ -674,11 +674,13 @@ Fichier confidentiel : il reste sur le poste de Kévin, hors du dépôt.
   refusées. Cette tolérance géométrique ne remplace pas la flèche mécanique du CP.
 - `origineImport` garde analyse, proposition, valeurs / origines / corrections,
   note utilisateur, choix et confirmation. `creationCles` combine empreinte SHA-256
-  du PDF et repère normalisé / contour stable ; elle est aussi posée et contrôlée
+  du PDF et identité de ligne (page, nomenclature, ID de ligne) / contour stable ; elle est aussi posée et contrôlée
   par l'ancien chemin PDF. L'empreinte n'embarque aucun contenu du PDF.
   Les anciens ouvrages dépourvus de cette clé restent lisibles ; leur protection
   contre les doublons reste le contrôle existant des références.
 - Un clic crée un ouvrage (`nb=1`), pas un lot déduit du nombre de vues. La longueur
-  du fourreau doit être saisie et ses contraintes de traversée confirmées.
+  du fourreau doit être saisie et ses contraintes de traversée confirmées. Pour le
+  moteur `circ`, épaisseur, rayon, joues et tolérance de courbure ne sont pas des
+  prérequis : ils n'entrent pas dans son calcul et restent dans les preuves source.
 - Banc `tests/t_creation.py`, seulement des PDF et géométries fictifs, en campagnes
   rapide et complète. Exemple pas à pas : manuel §7.22. Les cas réels restent privés.

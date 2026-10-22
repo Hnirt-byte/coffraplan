@@ -19,7 +19,28 @@ def t(s):
           analyser:x=>CPI.support.analyser(x.obs,x.env,{k:x.k,sag:GEO.sag,ligne:SC.ligne({a:1200,b:1000})})};
           window.A9=C9.analyser(SC.voileCirc({Ri:6000,t:250,w:1200,ouverture:'rect'}));}''')
         prop = lambda s0, o0={}: J('x=>C9.proposer(A9,x[0],x[1])', [s0, o0])
+        # Même repère dans plusieurs lignes/nomenclatures : ne pas confondre deux réservations.
+        identites = J('''()=>{const ancien=DXI;let ajoute=false;try{
+          DXI={empreinte:'SHA256_FICTIF',NL:[
+            {N:{id:'N1',page:1},L:{id:'N1-L01',rang:1,repere:'R01'}},
+            {N:{id:'N1',page:1},L:{id:'N1-L02',rang:2,repere:'R01'}},
+            {N:{id:'N2',page:2},L:{id:'N2-L01',rang:1,repere:'R01'}}],C:[],AS:{}};
+          const premiere=dxcCles('n',0),autre=dxcCles('n',1),autreTable=dxcCles('n',2);
+          P.push({origineImport:{creationCles:premiere}});ajoute=true;
+          return {premiere,autre,autreTable,bloqueMeme:dxcDeja(dxcCles('n',0)),
+                  bloqueAutre:dxcDeja(autre),bloqueAutreTable:dxcDeja(autreTable)};
+        }finally{if(ajoute)P.pop();DXI=ancien}}''')
+        s.check(identites['premiere'] != identites['autre'] != identites['autreTable']
+                and identites['premiere'] != identites['autreTable']
+                and identites['bloqueMeme'] and not identites['bloqueAutre'] and not identites['bloqueAutreTable'],
+                'identité stable par ligne : repères R01 répétés autorisés, réimport de la même ligne bloqué',
+                json.dumps(identites,ensure_ascii=False))
         base = dict(joues='par', largeurRef='commune', solution='cintre', traversee=True)
+        fourreau_courbe = prop(dict(type='circ', support='voile_circulaire', D=200, profondeur=230,
+                                   solution='fourreau', traversee=True))
+        s.check(not fourreau_courbe['manquants'] and fourreau_courbe['valeurs']['e'] is None
+                and fourreau_courbe['valeurs']['R'] is None and fourreau_courbe['solutions'] == ['fourreau'],
+                'fourreau sur voile courbe : Ø et traversée suffisent, sans épaisseur, rayon, joues ni tolérance')
         r = prop(base)
         s.check(r['valeurs']['e'] is None and r['valeurs']['R'] is None and r['fleches']['interieure'] is None,
                 'mesures non confirmées : aucune épaisseur / aucun rayon converti pour créer')
@@ -57,6 +78,20 @@ def t(s):
         initial = J('JSON.stringify({P,PROF,LIBU,ENT})')
         J('()=>{window.K9=rep=>DXI.NL.findIndex(({L})=>L.repere===rep);dxcOuvrir("n",K9("R01"))}')
         s.check(J('JSON.stringify({P,PROF,LIBU,ENT})') == initial, 'ouvrir la proposition : projet / profils / modèles / entreprise inchangés')
+        fourreau_prepare = J('''()=>{const p=C9.proposer(A9,
+          {type:'circ',support:'voile_circulaire',D:200,profondeur:230,traversee:true,solution:'fourreau'}, {});
+          const r=CPI.creation.preparer(p,{confirme:true,ref:'F-COURBE'},
+            {modele:DXI.M.circ,moteur:{migr,canon,limErr,checks,badDims,voileGeo}});
+          return {ok:r.ok,forme:r.plan&&r.plan.forme,diametre:r.plan&&r.plan.D,
+                  longueur:r.plan&&r.plan.h,manquants:p.manquants,messages:r.messages||[]}}''')
+        s.check(fourreau_prepare['ok'] and fourreau_prepare['forme'] == 'circ'
+                and fourreau_prepare['diametre'] == 200 and fourreau_prepare['longueur'] == 230,
+                'moteur circ accepte le fourreau sur voile courbe sans paramètres inutilisés',
+                json.dumps(fourreau_prepare,ensure_ascii=False))
+        pg.select_option('#dxc_type','circ');pg.select_option('#dxc_support','voile_circulaire')
+        s.check(all(pg.is_hidden('#'+id) for id in ['dxc_R','dxc_joues','dxc_e','dxc_tolerance']),
+                'interface fourreau : champs du mannequin cintré masqués')
+        pg.select_option('#dxc_type','rect')
         s.check(pg.input_value('#dxc_L') == '500' and pg.input_value('#dxc_h') == '500', 'tableau carré 500×500 mm : dimensions explicites disponibles sans échelle')
         pg.select_option('#dxc_type','rect');pg.fill('#dxc_h','800');pg.select_option('#dxc_support', 'voile_droit');pg.fill('#dxc_e','20 cm');pg.check('#dxc_traversee');pg.select_option('#dxc_solution','simple')
         pg.click('#dxcRecap')
