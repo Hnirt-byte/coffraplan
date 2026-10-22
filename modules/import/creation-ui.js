@@ -19,7 +19,7 @@ function dxcAnalyse(kind,i){const D=DXI;
   const O=r.ouverture,p=r.provenance;
   if(kind==='n'){
     const {N,L}=D.NL[i],d=L.dims,u=dxnU(N,L),k=DXI_MM[u];
-    r.source={table:N.id,ligne:L.id,page:N.page,repere:L.repere,cotes:L.dims||null,uniteRetenue:u||null,cellules:L.cellules||[]};
+    r.source={table:N.id,ligne:L.id,page:N.page,repere:L.repere,cotes:L.dims||null,uniteRetenue:u||null,cellules:L.cellules||[],ocr:L.ocr||null};
     if(d&&k&&!d.conflitUnite){
       O.type=d.type==='circ'?'circ':d.a===d.b?'carre':'rect';
       const set=(key,v)=>{if(O[key]==null&&v>0){O[key]=v;p['ouverture.'+key]={origine:'cote_explicite',source:'nomenclature',detail:d.texte||L.ouverture}}};
@@ -45,7 +45,13 @@ function dxcOuvrir(kind,i){const D=DXI;if(!D||D.fmt!=='pdf'||D.rJob)return;
   if(kind==='g'){const k=D.NR.findIndex(r=>r.geo!==''&&+r.geo===i);if(k>=0){kind='n';i=k;}}
   if(!D.M)dxiModels();
   const a=dxcAnalyse(kind,i),L=kind==='n'?D.NL[i].L:null;
-  DXC={D,kind,i,analyse:a,saisie:{},saisiesBrutes:{},cles:dxcCles(kind,i),ref:L?dxcRep(L.repere):'',revision:null};
+  const dossier=dxcDossier(kind,i,a);
+  DXC={D,kind,i,analyse:a,dossier,retenues:{},arbitrages:{},saisie:{},saisiesBrutes:{},cles:dxcCles(kind,i),ref:L?dxcRep(L.repere):'',revision:null};
+  for(const c of dossier.candidats.filter(c=>c.automatique&&c.origine==='texte')){
+    const path=CPI.cotesPreuves.CHAMPS[c.champ], [g,k]=path.split('.');
+    a[g]=a[g]||{};a[g][k]=c.valeur_mm;a.provenance[path]={origine:'cote_explicite',source:'annotation PDF',detail:c.brut,candidate:c};
+  }
+  for(const c of dossier.conflits){const [g,k]=CPI.cotesPreuves.CHAMPS[c.champ].split('.');if(a[g])a[g][k]=null;}
   let z=el('dxcZ');if(!z){el('dxi').insertAdjacentHTML('beforeend','<section id="dxcZ" class="dxo" aria-label="Proposition de coffrage"></section>');z=el('dxcZ');}
   const input=(id,label)=>`<div class="fd"><label for="dxc_${id}">${label}</label><input class="fi" id="dxc_${id}" inputmode="decimal" placeholder="inconnue — à renseigner" oninput="dxcSaisie('${id}',this.value)"><small id="dxcOrig_${id}"></small></div>`;
   const select=(id,label,opts,value)=>`<div class="fd"><label for="dxc_${id}">${label}</label><select class="fi" id="dxc_${id}" onchange="dxcChoix('${id}',this.value)">${opts.map(([v,t])=>`<option value="${v}"${v===value?' selected':''}>${t}</option>`).join('')}</select></div>`;
@@ -54,6 +60,7 @@ function dxcOuvrir(kind,i){const D=DXI;if(!D||D.fmt!=='pdf'||D.rJob)return;
     <div class="mu">Chantier : ${esc(D.ch||'à saisir en haut de la fenêtre')} · Ouvrage : ${esc(D.ouv||'—')}</div>
     <details><summary>Données et preuves disponibles</summary><div>${esc(L?L.cellules.filter(Boolean).join(' · '):D.C[i].id)}</div>
       <ul>${(a.incertitudes||[]).map(x=>'<li>'+esc(x)+'</li>').join('')}</ul><pre style="white-space:pre-wrap">${esc(JSON.stringify(a.preuves,null,2))}</pre></details>
+    ${dxcCotesHTML()}
     <label><input type="checkbox" id="dxc_mesures" onchange="dxcRefresh()"> Je confirme les échelles utilisées pour ces mesures, dans chaque vue concernée (vérifier le calibrage dans l'aperçu).</label>
     <div class="g2">${select('type','Ouverture',[['','À choisir'],['rect','Rectangulaire'],['carre','Carrée'],['circ','Circulaire']],a.ouverture.type)}
     ${select('support','Support',[['inconnu','À confirmer'],['voile_droit','Voile droit'],['voile_circulaire','Voile circulaire']],a.support.type)}</div>
@@ -72,11 +79,21 @@ function dxcOuvrir(kind,i){const D=DXI;if(!D||D.fmt!=='pdf'||D.rJob)return;
   dxcRefresh();z.scrollIntoView({block:'start'});
 }
 function dxcFermer(){DXC=null;const z=el('dxcZ');if(z)z.remove()}
-function dxcSaisie(k,v){if(!DXC)return;DXC.saisiesBrutes[k]=v;DXC.saisie[k]=v.trim()===''?null:(parseCote(v,'mm')??NaN);dxcRefresh()}
+function dxcSaisie(k,v){if(!DXC)return;delete DXC.arbitrages[k];DXC.saisiesBrutes[k]=v;DXC.saisie[k]=v.trim()===''?null:(parseCote(v,'mm')??NaN);dxcRefresh()}
 function dxcChoix(k,v){if(!DXC)return;DXC.saisie[k]=v;dxcRefresh()}
 function dxcProposition(){const X=DXC,D=DXI;if(!X||X.D!==D)return null;
   const ch=profCh(D.ch)||{},ou=profOu(D.ch,D.ouv)||{},tol=ou.tolCourb!=null?ou.tolCourb:ch.tolCourb;
-  return CPI.creation.proposer(X.analyse,Object.assign({},X.saisie,{traversee:C('dxc_traversee')}),{mesuresConfirmees:C('dxc_mesures'),tolerance:tol,toleranceSource:ou.tolCourb!=null?'profil ouvrage':'profil chantier',voileGeo,sag:GEO.sag});
+  const p=CPI.creation.proposer(X.analyse,Object.assign({},X.saisie,{traversee:C('dxc_traversee')}),{mesuresConfirmees:C('dxc_mesures'),tolerance:tol,toleranceSource:ou.tolCourb!=null?'profil ouvrage':'profil chantier',voileGeo,sag:GEO.sag});
+  for(const [k,c] of Object.entries(X.retenues)){
+    if(p.valeurs[k]!=null)p.origines[k]=p.valeurs[k]===c.valeur&&!Object.hasOwn(X.saisiesBrutes,k)?c:{origine:'saisie',avant:c,brut:X.saisiesBrutes[k],role_confirme:k};
+  }
+  for(const conflit of X.dossier.conflits)if(X.arbitrages[conflit.champ]!==p.valeurs[conflit.champ]||p.valeurs[conflit.champ]==null)p.manquants.push('arbitrage des cotes contradictoires : '+conflit.champ);
+  if(X.dossier.details.length||C('dxc_detail'))p.manquants.push('détail particulier : étude de fabrication requise, création standard indisponible');
+  const coteL=X.retenues.L?X.retenues.L.candidate:(X.analyse.provenance['ouverture.largeur_suivant_paroi_mm']||{}).candidate;
+  if(p.support==='voile_circulaire'&&coteL&&coteL.referenceLargeur&&p.largeurRef!==coteL.referenceLargeur)p.manquants.push('L issue du PDF : référence de corde incompatible avec les joues choisies');
+  p.cotesPdf={...X.dossier,retenues:X.retenues,arbitrages:X.arbitrages,saisiesBrutes:{...X.saisiesBrutes},valeurs:{...p.valeurs},origines:JSON.parse(JSON.stringify(p.origines)),detailUtilisateur:C('dxc_detail')?S('dxc_detailNote',''):null};
+  DXI.CP[X.cles[0]]=p.cotesPdf;
+  return p;
 }
 function dxcRefresh(){if(!DXC||DXC.D!==DXI||!el('dxcEtat'))return;
   DXC.revision=null;el('dxcResume').innerHTML='';const p=dxcProposition(),X=DXC;
@@ -124,7 +141,40 @@ function dxcCreer(){const X=DXC;if(!X||X.D!==DXI||!C('dxcConfirme')||!X.revision
   const d=x.r.plan;if(!dxiRefs([d])){toast('Référence déjà utilisée : choisir une autre référence');return;}
   const date=new Date().toISOString().slice(0,10);d.date=date;
   d.origineImport={type:'creation_confirmee',format:'pdf',fichier:DXI.nom,indice:DXI.ind||null,date,creationCles:X.cles,
-    proposition:JSON.parse(JSON.stringify(x.p)),analyse:JSON.parse(JSON.stringify(X.analyse)),confirmation_utilisateur:true,note_utilisateur:x.note,saisiesBrutes:x.saisiesBrutes};
+    cotesPdf:JSON.parse(JSON.stringify(x.p.cotesPdf)),proposition:JSON.parse(JSON.stringify(x.p)),analyse:JSON.parse(JSON.stringify(X.analyse)),confirmation_utilisateur:true,note_utilisateur:x.note,saisiesBrutes:x.saisiesBrutes};
   planUid(d);P.push(d);X.revision=null;svP();profFromPlans([d]);profLists();rnL();updBtn();markDirty();
   dxcRefresh();toast('✓ Ouvrage '+d.ref+' créé après confirmation');
+}
+
+// Dossier rattaché à l'identité de la ligne / contour, jamais au seul repère.
+function dxcDossier(kind,i,analyse){const D=DXI,L=kind==='n'?D.NL[i].L:null;
+  const occurrences=L?(dxnAS(L).occurrences||[]):[],ids=new Set(occurrences.map(o=>o.contour).filter(Boolean));
+  const contours=kind==='g'?[D.C[i]]:D.C.filter(c=>ids.has(c.id));
+  const dossier=CPI.cotesPreuves.analyser({analyse,repere:L?L.repere:(D.C[i].annot.repere||{}).texte,
+    textes:D.doc&&D.NA?dxrTextes():[],vues:Object.values(D.VU||{}).flatMap(v=>v.vues),occurrences,
+    homonyme:L&&D.NL.filter(x=>dxcRep(x.L.repere)===dxcRep(L.repere)).length>1,contours,
+    zoneTable:L&&L.ids?dxpBox(D.NL[i]):null});
+  D.CP=D.CP||{};D.CP[dxcCles(kind,i)[0]]=dossier;return dossier;
+}
+function dxcCotesHTML(){const X=DXC,labels={L:'Largeur / corde L',h:'Hauteur',D:'Diamètre ouverture',e:'Épaisseur du voile',R:'Rayon intérieur',profondeur:'Longueur de traversée'};
+  return `<details open><summary>Cotes retrouvées dans le PDF (${X.dossier.candidats.length})</summary>
+    <p>Une proximité ne prouve pas un rôle. Les unités sont lues contre la valeur ; aucune mesure graphique ni échelle de page n'est utilisée ici. Diamètres et rayons extérieurs restent à examiner, sans conversion en rayon intérieur.</p>
+    ${X.dossier.candidats.length?'<div style="overflow:auto"><table><thead><tr><th>Brut / unité</th><th>Valeur</th><th>Source / lien</th><th>Statut / rôle proposé</th><th>Affectation explicite</th></tr></thead><tbody>'+X.dossier.candidats.map((c,j)=>`<tr><td>${esc(c.brut)}${c.lecture&&c.lecture!==c.brut?'<br>Lecture : '+esc(c.lecture):''}<br>Unité : ${esc(c.uniteOrigine||c.unite||'inconnue')}</td><td>${nf(c.valeur_mm)} mm</td><td>p. ${esc(c.page||'?')} · ${esc(c.titreVue||c.vue||'vue non identifiée')}<br>${esc(c.raison)}${c.zone?`<button class="btn bs bo" type="button" onclick="dxcVoirCote(${j})">Voir la source</button>`:''}</td><td>${esc(c.statut)} · ${esc(labels[c.champ]||c.champ)}</td><td><select class="fi" aria-label="Champ de la cote ${j+1}" id="dxcCible_${j}"><option value="">Choisir le rôle</option>${Object.entries(labels).map(([k,v])=>`<option value="${k}"${k===c.champ?' selected':''}>${esc(v)}</option>`).join('')}</select><button class="btn bs bo" type="button" onclick="dxcAffecter(${j})">Retenir cette cote</button></td></tr>`).join('')+'</tbody></table></div>':'<p>Aucune cote écrite exploitable retrouvée. Compléter les valeurs manuellement après relecture.</p>'}
+    ${X.dossier.conflits.map(c=>`<p>Conflit sur ${esc(labels[c.champ])} : ${c.valeurs.map(v=>nf(v)+' mm').join(' / ')}. Retenir une preuve ou saisir la correction puis <button class="btn bs bo" onclick="dxcArbitrer('${c.champ}')">Confirmer la saisie pour ${esc(labels[c.champ])}</button>.</p>`).join('')}
+    <div id="dxcCotesChoix" role="status"></div></details>
+    <details open><summary>Détails particuliers / limites de fabrication</summary><ul>${X.dossier.details.map(d=>`<li>${esc(d.brut)} · p. ${esc(d.page||'?')} · ${esc(d.raison)} — étude spécifique requise</li>`).join('')}</ul>
+    <label><input type="checkbox" id="dxc_detail" onchange="dxcRefresh()"> Je signale une forme inhabituelle, un chanfrein, une feuillure ou une traversée particulière.</label>
+    <input class="fi" id="dxc_detailNote" aria-label="Description du détail particulier" placeholder="Décrire le détail à étudier" oninput="dxcRefresh()">
+    <p>Un détail signalé empêche la création standard. Ces formes ne sont pas fabriquées par cette proposition ; conserver le dossier via l'export de l'analyse.</p></details>`;
+}
+function dxcAffecter(j){if(!DXC)return;const c=DXC.dossier.candidats[j],k=S('dxcCible_'+j,''),r=CPI.cotesPreuves.affecter(DXC.dossier,c.id,k);
+  if(!r){el('dxcCotesChoix').textContent='Affectation impossible : choisir un rôle compatible. Un diamètre / rayon extérieur ne devient pas un rayon intérieur.';return;}
+  DXC.retenues[k]=r;DXC.saisie[k]=r.valeur;delete DXC.saisiesBrutes[k];DXC.arbitrages[k]=r.valeur;
+  el('dxc_'+k).value=String(r.valeur);dxcRefresh();el('dxcCotesChoix').textContent='Cote retenue pour '+k+' : '+r.valeur+' mm. Origine et preuve conservées.';
+}
+function dxcArbitrer(k){if(!DXC)return;const p=dxcProposition(),v=p.valeurs[k];if(!(v>0))return;
+  DXC.arbitrages[k]=v;dxcRefresh();el('dxcCotesChoix').textContent='Arbitrage explicite de '+k+' : '+v+' mm ; les valeurs contradictoires restent dans les preuves.';
+}
+function dxcVoirCote(j){if(!DXC)return;const c=DXC.dossier.candidats[j],D=DXI;if(!c.zone)return;
+  D.ohl=c.zone;D.page=c.page;D.hl=-1;D.hlo=null;D.scroll=true;dxiVue('p');
 }

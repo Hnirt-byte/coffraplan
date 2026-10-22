@@ -494,6 +494,34 @@ code{font:9pt 'DejaVu Sans Mono',monospace;background:#f1f3f7;padding:0 1mm;bord
 <p><b>Exemple entièrement fictif :</b> une ouverture 1200 × 1000 mm traverse un voile circulaire d'épaisseur 250 mm et de rayon intérieur 6000 mm, cotes relues ou saisies. Choisir des joues parallèles et confirmer que 1200 mm est la corde commune. Sans tolérance, le système laisse la solution à déterminer ; choisir explicitement le mannequin cintré permet de préparer le récapitulatif sans déclarer le cintrage automatiquement nécessaire. Le moteur existant fournit le débit, les plans et la visualisation après confirmation.</p>
 <div class="warn"><b>Proposition à vérifier</b>Un chanfrein, une feuillure, une traversée biaisée ou un détail particulier du plan n'est pas reproduit automatiquement. Compléter et valider l'étude de fabrication. Les anciens ouvrages sans identité d'import restent protégés par le contrôle des références ; ils ne disposent pas du nouveau contrôle d'identité PDF.</div>
 
+<h3>Cotes retrouvées dans le PDF et détails particuliers</h3>
+<p>Dans <b>Proposer un coffrage</b>, la section <b>Cotes retrouvées dans le PDF</b>
+présente la valeur brute, son unité, la conversion en millimètres si elle est justifiée,
+la page, la vue identifiée, le rôle proposé et la raison du rapprochement.
+<b>Voir la source</b> surligne la zone dans l'aperçu du PDF existant.</p>
+<p>Une annotation portant un seul repère exact, un rôle nommé et une unité explicite
+peut préremplir un champ. Une cote voisine ou située dans la même vue reste à confirmer.
+Sélectionner le rôle puis <b>Retenir cette cote</b> après relecture. Un diamètre de cuve
+ou un rayon extérieur ne devient pas un rayon intérieur ; un développé n'est pas une corde.
+Les unités absentes, les textes fragmentés et les lignes de cote non interprétées exigent
+encore une saisie documentée. Les mesures graphiques nécessitent toujours un calibrage confirmé.</p>
+<p><b>Exemple entièrement fictif :</b> la nomenclature de R01 indique 500 × 500 mm ;
+une coupe porte « R01 : épaisseur du voile = 20 cm ». L'épaisseur proposée est 200 mm,
+avec conservation du texte et de sa source. Si une seconde coupe indique 300 mm,
+le champ reste vide : examiner les deux preuves, retenir la bonne ou saisir une
+correction puis confirmer explicitement l'arbitrage. Modifier ensuite cette valeur
+impose de refaire l'arbitrage et le récapitulatif. Le projet reste intact jusqu'à la
+confirmation finale de création.</p>
+<div class="warn"><b>Détails particuliers</b>Une mention de chanfrein, feuillure,
+décrochement ou biais, une forme associée non reconnue, ou votre propre signalement
+bloquent la création standard. Décrire le détail à étudier : le moteur de cette phase
+ne le fabrique pas. Ne pas considérer un rectangle approché comme une forme validée.
+Les indices graphiques ne prouvent pas la nature exacte du détail.</div>
+<p>Après création, preuves retenues, corrections et arbitrages sont conservés avec
+l'ouvrage, dans la sauvegarde et l'export JSON du projet. Pour une réservation bloquée,
+utiliser <b>Analyse (JSON)</b> avant de fermer l'import : ce dossier conserve aussi
+les cotes et les particularités signalées, sans créer d'ouvrage.</p>
+
 
 <!-- ======================= 8 ======================= -->
 <h1 class="chap">8. Raccourcis clavier</h1>

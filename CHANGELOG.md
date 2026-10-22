@@ -3,6 +3,34 @@
 Détail complet de chaque version (demandes, écarts voulus, tests, non validé) : `docs/historique/HANDOFF_<version>.md`.
 Chaque version est un tag git (`git diff v2.4 v2.5 -- app/` pour voir les changements).
 
+## Phase 10A — cotes PDF et détails particuliers (v3.1 conservée)
+
+**Fait** : module pur d'association de preuves sur les textes déjà lus. Cotes
+nommées avec repère exact et unité explicite préremplies, autres valeurs à
+examiner. Nouvelle section de la proposition : brut, unité, conversion justifiée,
+page / vue, motif, statut, sélection d'une preuve et surlignage PDF existant.
+Conflits conservés, création bloquée jusqu'à arbitrage explicite ; toute nouvelle
+correction invalide l'arbitrage et le récapitulatif. Mesures graphiques sans
+calibrage confirmé toujours inutilisables. Aucun seuil de courbure ajouté.
+
+Mentions de détails particuliers, contours associés non reconnus et signalements
+utilisateur conservés, avec blocage de la création standard. Pas de génération
+de chanfrein, de forme à plusieurs sections ou de traversée biaisée.
+Provenance facultative `origineImport.cotesPdf`, export d'analyse enrichi ; projet
+v10 inchangé, moteurs historiques et version affichée inchangés.
+
+**Tests** : nouveau banc fictif `t_cotes` : unités, absence d'unité, liens faibles,
+OCR incertain, échelles / vues multiples, homonymes, contradictions, affectation,
+correction, détails bloquants, confirmation, doublons et persistance. Les
+assertions historiques sont conservées. Résultats exacts dans la PR.
+
+**Limites** : annotations fragmentées et lignes de cote non interprétées ici ;
+les diamètres de cuve / rayons extérieurs ne deviennent pas des rayons intérieurs.
+Les particularités non lues exigent encore un signalement utilisateur. Les
+brouillons non créés se conservent par l'export local d'analyse. Aucune fabrication
+réelle particulière validée ; PDF réels, rendus et diagnostics exclus du dépôt.
+Chromium uniquement ; pas de validation d'impression physique ni d'AutoCAD.
+
 ## Phase 9C — proposition de coffrage et création confirmée (version v3.1 conservée)
 
 **Demande** : passer d'une réservation PDF à une proposition contrôlée, puis créer

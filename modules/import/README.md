@@ -684,3 +684,54 @@ Fichier confidentiel : il reste sur le poste de Kévin, hors du dépôt.
   prérequis : ils n'entrent pas dans son calcul et restent dans les preuves source.
 - Banc `tests/t_creation.py`, seulement des PDF et géométries fictifs, en campagnes
   rapide et complète. Exemple pas à pas : manuel §7.22. Les cas réels restent privés.
+
+
+## Phase 10A — cotes écrites, preuves et détails particuliers
+
+`cotes-preuves.js` expose `CPI.cotesPreuves.analyser({analyse, repere, textes,
+vues, occurrences, homonyme, contours, zoneTable})` et `affecter(dossier,id,champ)`.
+Module pur, intégré par l'assembleur avant la création ; il réutilise les textes
+PDF / OCR, nomenclatures, occurrences et vues existants. Ni second lecteur ni
+formule de fabrication. Aucune mesure en points PDF n'est convertie ici.
+
+- Les cotes explicites déjà attribuées par l'analyse / nomenclature sont conservées.
+  Une annotation peut préremplir largeur, hauteur, diamètre de réservation,
+  épaisseur du voile, rayon **intérieur** ou longueur de traversée si elle contient
+  un seul repère exact non homonyme, un rôle nommé et une unité attachée (mm, cm,
+  m). OCR : confiance ≥ 90 %, sans correction. Une échelle de cartouche ne donne
+  jamais l'unité d'un nombre. Cette grammaire volontairement étroite ne traite pas
+  les fragments de textes séparés comme une annotation unique.
+- Même vue ou voisinage seuls : proposition à confirmer ; sans rôle, cote inconnue.
+  Les autres cotes explicites du document restent visibles pour sélection manuelle,
+  avec avertissement d'absence de lien. Le brut OCR et la lecture corrigée sont
+  conservés séparément (et affichés si différents). Pas d'attribution d'un diamètre de cuve
+  au diamètre de réservation, ni de conversion d'un diamètre / rayon extérieur en
+  rayon intérieur. Un développé ne peut pas être affecté comme corde.
+- Plusieurs valeurs établies pour un même champ : statut contradictoire, champ
+  vidé, récapitulatif bloqué. L'utilisateur retient une preuve ou confirme
+  explicitement sa saisie d'arbitrage. Une correction ultérieure invalide cet
+  arbitrage et toute confirmation finale. Les preuves écartées restent présentes.
+- La section « Cotes retrouvées dans le PDF » affiche brut, unité, mm justifiés,
+  page, vue identifiée, rôle, motif et statut. « Voir la source » utilise `dxpOver`
+  et l'aperçu existant. Aucun contenu n'est envoyé sur le réseau.
+- Les mentions de chanfrein, feuillure, décrochement, sections multiples ou biais,
+  liées par repère ou par vue, sont des indices conservés ; elles ne prouvent pas
+  à elles seules la géométrie exacte. Un contour associé hors des formes connues
+  est signalé sans le qualifier de chanfrein. L'utilisateur peut également
+  signaler une particularité. **Ces signalements bloquent la création standard** :
+  leur fabrication reste à étudier, aucune option de validation d'un rectangle
+  fictivement équivalent n'est proposée.
+- `origineImport.cotesPdf` et `proposition.cotesPdf` : candidats, conflits,
+  preuves retenues, rôle confirmé, saisies brutes, valeurs / origines, arbitrages
+  et détails. Métadonnées facultatives conservées par le stockage et l'export
+  JSON existants ; enveloppe projet v10 inchangée. Un dossier non créé reste dans
+  `DXI.CP` et l'export local d'analyse (`cotesPdf`) ; il ne modifie pas le projet.
+  Comme les brouillons 9C, il faut exporter ce dossier avant de fermer l'import.
+
+Banc `t_cotes` et PDF **fictifs** dans `cotes_fictifs.py`, en campagnes rapide et
+complète ; `t_creation` historique conservé. Exemple utilisateur dans le manuel.
+Limites : pas d'interprétation générale des lignes de cote, pas de regroupement
+sémantique de fragments PDF / OCR, pas de déduction automatique d'un rayon à partir
+de diamètres de cuve, pas de fabrication des détails particuliers. Pour le cas
+réel de cuve étudié précédemment, le chanfrein reste hors moteur : aucune
+fabrication à l'identique n'est annoncée. Plans et diagnostics réels hors Git.
