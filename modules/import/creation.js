@@ -3,7 +3,7 @@
 (function(root){'use strict';
 const clone=x=>JSON.parse(JSON.stringify(x)),positif=x=>typeof x==='number'&&Number.isFinite(x)&&x>0;
 const toleranceValide=x=>typeof x==='number'&&Number.isFinite(x)&&x>=0;
-const CHAMPS={L:'ouverture.largeur_suivant_paroi_mm',h:'ouverture.hauteur_mm',D:'ouverture.diametre_mm',e:'support.epaisseur_mm',R:'support.rayon_interieur_mm'};
+const CHAMPS={L:'ouverture.largeur_suivant_paroi_mm',h:'ouverture.hauteur_mm',D:'ouverture.diametre_mm',e:'support.epaisseur_mm',R:'support.rayon_interieur_mm',profondeur:'ouverture.traversee_mm'};
 function proposer(analyse,saisie,ctx){
   const a=analyse||{},s=saisie||{},o=ctx||{},valeurs={},origines={},manquants=[],alertes=[...(a.incertitudes||[]),'Proposition pour une traversée normale : chanfreins, feuillures et détails particuliers ne sont pas reproduits automatiquement ; étude de fabrication à compléter.'];
   for(const [k,path] of Object.entries(CHAMPS)){
@@ -18,13 +18,13 @@ function proposer(analyse,saisie,ctx){
   origines.tolerance={origine:tolerance==null?'inconnue':Object.hasOwn(s,'tolerance')?'saisie':'profil',source:Object.hasOwn(s,'tolerance')?'ouvrage':o.toleranceSource||'ouvrage'};
   for(const k of ['type','support','joues','largeurRef'])origines[k]={origine:Object.hasOwn(s,k)?'saisie':k==='type'||k==='support'?'analyse':'inconnue'};
   if(Object.hasOwn(s,'tolerance')&&s.tolerance!=null&&!toleranceValide(s.tolerance))manquants.push('tolérance de courbure valide (positive ou nulle)');
-  if(type==='circ'){valeurs.L=valeurs.h=valeurs.e=valeurs.R=null;}else valeurs.D=null;
+  if(type==='circ'){valeurs.L=valeurs.h=valeurs.e=valeurs.R=null;}else{valeurs.D=null;valeurs.profondeur=null;}
   if(support!=='voile_circulaire')valeurs.R=null;
   const requis=(k,lib)=>{if(!positif(valeurs[k]))manquants.push(lib)};
   if(!['rect','carre','circ'].includes(type))manquants.push('forme de l’ouverture');
   if(!['voile_droit','voile_circulaire'].includes(support))manquants.push('nature du support');
   if(type!=='circ')requis('e','épaisseur du voile');
-  if(type==='circ'){requis('D','diamètre de l’ouverture');valeurs.profondeur=positif(s.profondeur)?s.profondeur:null;origines.profondeur={origine:valeurs.profondeur?'saisie':'inconnue'};requis('profondeur','longueur de traversée du fourreau');}
+  if(type==='circ'){requis('D','diamètre de l’ouverture');requis('profondeur','longueur de traversée du fourreau');}
   else{requis('L','largeur horizontale');requis('h','hauteur de l’ouverture');}
   if(!s.traversee)manquants.push('confirmation de la traversée normale au voile (sans biais ni pente)');
   let geometrie=null,fleches={interieure:null,exterieure:null},recommandation='a_determiner',solutions=[];

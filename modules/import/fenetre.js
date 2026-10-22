@@ -770,6 +770,7 @@ function dxrJSON(){const D=DXI,q=x=>Math.round(x*100)/100,bx=b=>b?b.map(q):null,
     views:dxrVues().map(v=>({id:v.id,page:v.page,region:v.region,titre:v.titre,type:v.type,partie:v.partie,echelle:v.echelle,niveau:v.niveau,confiance:v.confiance,incertaine:!!v.incertaine,motifs:v.motifs})),
     graphicalObservations:[],physicalOccurrences:[],associations:[],evidence:[],uncertainties:[],
     // phase 9A : support (voile droit, voile circulaire…) de chaque réservation associée, valeurs et provenances (jamais appliqué)
+    cotesPdf:D.CP||{},
     supports:Object.entries(D.SP||{}).map(([ligne,r])=>Object.assign({ligne},r)),
     // état de l'analyse des supports : une liste vide après un échec ne se confond pas avec une analyse réussie sans résultat
     supportsAnalyse:D.SPerr?{etat:'echec',erreur:D.SPerr}:D.SP?{etat:'reussie',lignes:Object.keys(D.SP).length}:{etat:'non_lancee'}};
