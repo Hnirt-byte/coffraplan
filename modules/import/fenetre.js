@@ -61,7 +61,7 @@ function dxiCss(){if(el('dxiCss'))return;document.head.insertAdjacentHTML('befor
 #dxoT .fi.dt{border-color:var(--acct);background:rgba(232,170,12,.14)}#dxoT .fi.ed{border-color:var(--okt)}#dxoT tr.on td{background:rgba(232,130,12,.16)}
 #dxpO .rs{fill:rgba(123,77,255,.10);stroke:#7b4dff;stroke-width:1.5px;vector-effect:non-scaling-stroke;cursor:pointer}
 #dxpO .rs.cf{stroke:var(--okt);fill:rgba(46,204,113,.22)}#dxpO .rs.on{stroke:var(--accent);stroke-width:3px;fill:rgba(232,130,12,.30)}
-#dxpO .rs.lk{stroke:var(--okt);stroke-dasharray:4 2;fill:none;cursor:default}#dxpO .rs.pr{stroke:var(--accent);stroke-dasharray:5 2;stroke-width:2.5px}
+#dxpO .rs.recon{stroke-dasharray:2 3;fill:none}#dxpO .rs.lk{stroke:var(--okt);stroke-dasharray:4 2;fill:none;cursor:default}#dxpO .rs.pr{stroke:var(--accent);stroke-dasharray:5 2;stroke-width:2.5px}
 #dxpO .rl{fill:#7b4dff;pointer-events:none}#dxpO .ca{fill:var(--redt)}#dxpO .cl{stroke:var(--redt);stroke-width:1.5px;vector-effect:non-scaling-stroke}#dxpO.cm{cursor:crosshair}
 #dxpO .vu{fill:none;stroke:#1f77b4;stroke-width:1.2px;vector-effect:non-scaling-stroke;stroke-dasharray:8 4;pointer-events:none}#dxpO .vl{fill:#1f77b4;pointer-events:none}#dxpO .vu.vi{stroke-dasharray:2 4}
 #dxpO .oc{fill:rgba(232,130,12,.12);stroke:var(--accent);stroke-width:1.5px;vector-effect:non-scaling-stroke;stroke-dasharray:3 2}#dxpO .ot{stroke:var(--accent);stroke-width:1.2px;vector-effect:non-scaling-stroke;stroke-dasharray:4 3}
@@ -116,8 +116,8 @@ function dxiModels(){const D=DXI,tpl=coll(),tplS=formSnap(),ei=EI,ho=_hisOff,M={
 const dxiVis=i=>(DXI.fmt==='pdf'||DXI.lay[DXI.C[i].source.calque])&&!(DXI.lk&&DXI.lk.has(i));   // géométrie rattachée à une ligne de nomenclature : dans l'autre vue
 function dxiDef(c){if(c.type==='circ')return 'circ';const k=DXI_MM[DXI.u];return (k?(c.dims.L-c.dims.l)*k<0.5:c.dims.L-c.dims.l<=1e-6*c.dims.L)?'carre':'rect'}
 function dxiFormes(c){return c.type==='circ'?['circ']:dxiDef(c)==='carre'?['carre','carre_fond']:['rect','rect_fond']}
-function dxiDims(c){const pdf=DXI.fmt==='pdf',k=pdf?dxrK(c):DXI_MM[DXI.u],v=x=>dxiNum(k?x*k:x),u=k?'':pdf?' pt (échelle ?)':' (unité ?)';
-  return (c.type==='circ'?'Ø '+v(c.dims.D)+u:v(c.dims.L)+' × '+v(c.dims.l)+u)+(c.dims.angle?' · '+dxiNum(c.dims.angle)+'°':'')}
+function dxiDims(c){const pdf=DXI.fmt==='pdf',k=c.reconstruction?null:pdf?dxrK(c):DXI_MM[DXI.u],v=x=>dxiNum(k?x*k:x),u=k?'':pdf?' pt (échelle ?)':' (unité ?)';
+  return (c.reconstruction?'≈ contour reconstruit · ':'')+(c.type==='circ'?'Ø '+v(c.dims.D)+u:v(c.dims.L)+' × '+v(c.dims.l)+u)+(c.dims.angle?' · '+dxiNum(c.dims.angle)+'°':'')}
 
 // État de chaque ligne : np (non pris en charge) · ac (à compléter) · er (refusé) · wn / ok (prêt) ; x = sortie de versPlan
 function dxiEval(){const D=DXI;if(!D.M)dxiModels();const hc=parseCote(D.hCom,'mm'),moteur={migr,canon,limErr,checks,badDims};
@@ -329,8 +329,8 @@ function dxnEval(moteur,hc){const D=DXI;if(!D.NL||!D.NL.length)return;
     if(p.ref&&P.some(q=>chKey(q.ch)===chKey(p.ch)&&ouKey(q.ouv).toLowerCase()===ouKey(p.ouv).toLowerCase()&&String(q.ref||'').toUpperCase()===p.ref)){r.st='er';r.msg=`référence ${p.ref} déjà utilisée dans cet ouvrage`;return}
     r.x=x;r.st=x.alertes.length?'wn':'ok';r.msg=x.alertes.join(' · ')})}
 function dxnProv(k){const D=DXI,{N,L}=D.NL[k],r=D.NR[k],a=dxnAS(L),g=r.geo!==''?D.C[+r.geo]:null,u=dxnU(N,L);
-  return CPI.nomenclatures.provenance(N,L,{forme:r.x.plan.forme,nb:r.x.plan.nb,cotes:r.cotes,dims:dxnDims(r),ref:r.ref.trim().toUpperCase(),uniteTableau:u||null,uniteDessin:D.fmt==='pdf'?'pt':D.u||null,
-    uniteChoisie:!!(u&&!(L.dims&&L.dims.unite)&&!N.unite),geo:g?{c:g,statut:!r.geoT&&a.statut==='trouvee'?'trouvee':'choisie'}:null,rapprochement:D.fmt==='pdf'&&D.ana?dxrRapProv(a,r,D.CS[L.id]):null})}
+  const p=CPI.nomenclatures.provenance(N,L,{forme:r.x.plan.forme,nb:r.x.plan.nb,cotes:r.cotes,dims:dxnDims(r),ref:r.ref.trim().toUpperCase(),uniteTableau:u||null,uniteDessin:D.fmt==='pdf'?'pt':D.u||null,
+    uniteChoisie:!!(u&&!(L.dims&&L.dims.unite)&&!N.unite),geo:g?{c:g,statut:!r.geoT&&a.statut==='trouvee'?'trouvee':'choisie'}:null,rapprochement:D.fmt==='pdf'&&D.ana?dxrRapProv(a,r,D.CS[L.id]):null});if(g&&g.reconstruction&&p.geometrie)p.geometrie.reconstruction=g.reconstruction;return p}
 // Statuts, formes possibles, géométries proposées, bilan (sans reconstruire la liste : garde la saisie en cours)
 function dxnUpd(){const D=DXI;if(!D||!el('dxnT'))return;const lb={ok:'✓ prêt',wn:'⚠ prêt — ',ac:'… ',er:'⛔ non créé — '};
   document.querySelectorAll('#dxnT tr[data-n]').forEach(t=>{const k=+t.dataset.n,r=D.NR[k],{L}=D.NL[k],a=dxnAS(L),dm=dxnDims(r),F=dxnFormes(dm);
@@ -665,12 +665,15 @@ async function dxrGo(){const D=DXI;if(!D||!D.pdf||D.rJob||D.ocJob)return;const z
   b.disabled=true;el('dxrStop').style.display='';const msg=t=>{if(ici()&&el('dxrM'))el('dxrM').textContent=t};
   try{for(const n of pages){if(job.stop)throw new Error('annulé');msg(`Page ${n} : lecture des tracés…`);const g=await dxrGeo(n);if(!ici())return fin();
       const cad=dxrCad(n);
-      if(ocr&&!D.OT[n]){const K=CPI.geometrie.blocsTexte(g,{cadres:cad,verticaux:CPI.ocr.moteur()==='ppocr'});
+      if(ocr&&!D.OT[n]){const cle=CPI.nomenclatures.cleRep,attendus=new Set(D.NL.map(({L})=>cle(String(L.repere||'').replace(/^[\s({\[]+|[\s)}\]]+$/g,''))).filter(Boolean)),
+          presents=new Set(dxrTextes(n).map(t=>cle(t.texte)).filter(k=>attendus.has(k))),
+          petits=attendus.size>0&&presents.size<0.5*attendus.size&&Math.max(g.w,g.h)<1200,
+          K=CPI.geometrie.blocsTexte(g,{cadres:cad,verticaux:CPI.ocr.moteur()==='ppocr',hmin:petits?0.8:undefined});
         msg(`Page ${n} : ${K.length} bloc(s) de texte dessiné à lire…`);
         const pf=[...new Set(D.NL.map(({L})=>(CPI.nomenclatures.cleRep(L.repere||'').match(/^[A-Z]{1,4}/)||[''])[0]).filter(Boolean))];
-        const r=await CPI.ocr.lireBlocs(D.pdf,n,K.slice(0,DXR_BL),{run:'b'+n,prefixes:pf,annule:()=>job.stop||!ici(),progres:(t,f)=>msg(`Page ${n} : ${t}${f?' ('+Math.round(f*100)+' %)':''}`)});
+        const r=await CPI.ocr.lireBlocs(D.pdf,n,K.slice(0,DXR_BL),{run:'b'+n,prefixes:pf,petits,annule:()=>job.stop||!ici(),progres:(t,f)=>msg(`Page ${n} : ${t}${f?' ('+Math.round(f*100)+' %)':''}`)});
         if(!ici())return fin();D.OT[n]=r.textes;D.OM[n]=Object.assign(r.mesures,{trouves:K.length})}
-      const res=CPI.geometrie.detecterPage(g,{fichier:D.doc.fichier,textes:dxrTextes(n),cadres:cad,zone:z});
+      const res=CPI.geometrie.detecterPage(g,{fichier:D.doc.fichier,textes:dxrTextes(n),cadres:cad,zone:z,reperes:D.NL.map(({L})=>L.repere)});
       // vues techniques de la page (titres, régions) : contours rattachés à leur vue
       D.VU[n]=CPI.vues.detecter(g,dxrTextes(n),{cadres:cad});res.candidats.forEach(c=>c.vue=CPI.vues.situer(D.VU[n].carte,c.centre[0],c.centre[1]));
       dxrFusion(n,res,z);B.push({n,res})}}
@@ -767,7 +770,7 @@ function dxrJSON(){const D=DXI,q=x=>Math.round(x*100)/100,bx=b=>b?b.map(q):null,
     supportsAnalyse:D.SPerr?{etat:'echec',erreur:D.SPerr}:D.SP?{etat:'reussie',lignes:Object.keys(D.SP).length}:{etat:'non_lancee'}};
   D.C.forEach((c,i)=>{const cl=c.statut==='a_confirmer'&&!D.lk.has(i)?dxrCl(i):null;
     J.graphicalObservations.push({id:c.id,type:'contour',forme:c.type,page:c.source.page,vue:c.vue||null,bbox:bx(c.bbox),statut:c.statut,rattache:D.lk.has(i),
-      classement:cl,repere:c.annot&&c.annot.repere?c.annot.repere.texte:null,cotes:c.annot&&c.annot.cotes?c.annot.cotes.texte:null,remarques:c.remarques.slice()})});
+      classement:cl,repere:c.annot&&c.annot.repere?c.annot.repere.texte:null,cotes:c.annot&&c.annot.cotes?c.annot.cotes.texte:null,reconstruction:c.reconstruction||null,remarques:c.remarques.slice()})});
   D.NL.forEach(({L},k)=>{const a=dxnAS(L),cs=D.CS[L.id],r=D.NR[k];
     (a.occurrences||[]).forEach((o,j)=>{const id=`${L.id}/O${j+1}`,ro=cs&&cs.roles.find(x=>x.occurrence===j)||{},role=ro.role||null;
       J.graphicalObservations.push({id,type:'repere',nature:o.nature||'repere',page:o.page,vue:o.vue||null,x:q(o.x),y:q(o.y),texte:o.texte,source:o.source,brut:o.brut,confiance:o.conf,fiable:o.fiable});
@@ -795,7 +798,7 @@ function dxrBilan(){const D=DXI,n={forte:0,partielle:0,probable:0,conflit:0,abse
   return o}
 // Cotes proposées (mm) : cote écrite à côté du contour (unité écrite, ou déduite de la mesure à 10 % près), sinon mesure à l'échelle
 function dxrPre(i){const D=DXI,c=D.C[i],r=D.R[i],k=dxrK(c),A=c.annot&&c.annot.cotes,f=dxiNum,circ=c.type==='circ';
-  const mes=k?(circ?[c.dims.D*k]:[c.dims.L*k,c.dims.l*k]):null,pres=(v,m)=>v.every((y,j)=>Math.abs(y*m-mes[j])<=0.1*mes[j]);let p={cotes:'',origine:null,note:''};
+  const mes=k&&!c.reconstruction?(circ?[c.dims.D*k]:[c.dims.L*k,c.dims.l*k]):null,pres=(v,m)=>v.every((y,j)=>Math.abs(y*m-mes[j])<=0.1*mes[j]);let p={cotes:'',origine:null,note:''};
   if(A&&(A.etat==='circ')===circ){const v=circ?[A.D]:[Math.max(A.a,A.b),Math.min(A.a,A.b)],u=A.unite||(mes&&['mm','cm','m'].find(x=>pres(v,DXI_MM[x])));
     if(u){const m=DXI_MM[u];p={cotes:circ?'Ø'+f(A.D*m):f(A.a*m)+'x'+f(A.b*m),origine:'annotation',texte:A.texte,unite:u,note:mes&&!pres(v,m)?'écart de plus de 10 % avec la mesure sur le dessin':A.unite?'':'unité déduite de la mesure'}}
     else p.note=`cote écrite « ${A.texte} » sans unité : choisir l'échelle de la page ou saisir les cotes`}
@@ -822,14 +825,14 @@ function dxrEval(r,i,hc,moteur){const D=DXI,c=D.C[i],dm=CPI.nomenclatures.cotes(
   x.provenance=dxrProv(i,dm,fo);r.x=x;r.st=x.alertes.length?'wn':'ok';r.msg=x.alertes.join(' · ')}
 // Provenance d'un ouvrage repéré sur le dessin (clé origineImport) : page, contour, position et cotes sur la page (pt), échelle,
 // cote écrite, cotes proposées et retenues, corrections de l'utilisateur ; rien du PDF au-delà
-function dxrProv(i,dm,fo){const D=DXI,c=D.C[i],r=D.R[i],n=c.source.page,e=D.cal[n],p=r.pre||{},q=x=>Math.round(x*100)/100,A=c.annot||{},corrige=[];
+function dxrProv(i,dm,fo){const D=DXI,c=D.C[i],r=D.R[i],n=c.source.page,e=D.cal[n],p=r.pre||{},q=x=>x==null?null:Math.round(x*100)/100,A=c.annot||{},corrige=[];
   if(r.cotesT&&r.cotes.trim()!==p.cotes)corrige.push('cotes');if(r.forme&&r.forme!==(c.type==='circ'?'circ':dxnDef(dm)))corrige.push('forme');
   if(r.ref.trim().toUpperCase()!==String(A.repere?A.repere.texte:'').toUpperCase().replace(/\s+/g,''))corrige.push('ref');
   const dims={};Object.keys(c.dims).forEach(k=>dims[k]=q(c.dims[k]));
   return{fichier:D.doc.fichier,format:'pdf',type:'detection',page:n,presentation:'Page '+n,id:c.source.id,candidat:c.id,forme_detectee:c.type,
     unite_source:'pt',unite:'mm',vue:c.vue||null,centre:c.centre.map(q),boite:{page:n,x0:q(c.bbox[0]),y0:q(c.bbox[1]),x1:q(c.bbox[2]),y1:q(c.bbox[3]),unite:'pt'},dims_source:dims,zone:c.zone||null,
     echelle:e?Object.assign({mm_par_pt:e.k},e.mode==='points'?{mode:'points',a:e.a.map(q),b:e.b.map(q),distance_pt:q(e.pt),distance_mm:e.mm}:{mode:'echelle',echelle:e.ech,texte:e.texte}):null,
-    repere:A.repere?A.repere.texte:null,annotation:A.cotes?A.cotes.texte:null,
+    repere:A.repere?A.repere.texte:null,annotation:A.cotes?A.cotes.texte:null,reconstruction:c.reconstruction||null,
     cotes:{origine:r.cotesT?'saisie':p.origine||null,proposees:p.cotes||'',retenues:r.cotes.trim()},choix:{forme:fo,ref:r.ref.trim().toUpperCase()},
     corrige,a_verifier:c.remarques.slice(),h_saisie:true}}
 
@@ -868,7 +871,7 @@ function dxrOver(H,f){const D=DXI;let h='';const P=D.nsel>=0&&D.NL[D.nsel]?new S
     h+=`<rect class="${D.hlo&&D.hlo.k===D.nsel&&D.hlo.j===j?'hl':'oc'}" x="${x0}" y="${H-y1}" width="${w+2*m}" height="${(o.h||4)+2*m}"><title>${esc('repère « '+o.texte+' »'+(o.source==='ocr'?' (OCR, confiance '+o.conf+' %)':''))}</title></rect>`
       +(o.rappels||[]).map(q=>`<line class="ot" x1="${o.x}" y1="${H-o.y}" x2="${q[0]}" y2="${H-q[1]}"/>`).join('')});
   D.C.forEach((c,i)=>{if(c.source.page!==D.page||c.statut!=='a_confirmer')return;const g=c.geometrie,lk=D.lk.has(i),
-      cl=`rs${i===D.rsel?' on':''}${D.R[i].conf?' cf':''}${lk?' lk':''}${P.has(i)?' pr':''}`,t=`<title>${esc(c.id+' · '+dxiDims(c)+(lk?' · rattaché à la nomenclature':''))}</title>`,a=`class="${cl}" data-r="${i}"${lk?'':` onclick="dxrSel(${i},1)"`}`;
+      cl=`rs${c.reconstruction?' recon':''}${i===D.rsel?' on':''}${D.R[i].conf?' cf':''}${lk?' lk':''}${P.has(i)?' pr':''}`,t=`<title>${esc(c.id+' · '+dxiDims(c)+(lk?' · rattaché à la nomenclature':''))}</title>`,a=`class="${cl}" data-r="${i}"${lk?'':` onclick="dxrSel(${i},1)"`}`;
     h+=(g.type==='cercle'?`<circle ${a} cx="${g.centre[0]}" cy="${H-g.centre[1]}" r="${g.r}">${t}</circle>`:`<polygon ${a} points="${g.points.map(p=>p[0]+','+(H-p[1])).join(' ')}">${t}</polygon>`)
       +`<text class="rl" x="${c.bbox[0]}" y="${H-c.bbox[3]-1}" font-size="${f*0.8}">${esc(c.id.replace(/^P\d+-/,''))}</text>`});
   const e=D.cal[D.page],Q=D.calm&&D.calm.page===D.page?D.calm.pts:e&&e.mode==='points'?[e.a,e.b]:[],rr=f*0.35;

@@ -206,7 +206,7 @@ const BL_PX=32,BL_W=2000,BL_H=2400,TUILE=3000,RELU_MAX=200;   // shortcut: au pl
 async function lireBlocs(pdf,n,blocs,o){o=o||{};const t0=Date.now(),pr=o.progres||(()=>{}),stop=()=>{if(o.annule&&o.annule())throw new Error('annulé')};
   const pp=moteur()==='ppocr';if(!blocs.length)return{textes:[],mesures:{blocs:0,mosaiques:0,ms:0,moteur:nomMoteur()}};
   // marge autour du bloc : contexte pour Tesseract (rogné ensuite par noyau) ; plus étroite pour PP-OCR, qui lit toute la découpe
-  const hm=med(blocs.map(b=>b.h)),k=Math.min(6,Math.max(1.5,1.4*BL_PX/hm)),ts=TUILE/k,mg=b=>(pp?0.25:0.5)*b.h,ov=Math.min(ts/2,Math.max(...blocs.map(b=>b.x1-b.x0+2*mg(b)),...blocs.map(b=>b.y1-b.y0+2*mg(b))));
+  const hm=med(blocs.map(b=>b.h)),k=Math.min(o.petits?24:6,Math.max(1.5,1.4*BL_PX/hm)),ts=TUILE/k,mg=b=>(pp?0.25:0.5)*b.h,ov=Math.min(ts/2,Math.max(...blocs.map(b=>b.x1-b.x0+2*mg(b)),...blocs.map(b=>b.y1-b.y0+2*mg(b))));
   // tuiles qui se recouvrent de ov : chaque bloc (marges comprises) tient entier dans au moins une
   const X0=Math.min(...blocs.map(b=>b.x0-mg(b))),Y0=Math.min(...blocs.map(b=>b.y0-mg(b))),pas=ts-ov,T=new Map();
   blocs.forEach((b,i)=>{const cx=Math.max(0,Math.floor((b.x0-mg(b)-X0)/pas)),cy=Math.max(0,Math.floor((b.y0-mg(b)-Y0)/pas)),key=cx+','+cy;(T.get(key)||T.set(key,[]).get(key)).push(i)});

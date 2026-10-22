@@ -62,6 +62,9 @@ function detecterPage(geo,ctx){const n=geo.page,W=Math.min(geo.w,geo.h),z=ctx.zo
       if(L>=0.25*W)c.remarques.push('grand contour : pièce, local ou élément architectural ?');
       if(x.int>4)c.remarques.push('traits à l\'intérieur (hachures, symbole ?)');
       if(x.diag)c.remarques.push('diagonales dessinées (réservation traversante probable)')}});
+  // Phase 9B : voie contextuelle séparée ; aucun filtre ordinaire n'est désactivé.
+  if(root.CPI.contours&&ctx.reperes&&ctx.reperes.length){const recon=root.CPI.contours.reconstruire(geo,Object.assign({},ctx,{textes:T}));
+    recon.forEach(c=>{if(!C.some(x=>x.statut==='a_confirmer'&&dist(x.centre,c.centre)<0.25*c.dims.l))C.push(c)})}
   // textes voisins : chaque repère ou cote écrite va au contour proposé le plus proche (à moins de 4 hauteurs de texte)
   const OK=C.filter(c=>c.statut==='a_confirmer'),cotes=root.CPI.nomenclatures&&root.CPI.nomenclatures.cotes;
   T.forEach(t=>{const s0=t.texte.trim(),m=s0.match(/^([A-Z]{1,4}[ .\-]?\d{1,4}[A-Z]?)\s*[:\-–]?\s+(\S.*)$/i);   // « R12 650x800 » : repère puis cotes
@@ -88,14 +91,14 @@ function blocsTexte(geo,o){o=o||{};const B=geo.petits||[],N=B.length>>2,pt=i=>B[
       if(j!==i&&B[4*j]>x0+0.3&&B[4*j+1]>y0+0.3&&B[4*j+2]<x1-0.3&&B[4*j+3]<y1-0.3&&B[4*j+3]-B[4*j+1]<=0.6*(y1-y0))I.push(j)});   // lettres : pas le trait de symbole qui traverse le cadre
     if(I.length>=2)grouper(B,I).forEach(b=>{if(!R.some(q=>Math.abs(q.x0-b.x0)<0.5&&Math.abs(q.y0-b.y0)<0.5&&Math.abs(q.x1-b.x1)<0.5&&Math.abs(q.y1-b.y1)<0.5))R.push(Object.assign(b,{cadre:true}))})});
   R.forEach(b=>{const h=b.y1-b.y0,w=b.x1-b.x0;b.h=h;
-    if(b.n<2||h<BT_H[0]||h>BT_H[1]||w>(o.wmax||BT_W)||w>(o.rmax||12)*h||w<0.5*h)return;
+    if(b.n<2||h<(o.hmin||BT_H[0])||h>BT_H[1]||w>(o.wmax||BT_W)||w>(o.rmax||12)*h||w<0.5*h)return;
     if(cad.some(c=>dans(c,[(b.x0+b.x1)/2,(b.y0+b.y1)/2],0)))return;out.push(b)});
   // textes écrits verticalement (planche tournée, repère le long d'un voile) : mêmes règles sur les coordonnées transposées ;
   // vertical:true, h = hauteur de lettre (largeur sur la page) ; un groupe déjà lu à l'horizontale n'est pas repris
   if(o.verticaux){const T=new Float64Array(B.length);for(let i=0;i<N;i++){T[4*i]=B[4*i+1];T[4*i+1]=B[4*i];T[4*i+2]=B[4*i+3];T[4*i+3]=B[4*i+2]}
     const sur=(a,b)=>Math.max(0,Math.min(a.x1,b.x1)-Math.max(a.x0,b.x0))*Math.max(0,Math.min(a.y1,b.y1)-Math.max(a.y0,b.y0));
     grouper(T,tous).forEach(g=>{const h=g.y1-g.y0,w=g.x1-g.x0;
-      if(g.n<2||h<BT_H[0]||h>BT_H[1]||w>(o.wmax||BT_W)||w>(o.rmax||12)*h||w<1.0*h)return;
+      if(g.n<2||h<(o.hmin||BT_H[0])||h>BT_H[1]||w>(o.wmax||BT_W)||w>(o.rmax||12)*h||w<1.0*h)return;
       const b={x0:g.y0,y0:g.x0,x1:g.y1,y1:g.x1,n:g.n,h,vertical:true};
       if(cad.some(c=>dans(c,[(b.x0+b.x1)/2,(b.y0+b.y1)/2],0))||out.reduce((t,q)=>t+(q.vertical?0:sur(q,b)),0)>0.5*(b.x1-b.x0)*(b.y1-b.y0))return;out.push(b)})}   // couvert par des blocs horizontaux (repères empilés) : pas un texte vertical
   return out}
@@ -109,7 +112,10 @@ function grouper(B,I){const par=new Map(),CS=10,G=new Map();I.forEach(i=>par.set
       if(L){for(const j of L){const hj=Math.max(B[4*j+3]-B[4*j+1],1),lo=hi<hj?i:j,hl=Math.min(hi,hj),wl=B[4*lo+2]-B[4*lo],
         // tiret d'un identifiant (« 1-D1 ») : tracé plat et court, regroupé avec ses lettres (sinon « D1 » serait lu seul) ; un trait de cote reste à part
         tiret=wl>=1.5*hl&&wl<=1.5*Math.max(hi,hj),h=Math.max(hi,hj)>2.5*hl&&!tiret?hl:Math.max(hi,hj),gx=Math.max(B[4*j]-x1,x0-B[4*j+2]),gy=Math.max(B[4*j+1]-y1,y0-B[4*j+3]);
-        if(gx<=1.2*h&&gy<=0.12*h){const a=f(i),b=f(j);if(a!==b)par.set(a,b)}}L.push(i)}else G.set(k,[i])}}
+        // Un rappel fin et long accolé à la dernière lettre ne doit pas aspirer
+        // le repère entier dans le dessin du mur. Le tiret court reste une lettre.
+        const wi=x1-x0,wj=B[4*j+2]-B[4*j],rappel=wi>6*hi&&wi>2.5*hj||wj>6*hj&&wj>2.5*hi;
+        if(!rappel&&gx<=1.2*h&&gy<=0.12*h){const a=f(i),b=f(j);if(a!==b)par.set(a,b)}}L.push(i)}else G.set(k,[i])}}
   const R=new Map();for(const i of I){const x0=B[4*i],y0=B[4*i+1],x1=B[4*i+2],y1=B[4*i+3];
     const r=f(i),b=R.get(r);if(b){b.x0=Math.min(b.x0,x0);b.y0=Math.min(b.y0,y0);b.x1=Math.max(b.x1,x1);b.y1=Math.max(b.y1,y1);b.n++}else R.set(r,{x0,y0,x1,y1,n:1})}
   return[...R.values()]}

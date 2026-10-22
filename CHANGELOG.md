@@ -3,6 +3,35 @@
 Détail complet de chaque version (demandes, écarts voulus, tests, non validé) : `docs/historique/HANDOFF_<version>.md`.
 Chaque version est un tag git (`git diff v2.4 v2.5 -- app/` pour voir les changements).
 
+## Phase 9B — contours contextuels dans les voiles (non publiée, version v3.1 conservée)
+
+**Demande** : retrouver les réservations raccordées aux parements, sans exiger un
+rectangle fermé indépendant ni supprimer les protections contre les faux positifs.
+
+**Fait** : `contours.js`, recherche locale à partir d'un repère de nomenclature fiable,
+de diagonales, de traverses (fragments admis) et de parements concordants. Les limites
+inférées sont marquées « contour reconstruit », affichées en tirets et conservées avec
+leurs preuves dans les exports/provenances. Elles ne donnent aucune cote de fabrication
+et ne confirment aucune cote du tableau par mesure. Cercle fermé segmenté relu dans son
+sous-chemin avec contrôle des milieux ; OCR des petits repères sur les planches réduites,
+sans changer l'échelle physique ; rappels séparés des lettres ; ponctuation périphérique
+du repère ignorée dans la clé seulement, brut conservé. Aucun ouvrage créé automatiquement,
+aucun calcul de fabrication ou de débit modifié. `AGENTS.md` renvoie aux règles de `CLAUDE.md`.
+
+**Limites** : diagonales et traverses suffisantes requises ; ambiguïté, OCR incertain ou
+échelle absente restent signalés, valeurs non établies = `null`. L'API support DXF existe,
+mais son analyse et la reconstruction ne sont pas raccordées à la fenêtre DXF (PDF uniquement).
+Plans et rapports confidentiels exclus du dépôt. Voir `modules/import/README.md`, § Phase 9B.
+
+**Tests ciblés** : `t_contours` (30 contrôles : voiles droits/circulaires, fragments,
+facteurs graphiques, quadrillages, zones, repères voisins, provenance, aucune cote ni
+création automatique) et `t_rapprochement` (34 contrôles existants) passent. Les campagnes
+complètes, l'avant/après et la CI sont consignés dans la PR de livraison.
+
+**Non validé** : reconnaissance exhaustive des plans réels, toutes les vues tournées,
+ouvertures sans diagonales/traverses suffisantes et mesures sans calibrage confirmé.
+Firefox, Safari, Excel/AutoCAD et impression physique non essayés dans cette phase.
+
 ## Phase 9A — géométrie du support d'une réservation (non publiée, sans numéro de version)
 **Demande (Kévin, 22/10/2026)** : faire comprendre à CoffraPlan la géométrie du support dans lequel se situe une réservation repérée
 sur un plan PDF ou DXF (voile droit, voile circulaire), en séparant forme de l'ouverture, nature du support et solution de coffrage ;
@@ -50,7 +79,7 @@ contour de la réservation posée dans sa paroi n'est pas repéré par la phase 
 Nouvelle suite `t_support` (plans fictifs `tests/support_fictifs.py`, constructions `tests/support_cas.js`), ajoutée aux suites rapides.
 
 **Tests** : `python tests/run.py complet -j 4` : 37 / 37 suites vertes (22/10/2026, Chromium), dont `t_support` (71 après les correctifs de relecture) ; `t_avap` : 1 090 / 1 090
-contre main `6d5b4e5` (moteur, feuilles, DXF et CSV identiques). Livrable construit (après correctifs) : 37 043 190 octets  SHA-256
+contre main `6d5b4e5` (moteur, feuilles, DXF et CSV identiques). Livrable construit (après correctifs) : 37 043 190 octets SHA-256
 `40e1b0e3bbfab728e9c6fd97bc52e04d79cc02a8983b5e56b7c8b35fbd4f993f`.
 
 **Non validé** : aucun vrai plan ne contient de réservation repérée dans un voile circulaire (plan B : contour non repéré en amont) ;
