@@ -3,6 +3,51 @@
 Détail complet de chaque version (demandes, écarts voulus, tests, non validé) : `docs/historique/HANDOFF_<version>.md`.
 Chaque version est un tag git (`git diff v2.4 v2.5 -- app/` pour voir les changements).
 
+## Phase 10B — géométries particulières V1 (v3.1 conservée)
+
+**Fait** : proposition PDF d'une feuillure périphérique rectangulaire, après
+qualification explicite du détail, dimensions complètes et confirmation finale.
+Cotes de feuillure nommées avec repère et unité, provenance, conflits et arbitrage
+réutilisent le dossier 10A. Les autres détails attribués restent bloquants.
+Aucun ouvrage n'est créé par la sélection du détail ou l'aperçu.
+
+**Convention et réemploi** : le `rect` historique est ouvert suivant sa hauteur ;
+le mannequin `para` est ouvert entre les deux parements du voile. Le nouveau
+champ métier optionnel `feuilTraversee` conserve le corps CP `para` sans biais
+ni pente, sa hauteur verticale et ses contrôles. Les tasseaux, leurs contrôles et
+les vues sont réemployés du `rect` dans un repère explicite : Lrect = largeur,
+lrect = hauteur d'ouverture, hrect = traversée. Le « haut » du rect devient le
+parement A (X=0), le départ est mesuré depuis A vers B, jamais depuis le linteau.
+Le départ et la profondeur doivent tenir dans la traversée. La largeur est hors
+du vide. Quatre tasseaux en about carré, longs filants recouvrant les courts.
+Ce détail est dessiné sur une feuille obligatoire, dans les vues 3D, DXF et BIM.
+La vérification mécanique des panneaux `para` reste déclarée non effectuée.
+
+**Chanfrein** : module pur partagé pour un seul angle vertical à 45°, section
+pentagonale constante, repère, retrait égal sur les deux côtés, CP et orientation
+explicitement renseignés. Aperçu coté du vide et conservation dans le dossier
+local d'analyse. **Étude seulement** : face diagonale, assemblages et déductions
+CP non implémentés ; aucune création, aucun débit, gabarit ou export de fabrication
+pour cette variante. Aucun repli rectangulaire ni prétention de reproduire D13.
+
+**Compatibilité** : champs facultatifs, projets v10, anciens plans inchangés ;
+paramètres métier indépendants d'`origineImport`. Formulaire, JSON et IndexedDB
+restituent la feuillure. Aucun changement de fabrication historique voulu.
+
+**Tests** : banc `t_geometries_particulieres` intégré aux deux campagnes, PDF
+entièrement fictif, qualification et contradictions, absence de mutation,
+confirmation invalidée, unicité, bornes, débit CP/bois, dimensions 2D/3D,
+imbrication, WebGL, DXF et volumes IFC/GLB relus, persistance. Première étape
+feuillure : 33 contrôles verts avant l'ajout du chanfrein. Assertions historiques
+conservées. Le générateur `auditx.js` exclut les quatre nouveaux champs optatifs
+de ses tirages historiques : tirer la nouvelle case consommait un nombre
+aléatoire supplémentaire et activait une feuillure sur des cas auparavant sans
+cette option. Les entrées avant/après restent identiques ; la nouvelle option
+a son banc dédié. Résultats finaux et comparaison avant/après dans la PR.
+
+**Non vérifié** : fabrication et impression réelles, vrai AutoCAD, navigateurs
+hors Chromium. Les cinq PDF de chantier et leurs rendus restent hors dépôt.
+
 ## Phase 10A — cotes PDF et détails particuliers (v3.1 conservée)
 
 **Fait** : module pur d'association de preuves sur les textes déjà lus. Cotes

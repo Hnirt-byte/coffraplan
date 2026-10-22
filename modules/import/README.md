@@ -750,3 +750,91 @@ sémantique de fragments PDF / OCR, pas de déduction automatique d'un rayon à 
 de diamètres de cuve, pas de fabrication des détails particuliers. Pour le cas
 réel de cuve étudié précédemment, le chanfrein reste hors moteur : aucune
 fabrication à l'identique n'est annoncée. Plans et diagnostics réels hors Git.
+
+
+## Phase 10B — feuillure traversante et étude du chanfrein
+
+Depuis la proposition PDF, choisir le détail (`aucun`, `feuillure`,
+`chanfrein45`, `autre`). Une feuillure doit être explicitement qualifiée ; une
+preuve attribuée de chanfrein, d'autre forme ou de biais n'est pas effacée par
+ce choix. Les mentions non attribuées de 10A restent consultables.
+
+### Feuillure : conventions de fabrication
+
+Le `rect` / `carre` historique est une boîte ouverte suivant Z. Il ne peut pas
+remplacer directement un mannequin de voile dont les deux ouvertures sont sur
+X = 0 et X = e : cela inverserait aussi la hauteur utilisée pour la poussée.
+Le modèle retenu est donc **`para`, angles nuls**, avec `feuilTraversee:true`
+et `fL`, `fH`, `fNiv` comme paramètres métier facultatifs. Les anciens plans
+sans ce champ ne changent pas. `origineImport` reste une provenance seulement.
+
+`feuilTraverseRect` adapte le repère du modèle existant :
+
+| Rect de référence | Mannequin traversant |
+|---|---|
+| L | largeur d'ouverture `ppB` |
+| l | hauteur d'ouverture `ppH` |
+| h | traversée `ppE` |
+| haut z=h | parement A, X=0 |
+| fNiv depuis le haut | départ depuis A vers B, pas depuis le linteau |
+| fH | profondeur suivant la traversée |
+| fL | largeur hors du vide L × H |
+
+Le corps CP et ses assemblages restent ceux de `para`. Seuls le débit de ses
+quatre tasseaux et leurs solides sont réemployés du `rect`, transformés par
+`(x,y,z) → (e-z, x-L/2, y-H/2)` ; la réflexion inverse les faces orientées.
+Les tasseaux ont des abouts carrés, deux longs filants et deux courts entre eux.
+Les contrôles du `rect` imposent les limites existantes de feuillure et
+`fNiv + fH <= ppE`. Les biais/pentes sont refusés pour cette option.
+
+La feuille « FEUILLURE TRAVERSANTE », obligatoire même sans annexes, réemploie
+les vues cotées du rect dans son repère de fabrication explicitement légendé.
+Les autres vues para représentent le corps CP et le signalent. La 3D vectorielle
+et WebGL utilisent les mêmes solides transformés ; DXF et BIM les reprennent,
+avec BREP pour les tasseaux dans IFC/GLB. Pièces à coupes droites : pas de
+nouveau gabarit cintré, les cotes de découpe restent celles du débit. La fixation,
+le passage entre banches et la tenue mécanique restent à vérifier sur chantier.
+
+### Cotes et confirmation
+
+Les rôles nommés `largeur feuillure`, `profondeur feuillure` et `départ feuillure`
+peuvent alimenter respectivement `fL`, `fH`, `fNiv` dans les mêmes conditions
+strictes que les cotes 10A (repère unique, unité attachée, lecture fiable).
+Zéro n'est admissible que pour le départ. Sa présence dans un PDF ne confirme
+pas le sens de mesure : la qualification explicite de la convention A/B reste
+obligatoire. Contradictions, corrections, qualification et paramètres sont
+conservés dans la proposition et `origineImport.cotesPdf` après création.
+
+Exemple **fictif** : largeur 600, hauteur 800, voile 240, CP 18, feuillure 40 × 30,
+départ 20 mm. Choisir rectangle / voile droit / solution simple / feuillure,
+compléter les valeurs et arbitrer toute contradiction. Confirmer la convention
+A/B et la traversée normale ; examiner l'aperçu puis le récapitulatif, confirmer
+la création. Résultat : CP 2 × 600 × 240 et 2 × 764 × 240 ; tasseaux
+2 × 680 et 2 × 800, section 40 × 30, posés entre X=20 et X=50. La hauteur
+métier reste 800. Changer une valeur annule le récapitulatif ; revalider la même
+identité PDF ne crée pas un deuxième ouvrage.
+
+### Chanfrein : géométrie à étudier
+
+`geometries-particulieres.js` expose le module pur
+`CPI.geometriesParticulieres.chanfrein45(parametres,provenance)` : L, e, H,
+retrait, ep (mm), angle GA/DA/DB/GB, orientation explicite. Section horizontale
+XY, A y=0, B y=e, gauche x=0, droite x=L ; Z vertical. Il retourne sommets,
+faces, segments de référence, cotes, provenance, hypothèses et erreurs.
+Un seul angle est remplacé par deux points de retrait égal ; section constante
+sur H, angle 45°. Retrait strictement positif et inférieur à L et e.
+L'interface exige aussi la confirmation de cette convention.
+
+L'aire du vide n'est **pas** un débit CP. Les moteurs actuels ne définissent
+pas la cinquième face, les jonctions obliques et les déductions CP d'un
+assemblage pentagonal ; fabriquer un `para` de repli serait incorrect.
+La variante reste `fabricable:false`, création bloquée même avec toutes les
+valeurs. Aucun ouvrage n'entre dans les sorties de fabrication. La géométrie
+d'étude est consultable et exportable via l'analyse locale (`DXI.CP`), avant
+fermeture de l'import. D13 n'est pas annoncé reproduit. Voiles circulaires,
+plusieurs détails, profils variables et chanfreins multiples hors périmètre.
+
+Banc `t_geometries_particulieres` : PDF fictif et dimensions calculables
+indépendamment, contrôles, confirmation/unicité, CP/bois, volumes et positions
+3D, imbrication, DXF, WebGL, IFC relu par ifcopenshell, GLB relu, JSON v10 et
+IndexedDB, quatre angles du chanfrein et blocage de toute fabrication.
