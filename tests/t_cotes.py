@@ -56,6 +56,44 @@ def t(s):
                 'diamètre de cuve non attribué à l’ouverture ; diamètre de réservation nommé utilisable')
         r=analyse(['R01 : chanfrein à 45 degrés, 10 cm'])
         s.check(len(r['details'])==1 and not r['details'][0]['fabrication_disponible'], 'chanfrein textuel conservé avec preuve et fabrication indisponible')
+        for texte, attendu, motif in [
+                ('R02 : chanfrein 10 mm', False, 'autre repère'),
+                ('R01 : chanfrein 10 mm', True, 'repère exact'),
+                ('chanfrein 10 mm', False, 'sans repère'),
+                ('R01 et R02 : chanfrein 10 mm', False, 'plusieurs repères')]:
+            r=analyse([texte])
+            s.check(len(r['details'])==int(attendu) and len(r['indicesNonAttribues'])==int(not attendu),
+                    'détail dans la même vue : '+motif+' respecte la portée explicite')
+            if not attendu:
+                s.check(r['indicesNonAttribues'][0]['brut']==texte and r['indicesNonAttribues'][0]['raison'],
+                        'mention non attribuée et motif conservés : '+motif)
+        r=analyse(['R01 : chanfrein 10 mm'],dict(homonyme=True))
+        s.check(not r['details'] and r['indicesNonAttribues'][0]['statut']=='non_attribue',
+                'homonymes de nomenclatures distinctes : aucun détail attribué sans preuve de ligne')
+        for texte, valeur in [('1200 mm',1200),('1 200 mm',1200),('1\u00a0200 mm',1200),
+                              ('1\u202f200 mm',1200),('1,2 mm',1.2),('1,25 m',1250),
+                              ('1 200,50 mm',1200.5),('1.25 m',1250)]:
+            r=analyse(['R01 : hauteur = '+texte]);cs=[c for c in r['candidats'] if c['origine']=='texte']
+            s.check(len(cs)==1 and cs[0]['champ']=='h' and cs[0]['valeur_mm']==valeur and cs[0]['brut'].endswith(texte)
+                    and cs[0]['numerique']['normalisee'] is not None, 'nombre complet, conversion et brut : '+texte)
+        for texte in ['1.200 mm','1.200,50 mm','1,200.50 mm','1.200.000 mm']:
+            r=analyse(['R01 : hauteur = '+texte]);cs=[c for c in r['candidats'] if c['origine']=='texte']
+            s.check(len(cs)==1 and cs[0]['valeur_mm'] is None and not cs[0]['automatique']
+                    and cs[0]['statut']=='ambigue' and cs[0]['numerique']['normalisee'] is None,
+                    'notation ambiguë indivisible, aucune dimension proposée : '+texte)
+        for texte in ['0 mm','-20 mm','−20 mm','12 34 mm','9'*400+' m','9'*308+' m']:
+            r=analyse(['R01 : hauteur = '+texte]);cs=[c for c in r['candidats'] if c['origine']=='texte']
+            s.check(len(cs)==1 and cs[0]['valeur_mm'] is None and not cs[0]['automatique'],
+                    'valeur invalide / non finie refusée sans candidat parasite : '+texte[:24])
+        s.check(J("['Infinity','NaN','0','-1'].every(x=>CPI.cotesPreuves.nombre(x).etat==='invalide')"),
+                'parseur explicite : valeurs non finies, nulles et négatives refusées')
+        r=J("""()=>{const d=C10([T10('R01 : hauteur = 1.200 mm')]),id=d.candidats.at(-1).id;
+          return {sans:CPI.cotesPreuves.affecter(d,id,'h'),ambigu:CPI.cotesPreuves.affecter(d,id,'h','1.200'),
+            confirme:CPI.cotesPreuves.affecter(d,id,'h','1200'),decimal:CPI.cotesPreuves.affecter(d,id,'h','1,2'),
+            negatif:CPI.cotesPreuves.affecter(d,id,'h','-20')}}""")
+        s.check(r['sans'] is None and r['ambigu'] is None and r['negatif'] is None and r['confirme']['valeur']==1200
+                and r['decimal']['valeur']==1.2 and r['confirme']['candidate']['valeur_brute']=='1.200'
+                and r['confirme']['interpretation']['statut']=='confirmee' and r['confirme']['origine']=='saisie', 'interprétation explicite non ambiguë nécessaire, brut original et choix conservés')
         r=analyse([],dict(contours=[dict(id='poly',type='polygone',source=dict(page=2))]))
         s.check(r['details'][0]['type']=='forme_non_reconnue', 'forme non reconnue conservée comme incertitude, pas comme rectangle')
         r=J('''()=>C10([T10('R01 : épaisseur du voile = 20 cm','a',1),T10('R01 : hauteur = 1 m','b',2)],
@@ -118,6 +156,59 @@ def t(s):
         ouvrir('CONFLIT');J('dxcArbitrer("e")')
         pg.check('#dxc_detail');pg.fill('#dxc_detailNote','Forme irrégulière non qualifiée')
         s.check(J('dxcProposition().cotesPdf.detailUtilisateur')=='Forme irrégulière non qualifiée' and pg.is_disabled('#dxcRecap'), 'signalement utilisateur d’une forme inhabituelle conservé et bloquant')
+        # Détails : le lecteur PDF et le parcours de création réels doivent respecter le repère.
+        for nom, attendu in [('AUTRE_DETAIL',False),('INDICE_DETAIL',False),('MULTI_DETAIL',False),('DETAIL',True)]:
+            ouvrir(nom)
+            # Même vue contenant les deux repères : reproduit exactement le lien de secours audité.
+            J("""()=>{DXI.VU={2:{vues:[{id:'COUPE',page:2,region:[0,0,842,595],titre:'Coupe fictive'}]}};
+              DXI.AS=DXI.AS||{};DXI.AS[DXI.NL[DXC.i].L.id]={...dxnAS(DXI.NL[DXC.i].L),occurrences:[{page:2,vue:'COUPE',fiable:true}]};
+              dxcOuvrir('n',DXC.i)}""")
+            pg.select_option('#dxc_support','voile_droit');pg.check('#dxc_traversee');pg.select_option('#dxc_solution','simple')
+            s.check(pg.is_disabled('#dxcRecap')==attendu and bool(J('DXC.dossier.details.length'))==attendu,
+                    'PDF : seul le détail effectivement attribué bloque R01 — '+nom)
+            if nom=='AUTRE_DETAIL':
+                n=J('P.length');pg.fill('#dxc_ref','R01-SANS-CHANFREIN');pg.click('#dxcRecap');pg.check('#dxcConfirme');pg.click('#dxcCreer')
+                s.check(J('P.length')==n+1 and J('P.at(-1).ref')=='R01-SANS-CHANFREIN',
+                        'création effective de R01 permise malgré le chanfrein attribué à R02')
+            if not attendu:
+                s.check('chanfrein' in pg.inner_text('#dxcIndices') and J('dxcProposition().cotesPdf.indicesNonAttribues.length')>0,
+                        'indices non attribués affichés et exportables — '+nom)
+        ouvrir('HOMONYME')
+        homonymes=J('DXI.NL.map((x,i)=>({x,i})).filter(v=>v.x.L.repere==="R01").map(v=>({i:v.i,table:v.x.N.id}))')
+        s.check(len(homonymes)==2 and homonymes[0]['table']!=homonymes[1]['table'],
+                'PDF fictif : deux réservations R01 dans deux nomenclatures distinctes')
+        for h in homonymes:
+            J('i=>dxcOuvrir("n",i)',h['i'])
+            s.check(not J('DXC.dossier.details.length') and J('DXC.dossier.indicesNonAttribues.length')>0,
+                    'PDF homonyme : aucune attribution automatique à la ligne '+str(h['i']))
+        ouvrir('MILLIERS')
+        cs=J('DXC.dossier.candidats.filter(c=>c.origine==="texte"&&c.champ==="h")')
+        s.check(len(cs)==1 and cs[0]['valeur_mm']==1200 and cs[0]['valeur_brute']=='1 200',
+                'PDF : groupement de milliers reconnu comme une cote unique, sans 200 parasite')
+        ouvrir('NUMERIQUE')
+        j=J('DXC.dossier.candidats.findIndex(c=>c.numerique&&c.numerique.etat==="ambigue")')
+        s.check(j>=0 and pg.input_value('#dxc_h')=='500' and 'ambigue' in pg.inner_text('#dxcZ'),
+                'PDF : 1.200 ne remplace pas la cote fiable de nomenclature, ambiguïté affichée')
+        nb=J('P.length');J('j=>dxcAffecter(j)',j)
+        s.check(pg.input_value('#dxc_h')=='500' and J('P.length')==nb, 'retenir sans interprétation ne produit aucune dimension ambiguë')
+        pg.fill('#dxcValeur_'+str(j),'1200');J('j=>dxcAffecter(j)',j)
+        pg.select_option('#dxc_type','rect');pg.select_option('#dxc_support','voile_droit');pg.check('#dxc_traversee');pg.select_option('#dxc_solution','simple');pg.fill('#dxc_ref','R01-NUM')
+        s.check(J('dxcProposition().valeurs.h')==1200 and J('DXC.retenues.h.candidate.valeur_mm') is None,
+                '1200 mm seulement après confirmation explicite, preuve ambiguë originale intacte')
+        pg.click('#dxcRecap');pg.check('#dxcConfirme');pg.fill('#dxcValeur_'+str(j),'1250')
+        s.check(pg.locator('#dxcConfirme').count()==0 and J('P.length')==nb,
+                'modifier l’interprétation après récapitulatif invalide la confirmation')
+        J('j=>dxcAffecter(j)',j);pg.click('#dxcRecap');pg.check('#dxcConfirme');pg.click('#dxcCreer')
+        s.check(J('P.length')==nb+1 and J('P.at(-1).ppH')==1250
+                and J('P.at(-1).origineImport.cotesPdf.retenues.h.candidate.valeur_brute')=='1.200'
+                and J('P.at(-1).origineImport.cotesPdf.retenues.h.interpretation.valeur_mm')==1250,
+                'ouvrage confirmé : hauteur corrigée et interprétation persistées avec la chaîne originale')
+        sauvegarde=J('projJson()');J('stoAttendre()');pg.reload();pg.wait_for_function('_ready')
+        s.check(J('P.at(-1).ppH')==1250 and J('P.at(-1).origineImport.cotesPdf.retenues.h.interpretation.brut')=='1250',
+                'rechargement IndexedDB : valeur confirmée et provenance conservées')
+        J('txt=>loadText(txt,"separateurs-fictifs.json",null)',sauvegarde);J('dlgEnd(true)');J('stoAttendre()')
+        s.check(J('P.at(-1).origineImport.cotesPdf.retenues.h.candidate.valeur_brute')=='1.200'
+                and J('JSON.parse(projJson()).v')==10, 'sauvegarde / réimport JSON v10 : preuve ambiguë et interprétation conservées')
         s.check(not net, 'analyse, preuves et création hors connexion', str(net[:3]))
         s.check(not errs, 'aucune erreur JS', str(errs[:3]))
         b.close()

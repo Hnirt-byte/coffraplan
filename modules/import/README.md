@@ -707,6 +707,17 @@ formule de fabrication. Aucune mesure en points PDF n'est convertie ici.
   conservés séparément (et affichés si différents). Pas d'attribution d'un diamètre de cuve
   au diamètre de réservation, ni de conversion d'un diamètre / rayon extérieur en
   rayon intérieur. Un développé ne peut pas être affecté comme corde.
+- Lecture numérique complète avant conversion : entiers, virgule décimale,
+  groupes de trois chiffres séparés par espace ordinaire, insécable ou fine
+  insécable (`1 200`, `1 200`, `1 200`), éventuellement avec décimales (`1 200,50`).
+  Point décimal reconnu hors groupement ambigu à trois chiffres (`1.25 m`).
+  `1.200`, les points multiples et les ponctuations mixtes (`1.200,50`,
+  `1,200.50`) restent **ambigus**, sans normalisation ni millimètres proposés.
+  Un nombre groupé ne produit pas de candidats partiels. Unités contre la valeur
+  seulement ; nombres non finis, nuls, négatifs ou groupements irréguliers refusés.
+  Dans la ligne candidate, saisir une valeur non ambiguë en mm puis « Confirmer
+  et retenir ». L'interprétation saisie, le rôle confirmé et la chaîne source
+  restent dans la provenance ; toute modification invalide le récapitulatif.
 - Plusieurs valeurs établies pour un même champ : statut contradictoire, champ
   vidé, récapitulatif bloqué. L'utilisateur retient une preuve ou confirme
   explicitement sa saisie d'arbitrage. Une correction ultérieure invalide cet
@@ -714,11 +725,15 @@ formule de fabrication. Aucune mesure en points PDF n'est convertie ici.
 - La section « Cotes retrouvées dans le PDF » affiche brut, unité, mm justifiés,
   page, vue identifiée, rôle, motif et statut. « Voir la source » utilise `dxpOver`
   et l'aperçu existant. Aucun contenu n'est envoyé sur le réseau.
-- Les mentions de chanfrein, feuillure, décrochement, sections multiples ou biais,
-  liées par repère ou par vue, sont des indices conservés ; elles ne prouvent pas
-  à elles seules la géométrie exacte. Un contour associé hors des formes connues
+- Les mentions de chanfrein, feuillure, décrochement, sections multiples ou biais
+  ne sont attribuées que sur un repère exact unique, non homonyme et de lecture
+  fiable. Un autre repère explicite prime sur la vue commune. Sans repère, avec
+  plusieurs repères ou des homonymes, les mentions restent dans
+  `indicesNonAttribues`, consultables et non bloquantes ; l'utilisateur peut les
+  signaler explicitement si elles concernent l'ouvrage. La vue commune seule ne
+  prouve jamais une attribution. Un contour associé hors des formes connues
   est signalé sans le qualifier de chanfrein. L'utilisateur peut également
-  signaler une particularité. **Ces signalements bloquent la création standard** :
+  signaler une particularité. **Les détails attribués et les signalements utilisateur bloquent la création standard** :
   leur fabrication reste à étudier, aucune option de validation d'un rectangle
   fictivement équivalent n'est proposée.
 - `origineImport.cotesPdf` et `proposition.cotesPdf` : candidats, conflits,

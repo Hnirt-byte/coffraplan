@@ -24,6 +24,18 @@ OCR incertain, échelles / vues multiples, homonymes, contradictions, affectatio
 correction, détails bloquants, confirmation, doublons et persistance. Les
 assertions historiques sont conservées. Résultats exacts dans la PR.
 
+**Correctifs de relecture (PR #22)** : un repère étranger, une annotation
+multirepères ou un repère homonyme ne rattache plus un détail par simple vue
+commune. Les indices non attribués restent visibles et exportables ; seuls un
+détail effectivement attribué ou un signalement utilisateur bloquent la création.
+Le lecteur traite les nombres complets : espaces de milliers ordinaires,
+insécables et fines insécables ; virgule décimale et point décimal hors groupement
+ambigu. `1.200 mm` et les notations mixtes ne sont plus convertis silencieusement.
+Une interprétation explicite non ambiguë en mm est nécessaire, avec conservation
+du brut et de la saisie dans la provenance. Valeurs non finies / nulles / négatives
+refusées. Tests fictifs ajoutés, assertions existantes conservées, aucun moteur
+historique ni enveloppe v10 modifiés.
+
 **Limites** : annotations fragmentées et lignes de cote non interprétées ici ;
 les diamètres de cuve / rayons extérieurs ne deviennent pas des rayons intérieurs.
 Les particularités non lues exigent encore un signalement utilisateur. Les

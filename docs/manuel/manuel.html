@@ -505,6 +505,18 @@ Sélectionner le rôle puis <b>Retenir cette cote</b> après relecture. Un diam�
 ou un rayon extérieur ne devient pas un rayon intérieur ; un développé n'est pas une corde.
 Les unités absentes, les textes fragmentés et les lignes de cote non interprétées exigent
 encore une saisie documentée. Les mesures graphiques nécessitent toujours un calibrage confirmé.</p>
+<p><b>Conventions numériques :</b> 1200 mm, 1 200 mm (y compris espace insécable
+ou fine insécable) donnent une seule cote de 1200 mm. La virgule est décimale :
+1,2 mm = 1,2 mm ; 1,25 m = 1250 mm. Les groupements sont de trois chiffres,
+éventuellement suivis d'une décimale (1 200,50 mm). Le point décimal est reconnu
+hors groupement ambigu à trois chiffres (1.25 m = 1250 mm).</p>
+<p><b>Ambiguïté :</b> 1.200 mm, 1.200,50 mm ou 1,200.50 mm ne renseignent aucun
+champ automatiquement. Dans la ligne de la cote, saisir la <b>valeur confirmée
+en mm</b>, par exemple 1200 ou 1,2 selon la lecture vérifiée du document, puis
+<b>Confirmer et retenir</b>. La chaîne originale et votre interprétation sont
+conservées. Les nombres non finis, nuls, négatifs et les groupements irréguliers
+sont refusés ; une unité n'est jamais empruntée à une autre annotation.
+Toute modification après le récapitulatif impose une nouvelle confirmation.</p>
 <p><b>Exemple entièrement fictif :</b> la nomenclature de R01 indique 500 × 500 mm ;
 une coupe porte « R01 : épaisseur du voile = 20 cm ». L'épaisseur proposée est 200 mm,
 avec conservation du texte et de sa source. Si une seconde coupe indique 300 mm,
@@ -512,9 +524,12 @@ le champ reste vide : examiner les deux preuves, retenir la bonne ou saisir une
 correction puis confirmer explicitement l'arbitrage. Modifier ensuite cette valeur
 impose de refaire l'arbitrage et le récapitulatif. Le projet reste intact jusqu'à la
 confirmation finale de création.</p>
-<div class="warn"><b>Détails particuliers</b>Une mention de chanfrein, feuillure,
-décrochement ou biais, une forme associée non reconnue, ou votre propre signalement
-bloquent la création standard. Décrire le détail à étudier : le moteur de cette phase
+<div class="warn"><b>Détails particuliers</b>Un détail attribué à votre réservation
+par repère exact unique et fiable, une forme associée non reconnue, ou votre propre
+signalement bloquent la création standard. Un chanfrein nommé R02 ne bloque pas
+R01 dans la même vue. Les mentions sans repère, multirepères ou homonymes restent
+visibles dans <b>Indices non attribués</b>, avec leur preuve et leur incertitude :
+les signaler explicitement si elles concernent votre ouvrage. Décrire le détail à étudier : le moteur de cette phase
 ne le fabrique pas. Ne pas considérer un rectangle approché comme une forme validée.
 Les indices graphiques ne prouvent pas la nature exacte du détail.</div>
 <p>Après création, preuves retenues, corrections et arbitrages sont conservés avec
