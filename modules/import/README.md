@@ -504,7 +504,10 @@ métier dupliqué), à la corde = largeur **suivant la paroi** et aux deux parem
     vue de ferraillage (armatures en lignes parallèles : faux voile constaté sur un plan réel) ;
   - réservation entre deux faces sans aller de l'une à l'autre (pièce entre deux murs, réservation de dalle, élévation) : support
     `inconnu`, bande signalée (`bande_possible`) ; contour `repris` : support seulement possible (`support_possible`, valeurs dans la
-    preuve), le résultat reste `inconnu` (constaté sur un plan réel : gaine voisine prise pour la réservation).
+    preuve), le résultat reste `inconnu` (constaté sur un plan réel : gaine voisine prise pour la réservation) ; de même pour des faces
+    présentes d'un seul côté de la réservation (extrémité de voile, ou lignes de cote alignées sur le contour : constaté sur un plan réel) ;
+  - arcs d'un même centre à 1 % du rayon près (centre du groupe = celui de l'arc le plus long) ; deux candidats circulaires de même
+    centre et mêmes rayons à 2 % près = une seule paroi (faces lues l'une en Bézier, l'autre en segments : centres ajustés différents).
 - **Valeurs (mm) et provenance** (`provenance['support.epaisseur_mm'] = {origine:'cote_explicite'|'mesure'|'calcul'|'saisie', source, detail}`) :
   - échelle : celle donnée (page ou vue) ; deux échelles différentes, ou largeur mesurée qui ne correspond à aucune cote du tableau →
     « échelle incohérente », mesures non utilisées ; sans échelle, une épaisseur saisie ou cotée au tableau (« ép. 250 mm ») donne une

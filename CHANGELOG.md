@@ -14,6 +14,8 @@ forme voile jamais activée à l'import, aucun LLM ni API ; aucun seuil arbitrai
   directions des côtés du contour) ou circulaires (arcs concentriques : ARC / bulge DXF, Bézier PDF, chaînes de segments) ; une
   réservation qui ne va pas d'une face à l'autre n'est jamais rattachée à un support (bande signalée seulement) ; deux supports d'égale
   vraisemblance → `inconnu` ; quadrillages, tableaux, cartouches, vues en élévation et de ferraillage, contours écartés : non analysés.
+  Faces d'un seul côté de la réservation, ou contour repris par proximité du repère : support seulement « possible » (preuve), jamais
+  dans le résultat.
 - Valeurs en mm avec leur provenance (`cote_explicite`, `mesure`, `calcul`, `saisie`) ; `null` si absente. Échelle de la page et de la
   vue comparées ; échelle incohérente (deux échelles, ou largeur mesurée sans rapport avec les cotes du tableau) : mesures non utilisées.
   Une cote voisine n'est retenue que confirmée par la mesure. Orientation de l'ouverture (largeur suivant la paroi ≠ hauteur) par les

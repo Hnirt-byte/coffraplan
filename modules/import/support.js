@@ -94,7 +94,9 @@ function droites(p,S,dirs,K,eps,W){const D=[],out=[];
   return out}
 // Faces circulaires : arcs de même centre (à 0,5 % du rayon), rayons de part et d'autre du point p, arcs présents près de p
 function circulaires(p,A,K,eps,W){const G=[],out=[];
-  A.forEach(a=>{if(!(a.r>eps))return;let g=G.find(x=>dist(x.c,a.centre)<=eps+0.005*Math.max(x.r,a.r));if(!g){g={c:a.centre,r:a.r,A:[]};G.push(g)}g.A.push(a)});
+  // même centre à 1 % du rayon près : les faces d'une même paroi lues autrement (Bézier, chaîne de segments) ont des centres ajustés
+  // légèrement différents (constaté sur un plan réel : 0,5 pt pour un rayon de 65 pt)
+  A.slice().sort((a,b)=>b.d*b.r-a.d*a.r).forEach(a=>{if(!(a.r>eps))return;let g=G.find(x=>dist(x.c,a.centre)<=eps+0.01*Math.max(x.r,a.r));if(!g){g={c:a.centre,r:a.r,A:[]};G.push(g)}g.A.push(a)});   // centre du groupe : celui de l'arc le plus long
   G.forEach(g=>{const c=g.c,rho=dist(p,c),phi=Math.atan2(p[1]-c[1],p[0]-c[0]);if(!(rho>eps))return;
     const R=[];g.A.forEach(a=>{let x=R.find(y=>Math.abs(y.r-a.r)<=eps+0.002*a.r);if(!x){x={r:a.r,A:[]};R.push(x)}x.A.push(a)});
     // positions le long de la paroi en longueur d'arc au rayon de p ; réservation : étendue angulaire de son contour
@@ -186,7 +188,9 @@ function analyser(obs,env,o){o=o||{};const c=obs.candidat||null,g=c&&c.geometrie
       pv.push({type:'courbe_non_circulaire',ids:NC.slice(0,6).map(x=>x.id)})}
     else inc.push('aucune paroi reconnue autour de la réservation (faces parallèles ou arcs concentriques) : support inconnu');
     return valeurs(R,L,null,o,inc,pv,prov),fin()}
-  const rival=cand.slice(1).find(x=>x.classe===best.classe&&x.score>=AMBIGU*best.score&&(x.type!==best.type||(x.type==='voile_droit'?angEcart(x.dir,best.dir)>ANG:dist(x.centre,best.centre)>eps+0.005*best.ri)));
+  // rival : autre type, autre direction, ou autre paroi circulaire (centre ou rayons différents à 2 % près)
+  const meme=(x,y)=>dist(x.centre,y.centre)<=eps+0.02*y.re&&Math.abs(x.ri-y.ri)<=eps+0.02*y.ri&&Math.abs(x.re-y.re)<=eps+0.02*y.re;
+  const rival=cand.slice(1).find(x=>x.classe===best.classe&&x.score>=AMBIGU*best.score&&(x.type!==best.type||(x.type==='voile_droit'?angEcart(x.dir,best.dir)>ANG:!meme(x,best))));
   pv.push(...cand.slice(0,3).map(preuve));
   if(rival){R.support.type='inconnu';inc.push(`deux supports possibles (${best.type} et ${rival.type}) : à choisir par l'utilisateur`);return valeurs(R,L,null,o,inc,pv,prov),fin()}
   // réservation entre deux faces sans aller de l'une à l'autre : simple voisinage (pièce entre deux murs, vue en élévation, réservation de
@@ -196,17 +200,18 @@ function analyser(obs,env,o){o=o||{};const c=obs.candidat||null,g=c&&c.geometrie
     inc.push(`réservation entre deux ${best.type==='voile_droit'?'lignes parallèles':'arcs concentriques'} sans aller de l'une à l'autre`+(kk?` (écart ${Math.round(best.t*kk)} mm)`:'')+' : voile possible, pièce entre deux murs, vue en élévation ou réservation de dalle ; support à préciser');
     return valeurs(R,L,null,o,inc,pv,prov),fin()}
   R.support.type=best.type;R.support.confiance='moyenne';
-  if(best.bord)inc.push('paroi interrompue d\'un côté de la réservation (angle, extrémité de voile ?) : support à confirmer');
+  if(best.bord)inc.push('faces présentes d\'un seul côté de la réservation (extrémité de voile, angle, ou lignes de cote alignées sur le contour ?) : support à confirmer');
   if(best.autres)inc.push('autres lignes parallèles à la paroi (doublage, isolation, cote ?) : épaisseur à confirmer');
   if(NC.length&&best.type==='voile_droit')inc.push('courbes non circulaires à proximité : paroi courbe possible');
   if(L&&L.courbe&&best.type==='voile_droit')inc.push('la nomenclature mentionne un ouvrage courbe (cintré, circulaire, cuve) et le dessin montre une paroi droite : à vérifier');
   if(L&&L.droit&&best.type==='voile_circulaire')inc.push('la nomenclature mentionne un voile droit et le dessin montre une paroi circulaire : à vérifier');
   valeurs(R,L,best,o,inc,pv,prov);
   // contour repris (écarté par le repérage, choisi par proximité du repère) : support seulement possible (constaté sur un plan réel :
-  // gaine ou autre contour voisin pris pour la réservation) ; valeurs gardées dans la preuve, jamais dans le résultat
-  if(o.repris){const S=R.support;pv.push({type:'support_possible',support:S.type,epaisseur_mm:S.epaisseur_mm,rayon_interieur_mm:S.rayon_interieur_mm,
+  // gaine ou autre contour voisin pris pour la réservation) ; valeurs gardées dans la preuve, jamais dans le résultat ;
+  // faces d'un seul côté : extrémité de voile possible, mais aussi lignes de cote alignées sur le contour (constaté sur un plan réel)
+  if(o.repris||best.bord){const S=R.support;pv.push({type:'support_possible',support:S.type,epaisseur_mm:S.epaisseur_mm,rayon_interieur_mm:S.rayon_interieur_mm,
       fleche_interieure_mm:R.coffrage.fleche_interieure_mm,provenance:prov['support.epaisseur_mm']||null});
-    inc.push(`support possible : ${S.type}${S.epaisseur_mm?' ép. '+S.epaisseur_mm+' mm':''}, d'après un contour repris : à confirmer`);
+    inc.push(`support possible : ${S.type}${S.epaisseur_mm?' ép. '+S.epaisseur_mm+' mm':''}, d'après ${o.repris?'un contour repris':'des faces d\'un seul côté'} : à confirmer`);
     R.support={type:'inconnu',epaisseur_mm:null,rayon_interieur_mm:null,rayon_exterieur_mm:null,confiance:null};R.correspondance_voile=null;
     Object.assign(R.coffrage,{pistes:[],fleche_interieure_mm:null,fleche_exterieure_mm:null});
     Object.keys(prov).forEach(k=>{if(/^support\.|^coffrage\.fleche/.test(k))delete prov[k]});return fin()}

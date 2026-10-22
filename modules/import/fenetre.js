@@ -703,10 +703,12 @@ async function dxsAnalyser(){const D=DXI,SP={},P=new Map();D.SP={};D.SPerr=null;
           .map(x=>({x,d:Math.min(...Q.map(q=>CPI.nomenclatures.dGeo(q,x.geometrie)))})).filter(v=>v.d<=4*h).sort((u,v)=>u.d-v.d);
         if(V.length&&(V.length===1||V[1].d>1.25*V[0].d+0.5*h)){c=V[0].x;rep=c.remarques[0]||'contour écarté'}}
       if(!c||!c.bbox)return;(P.get(o.page)||P.set(o.page,[]).get(o.page)).push({N,L,o,c,rep})})});
-  for(const [n,X] of P){let g=D.GP[n]||await dxrGeo(n);
-    if(g.coupe||g.coupeCourbes)g=await CPI.pdf.chemins(D.pdf,n,{zones:X.map(({c})=>{const b=c.bbox,w=7*Math.max(b[2]-b[0],b[3]-b[1],1);return[b[0]-w,b[1]-w,b[2]+w,b[3]+w]})});
-    const env=CPI.support.envPdf(g,dxrTextes(n)),cad=dxrCad(n),e=D.cal[n];
-    X.forEach(({N,L,o,c,rep})=>{const v=o.vue?dxrVueDe(o.vue):null,ev=v&&v.echelle&&v.echelle.valeur>0?v.echelle.valeur:null,kv=ev?ev*DXR_PT:null,sv='échelle de la vue 1:'+ev;
+  for(const [n,X] of P){const g0=D.GP[n]||await dxrGeo(n),zo=({c})=>{const b=c.bbox,w=7*Math.max(b[2]-b[0],b[3]-b[1],1);return[b[0]-w,b[1]-w,b[2]+w,b[3]+w]};
+    // page coupée : relecture des zones assez petites (≤ 1/4 de la page) en une fois ; un très grand contour garde la lecture de la page
+    const pt=x=>{const z=zo(x);return(z[2]-z[0])*(z[3]-z[1])<=0.25*g0.w*g0.h},Zs=(g0.coupe||g0.coupeCourbes)?X.filter(pt):[];
+    const gz=Zs.length?await CPI.pdf.chemins(D.pdf,n,{zones:Zs.map(zo)}):null,envZ=gz&&CPI.support.envPdf(gz,dxrTextes(n)),env0=CPI.support.envPdf(g0,dxrTextes(n));
+    const cad=dxrCad(n),e=D.cal[n];
+    X.forEach(x=>{const {N,L,o,c,rep}=x,env=gz&&Zs.includes(x)?envZ:env0;const v=o.vue?dxrVueDe(o.vue):null,ev=v&&v.echelle&&v.echelle.valeur>0?v.echelle.valeur:null,kv=ev?ev*DXR_PT:null,sv='échelle de la vue 1:'+ev;
       const ech=e?{source:e.mode==='points'?'calibrage par 2 points':'échelle de la page'+(e.ech?' 1:'+e.ech:''),autres:kv?[{k:kv,source:sv}]:[]}:kv?{source:sv,autres:[]}:null;
       const u=dxnU(N,L),lg=Object.assign({},L,{dims:L.dims?Object.assign({},L.dims,{unite:u||null}):null});
       (SP[L.id]=SP[L.id]||[]).push(CPI.support.analyser({repere:L.repere,candidat:c,page:n,vue:v?{id:v.id,type:v.type,titre:v.titre}:null},env,
