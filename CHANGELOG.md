@@ -39,6 +39,11 @@ confirmation, joues / cordes / flèches / tolérance, création unique, stockage
 contrôles / débit / feuilles / visualisation existants). Résultats des campagnes
 et avant/après exacts consignés dans la PR ; exemple utilisateur dans le manuel.
 
+**Correctif du test R04** : suppression de la saisie obsolète de l'épaisseur du
+voile, volontairement masquée pour un fourreau ; assertion de visibilité ajoutée
+(épaisseur masquée, longueur de traversée visible). Les confirmations et assertions
+de création/fabrication sont conservées ; aucun comportement applicatif modifié.
+
 **Limites** : traversées normales sans biais ni pente ; développés et cordes
 intérieures radiales à reporter manuellement en bonne corde. Un chanfrein, une
 feuillure ou un détail particulier du plan ne sont pas reproduits automatiquement

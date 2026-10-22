@@ -128,7 +128,10 @@ def t(s):
         s.check(r['n'] == 2 and r['g']['ok'] and r['g']['rad'] and not r['err'] and r['pieces']>0 and r['html']>1000 and r['model'],
                 'ouvrage cintré confirmé : voileGeo, manGeo, checks, débit, feuilles et modèle 3D existants', json.dumps(r)[:500])
         before = J('JSON.stringify(P.slice(0,2))')
-        J('dxcOuvrir("n",K9("R04"))');pg.select_option('#dxc_support','voile_droit');pg.fill('#dxc_e','200');pg.fill('#dxc_profondeur','230');pg.check('#dxc_traversee');pg.select_option('#dxc_solution','fourreau')
+        J('dxcOuvrir("n",K9("R04"))');pg.select_option('#dxc_support','voile_droit')
+        s.check(pg.is_hidden('#dxc_e') and pg.is_visible('#dxc_profondeur'),
+                'fourreau R04 : épaisseur du voile masquée, longueur de traversée visible')
+        pg.fill('#dxc_profondeur','230');pg.check('#dxc_traversee');pg.select_option('#dxc_solution','fourreau')
         pg.click('#dxcRecap');pg.check('#dxcConfirme');pg.click('#dxcCreer')
         s.check(J('[P[2].forme,P[2].D,P[2].h]') == ['circ',200,230], 'fourreau fictif : diamètre explicite, longueur de traversée saisie indépendamment de l’épaisseur')
         s.check(J('JSON.stringify(P.slice(0,2))') == before, 'ouvrages existants intacts après la nouvelle création')
