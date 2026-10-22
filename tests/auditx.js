@@ -24,7 +24,10 @@ window.AX = {
   // plan aléatoire d'une forme : sélecteurs puis cases puis nombres (deux passes : les options révèlent des champs)
   make(f, seed) {
     AX.seed(seed); el('iForme').value = f; updF(); el('iCh').value = 'AUDIT'; el('iRef').value = 'A' + seed;
-    const box = () => [...el('zDim').querySelectorAll('input,select'), ...el('zOpt').querySelectorAll('input,select')];
+    // Gel des entrées historiques : l'option 10B est couverte par t_geometries_particulieres.
+    // Son tirage consommerait une valeur aléatoire et changerait les plans avant/après.
+    const box = () => [...el('zDim').querySelectorAll('input,select'), ...el('zOpt').querySelectorAll('input,select')]
+      .filter(e => !['ppFeuil','ppFL','ppFH','ppFNiv'].includes(e.id));
     for (let pass = 0; pass < 3; pass++) {
       box().forEach(e => {
         if (e.offsetParent === null && pass > 0) return; // caché

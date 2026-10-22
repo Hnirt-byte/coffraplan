@@ -71,6 +71,16 @@ function dxcOuvrir(kind,i){const D=DXI;if(!D||D.fmt!=='pdf'||D.rJob)return;
     <div class="hint">L n'est pas un développé. Joues parallèles : même corde aux deux parements. Joues radiales : saisir la corde extérieure. Aucune conversion implicite entre ces valeurs.</div>
     ${input('tolerance','Tolérance de courbure de cet ouvrage (mm, facultative)')}
     <div class="mu" id="dxcTolProfil"></div>
+    ${select('geometrie','Géométrie particulière',[['aucun','Aucun détail particulier'],['feuillure','Feuillure périphérique rectangulaire'],['chanfrein45','Chanfrein rectiligne 45° — géométrie à étudier'],['autre','Autre détail — non pris en charge']],'aucun')}
+    <div class="g3">${input('fL','Largeur de feuillure hors du vide (mm)')}${input('fH','Profondeur dans la traversée A → B (mm)')}${input('fNiv','Départ depuis A — haut du modèle de référence (mm)')}</div>
+    <label id="dxcQualification"><input type="checkbox" id="dxc_qualification" onchange="dxcRefresh()"> Je qualifie ce détail comme une seule feuillure périphérique rectangulaire, sans autre particularité. A = X 0, B = X e : le départ depuis le haut du modèle de référence est mesuré depuis A, pas depuis le linteau.</label>
+    <div id="dxcChanfrein">
+      <p>Étude du vide seulement : section L × e, A en bas du dessin, B en haut ; extrusion verticale H. Le CP n'est pas débité. Les faces et assemblages de fabrication restent à étudier.</p>
+      <div class="g3">${input('retrait','Retrait égal sur les deux côtés (mm)')}${input('epChanfrein','Épaisseur des panneaux CP (mm, à confirmer)')}${select('angleChanfrein','Angle dans la section',[['','À identifier'],['GA','Gauche A'],['DA','Droite A'],['DB','Droite B'],['GB','Gauche B']],null)}</div>
+      ${select('orientationChanfrein','Orientation des faces coffrantes',[['','À confirmer'],['vers_beton','Vers le béton, à l’extérieur du vide'],['vers_vide','Vers le vide — assemblage à étudier']],null)}
+      <label><input type="checkbox" id="dxc_confirmChanfrein" onchange="dxcRefresh()"> Je confirme la convention : un seul angle vertical, retraits égaux mesurés sur les côtés, 45°, section constante sur H.</label>
+    </div>
+    <div id="dxcGeo"></div>
     <label><input type="checkbox" id="dxc_traversee" onchange="dxcRefresh()"> Je confirme une traversée normale au voile, sans biais ni pente, et les contraintes de maintien.</label>
     ${select('solution','Solution à choisir',[['','À choisir'],['simple','Mannequin rectangulaire simple'],['cintre','Mannequin cintré'],['fourreau','Fourreau circulaire']],null)}
     <div class="fd"><label for="dxc_ref">Référence</label><input class="fi" id="dxc_ref" value="${esc(DXC.ref)}" placeholder="automatique" oninput="dxcRefresh()"></div>
@@ -80,7 +90,7 @@ function dxcOuvrir(kind,i){const D=DXI;if(!D||D.fmt!=='pdf'||D.rJob)return;
 }
 function dxcFermer(){DXC=null;const z=el('dxcZ');if(z)z.remove()}
 function dxcSaisie(k,v){if(!DXC)return;delete DXC.arbitrages[k];DXC.saisiesBrutes[k]=v;DXC.saisie[k]=v.trim()===''?null:(parseCote(v,'mm')??NaN);dxcRefresh()}
-function dxcChoix(k,v){if(!DXC)return;DXC.saisie[k]=v;dxcRefresh()}
+function dxcChoix(k,v){if(!DXC)return;DXC.saisie[k==='geometrie'?'detail':k]=v;dxcRefresh()}
 function dxcProposition(){const X=DXC,D=DXI;if(!X||X.D!==D)return null;
   const ch=profCh(D.ch)||{},ou=profOu(D.ch,D.ouv)||{},tol=ou.tolCourb!=null?ou.tolCourb:ch.tolCourb;
   const p=CPI.creation.proposer(X.analyse,Object.assign({},X.saisie,{traversee:C('dxc_traversee')}),{mesuresConfirmees:C('dxc_mesures'),tolerance:tol,toleranceSource:ou.tolCourb!=null?'profil ouvrage':'profil chantier',voileGeo,sag:GEO.sag});
@@ -88,10 +98,23 @@ function dxcProposition(){const X=DXC,D=DXI;if(!X||X.D!==D)return null;
     if(p.valeurs[k]!=null)p.origines[k]=p.valeurs[k]===c.valeur&&!Object.hasOwn(X.saisiesBrutes,k)?c:{origine:'saisie',avant:c,brut:X.saisiesBrutes[k],role_confirme:k};
   }
   for(const conflit of X.dossier.conflits)if(X.arbitrages[conflit.champ]!==p.valeurs[conflit.champ]||p.valeurs[conflit.champ]==null)p.manquants.push('arbitrage des cotes contradictoires : '+conflit.champ);
-  if(X.dossier.details.length||C('dxc_detail'))p.manquants.push('détail particulier : étude de fabrication requise, création standard indisponible');
+  const noteDetail=S('dxc_detailNote','').normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  const seuleFeuillure=brut=>{const t=String(brut).normalize('NFD').replace(/[\u0300-\u036f]/g,'');return /feuillure/i.test(t)&&!/(chanfrein|biais|decrochement|sections|incline)/i.test(t)};
+  const compatible=(!C('dxc_detail')||seuleFeuillure(noteDetail))&&X.dossier.details.every(d=>d.type==='mention_textuelle'&&seuleFeuillure(d.brut));
+  const qualifie=p.detail==='feuillure'&&compatible&&C('dxc_qualification');
+  if(p.detail==='feuillure'&&!qualifie)p.manquants.push('qualification explicite de la seule feuillure périphérique (preuves compatibles)');
+  if((X.dossier.details.length||C('dxc_detail'))&&!qualifie)p.manquants.push('détail particulier : étude de fabrication requise, création standard indisponible');
+  p.qualificationFeuillure=qualifie;
+  if(p.detail==='chanfrein45'){
+    p.geometrieEtudiee=CPI.geometriesParticulieres.chanfrein45({L:p.valeurs.L,e:p.valeurs.e,H:p.valeurs.h,
+      retrait:X.saisie.retrait,ep:X.saisie.epChanfrein,angle:X.saisie.angleChanfrein,orientation:X.saisie.orientationChanfrein},
+      {L:p.origines.L,e:p.origines.e,H:p.origines.h,retrait:{origine:'saisie',brut:X.saisiesBrutes.retrait},ep:{origine:'saisie',brut:X.saisiesBrutes.epChanfrein},angle:{origine:'saisie'},orientation:{origine:'saisie'}});
+    if(p.support!=='voile_droit'||!['rect','carre'].includes(p.type))p.geometrieEtudiee.erreurs.push('Étude limitée à une ouverture rectangulaire en voile droit');
+    if(!C('dxc_confirmChanfrein'))p.geometrieEtudiee.erreurs.push('Convention de mesure à confirmer');
+  }
   const coteL=X.retenues.L?X.retenues.L.candidate:(X.analyse.provenance['ouverture.largeur_suivant_paroi_mm']||{}).candidate;
   if(p.support==='voile_circulaire'&&coteL&&coteL.referenceLargeur&&p.largeurRef!==coteL.referenceLargeur)p.manquants.push('L issue du PDF : référence de corde incompatible avec les joues choisies');
-  p.cotesPdf={...X.dossier,retenues:X.retenues,arbitrages:X.arbitrages,saisiesBrutes:{...X.saisiesBrutes},valeurs:{...p.valeurs},origines:JSON.parse(JSON.stringify(p.origines)),detailUtilisateur:C('dxc_detail')?S('dxc_detailNote',''):null};
+  p.cotesPdf={...X.dossier,geometrieSelectionnee:p.detail,geometrieEtudiee:p.geometrieEtudiee||null,retenues:X.retenues,arbitrages:X.arbitrages,saisiesBrutes:{...X.saisiesBrutes},valeurs:{...p.valeurs},origines:JSON.parse(JSON.stringify(p.origines)),detailUtilisateur:C('dxc_detail')?S('dxc_detailNote',''):null};
   DXI.CP[X.cles[0]]=p.cotesPdf;
   return p;
 }
@@ -101,6 +124,19 @@ function dxcRefresh(){if(!DXC||DXC.D!==DXI||!el('dxcEtat'))return;
     const e=el('dxc_'+k),o=el('dxcOrig_'+k);if(e&&!Object.hasOwn(X.saisie,k))e.value=p.valeurs[k]==null?'':String(p.valeurs[k]);
     if(o)o.textContent=(p.origines[k].origine||'inconnue')+(p.origines[k].detail?' · '+p.origines[k].detail:'');
   }
+  const feu=p.detail==='feuillure';
+  for(const k of ['fL','fH','fNiv'])el('dxc_'+k).parentElement.hidden=!feu;
+  el('dxcQualification').hidden=!feu;
+  el('dxcChanfrein').hidden=p.detail!=='chanfrein45';
+  el('dxcGeo').innerHTML='';
+  if(feu){
+    const d=canon(migr(CPI.creation.modele(p,DXI.M.para,S('dxc_ref','')))),w=checks(d,null);
+    if(!badDims(w)&&p.type!=='circ'&&p.support==='voile_droit'){
+      const v=feuilTraverseVues(d);
+      el('dxcGeo').innerHTML='<h3>Feuillure — aperçu coté dans le repère de fabrication</h3><p>Face A ouverte : X = 0 ; face B ouverte : X = e. L = largeur, l = hauteur du vide, h = traversée. Les 4 tasseaux sont hors du vide, entre départ et départ + profondeur depuis A. Assemblage : longs filants, courts entre, abouts carrés. Fixation et maintien à vérifier.</p>'+v.top+v.a+v.b;
+    }else el('dxcGeo').textContent='Aperçu à compléter : '+w.filter(x=>x[0]!=='warn').map(x=>x[1]).join(' ; ');
+  }
+  if(p.geometrieEtudiee){el('dxcGeo').innerHTML=dxcChanfreinVue(p.geometrieEtudiee);for(const k of ['retrait','epChanfrein'])el('dxcOrig_'+k).textContent=X.saisie[k]>0?'saisie utilisateur':'inconnue — à renseigner';}
   const circ=p.type==='circ',courbe=p.support==='voile_circulaire';
   for(const k of ['L','h'])el('dxc_'+k).parentElement.hidden=circ;
   for(const k of ['D','profondeur'])el('dxc_'+k).parentElement.hidden=!circ;
@@ -128,7 +164,8 @@ function dxcRecap(){if(!DXC||DXC.D!==DXI)return;const x=dxcPreparer();if(!x)retu
   if(!String(DXI.ch||'').trim()||dxcDeja(DXC.cles))return;
   DXC.revision=JSON.stringify(x);
   z.innerHTML=`<h3>Récapitulatif — un seul ouvrage, aucun existant remplacé</h3><p>${esc(r.plan.ch)} · ${esc(r.plan.ouv)} · ${esc(r.plan.ref||'référence automatique')} · ${esc(fmLb(r.plan.forme))}</p>
-    <ul>${Object.entries(p.valeurs).filter(([,v])=>v!=null).map(([k,v])=>`<li>${esc(({L:'L corde',h:'Hauteur',D:'Diamètre',e:'Épaisseur voile',R:'Rayon intérieur',profondeur:'Longueur du fourreau'})[k])} : ${nf(v)} mm — ${esc(p.origines[k].origine)}</li>`).join('')}</ul>
+    <ul>${Object.entries(p.valeurs).filter(([,v])=>v!=null).map(([k,v])=>`<li>${esc(({L:'L corde',h:'Hauteur',D:'Diamètre',e:'Épaisseur voile',R:'Rayon intérieur',profondeur:'Longueur du fourreau',fL:'Largeur feuillure',fH:'Profondeur feuillure',fNiv:'Départ feuillure depuis A'})[k])} : ${nf(v)} mm — ${esc(p.origines[k].origine)}</li>`).join('')}</ul>
+    ${p.detail==='feuillure'?'<p>Modèle : mannequin traversant droit + feuillure périphérique. 4 parois CP du corps (en tronçons si nécessaire), 4 tasseaux de feuillure, débit bois, feuille cotée dédiée, 3D et exports du même modèle. Départ depuis A, pas depuis le linteau ; largeur hors du vide. Contrôle mécanique du mannequin : non vérifié.</p>':''}
     <p>${esc(x.note)}</p><p>Joues : ${esc(p.joues||'sans objet')} · L : ${esc(p.largeurRef||'sans objet')} · Tolérance : ${nf(p.tolerance)} mm (${esc(p.origines.tolerance.origine)}).</p>
     <p>Fabrication reprise du formulaire / profil : ${r.plan.forme==='circ'?esc(r.plan.mat||'matériau à vérifier'):esc(cpName(r.plan.cp&&r.plan.cp.j))+' · '+esc(r.plan.mont||'montage à vérifier')}. Options et renforts du modèle existant conservés ; à vérifier.</p>
     <ul>${r.alertes.map(a=>'<li>'+esc(a)+'</li>').join('')}</ul>
@@ -156,7 +193,7 @@ function dxcDossier(kind,i,analyse){const D=DXI,L=kind==='n'?D.NL[i].L:null;
     zoneTable:L&&L.ids?dxpBox(D.NL[i]):null});
   D.CP=D.CP||{};D.CP[dxcCles(kind,i)[0]]=dossier;return dossier;
 }
-function dxcCotesHTML(){const X=DXC,labels={L:'Largeur / corde L',h:'Hauteur',D:'Diamètre ouverture',e:'Épaisseur du voile',R:'Rayon intérieur',profondeur:'Longueur de traversée'};
+function dxcCotesHTML(){const X=DXC,labels={L:'Largeur / corde L',h:'Hauteur',D:'Diamètre ouverture',e:'Épaisseur du voile',R:'Rayon intérieur',profondeur:'Longueur de traversée',fL:'Largeur feuillure',fH:'Profondeur feuillure',fNiv:'Départ feuillure depuis A'};
   return `<details open><summary>Cotes retrouvées dans le PDF (${X.dossier.candidats.length})</summary>
     <p>Une proximité ne prouve pas un rôle. Les unités sont lues contre la valeur ; aucune mesure graphique ni échelle de page n'est utilisée ici. Diamètres et rayons extérieurs restent à examiner, sans conversion en rayon intérieur.</p>
     ${X.dossier.candidats.length?'<div style="overflow:auto"><table><thead><tr><th>Brut / unité</th><th>Valeur</th><th>Source / lien</th><th>Statut / rôle proposé</th><th>Affectation explicite</th></tr></thead><tbody>'+X.dossier.candidats.map((c,j)=>`<tr><td>${esc(c.brut)}${c.lecture&&c.lecture!==c.brut?'<br>Lecture : '+esc(c.lecture):''}<br>Unité : ${esc(c.uniteOrigine||c.unite||'inconnue')}</td><td>${nf(c.valeur_mm)} mm</td><td>p. ${esc(c.page||'?')} · ${esc(c.titreVue||c.vue||'vue non identifiée')}<br>${esc(c.raison)}${c.numerique&&c.numerique.raison?'<br>'+esc(c.numerique.raison):''}${c.zone?`<button class="btn bs bo" type="button" onclick="dxcVoirCote(${j})">Voir la source</button>`:''}</td><td>${esc(c.statut)} · ${esc(labels[c.champ]||c.champ)}</td><td><select class="fi" aria-label="Champ de la cote ${j+1}" id="dxcCible_${j}"><option value="">Choisir le rôle</option>${Object.entries(labels).map(([k,v])=>`<option value="${k}"${k===c.champ?' selected':''}>${esc(v)}</option>`).join('')}</select>${c.numerique&&c.numerique.etat!=='valide'?`<label for="dxcValeur_${j}">Valeur confirmée en mm (ex. 1200 ou 1,2)</label><input class="fi" id="dxcValeur_${j}" inputmode="decimal" oninput="dxcRefresh()">`:''}<button class="btn bs bo" type="button" onclick="dxcAffecter(${j})">${c.numerique&&c.numerique.etat!=='valide'?'Confirmer et retenir':'Retenir cette cote'}</button></td></tr>`).join('')+'</tbody></table></div>':'<p>Aucune cote écrite exploitable retrouvée. Compléter les valeurs manuellement après relecture.</p>'}
@@ -166,16 +203,31 @@ function dxcCotesHTML(){const X=DXC,labels={L:'Largeur / corde L',h:'Hauteur',D:
     <div id="dxcIndices"><b>Indices non attribués — à examiner</b><p>Ces mentions ne prouvent pas un détail de cette réservation. Relire la source puis signaler explicitement une particularité si elle la concerne.</p><ul>${(X.dossier.indicesNonAttribues||[]).map(d=>`<li>${esc(d.brut)} · p. ${esc(d.page||'?')} · ${esc(d.raison)}</li>`).join('')}</ul></div>
     <label><input type="checkbox" id="dxc_detail" onchange="dxcRefresh()"> Je signale une forme inhabituelle, un chanfrein, une feuillure ou une traversée particulière.</label>
     <input class="fi" id="dxc_detailNote" aria-label="Description du détail particulier" placeholder="Décrire le détail à étudier" oninput="dxcRefresh()">
-    <p>Un détail signalé empêche la création standard. Ces formes ne sont pas fabriquées par cette proposition ; conserver le dossier via l'export de l'analyse.</p></details>`;
+    <p>Un détail signalé empêche la création standard. Seule une feuillure périphérique qualifiée et compatible peut être créée ; les autres formes restent à étudier. Conserver le dossier via l'export de l'analyse.</p></details>`;
 }
 function dxcAffecter(j){if(!DXC)return;const c=DXC.dossier.candidats[j],k=S('dxcCible_'+j,''),r=CPI.cotesPreuves.affecter(DXC.dossier,c.id,k,el('dxcValeur_'+j)?S('dxcValeur_'+j,''):null);
   if(!r){el('dxcCotesChoix').textContent='Affectation impossible : choisir un rôle compatible et une valeur finie positive non ambiguë. Un diamètre / rayon extérieur ne devient pas un rayon intérieur.';return;}
   DXC.retenues[k]=r;DXC.saisie[k]=r.valeur;delete DXC.saisiesBrutes[k];DXC.arbitrages[k]=r.valeur;
   el('dxc_'+k).value=String(r.valeur);dxcRefresh();el('dxcCotesChoix').textContent='Cote retenue pour '+k+' : '+r.valeur+' mm. Origine et preuve conservées.';
 }
-function dxcArbitrer(k){if(!DXC)return;const p=dxcProposition(),v=p.valeurs[k];if(!(v>0))return;
+function dxcArbitrer(k){if(!DXC)return;const p=dxcProposition(),v=p.valeurs[k];if(!(k==='fNiv'?v!=null&&v>=0:v>0))return;
   DXC.arbitrages[k]=v;dxcRefresh();el('dxcCotesChoix').textContent='Arbitrage explicite de '+k+' : '+v+' mm ; les valeurs contradictoires restent dans les preuves.';
 }
 function dxcVoirCote(j){if(!DXC)return;const c=DXC.dossier.candidats[j],D=DXI;if(!c.zone)return;
   D.ohl=c.zone;D.page=c.page;D.hl=-1;D.hlo=null;D.scroll=true;dxiVue('p');
+}
+
+// Une seule description de la section et des segments, issue du module pur.
+function dxcChanfreinVue(g){
+  const titre='<h3>Chanfrein 45° — géométrie à étudier</h3><p>'+esc(g.limite)+'</p>';
+  if(g.erreurs.length)return titre+'<p>Paramètres inconnus / à corriger : '+g.erreurs.map(esc).join(' ; ')+'</p>';
+  const p=g.parametres,k=Math.min(620/p.L,220/p.e),X=x=>110+x*k,Y=y=>300-y*k;
+  const pts=g.sommets.map(([x,y])=>X(x)+','+Y(y)).join(' ');
+  const svg='<svg viewBox="0 0 900 400" role="img" aria-label="Section pentagonale du vide, pas un panneau à découper">'
+    +'<polygon points="'+pts+'" fill="#edf4fb" stroke="#1f5fbf" stroke-width="2"/>'
+    +g.segments.map(s=>{const [x,y]=s.a,[a,b]=s.b;return '<line x1="'+X(x)+'" y1="'+Y(y)+'" x2="'+X(a)+'" y2="'+Y(b)+'" stroke="'+(s.diagonal?'#c0392b':'#1f5fbf')+'" stroke-width="2"/>'
+      +'<text x="'+((X(x)+X(a))/2+8)+'" y="'+((Y(y)+Y(b))/2-8)+'" font-size="12">'+esc(nf(s.longueur,2))+' mm'+(s.diagonal?' · 45°':'')+'</text>'}).join('')
+    +'<text x="110" y="335">Parement A · L = '+esc(nf(p.L))+' mm</text><text x="110" y="45">Parement B · e = '+esc(nf(p.e))+' mm</text>'
+    +'<text x="110" y="365">H = '+esc(nf(p.H))+' mm · retrait = '+esc(nf(p.retrait))+' mm × 2 · angle '+esc(p.angle)+'</text></svg>';
+  return titre+svg+'<p>CP '+esc(nf(p.ep))+' mm ; orientation '+esc(p.orientation)+'. Aire de section du vide : '+esc(nf(g.aire))+' mm². Aucun débit de CP déduit de cette aire.</p>';
 }

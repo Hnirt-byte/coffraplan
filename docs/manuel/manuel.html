@@ -529,13 +529,40 @@ par repère exact unique et fiable, une forme associée non reconnue, ou votre p
 signalement bloquent la création standard. Un chanfrein nommé R02 ne bloque pas
 R01 dans la même vue. Les mentions sans repère, multirepères ou homonymes restent
 visibles dans <b>Indices non attribués</b>, avec leur preuve et leur incertitude :
-les signaler explicitement si elles concernent votre ouvrage. Décrire le détail à étudier : le moteur de cette phase
-ne le fabrique pas. Ne pas considérer un rectangle approché comme une forme validée.
+les signaler explicitement si elles concernent votre ouvrage. Qualifier la géométrie prise en charge ci-dessous ; les autres détails restent à étudier. Ne pas considérer un rectangle approché comme une forme validée.
 Les indices graphiques ne prouvent pas la nature exacte du détail.</div>
 <p>Après création, preuves retenues, corrections et arbitrages sont conservés avec
 l'ouvrage, dans la sauvegarde et l'export JSON du projet. Pour une réservation bloquée,
 utiliser <b>Analyse (JSON)</b> avant de fermer l'import : ce dossier conserve aussi
 les cotes et les particularités signalées, sans créer d'ouvrage.</p>
+<h3>Feuillure périphérique et chanfrein à étudier</h3>
+<p>Dans <b>Géométrie particulière</b>, choisir <b>Feuillure périphérique rectangulaire</b>
+pour une ouverture rectangulaire traversant normalement un voile droit. Renseigner largeur,
+hauteur, épaisseur du voile, largeur et profondeur de feuillure, et départ. Les preuves PDF
+nommées peuvent proposer ces valeurs ; arbitrer explicitement les contradictions.</p>
+<div class="warn"><b>Repère à confirmer</b>Le départ « depuis le haut » du modèle
+rectangulaire de fabrication est mesuré depuis le <b>parement A (X=0), vers B (X=e)</b>,
+pas depuis le linteau de l'ouverture. La profondeur suit cette traversée ; la largeur
+déborde hors du vide sur son pourtour. Départ + profondeur doivent tenir dans le voile.
+Confirmer cette convention et l'absence de tout autre détail avant création.</div>
+<p>Examiner l'aperçu coté, puis le récapitulatif. Seule la confirmation finale crée
+l'ouvrage. Il conserve quatre parois CP du mannequin et quatre tasseaux périphériques,
+une feuille de feuillure dédiée, son débit et la 3D. Les longs tasseaux recouvrent les
+abouts carrés des courts ; vérifier fixation, maintien et passage entre banches.
+La tenue mécanique du mannequin n'est pas vérifiée automatiquement.</p>
+<p><b>Exemple fictif en mm</b> : vide 600 × 800, voile 240, CP 18, feuillure 40 × 30,
+départ 20 depuis A. Panneaux : 2 × 600 × 240 et 2 × 764 × 240.
+Tasseaux : 2 × 680 et 2 × 800, section 40 × 30, entre X=20 et X=50.
+Les anciens ouvrages restent inchangés. La saisie manuelle du mannequin droit
+permet également de retrouver et modifier ces paramètres.</p>
+<p><b>Chanfrein rectiligne 45°</b> : choisir le coin de la section horizontale L × e
+(gauche/droite, A/B), renseigner le retrait égal sur les deux côtés, H, l'épaisseur
+CP et l'orientation des faces ; confirmer la convention. L'aperçu représente le vide
+pentagonal, <b>pas une pièce de CP à découper</b>. Il reste en géométrie à étudier :
+les assemblages diagonaux et leurs déductions CP ne sont pas définis. Création,
+débit, gabarits et exports de fabrication indisponibles pour cette variante.
+Exporter le dossier <b>Analyse (JSON)</b> avant fermeture pour conserver cette étude.</p>
+
 
 
 <!-- ======================= 8 ======================= -->

@@ -966,7 +966,8 @@ ${chk('ptDal','Dalle coulée sur la poutre (h = retombée sous dalle)',false)}<d
     dh=`<div class="g3">${num('ppB','Ouverture L (mm)',300,' min="1"')}${num('ppH','Ouverture H (mm)',200,' min="1"')}${num('ppE','Ép. du voile (mm)',200,' min="1"')}</div>
 <div class="g2">${num('ppA','Biais en plan α (°)',30,' min="0" max="74" step="0.5"')}${num('ppBe','Pente β (°)',0,' min="0" max="74" step="0.5"')}</div>`;
     hint='Réservation traversant le voile en biais. L × H = ouverture mesurée sur le parement (horizontale × verticale). α = biais en plan entre l\'axe et la normale au voile, β = pente de l\'axe. Mannequin ouvert sur les deux parements.';
-    oh=chk('ppTr','Traverses intérieures en croix (50 × 50)',true);
+    oh=chk('ppTr','Traverses intérieures en croix (50 × 50)',true)+chk('ppFeuil','Feuillure périphérique traversante — voile droit sans biais ni pente',false)
+      +`<div class="hint">Parement A : X = 0 ; parement B : X = e. Le départ est mesuré depuis A dans la traversée (haut du modèle rectangulaire de référence), pas depuis le linteau.</div><div class="g3">${num('ppFL','Largeur de feuillure hors du vide (mm)','')}${num('ppFH','Profondeur dans la traversée (mm)','')}${num('ppFNiv','Départ depuis le parement A (mm)','')}</div>`;
   } else if(f==='goulotte'){
     dh=`<div class="g2">${num('gD','Ø extérieur (m)',10,' step="0.01" min="0.1"')}${sel('gDref','Ø mesuré au',[['beton','Nu béton ext.'],['bois','Ext. joue (bois)']])}</div>
 ${num('gB','Largeur du fond b (mm, nu à nu béton)',200,' min="1"')}
@@ -1051,7 +1052,7 @@ function coll(){
     d.dlPt=C('dlPt');d.dlRv=C('dlRv');if(d.dlRv){d.dlEp=V('dlEp');d.dlRvE=V('dlRvE');d.dlRvD=V('dlRvD')}d.dlBm=dlBmRead();d.dlPdir=S('dlPdir','L');d.bmP=bmParRead();d.dlK=el('dlK')?Math.max(0,V('dlK')):4;d.h=0}
   else if(f==='poutre'){d.ptL=V('ptL');d.ptB=V('ptB');d.ptH=V('ptH');['L','R'].forEach(k=>{d['ptE'+k]=S('ptE'+k,'vd');d['ptD'+k]=V('ptD'+k)});d.ptDc=V('ptDc');d.ptO=V('ptO');
     d.ptPo=el('zPtPo')?poReadIn(el('zPtPo')):[];d.ptDal=C('ptDal');d.ptEpl=V('ptEpl');d.bmP=bmParRead();d.h=d.ptH}
-  else if(f==='para'){d.ppB=V('ppB');d.ppH=V('ppH');d.ppE=V('ppE');d.ppA=V('ppA');d.ppBe=V('ppBe');d.ppTr=C('ppTr');d.h=d.ppH}
+  else if(f==='para'){d.ppB=V('ppB');d.ppH=V('ppH');d.ppE=V('ppE');d.ppA=V('ppA');d.ppBe=V('ppBe');d.ppTr=C('ppTr');d.h=d.ppH;if(C('ppFeuil')){d.feuilTraversee=true;d.fL=V('ppFL');d.fH=V('ppFH');d.fNiv=el('ppFNiv')?fieldVal(el('ppFNiv')):null}}
   else if(f==='goulotte'){d.gD=V('gD');d.gDref=S('gDref','beton');d.gB=V('gB');d.gEt=S('gEt','tour');d.gAng=V('gAng');d.gArc=V('gArc');
     d.gJE=C('gJE');d.gHE=V('gHE');d.gJI=C('gJI');d.gHI=V('gHI');d.gAb=C('gAb');d.gOpt=S('gOpt','coupes');d.gKerf=el('gKerf')?Math.max(0,V('gKerf')):4;d.h=Math.max(d.gJE?d.gHE:0,d.gJI?d.gHI:0)}
   else if(f==='circ_fond'||f==='circ_sf'){d.Dext=V('dDext');d.Dint=V('dDint');d.h=V('dh');d.mDext=S('mDext','ext');d.mDint=S('mDint','int')}
@@ -1083,7 +1084,7 @@ function setForm0(d){d=migr(d);
   if(d.forme==='dalle'){sv('dlF',d.dlF);sv('dlD',d.dlD);sv('dlL',d.dlL);sv('dlW',d.dlW);sv('dlE',d.dlE);sv('dlJ',d.dlJ);sv('dlO',d.dlO);sv('dlMin',d.dlMin!=null?d.dlMin:500);sv('dlG',d.dlG||'2');sc('dlRv',d.dlRv);if(d.dlRv){sv('dlEp',d.dlEp);sv('dlRvE',d.dlRvE);sv('dlRvD',d.dlRvD)}sc('dlPt',d.dlPt);dlBmSet(d.dlBm||[]);sv('dlPdir',d.dlPdir);bmParSet(d.bmP);sv('dlK',d.dlK)}
   if(d.forme==='poutre'){sv('ptL',d.ptL);sv('ptB',d.ptB);sv('ptH',d.ptH);['L','R'].forEach(k=>{sv('ptE'+k,d['ptE'+k]||'vd');sv('ptD'+k,d['ptD'+k])});sv('ptDc',d.ptDc);sv('ptO',d.ptO);
     if(el('zPtPo'))el('zPtPo').innerHTML=(d.ptPo||[]).map(poRow).join('');sc('ptDal',d.ptDal);sv('ptEpl',d.ptEpl);bmParSet(d.bmP)}
-  if(d.forme==='para'){sv('ppB',d.ppB);sv('ppH',d.ppH);sv('ppE',d.ppE);sv('ppA',d.ppA);sv('ppBe',d.ppBe);sc('ppTr',d.ppTr)}
+  if(d.forme==='para'){sv('ppB',d.ppB);sv('ppH',d.ppH);sv('ppE',d.ppE);sv('ppA',d.ppA);sv('ppBe',d.ppBe);sc('ppTr',d.ppTr);sc('ppFeuil',d.feuilTraversee);sv('ppFL',d.fL==null?'':d.fL);sv('ppFH',d.fH==null?'':d.fH);sv('ppFNiv',d.fNiv==null?'':d.fNiv)}
   if(d.forme==='goulotte'){sv('gD',d.gD);sv('gDref',d.gDref||'beton');sv('gB',d.gB);sv('gEt',d.gEt||'tour');sv('gAng',d.gAng);sv('gArc',d.gArc);
     sc('gJE',d.gJE);sv('gHE',d.gHE);sc('gJI',d.gJI);sv('gHI',d.gHI);sc('gAb',d.gAb);sv('gOpt',d.gOpt||'coupes');sv('gKerf',d.gKerf)}
   sv('dL',d.L);sv('dl',d.l);sv('dh',d.h);sv('dD',d.D);sv('dDext',d.Dext);sv('dDint',d.Dint);sv('mDext',d.mDext||'ext');sv('mDint',d.mDint||'int');sv('mD',d.mD||'ext');
@@ -1105,6 +1106,7 @@ function checks(d,g){
   const W=[],e=m=>{if(!W.some(x=>x[1]===m))W.push(['err',m])},w=m=>{if(!W.some(x=>x[1]===m))W.push(['warn',m])},cr=m=>{if(!W.some(x=>x[1]===m))W.push(['crit',m])},ep=d.ep||0,eF=d.epF||ep,eS=d.epS||ep,f=d.forme;
   const pos=(v,n)=>{if(!(v>0))e(n+' doit être > 0')};
   const LE=limErr(d);if(LE.length){LE.forEach(x=>e(x.msg));return W}
+  if(d.feuilTraversee&&f!=='para')e('Feuillure traversante : modèle mannequin droit requis');
   if(f!=='circ')pos(ep,'Épaisseur panneaux');
   if(RECT.includes(f)){
     pos(d.L,'L');pos(d.l,'l');pos(d.h,'h');
@@ -1169,6 +1171,7 @@ function checks(d,g){
   } else if(f==='para'){
     pos(d.ppB,'b');pos(d.ppH,'h');pos(d.ppE,'Épaisseur du voile');
     if(!(d.ppA>=0&&d.ppA<75))e('Biais α : entre 0 et 75°');if(!(d.ppBe>=0&&d.ppBe<75))e('Pente β : entre 0 et 75°');
+    if(d.feuilTraversee){if(d.ppA!==0||d.ppBe!==0)e('Feuillure traversante : voile droit, sans biais ni pente');checks(feuilTraverseRect(d),null).forEach(x=>{if(x[0]==='err')e(x[1]);else if(x[0]==='crit')cr(x[1])})}
     const g=paraGeo(d);if(g.b<=2*ep||g.h<=2*ep)e('Section ≤ 2 × épaisseur panneau');
     if(g.ok&&!g.joint&&g.Lr+Math.max(...g.panels.map(p=>Math.abs(p.dl)))>Math.max(...cpFmt((d.cp&&d.cp.j)||CPDEF)))w('Panneau plus long que le CP : prévoir un raccord');
   } else if(f==='goulotte'){
@@ -2668,6 +2671,17 @@ function ptOverSvg(d,G,vw,vh,big){
 // ====== PARALLÉLÉPIPÈDE OBLIQUE (réservation traversante en biais) ======
 // Repère : x = normale au voile (0 = parement intérieur, e = parement extérieur), y = le long du voile, z = vertical.
 // Axe de la réservation u (biais α en plan, pente β). Cotes saisies = ouverture sur le parement (L × H) ; section droite déduite.
+// Feuillure traversante : réemploi du rect sans fond dans son repère local.
+// Lrect=L ouverture, lrect=H ouverture, hrect=e voile. Le haut z=e est le parement A.
+// Seuls ses tasseaux sont réemployés ; le corps CP et les contrôles restent ceux du mannequin para.
+function feuilTraverseRect(d){return Object.assign({},d,{forme:'rect',L:d.ppB,l:d.ppH,h:d.ppE,feuil:true,feuilTraversee:false,gs:false,renX:false})}
+function feuilTraverseVues(d){const r=feuilTraverseRect(d);return genRect(r,r.ep)}
+function feuilTraverseFeuille(d){const v=feuilTraverseVues(d),t=SB(800,600);
+  [[v.top,0,0,800,340],[v.a,0,340,400,260],[v.b,400,340,400,260]].forEach(([svg,x,y,w,h])=>{
+    const vb=svg.match(/viewBox="([^"]+)"/)[1].split(/\s+/).map(Number),k=Math.min(w/vb[2],h/vb[3]);
+    t.a(`<g transform="translate(${x} ${y}) scale(${k})">${svg.replace(/^<svg[^>]*>/,'').replace(/<\/svg>$/,'')}</g>`);
+  });return t.out();
+}
 function paraGeo(d){
   const ep=d.ep||0,e=d.ppE||0,al=(d.ppA||0)*Math.PI/180,be=(d.ppBe||0)*Math.PI/180,ca=Math.cos(al),cb=Math.cos(be);
   const b=(d.ppB||0)*ca,h=(d.ppH||0)*cb; // ouverture sur le parement → section droite ⟂ à l'axe
@@ -2838,7 +2852,7 @@ function gen(d0){
       else if(f==='special')V=genSpecial(d,ep);
       else if(f==='dalle'){V=genDalle(d);if(!V.G.ok)V={top:errSvg(800,340,'Calepinage impossible : vérifier dimensions / entraxe'),a:errSvg(320,220,'—'),b:errSvg(320,220,'—')}}
       else if(f==='poutre')V=genPoutre(d);
-      else if(f==='para'){V=genPara(d,ep);lt='Vue en plan + tracé des panneaux (face extérieure)';la='Vue A — ouverture sur le parement intérieur';lb='Vue B — coupe verticale'}
+      else if(f==='para'){V=genPara(d,ep);lt='Vue en plan + tracé des panneaux (face extérieure)';la='Vue A — ouverture sur le parement intérieur';lb='Vue B — coupe verticale';if(d.feuilTraversee){lt+=' — corps CP (feuillure : feuille dédiée)';la+=' — corps CP';lb+=' — corps CP'}}
       else if(f==='goulotte'){V=genGoulotte(d,ep);lt='Vue de dessus — découpe du fond';la='Vue A — coupe radiale';lb='Vue B — calepinage panneau de fond'}
     }catch(e){V.top=errSvg(800,340,'Erreur de dessin : '+e.message)}
   }
@@ -3805,6 +3819,7 @@ function debit(d,g){
       if(cl.length>1)r.cells={cells:cl,x0,y0,w:x1-x0,h:y1-y0}}});
   // bois complémentaires (feuillure, lisses de massif, montants de mannequin)
   const ep=d.ep||0,BX=R.bois=R.bois||[];
+  if(d.feuilTraversee){const r=debit(feuilTraverseRect(d),null);(r.bois||[]).filter(b=>/feuillure/.test(b.n)).forEach(b=>BX.push(Object.assign({},b)))}
   if(d.feuil&&d.fL>0&&d.fH>0){BX.push({q:2,n:`Tasseaux de feuillure ${nf(d.fL)}×${nf(d.fH)}`,L:Math.round(d.L+2*d.fL)});BX.push({q:2,n:`Tasseaux de feuillure ${nf(d.fL)}×${nf(d.fH)}`,L:Math.round(d.l)})}
   if(d.forme==='massif'&&d.ren){BX.push({q:4,n:'Lisses 50×50 (2 niveaux)',L:Math.round(d.L+2*ep+100)});BX.push({q:4,n:'Lisses 50×50 (2 niveaux)',L:Math.round(d.l+2*ep)})}
   if(d.forme==='voile'&&g&&g.ok&&d.constr!=='caisson'&&typeof voileBois==='function')voileBois(d,g,R,BX);
@@ -4373,7 +4388,7 @@ function montageInfo(d,R){
     if(d.dlPt)ctl.push(['Poches : profondeur et position en tête de voile','']);}
   else if(f==='poutre'){const G=ptGeo(d);bmSteps(G.ok?G.bm:null,steps,ctl,tg);
     if(G.ok)ctl.push([`Portée nu à nu ${nf(G.L,0)}`,''],[`Section b ${nf(d.ptB)} × h ${nf(d.ptH)}`,'intérieur coffrage'],['Fond de niveau, étaiement vérifié','']);}
-  else if(f==='para'){steps.push('Couper les panneaux en parallélogramme (chants biais indiqués), assembler dessus / dessous sur les joues.');if(d.ppTr)steps.push('Poser les traverses en croix ⟂ à l\'axe.');
+  else if(f==='para'){if(d.feuilTraversee)steps.push('Fixer les 4 tasseaux de feuillure autour du vide : les deux longs filants recouvrent les abouts des deux courts ; départ depuis le parement A, profondeur vers B. Vérifier le maintien et le passage entre banches.');steps.push('Couper les panneaux en parallélogramme (chants biais indiqués), assembler dessus / dessous sur les joues.');if(d.ppTr)steps.push('Poser les traverses en croix ⟂ à l\'axe.');
     const g=paraGeo(d);if(g.ok&&g.joint){steps.push(`Panneaux en ${g.joint.n} tronçons : assembler chaque joint sur son cadre de joint 50 × 50 (2 traverses + 2 montants, ⟂ à l'axe), tronçons bord à bord au milieu du cadre.`);ctl.push(['Joints des 4 panneaux dans la même section, sur cadre',''])}if(g.ok)ctl.push([`Ouverture parement L ${nf(g.Wf,0)} × H ${nf(g.Hf,0)}`,''],[`Arêtes ${nf(g.Lr,0)} (parement à parement)`,''],[`Biais α ${nf(d.ppA)}° · pente β ${nf(d.ppBe)}°`,'fausse équerre']);}
   ctl.push(['Faces coffrantes huilées, aucune vis / pointe dépassant','']);
   return{steps,ctl};
@@ -4772,6 +4787,15 @@ function model3(d,R,opt){
       s.solids[s.solids.length-1].tk='rx'+Math.round(br.span)+(br.seg?'t':'c');
       // v18 : cloison CP plus longue que le panneau → face enregistrée pour ses couvre-joints
       if(RX.full){const ax=dx/L0,ay=-dy/L0,nx2=-ay,ny2=ax;reg(br.seg?'Cloisons CP (tronçons)':'Cloisons CP (continues)',{t:'flat',F0:[br.x1+sx+nx2*RX.b/2,sy-br.y1+ny2*RX.b/2,zc-RX.hs/2],A:[ax,ay,0],B:[0,0,1],N:[nx2,ny2,0]},Math.round(br.span),RX.hs)}}))}
+  if(d.feuilTraversee){
+    const ref=feuilTraverseRect(d),rr=debit(ref,null),bois=(R&&R.bois||[]).filter(b=>/feuillure/.test(b.n));
+    // Permutation avec réflexion : (x,y,z) rect → (e-z, x-L/2, y-H/2) mannequin.
+    const map=([x,y,z])=>[d.ppE-z,x-d.ppB/2,y-d.ppH/2];
+    model3(ref,rr,{base:true}).solids.filter(o=>o.nm==='feuillure').forEach((o,i)=>{
+      s.g(i===0?'base':i===1?'top':'wall','feuillure traversante',i>=2?[0,(i===2?-1:1)*(0.6*d.ppB+200),0]:null)
+        .push({F:o.F.map(f=>f.map(map).reverse()),col:o.col,tag:bois[i<2?0:1]?.tag});
+    });
+  }
   if(!(opt&&opt.base))joint3(s,R);
   // v2.8 : ligne CP du débit sans pièce 3D repérée → repère posé sur une plaque de mêmes cotes (a × b × ép.)
   if(R&&!(opt&&opt.base)){const has=new Set(s.solids.map(o=>o.tag).filter(Boolean));R.filter(r=>['j','fi','fs'].includes(r.k)&&r.a>0&&r.b>0&&!has.has(r.tag)).forEach(r=>{const w=[r.a,r.b,cpOf(d,r.k).e].sort((x,y)=>y-x);
@@ -4844,6 +4868,9 @@ function glPrint(){Promise.race([glSheets(el('pvA')),new Promise(r=>setTimeout(r
 
 // ---------- Pages complémentaires : montage + fiche atelier ----------
 function genExtra2(d,R,V,ctx,out){
+  if(d.feuilTraversee&&!badDims(checks(d,null))){out.push(['FEUILLURE TRAVERSANTE','Parement A (X=0) → B (X=e)',feuilTraverseFeuille(d),
+    `<p>Repère rectangulaire de référence : L = largeur ${nf(d.ppB)} ; l = hauteur ${nf(d.ppH)} ; h = traversée ${nf(d.ppE)} mm. Les coupes ci-dessus sont dans ce repère de fabrication. Haut du modèle = parement A ; départ ${nf(d.fNiv)}, profondeur ${nf(d.fH)}, largeur hors vide ${nf(d.fL)} mm. Corps ouvert sur A et B, 4 tasseaux périphériques en about carré ; fixation et maintien à vérifier. Voir le débit bois et la 3D pour la pose réelle.</p>`])}
+
   if(!PRT.cp){for(let i=out.length-1;i>=0;i--)if(/^CP À DÉCOUPER/.test(out[i][0]))out.splice(i,1)}
   if(PRT.mt&&R&&R.length){const M=montageInfo(d,R);let sv,ex=false;try{sv=montageSvg(d,R);ex=needExplode(model3(d,R))}catch(e){sv=errSvg(1000,640,'Vue 3D : '+e.message)}
     out.push(['MONTAGE','Vue 3D — principe de montage',sv,`<button class="btn bs bo no-print v3open-b" onclick="open3D(V3REG.get(${v3Reg(d)}))">🧊 Ouvrir en 3D interactive</button><div class="sub">Étapes de montage</div><ol class="fol">${M.steps.map(s=>`<li>${s}</li>`).join('')}</ol><div class="sub">Contrôles</div><table>${M.ctl.map(c=>`<tr><td>☐</td><td>${c[0]}</td><td class="nm">${c[1]||''}</td></tr>`).join('')}</table>${ctx.qCtl||''}`]);
