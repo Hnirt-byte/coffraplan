@@ -500,7 +500,11 @@ métier dupliqué), à la corde = largeur **suivant la paroi** et aux deux parem
   - rejets : quadrillage (au moins 5 lignes régulièrement espacées), réservation plus large que la bande, ligne qui traverse l'ouverture
     (axe, cote) ; deux supports d'égale vraisemblance (autre direction, autre centre) → `inconnu`, rien n'est choisi ; courbes non
     circulaires seules → `autre`, aucun rayon ;
-  - refus d'analyse : contour écarté par le repérage (sauf `repris`), observation dans un tableau ou un cartouche, vue en élévation.
+  - refus d'analyse : contour écarté par le repérage (sauf `repris`), observation dans un tableau ou un cartouche, vue en élévation,
+    vue de ferraillage (armatures en lignes parallèles : faux voile constaté sur un plan réel) ;
+  - réservation entre deux faces sans aller de l'une à l'autre (pièce entre deux murs, réservation de dalle, élévation) : support
+    `inconnu`, bande signalée (`bande_possible`) ; contour `repris` : support seulement possible (`support_possible`, valeurs dans la
+    preuve), le résultat reste `inconnu` (constaté sur un plan réel : gaine voisine prise pour la réservation).
 - **Valeurs (mm) et provenance** (`provenance['support.epaisseur_mm'] = {origine:'cote_explicite'|'mesure'|'calcul'|'saisie', source, detail}`) :
   - échelle : celle donnée (page ou vue) ; deux échelles différentes, ou largeur mesurée qui ne correspond à aucune cote du tableau →
     « échelle incohérente », mesures non utilisées ; sans échelle, une épaisseur saisie ou cotée au tableau (« ép. 250 mm ») donne une
@@ -522,7 +526,7 @@ métier dupliqué), à la corde = largeur **suivant la paroi** et aux deux parem
   (les ARC restent « autre », le détecteur et les tableaux ne les voient pas).
 - **Fenêtre** (`dxsAnalyser`, appelée à la fin de « 🔎 Analyser le dessin ») : localisations fiables des lignes en concordance forte ou
   partielle ; repère sans contour proposé : contour écarté le plus proche du repère, sans rival (réservation dessinée dans l'épaisseur
-  d'un voile, sommets raccordés aux faces), repris avec une incertitude ; échelle de la page et de la vue comparées ; relecture locale
+  d'un voile, sommets raccordés aux faces), repris : support « possible » seulement ; échelle de la page et de la vue comparées ; relecture locale
   des pages coupées. Résultats dans `DXI.SP` et dans l'export JSON (`supports`) ; nomenclature, contours, ouvrages inchangés ; aucune
   interface nouvelle (lots suivants).
 - Banc `t_support.py` (plans fictifs `tests/support_fictifs.py`, constructions `tests/support_cas.js`).

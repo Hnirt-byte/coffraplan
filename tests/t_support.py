@@ -163,6 +163,8 @@ def t(s):
         s.check(r['support']['type'] == 'inconnu' and any('tableau ou un cartouche' in m for m in r['incertitudes']), 'observation dans un tableau ou un cartouche : non analysée')
         r = A('const x=SC.voileDroit({t:200,w:500,ouverture:"rect"});x.obs.candidat.statut="non_pris_en_charge";x.obs.candidat.remarques=["cadre de feuille ou de vue"]')
         s.check(r['support']['type'] == 'inconnu' and any('contour écarté' in m for m in r['incertitudes']), 'contour écarté par le repérage : non analysé (sauf reprise explicite)')
+        r = A('const x=SC.voileDroit({t:200,w:500,ouverture:"rect",vue:{id:"V4",type:"ferraillage"}})')
+        s.check(r['support']['type'] == 'inconnu' and any('ferraillage' in m for m in r['incertitudes']), 'vue de ferraillage (armatures en lignes parallèles) : non analysée')
         r = A('const x=SC.voileDroit({t:200,w:500,ouverture:"rect",vue:{id:"V2",type:"elevation"}})')
         s.check(r['support']['type'] == 'inconnu' and any('élévation' in m for m in r['incertitudes']), 'vue en élévation : épaisseur non visible, non analysée')
         r = A('const x=SC.voileDroit({t:200,w:500,ouverture:"rect",vue:{id:"V3",type:"detail"}})')
@@ -183,10 +185,11 @@ def t(s):
         R = {J(f'DXI.NL.find(({{L}})=>L.id==="{k}").L.repere'): v for k, v in SP.items()}
         s.check(sorted(R) == ['R01', 'R02', 'R03', 'R04'], 'bout en bout : support analysé pour les 4 réservations associées', json.dumps(sorted(R)))
         e = lambda k: R.get(k, {}).get('support', {})
-        s.check(e('R01').get('type') == 'voile_droit' and e('R01').get('epaisseur_mm') == 200 and e('R04').get('type') == 'voile_droit' and R['R04']['ouverture']['type'] == 'circ',
-                'R01 (500 × 500) et R04 (Ø200) : voile droit 200 ; R04 ouverture circulaire (tableau)')
-        s.check(any('repris pour l\'analyse du support' in m for m in R['R01']['incertitudes']),
-                'R01 : contour raccordé aux faces (écarté comme cellule de quadrillage par le repérage) repris pour le support seulement, signalé')
+        sp = lambda k: next((p for p in R[k]['preuves'] if p['type'] == 'support_possible'), {})
+        s.check(e('R01').get('type') == 'inconnu' and e('R01').get('epaisseur_mm') is None and sp('R01').get('support') == 'voile_droit' and sp('R01').get('epaisseur_mm') == 200
+                and sp('R04').get('support') == 'voile_droit' and R['R04']['ouverture']['type'] == 'circ' and any('repris pour l\'analyse du support' in m for m in R['R01']['incertitudes']),
+                'R01 (500 × 500) et R04 (Ø200, ouverture circulaire du tableau) : contour raccordé aux faces, écarté par le repérage puis repris : '
+                'voile droit 200 seulement « possible » (preuve), support inconnu', json.dumps([R['R01']['support'], sp('R01')]))
         s.check(e('R02').get('type') == 'voile_circulaire' and e('R02').get('rayon_interieur_mm') == 6000 and e('R02').get('epaisseur_mm') == 250 and e('R02').get('confiance') == 'forte'
                 and R['R02']['provenance']['support.epaisseur_mm']['source'] == 'nomenclature', 'R02 : voile circulaire R 6000, ép. 250 (désignation « ép. 250 mm » du tableau, confirmée), confiance forte',
                 json.dumps(R.get('R02', {}).get('support')))

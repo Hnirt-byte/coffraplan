@@ -13,7 +13,7 @@ forme voile jamais activée à l'import, aucun LLM ni API ; aucun seuil arbitrai
 - `modules/import/support.js` (`CPI.support`) : analyse locale autour du contour ou du repère ; faces droites (lignes parallèles,
   directions des côtés du contour) ou circulaires (arcs concentriques : ARC / bulge DXF, Bézier PDF, chaînes de segments) ; une
   réservation qui ne va pas d'une face à l'autre n'est jamais rattachée à un support (bande signalée seulement) ; deux supports d'égale
-  vraisemblance → `inconnu` ; quadrillages, tableaux, cartouches, vues en élévation, contours écartés : non analysés.
+  vraisemblance → `inconnu` ; quadrillages, tableaux, cartouches, vues en élévation et de ferraillage, contours écartés : non analysés.
 - Valeurs en mm avec leur provenance (`cote_explicite`, `mesure`, `calcul`, `saisie`) ; `null` si absente. Échelle de la page et de la
   vue comparées ; échelle incohérente (deux échelles, ou largeur mesurée sans rapport avec les cotes du tableau) : mesures non utilisées.
   Une cote voisine n'est retenue que confirmée par la mesure. Orientation de l'ouverture (largeur suivant la paroi ≠ hauteur) par les
@@ -25,7 +25,7 @@ forme voile jamais activée à l'import, aucun LLM ni API ; aucun seuil arbitrai
 - Lecteurs, sans effet sur l'existant : `CPI.pdf.chemins` renvoie aussi les pièces de Bézier (`courbes`) et relit une page par zones
   (`{zones}`) ; `dxf.js` relève `arcs` et `traitsArcs` à part (entités, traits, détecteur et tableaux inchangés).
 - Fenêtre d'import : `dxsAnalyser` en fin de « 🔎 Analyser le dessin » (lignes en concordance forte ou partielle ; contour écarté le plus
-  proche du repère repris pour le support seulement, signalé ; pages très chargées relues localement) → `DXI.SP` et clé `supports` de
+  proche du repère repris, support seulement « possible » ; pages très chargées relues localement) → `DXI.SP` et clé `supports` de
   l'export JSON. Aucune interface nouvelle.
 
 **Écarts voulus** : aucun test existant modifié. Export JSON de l'analyse : nouvelle clé `supports` (les autres clés inchangées).

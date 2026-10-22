@@ -159,7 +159,8 @@ function analyser(obs,env,o){o=o||{};const c=obs.candidat||null,g=c&&c.geometrie
   if(dansCadre){inc.push('observation dans un tableau ou un cartouche : support non analysé');return fin()}
   const vt=obs.vue&&obs.vue.type;
   if(vt==='elevation'){inc.push('vue en élévation : l\'épaisseur du support n\'y est pas visible, support non analysé sur cette vue');return fin()}
-  if(vt&&/^ferraillage/.test(vt))inc.push('vue de ferraillage : traits d\'armatures possibles, support à confirmer');
+  // vue de ferraillage : les armatures dessinées sont des lignes parallèles (constaté sur un plan réel : faux voile entre deux aciers)
+  if(vt&&/^ferraillage/.test(vt)){inc.push('vue de ferraillage : armatures dessinées en lignes parallèles, support non analysé sur cette vue');return fin()}
   if(vt==='detail')inc.push('vue de détail : échelle propre à la vue, à vérifier');
   if(env.coupe)inc.push('géométrie partiellement extraite (plafond de lecture atteint) : relire localement autour de la réservation (CPI.pdf.chemins avec zones)');
   // environnement local : fenêtre autour de p, hors tableaux, sans le contour de la réservation elle-même
@@ -201,6 +202,14 @@ function analyser(obs,env,o){o=o||{};const c=obs.candidat||null,g=c&&c.geometrie
   if(L&&L.courbe&&best.type==='voile_droit')inc.push('la nomenclature mentionne un ouvrage courbe (cintré, circulaire, cuve) et le dessin montre une paroi droite : à vérifier');
   if(L&&L.droit&&best.type==='voile_circulaire')inc.push('la nomenclature mentionne un voile droit et le dessin montre une paroi circulaire : à vérifier');
   valeurs(R,L,best,o,inc,pv,prov);
+  // contour repris (écarté par le repérage, choisi par proximité du repère) : support seulement possible (constaté sur un plan réel :
+  // gaine ou autre contour voisin pris pour la réservation) ; valeurs gardées dans la preuve, jamais dans le résultat
+  if(o.repris){const S=R.support;pv.push({type:'support_possible',support:S.type,epaisseur_mm:S.epaisseur_mm,rayon_interieur_mm:S.rayon_interieur_mm,
+      fleche_interieure_mm:R.coffrage.fleche_interieure_mm,provenance:prov['support.epaisseur_mm']||null});
+    inc.push(`support possible : ${S.type}${S.epaisseur_mm?' ép. '+S.epaisseur_mm+' mm':''}, d'après un contour repris : à confirmer`);
+    R.support={type:'inconnu',epaisseur_mm:null,rayon_interieur_mm:null,rayon_exterieur_mm:null,confiance:null};R.correspondance_voile=null;
+    Object.assign(R.coffrage,{pistes:[],fleche_interieure_mm:null,fleche_exterieure_mm:null});
+    Object.keys(prov).forEach(k=>{if(/^support\.|^coffrage\.fleche/.test(k))delete prov[k]});return fin()}
   if(R.support.confiance==='moyenne'&&prov['support.epaisseur_mm']&&prov['support.epaisseur_mm'].origine==='cote_explicite'&&!inc.some(m=>/échelle incohérente|échelle déduite|conflit/.test(m)))R.support.confiance='forte';
   return fin()}
 function dseg(p,a,b){const dx=b[0]-a[0],dy=b[1]-a[1],l=dx*dx+dy*dy,t=l?Math.max(0,Math.min(1,((p[0]-a[0])*dx+(p[1]-a[1])*dy)/l)):0;return Math.hypot(p[0]-a[0]-t*dx,p[1]-a[1]-t*dy)}
