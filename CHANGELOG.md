@@ -3,6 +3,60 @@
 Détail complet de chaque version (demandes, écarts voulus, tests, non validé) : `docs/historique/HANDOFF_<version>.md`.
 Chaque version est un tag git (`git diff v2.4 v2.5 -- app/` pour voir les changements).
 
+## Phase 9A — géométrie du support d'une réservation (non publiée, sans numéro de version)
+**Demande (Kévin, 22/10/2026)** : faire comprendre à CoffraPlan la géométrie du support dans lequel se situe une réservation repérée
+sur un plan PDF ou DXF (voile droit, voile circulaire), en séparant forme de l'ouverture, nature du support et solution de coffrage ;
+moteur indépendant, testable, déterministe ; aucune création d'ouvrage, aucun changement des calculs de débit, panneaux ou gabarits,
+forme voile jamais activée à l'import, aucun LLM ni API ; aucun seuil arbitraire de 500 mm ; `#appVer` reste v3.1 ; aucun tag ni Release.
+
+**Fait** (détail : `modules/import/README.md`, § Phase 9A)
+- `modules/import/support.js` (`CPI.support`) : analyse locale autour du contour ou du repère ; faces droites (lignes parallèles,
+  directions des côtés du contour) ou circulaires (arcs concentriques : ARC / bulge DXF, Bézier PDF, chaînes de segments) ; une
+  réservation qui ne va pas d'une face à l'autre n'est jamais rattachée à un support (bande signalée seulement) ; deux supports d'égale
+  vraisemblance → `inconnu` ; quadrillages, tableaux, cartouches, vues en élévation et de ferraillage, contours écartés : non analysés.
+  Faces d'un seul côté de la réservation, ou contour repris par proximité du repère : support seulement « possible » (preuve), jamais
+  dans le résultat.
+- Valeurs en mm avec leur provenance (`cote_explicite`, `mesure`, `calcul`, `saisie`) ; `null` si absente. Échelle de la page et de la
+  vue comparées ; échelle incohérente (deux échelles, ou largeur mesurée sans rapport avec les cotes du tableau) : mesures non utilisées.
+  Une cote voisine n'est retenue que confirmée par la mesure. Orientation de l'ouverture (largeur suivant la paroi ≠ hauteur) par les
+  colonnes Largeur / Hauteur ou par la mesure le long de la paroi ; sinon `null`.
+- Flèches aux deux parements par `GEO.sag` du moteur (reçu en paramètre, aucun calcul dupliqué) ; pistes motivées (fourreau pour une
+  ouverture circulaire, coffrage rectangulaire en paroi droite, comparaison flèche / tolérance saisie en paroi circulaire) ;
+  `solution_proposee` toujours `a_determiner`, `validation_utilisateur_requise` toujours vrai ; `correspondance_voile` (L, l, h, Ø cuve,
+  `dRef`) proposée pour le voile cintré, jamais appliquée.
+- Lecteurs, sans effet sur l'existant : `CPI.pdf.chemins` renvoie aussi les pièces de Bézier (`courbes`) et relit une page par zones
+  (`{zones}`) ; `dxf.js` relève `arcs` et `traitsArcs` à part (entités, traits, détecteur et tableaux inchangés).
+- Fenêtre d'import : `dxsAnalyser` en fin de « 🔎 Analyser le dessin » (lignes en concordance forte ou partielle ; contour écarté le plus
+  proche du repère repris, support seulement « possible » ; pages très chargées relues localement) → `DXI.SP` et clé `supports` de
+  l'export JSON. Aucune interface nouvelle.
+
+**Correctifs de relecture (PR #19)** : `consolider` (plusieurs vues) ne garde plus une `correspondance_voile`, des flèches ou une confiance
+forte héritées d'une vue : nature en désaccord → `inconnu` sans valeur de support ; valeur en conflit → `null` et valeurs dépendantes
+(rayon extérieur, flèches, Ø cuve) recalculées par `GEO.sag` ou retirées ; confiance « faible » ; valeurs et preuves de chaque vue
+conservées (`observations[]`). Échec de l'analyse des supports (`DXI.SPerr`) affiché dans le bilan d'import ; export JSON :
+`supportsAnalyse` (`reussie` / `echec` + erreur / `non_lancee`). Tests ajoutés dans `t_support` (voile droit contre voile circulaire,
+deux vues circulaires contradictoires, vues concordantes, échec simulé).
+
+**Plans réels (hors dépôt, Chromium), mêmes scénarios qu'en phase 8** : tableaux, repères, cotes, vues, occurrences et rapprochements
+**identiques** pour A, B (zone et automatique), C, D ; seuls les temps changent (analyse du support et relecture locale : D 67 → 71 s,
+A 161 → 174 s, B 125 → 147 s, C 224 → 242 s ; passages séquentiels, autres processus actifs). Supports analysés : 13 réservations
+associées (D 4, A 7, B 1, C 1) ; **aucun support affirmé**, tous « inconnu » : vues de détail ou de ferraillage, contours repris
+(support possible), réservations entre deux murs sans les toucher (bande signalée), faces d'un seul côté, deux supports possibles.
+Contrôle visuel des découpes : avant les règles de durcissement, 4 faux voiles (armatures sur A, gaine sur D, lignes de cote sur C,
+bande de pièce sur D), tous retirés. Plan B : la cuve réelle est bien lue (face extérieure en Bézier, intérieure en segments), mais le
+contour de la réservation posée dans sa paroi n'est pas repéré par la phase 4 : support non évalué sur un vrai voile circulaire.
+
+**Écarts voulus** : aucun test existant modifié. Export JSON de l'analyse : nouvelle clé `supports` (les autres clés inchangées).
+Nouvelle suite `t_support` (plans fictifs `tests/support_fictifs.py`, constructions `tests/support_cas.js`), ajoutée aux suites rapides.
+
+**Tests** : `python tests/run.py complet -j 4` : 37 / 37 suites vertes (22/10/2026, Chromium), dont `t_support` (71 après les correctifs de relecture) ; `t_avap` : 1 090 / 1 090
+contre main `6d5b4e5` (moteur, feuilles, DXF et CSV identiques). Livrable construit (après correctifs) : 37 043 190 octets  SHA-256
+`40e1b0e3bbfab728e9c6fd97bc52e04d79cc02a8983b5e56b7c8b35fbd4f993f`.
+
+**Non validé** : aucun vrai plan ne contient de réservation repérée dans un voile circulaire (plan B : contour non repéré en amont) ;
+seuils géométriques internes (2° de parallélisme, 1 % de centre, 10 % d'accord cote / mesure, rival à 60 %) éprouvés sur cas fictifs
+et quatre plans seulement ; DXF réels avec ARC ou bulge non essayés (seulement DXF écrits par ezdxf) ; Firefox, Safari non essayés.
+
 ## Phase 8 — construction du livrable par la CI ; tableaux juxtaposés et titres de vue (plan D) (non publiée, sans numéro de version)
 **Demande (Kévin, 22/10/2026)** : faire produire le HTML autonome par GitHub Actions sans le versionner ; corriger les deux défauts
 du plan D (tableaux voisins mêlés, titre « Sous Toiture 1 : 25 » non reconnu) ; aucun changement des calculs, de la 3D, des exports,

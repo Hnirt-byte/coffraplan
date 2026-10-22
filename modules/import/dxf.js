@@ -1,7 +1,8 @@
 // CoffraPlan — module d'import de plans : décodeur DXF ASCII (inscrit dans CPI.lecteur.DECODEURS.dxf).
 // Lit la section ENTITIES (LWPOLYLINE, POLYLINE R12 + VERTEX, CIRCLE ; le reste → « autre »), l'unité $INSUNITS et la
 // table des calques ; chaque entité porte son espace (Objet ou présentation). Relève aussi les textes et les traits droits
-// de tous les espaces, blocs insérés compris (tableaux, repères : voir nomenclatures.js). Charger après lecteur.js.
+// de tous les espaces, blocs insérés compris (tableaux, repères : voir nomenclatures.js) ; phase 9A : arcs (ARC, CIRCLE, côtés courbes
+// des polylignes à arcs) et côtés droits de ces polylignes, à part (arcs, traitsArcs : parois courbes, support.js). Charger après lecteur.js.
 // Indépendant de l'interface et du moteur.
 (function(root){'use strict';
 const UNITES={4:'mm',5:'cm',6:'m'};   // $INSUNITS ; 0 ou absent → null (jamais devinée) ; autres codes → refus
@@ -122,7 +123,7 @@ const BUDGET=500000;   // shortcut: au-delà de 500 000 textes + traits (fichier
 // Texte : {id, calque, espace, presentation, nature, texte, x, y (centre estimé), h, w (largeur estimée), rot (°), bloc?, fleches?}
 // Trait : {calque, espace, presentation, a:[x,y], b:[x,y]}. Coordonnées propres à chaque espace : jamais mélangées.
 function annexes(S,E,X){
-  const textes=[],traits=[],sig=new Set(),blocs={},fl={};let cur=null,nb=0;
+  const textes=[],traits=[],arcs=[],traitsArcs=[],sig=new Set(),blocs={},fl={};let cur=null,nb=0;
   for(const o of objets(S.BLOCKS)){if(o.type==='BLOCK'){cur={nom:val(o,2)||'',br:val(o,330),base:[+val(o,10)||0,+val(o,20)||0],E:[]};blocs[cur.nom.toUpperCase()]=cur}
     else if(o.type==='ENDBLK')cur=null;else if(cur)cur.E.push(o)}
   const plein=()=>{if(++nb<=BUDGET)return false;sig.add('fichier très chargé : textes et traits au-delà de '+BUDGET+' non relevés');return true};
@@ -131,6 +132,18 @@ function annexes(S,E,X){
     k=Math.sqrt(Math.abs(M[0]*M[3]-M[1]*M[2]))||1;
     textes.push(Object.assign({},c,{texte:t,x:p[0],y:p[1],h:h*k,w:t.length*0.6*h*k,rot:((rot+Math.atan2(M[1],M[0])*180/Math.PI)%360+360)%360}))}
   function trait(c,M,a,b){if(plein())return;traits.push({calque:c.calque,espace:c.espace,presentation:c.presentation,a:app(M,a[0],a[1]),b:app(M,b[0],b[1])})}
+  // phase 9A (parois courbes, support.js) : arc de centre q, rayon r, d'angle de départ a0 et d'ouverture d (radians, sens trigonométrique,
+  // repère de l'objet) → arc dans le repère de l'espace (rotation, miroir, échelle uniforme) ; échelle non uniforme (ellipse) : signalée
+  function arcM(c,M,q,r,a0,d,src,id){if(plein())return;const ux=Math.hypot(M[0],M[1]),uy=Math.hypot(M[2],M[3]);
+    if(!(r>0)||!(d>0)||Math.abs(ux-uy)>1e-9*Math.max(ux,uy)||Math.abs(M[0]*M[2]+M[1]*M[3])>1e-9*ux*uy){sig.add('arc ou cercle dans un bloc à échelle non uniforme (ellipse) : non relevé');return}
+    const T=2*Math.PI,th=Math.atan2(M[1],M[0]),mir=M[0]*M[3]-M[1]*M[2]<0,a=d>=T-1e-12?0:(((mir?th-a0-d:th+a0)%T)+T)%T;
+    arcs.push({calque:c.calque,espace:c.espace,presentation:c.presentation,id,source:src,centre:app(M,q[0],q[1]),r:r*ux,a0:a,d:Math.min(d,T)})}
+  // polyligne à arcs : côtés droits → traitsArcs, côtés courbes → arcs (bulge g = tan(angle / 4), angle > 0 : sens trigonométrique)
+  function polyArcs(c,M,P,G,ferme){const n=P.length,m=ferme?n:n-1;for(let j=0;j<m;j++){const a=P[j],b=P[(j+1)%n],g=G[j]||0;
+    if(!g){if(plein())return;traitsArcs.push({calque:c.calque,espace:c.espace,presentation:c.presentation,id:c.id+'#'+j,a:app(M,a[0],a[1]),b:app(M,b[0],b[1])});continue}
+    const L=Math.hypot(b[0]-a[0],b[1]-a[1]);if(!(L>0))continue;const t=4*Math.atan(g),ux=(b[0]-a[0])/L,uy=(b[1]-a[1])/L,hc=L/2/Math.tan(t/2);
+    const q=[(a[0]+b[0])/2-hc*uy,(a[1]+b[1])/2+hc*ux],r=Math.abs(L/(2*Math.sin(t/2))),an=p=>Math.atan2(p[1]-q[1],p[0]-q[0]);
+    arcM(c,M,q,r,t>0?an(a):an(b),Math.abs(t),'bulge',c.id+'#'+j)}}
   function walk(L,M,c0,pre,prof){
     for(let i=0;i<L.length;i++){const o=L[i],ty=o.type,sg=repere(o);
       let cal=val(o,8)===undefined?'0':val(o,8);if(cal==='0'&&c0.calque)cal=c0.calque;   // calque 0 dans un bloc : celui de l'insertion
@@ -155,10 +168,14 @@ function annexes(S,E,X){
           pose(Object.assign({},c,{id:c.id+(A.length>1?'#'+(j+1):''),nature:'MULTILEADER',fleches:f}),M,x,p[0],p[1],h,0,x.length*0.3*h,-h/2-j*h*5/3)})}
       else if(ty==='LEADER'){const a=val(o,340);if(a!==undefined&&val(o,10)!==undefined)(fl[pre+a]=fl[pre+a]||[]).push(app(Mo,num(o,10,0),num(o,20,0)))}
       else if(ty==='LINE')trait(c,Mo,[num(o,10,0),num(o,20,0)],[num(o,11,0),num(o,21,0)]);
-      else if(ty==='LWPOLYLINE'||ty==='POLYLINE'){let P=[],bul=false,f=num(o,70,0);
-        if(ty==='LWPOLYLINE'){for(const [k,v] of o.g){if(k===10)P.push([+v,NaN]);else if(k===20&&P.length)P[P.length-1][1]=+v;else if(k===42&&+v)bul=true}}
-        else for(i++;i<L.length&&L[i].type==='VERTEX';i++){P.push([num(L[i],10,0),num(L[i],20,0)]);if(num(L[i],42,0))bul=true}
-        if(bul||f&(8|16|64)||P.some(q=>!q.every(Number.isFinite)))continue;
+      else if(ty==='ARC'||ty==='CIRCLE'){const q=[num(o,10,0),num(o,20,0)],r=num(o,40,0);
+        const a0=ty==='ARC'?num(o,50,0)*Math.PI/180:0,d=ty==='ARC'?((num(o,51,0)*Math.PI/180-a0)%(2*Math.PI)+2*Math.PI)%(2*Math.PI)||2*Math.PI:2*Math.PI;
+        arcM(c,Mo,q,r,a0,d,ty==='ARC'?'arc':'cercle',c.id)}
+      else if(ty==='LWPOLYLINE'||ty==='POLYLINE'){let P=[],G=[],bul=false,f=num(o,70,0);
+        if(ty==='LWPOLYLINE'){for(const [k,v] of o.g){if(k===10){P.push([+v,NaN]);G.push(0)}else if(k===20&&P.length)P[P.length-1][1]=+v;else if(k===42&&+v&&P.length){bul=true;G[G.length-1]=+v}}}
+        else for(i++;i<L.length&&L[i].type==='VERTEX';i++){P.push([num(L[i],10,0),num(L[i],20,0)]);G.push(num(L[i],42,0));if(num(L[i],42,0))bul=true}
+        if(f&(8|16|64)||P.some(q=>!q.every(Number.isFinite)))continue;
+        if(bul){polyArcs(c,Mo,P,G,!!(f&1));continue}   // jamais dans traits (tableaux) : parois courbes seulement
         for(let j=0;j+1<P.length;j++)trait(c,Mo,P[j],P[j+1]);if(f&1&&P.length>2)trait(c,Mo,P[P.length-1],P[0])}
       else if(ty==='INSERT'||ty==='ACAD_TABLE'){const B=blocs[String(val(o,2)||'').toUpperCase()];
         if(!B){sig.add(ty==='ACAD_TABLE'?'tableau AutoCAD (ACAD_TABLE) sans bloc de rendu : non lu':'bloc inséré introuvable : '+(val(o,2)||'?'));continue}
@@ -171,7 +188,7 @@ function annexes(S,E,X){
   walk(E,[1,0,0,1,0,0],{de:X.de},'',0);   // ENTITIES : espace propre à chaque entité (code 67)
   for(const B of Object.values(blocs))if(/^\*paper_space\d+$/i.test(B.nom))walk(B.E,[1,0,0,1,0,0],{espace:'papier',presentation:X.nomBR(B.br)||B.nom},'',0);
   textes.forEach(t=>{const f=fl[t.id.split('#')[0]];if(f)t.fleches=(t.fleches||[]).concat(f)});
-  return{presentations:X.presentations,textes,traits,signalements:[...sig]};
+  return{presentations:X.presentations,textes,traits,arcs,traitsArcs,signalements:[...sig]};
 }
 
 if(!root.CPI||!root.CPI.lecteur)throw new Error('dxf.js : charger lecteur.js avant');
