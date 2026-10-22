@@ -9,6 +9,7 @@
 let LIB=null,FERME=Promise.resolve();   // FERME : dernière libération de document, attendue avant d'en ouvrir un autre
 const SEG_DET=400000;   // shortcut: repérage des réservations (chemins), au-delà les traits ne sont pas lus (signalé) ; à relever si un vrai plan le demande
 const PETIT=20,PETIT_MAX=400000;   // pt ; shortcut: au-delà de 400 000 petits sous-chemins par page, les suivants ne servent pas à chercher les textes dessinés
+const COURBES_MAX=200000;   // shortcut: au-delà de 200 000 pièces de Bézier par page, les suivantes ne servent pas aux parois courbes (signalé : coupeCourbes)
 const SEG_MAX=60000;   // shortcut: au-delà, les traits d'une page ne sont plus relevés (le diagnostic les compte) ; à relever si un vrai plan le demande
 const src=id=>{const s=root.document&&root.document.getElementById(id);if(!s)throw new Error('lecteur PDF absent de ce fichier ('+id+')');return s.textContent};
 const blobUrl=t=>URL.createObjectURL(new Blob([t],{type:'text/javascript'}));
@@ -118,20 +119,27 @@ async function rendreZone(pdf,n,z,k){const pg=await pdf.getPage(n),vp=pg.getView
 
 // Tracés d'une page pour le repérage des réservations (geometrie.js), relus à la demande (rien n'est gardé à l'ouverture) :
 // segments droits de tous les chemins peints et sous-chemins fermés courbes ou à nombreux sommets (cercles possibles), en
-// points de la page affichée, Y vers le haut (même repère que les textes). → {page, w, h, segments, contours, petits, coupe} ;
-// petits = emprises [x0,y0,x1,y1,…] à plat des sous-chemins de moins de 20 pt (lettres dessinées, flèches, hachures)
-async function chemins(pdf,n){const lib=await charger(),pg=await pdf.getPage(n),vp=pg.getViewport({scale:1}),ol=await pg.getOperatorList(),H=vp.height,S=[],C=[],B=[];
-  let ch=0,coupe=false;const Y=q=>[q[0],H-q[1]];
+// points de la page affichée, Y vers le haut (même repère que les textes). → {page, w, h, segments, contours, petits, courbes, coupe, coupeCourbes} ;
+// petits = emprises [x0,y0,x1,y1,…] à plat des sous-chemins de moins de 20 pt (lettres dessinées, flèches, hachures) ;
+// courbes (phase 9A, support.js) = pièces de Bézier [{id, c:[p0,c1,c2,p3]}] des sous-chemins peints de plus de 20 pt, ouverts ou fermés (parois courbes).
+// o.zones = [[x0,y0,x1,y1]…] (points, Y vers le haut) : lecture LOCALE, seuls les tracés qui touchent une zone sont gardés (les plafonds
+// s'appliquent après ce tri : une page très chargée se relit en entier autour des réservations)
+async function chemins(pdf,n,o){const lib=await charger(),pg=await pdf.getPage(n),vp=pg.getViewport({scale:1}),ol=await pg.getOperatorList(),H=vp.height,S=[],C=[],B=[],K=[],Z=o&&o.zones&&o.zones.length?o.zones:null;
+  let ch=0,coupe=false,coupeK=false;const Y=q=>[q[0],H-q[1]],touche=(x0,y0,x1,y1)=>!Z||Z.some(z=>x1>=z[0]&&x0<=z[2]&&y1>=z[1]&&y0<=z[3]);
   const sp=(pts,z,cb,peint)=>{if(!peint)return;const P=pts.map(Y),id=`p${n}-c${ch}`,q=P[P.length-1];z=z||P.length>2&&Math.hypot(q[0]-P[0][0],q[1]-P[0][1])<0.01;
     // petit sous-chemin (trait ou contour de lettre dessinée, flèche, hachure) : son emprise sert à trouver les textes dessinés
     let x0=Infinity,y0=Infinity,x1=-Infinity,y1=-Infinity;for(const p of P){if(p[0]<x0)x0=p[0];if(p[0]>x1)x1=p[0];if(p[1]<y0)y0=p[1];if(p[1]>y1)y1=p[1]}
-    if(x1-x0<=PETIT&&y1-y0<=PETIT&&B.length<4*PETIT_MAX)B.push(x0,y0,x1,y1);
-    let j=0;for(let i=1;i<P.length;i++){if(j<cb.length&&cb[j][3]===pts[i]){j++;continue}if(S.length>=SEG_DET){coupe=true;break}S.push({id:id+'-'+S.length,a:P[i-1],b:P[i]})}
-    if(z&&P.length>2&&!cb.length&&S.length<SEG_DET)S.push({id:id+'-'+S.length,a:P[P.length-1],b:P[0]});
-    if(z&&(cb.length||P.length>=8))C.push({id:id+'-k'+C.length,pts:P,courbes:cb.map(c=>c.map(Y))})};
+    if(Z){for(const c of cb)for(const p of c){const r=Y(p);if(r[0]<x0)x0=r[0];if(r[0]>x1)x1=r[0];if(r[1]<y0)y0=r[1];if(r[1]>y1)y1=r[1]}if(!touche(x0,y0,x1,y1))return}
+    const petit=x1-x0<=PETIT&&y1-y0<=PETIT;
+    if(petit&&B.length<4*PETIT_MAX)B.push(x0,y0,x1,y1);
+    const garde=(a,b)=>!Z||touche(Math.min(a[0],b[0]),Math.min(a[1],b[1]),Math.max(a[0],b[0]),Math.max(a[1],b[1]));
+    let j=0;for(let i=1;i<P.length;i++){if(j<cb.length&&cb[j][3]===pts[i]){j++;continue}if(!garde(P[i-1],P[i]))continue;if(S.length>=SEG_DET){coupe=true;break}S.push({id:id+'-'+S.length,a:P[i-1],b:P[i]})}
+    if(z&&P.length>2&&!cb.length&&S.length<SEG_DET&&garde(P[P.length-1],P[0]))S.push({id:id+'-'+S.length,a:P[P.length-1],b:P[0]});
+    if(z&&(cb.length||P.length>=8))C.push({id:id+'-k'+C.length,pts:P,courbes:cb.map(c=>c.map(Y))});
+    if(!petit)cb.forEach((c,m)=>{if(K.length>=COURBES_MAX){coupeK=true;return}K.push({id:id+'-b'+m,c:c.map(Y)})})};
   sp.chemin=()=>ch++;
   cheminsPage(lib,ol,vp,sp,null);pg.cleanup();
-  return{page:n,w:vp.width,h:vp.height,segments:S,contours:C,petits:B,coupe}}
+  return{page:n,w:vp.width,h:vp.height,segments:S,contours:C,petits:B,courbes:K,coupe,coupeCourbes:coupeK,zones:Z}}
 
 // Libère un document lu (le worker partagé reste ouvert pour le PDF suivant) ; lire() attend la fin de la libération
 function fermer(pdf){try{const t=pdf&&pdf.loadingTask;if(t)FERME=Promise.all([FERME,t.destroy().catch(()=>{})])}catch(e){}return FERME}
