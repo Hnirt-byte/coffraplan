@@ -56,7 +56,16 @@ const dansArc=(A,f)=>nang(f-A.a0)<=A.d;
 
 // ---- environnement graphique, selon le format
 // PDF : sortie de CPI.pdf.chemins (segments, courbes Bézier ; points, Y vers le haut) et textes de la page
-function envPdf(geo,textes){return{unite:'pt',segments:geo.segments||[],courbes:geo.courbes||[],arcs:[],textes:textes||[],coupe:!!(geo.coupe||geo.coupeCourbes)}}
+// Un cercle fermé aplati en segments n'a pas trois extrémités distinctes pour arc3.
+// Relire son sous-chemin (sans les hachures voisines), en contrôlant aussi les milieux :
+// quatre coins sur un cercle ne font pas une face circulaire (rectangle, cartouche).
+function arcsContours(contours){const A=[];
+  (contours||[]).forEach(c=>{if((c.courbes||[]).length)return;const P=c.pts||[];if(P.length<12)return;
+    const a=arc3(P[0],P[Math.floor(P.length/3)],P[Math.floor(2*P.length/3)]);if(!a||!(a.r>0))return;
+    const tol=0.005*a.r,ok=p=>Math.abs(dist(p,a.centre)-a.r)<=tol;
+    if(!P.every((p,i)=>ok(p)&&ok([(p[0]+P[(i+1)%P.length][0])/2,(p[1]+P[(i+1)%P.length][1])/2])))return;
+    A.push(Object.assign(a,{id:c.id,source:'chaine',a0:0,d:TAU}))});return A}
+function envPdf(geo,textes){return{unite:'pt',segments:geo.segments||[],courbes:geo.courbes||[],arcs:arcsContours(geo.contours),textes:textes||[],coupe:!!(geo.coupe||geo.coupeCourbes)}}
 // DXF : document de CPI.dxf.decoder (traits, arcs, traits des polylignes à arcs) d'un espace (objet, ou présentation nommée)
 function envDxf(doc,sel){sel=sel||{espace:'objet',presentation:null};const ok=x=>x.espace===sel.espace&&(sel.espace==='objet'||x.presentation===sel.presentation);
   const S=(doc.traits||[]).concat(doc.traitsArcs||[]).filter(ok).map((s,i)=>({id:s.id||'t'+i,a:s.a,b:s.b}));
@@ -144,7 +153,7 @@ function analyser(obs,env,o){o=o||{};const c=obs.candidat||null,g=c&&c.geometrie
     support:{type:'inconnu',epaisseur_mm:null,rayon_interieur_mm:null,rayon_exterieur_mm:null,confiance:null},
     coffrage:{solution_proposee:'a_determiner',pistes:[],fleche_interieure_mm:null,fleche_exterieure_mm:null,tolerance_mm:null},
     correspondance_voile:null,provenance:prov,preuves:pv,incertitudes:inc,validation_utilisateur_requise:true};
-  const fin=()=>{if(!R.coffrage.pistes.length)pistes(R);R.incertitudes=[...new Set(inc)];return R};
+  const fin=()=>{if(c&&c.reconstruction){R.observation.reconstruction=c.reconstruction;inc.push('contour reconstruit : limites proposées, validation utilisateur requise');pv.push({type:'contour_reconstruit',detail:c.reconstruction});if(R.support.type!=='inconnu')R.support.confiance='faible'}if(!R.coffrage.pistes.length)pistes(R);R.incertitudes=[...new Set(inc)];return R};
   const p=c&&c.centre?c.centre:obs.point;if(!p)return(inc.push('observation sans position : rien à analyser'),fin());
   const K=g?g.type==='cercle'?Array.from({length:16},(x,i)=>[g.centre[0]+g.r*Math.cos(i*PI/8),g.centre[1]+g.r*Math.sin(i*PI/8)]):g.points||[]:[];
   const bb=K.length?[Math.min(...K.map(q=>q[0])),Math.min(...K.map(q=>q[1])),Math.max(...K.map(q=>q[0])),Math.max(...K.map(q=>q[1]))]:null;

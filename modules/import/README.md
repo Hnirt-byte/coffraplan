@@ -538,6 +538,45 @@ métier dupliqué), à la corde = largeur **suivant la paroi** et aux deux parem
   interface nouvelle (lots suivants).
 - Banc `t_support.py` (plans fictifs `tests/support_fictifs.py`, constructions `tests/support_cas.js`).
 
+## Phase 9B : contours contextuels PDF (`contours.js`, `CPI.contours`)
+
+- Voie complémentaire à `geometrie.detecterPage`, activée avec les repères de la
+  nomenclature (`ctx.reperes`). Les rejets ordinaires des tableaux, cartouches et
+  quadrillages ne sont pas supprimés.
+- Un repère exact et fiable (texte PDF ou OCR ≥ 75 %) localise la recherche, directement
+  ou via ses lignes de rappel. Deux diagonales qui se croisent dans leur partie centrale,
+  deux traverses dessinées (éventuellement fragmentées, couverture contrôlée) et deux
+  parements traversés doivent concorder. Un quadrillage régulier ou des hypothèses
+  concurrentes ne sont pas promus. La recherche est bornée autour du repère ; une zone
+  trop chargée est laissée indécidée.
+- Une reconstruction est un candidat **à confirmer**, avec `geometrie.ferme:false` et
+  `reconstruction:{type:'diagonales_parements',explicite:false,repere,diagonales,traverses,preuves}`.
+  Les traits sources, couvertures et preuves de parements sont conservés. L'aperçu la
+  dessine en tirets et les listes indiquent « contour reconstruit ». Cette métadonnée
+  accompagne l'export d'analyse et la provenance d'un éventuel import confirmé.
+- Aucun L × h de fabrication n'est tiré des limites reconstruites ; elles ne confirment
+  pas non plus les cotes du tableau par mesure. La nomenclature ou une saisie explicite
+  reste nécessaire. La nature du support peut être reconnue avec une confiance faible,
+  mais rayon, épaisseur et flèche restent `null` sans échelle/cote confirmée. Aucune
+  conversion d'agrandissement graphique en échelle physique.
+- Les faces circulaires fermées aplaties sont relues dans leur sous-chemin : contrôle
+  du rayon sur les sommets **et** les milieux (un rectangle dont les coins sont sur un
+  cercle n'est pas une face circulaire). La mesure est approchée et signalée.
+- Sur les petites planches, lecture OCR des blocs plus petits, rendu par tuiles jusqu'à
+  24 px/pt et séparation des rappels fins et longs accolés aux lettres. Ce réglage est
+  graphique, sans modification de `DXI.cal`. Les accolades/crochets/parenthèses autour
+  d'un repère du tableau sont ignorés dans sa clé de rapprochement seulement ; le brut
+  reste affiché et la normalisation est notée. Aucune correction de chiffre par voisinage.
+- Limites : une ouverture sans diagonales et sans traverses suffisantes n'est pas
+  reconstruite ; repère manquant ou douteux, rival, vue de ferraillage/élévation et
+  géométrie tronquée peuvent laisser le support inconnu. La reconnaissance des vues
+  tournées et des nuages de révision reste imparfaite.
+- **DXF** : `CPI.support.envDxf` et l'analyse de ses arcs existent et sont testés comme
+  API, mais `dxsAnalyser` dans la fenêtre exige un PDF. Ni l'analyse du support DXF ni
+  cette reconstruction contextuelle ne sont raccordées à l'interface DXF.
+- Banc : `tests/t_contours.py`, géométries entièrement fictives ; fait partie des suites
+  rapides et complètes. Les plans réels et les rapports détaillés restent hors du dépôt.
+
 ## Intégration dans l'appli (fenêtre D)
 - Accès : bouton `#bDxi` « 📥 Importer un plan » (barre du haut, carte Plans, accueil). Format reconnu au contenu (`%PDF-`,
   DWG `AC10…` refusé avec un message, IFC refusé) puis à l'extension ; glisser-déposer sur la fenêtre. `impJ`

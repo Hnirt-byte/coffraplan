@@ -59,7 +59,7 @@ function natureMention(t,k,dashR,T,cleRep,cotes){const s=String(t.texte||''),h=M
 function rapprocher(lignes,textes,C,o){o=o||{};const N=root.CPI.nomenclatures,cleRep=N.cleRep,cotes=N.cotes,dGeo=N.dGeo,ex=o.exclus||new Set();
   const T0=textes.filter(t=>!ex.has(t.id)&&t.page),col=colonnes(T0),T=T0.filter(t=>!col.has(t.id));
   const K=new Map(T.map(t=>[t.id,cles(t,cleRep)])),OK=C.map((c,i)=>({c,i})).filter(x=>x.c.statut==='a_confirmer'&&x.c.source&&x.c.source.page);
-  const kLigne=new Map(lignes.map(L=>[L.id,cleRep(L.repere||'')])),toutes=new Set([...kLigne.values()].filter(Boolean));
+  const kLigne=new Map(lignes.map(L=>[L.id,cleRep(String(L.repere||'').replace(/^[\s({\[]+|[\s)}\]]+$/g,''))])),toutes=new Set([...kLigne.values()].filter(Boolean));
   const R={},vue=o.vue||(()=>null),vC=new Map(OK.map(({c,i})=>[i,vue(c.source.page,c.centre[0],c.centre[1])]));
   lignes.forEach(L=>{const k=kLigne.get(L.id),num=/^\d+$/.test(k),occ=[];
     if(k)T.forEach(t=>{const ks=K.get(t.id);let flou=false;
@@ -72,7 +72,9 @@ function rapprocher(lignes,textes,C,o){o=o||{};const N=root.CPI.nomenclatures,cl
       occ.push({t,fiable:!pq.length,doutes:pq,conf:cf,nature:nat,motifNature:mn})});
     // contour désigné par chaque localisation : le plus proche du repère ou du bout de sa ligne de rappel (≤ 4 hauteurs de texte)
     occ.forEach(x=>{const t=x.t,P=[[t.x,t.y]],h=Math.max(t.h||2,1),vt=x.vue=vue(t.page,t.x,t.y);x.vinc=!!(vt&&o.vueIncertaine&&o.vueIncertaine(vt));if(o.rappels)try{x.rappels=o.rappels(t)}catch(e){x.rappels=[]}else x.rappels=[];P.push(...x.rappels);
-      const V=OK.filter(({c,i})=>c.source.page===t.page&&vC.get(i)===vt).map(({c,i})=>{let d=Infinity;for(const p of P)d=Math.min(d,dGeo(p,c.geometrie));return{i,d}}).filter(v=>v.d<=4*h).sort((a,b)=>a.d-b.d);
+      // Une hypothèse contextuelle appartient au repère qui l'a étayée : un autre
+      // repère voisin ne doit pas récupérer cette même ouverture par proximité.
+      const V=OK.filter(({c,i})=>c.source.page===t.page&&vC.get(i)===vt&&(!c.reconstruction||cleRep(c.reconstruction.repere.texte)===k)).map(({c,i})=>{let d=c.reconstruction&&c.reconstruction.repere.id===t.id?0:Infinity;for(const p of P)d=Math.min(d,dGeo(p,c.geometrie));return{i,d}}).filter(v=>v.d<=4*h).sort((a,b)=>a.d-b.d);
       x.contours=V;x.contour=V.length===1||V.length>1&&V[1].d>1.25*V[0].d+0.5*h?V[0].i:null;
       // cotes écrites voisines : près du repère (6 hauteurs) ou du contour désigné (4 hauteurs)
       const cc=x.contour!=null?C[x.contour].geometrie:null;x.cotes=[];
@@ -81,7 +83,7 @@ function rapprocher(lignes,textes,C,o){o=o||{};const N=root.CPI.nomenclatures,cl
       x.cotes.sort((a,b)=>a.d-b.d);x.cotes=x.cotes.slice(0,4)});
     // vue aux limites incertaines : son contour n'est jamais proposé d'office ni ses cotes voisines tenues pour une confirmation forte
     occ.forEach(x=>{if(x.vinc)x.doutes.push(`vue ${x.vue} aux limites incertaines : contour et cotes voisines à confirmer`)});
-    R[L.id]=verifier(L,occ,C,o)});
+    R[L.id]=verifier(L,occ,C,o);if(cleRep(L.repere||'')!==k)R[L.id].note+=' ; ponctuation périphérique du repère ignorée (libellé brut conservé)'});
   // dimensions seules : contours de la page du tableau, de mêmes cotes mesurées, non désignés par un repère → « probable »
   const pris=new Set();Object.values(R).forEach(r=>r.preuves.forEach(i=>pris.add(i)));
   lignes.forEach(L=>{const r=R[L.id];if(r.occurrences.length)return;
@@ -95,7 +97,7 @@ function rapprocher(lignes,textes,C,o){o=o||{};const N=root.CPI.nomenclatures,cl
   return{lignes:R,hors,colonnes:col.size}}
 
 // Mesure d'un contour (mm à l'échelle de sa page) comparée aux cotes du tableau : 'ok' | 'diff' | '?' (à 5 % : mesure sur un PDF)
-function mesure(L,c,k){const d=L.dims,kT=MM[L.unite];if(!d||!kT||!(k>0)||!c.dims)return'?';const eq=(x,y)=>Math.abs(x-y)<=Math.max(5,0.05*Math.max(x,y));
+function mesure(L,c,k){const d=L.dims,kT=MM[L.unite];if(c.reconstruction||!d||!kT||!(k>0)||!c.dims)return'?';const eq=(x,y)=>Math.abs(x-y)<=Math.max(5,0.05*Math.max(x,y));
   if(d.type==='circ')return c.type==='circ'?eq(d.D*kT,c.dims.D*k)?'ok':'diff':'?';
   return c.type==='rect'?eq(Math.max(d.a,d.b)*kT,c.dims.L*k)&&eq(Math.min(d.a,d.b)*kT,c.dims.l*k)?'ok':'diff':'?'}
 
