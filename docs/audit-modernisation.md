@@ -1,4 +1,4 @@
-# Audit technique et feuille de route de modernisation (phase 6, 21/10/2026 ; mis à jour en phase 7)
+# Audit technique et feuille de route de modernisation (phase 6, 21/10/2026 ; mis à jour en phases 7 et 8)
 
 Demande de Kévin (directive « modernisation du moteur de reconnaissance ») : technologies gratuites, locales, exploitables
 commercialement ; aucune API payante, aucun abonnement, aucun plan envoyé à un serveur ; HTML autonome pour l'essentiel, moteur
@@ -137,3 +137,18 @@ nommées ; 12 redéfinitions par enveloppe sur 7 fonctions (`showChantier`, `pre
 10. Accessibilité des fenêtres (`#md`, retour du focus) + axe-core en test.
 11. ~~HTML produit par la CI~~ : **fait en phase 8**. Livrable construit depuis les sources, non versionné, sans Git LFS. Artefact CI
     `CoffraPlan-<commit>`. Reste, pour la version installable : modèles OCR en fichiers séparés.
+
+## 5. Réserves non bloquantes à la fusion de la phase 8 (22/10/2026)
+Phase 8 fusionnée (PR #18, merge commit `cdef425`) après relecture ChatGPT ; aucun tag, aucune Release, version v3.1. Livrable construit
+par la CI identique au livrable local : 36 991 952 octets, SHA-256 `17df713ac45edb454d7ba6b98ae935ee12157d5c9f7cecf13cd20d1746a509dd`
+(lu dans `CONSTRUCTION.txt` du run 39729954868). À traiter dans une PR ultérieure, aucune n'est bloquante :
+- `tests/t_plan_d.py` ignore encore les requêtes `fonts.g…` dans son contrôle réseau (reste d'avant les polices embarquées) : à retirer ;
+  `t_build` couvre déjà toutes les requêtes sans exception.
+- Polices embarquées limitées aux sous-ensembles `latin` et `latin-ext` : tout autre caractère passe par une police de repli du système.
+- Rendu des polices embarquées essayé seulement dans Chromium ; impression papier ou traceur réelle non essayée.
+- `SEG_MAX` (60 000 traits par page) inchangé : régions de vue partielles sur les plans très chargés (plan D ≈ 400 000 traits).
+- Titres de vue déduits de l'échelle éprouvés sur un seul plan réel (D) et des cas fictifs.
+- Plan D : R01 et R02, dessinés deux fois sans quantité au tableau, restent non décidés (comportement voulu, aucune quantité inventée).
+- CI : avertissement GitHub « Node.js 20 is deprecated » sur `actions/checkout@v4`, `setup-python@v5`, `upload-artifact@v4` (forcées
+  sur Node 24) : passer aux versions majeures suivantes de ces actions.
+- Firefox, Safari, tablette : non essayés.
