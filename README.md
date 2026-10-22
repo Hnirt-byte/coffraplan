@@ -13,7 +13,8 @@ dossier PDF, mode chantier. **Un seul fichier HTML**, hors connexion, sans insta
 - Règles du projet et carte du code (lues par Claude Code à chaque session) : [CLAUDE.md](CLAUDE.md)
 
 © Kévin TRINH. Tous droits réservés. Dépôt privé.
-Bibliothèque tierce intégrée : [three.js](https://threejs.org) r170 (licence MIT, mention conservée dans le fichier).
+Bibliothèques et ressources tierces intégrées (licences dans les dossiers `vendor`) : [three.js](https://threejs.org) r170 (MIT), PDF.js,
+Tesseract.js, ONNX Runtime Web et PP-OCRv6, polices Barlow, Barlow Condensed et JetBrains Mono (OFL-1.1). Aucune requête réseau.
 
 ## Travailler sur le projet
 

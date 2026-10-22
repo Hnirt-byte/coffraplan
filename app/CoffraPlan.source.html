@@ -9,7 +9,7 @@
 <script id="thm">/* thème appliqué avant le premier rendu (pas de flash) : resaTheme = auto | light | dark */
 (function(){var p='auto';try{p=localStorage.getItem('resaTheme')||'auto'}catch(e){}if(!/^(auto|light|dark)$/.test(p))p='auto';
 var m=window.matchMedia&&matchMedia('(prefers-color-scheme: light)').matches,r=document.documentElement;r.dataset.themePref=p;r.dataset.theme=p==='auto'?(m?'light':'dark'):p})()</script>
-<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600;700;900&family=Barlow:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<!--@bloc fonts-src-->
 <style>
 /* Thème sombre (défaut) ; #v3d (vue 3D) garde toujours ce jeu. Les feuilles de plan (.ps) ont leurs propres couleurs fixes : le thème ne les touche pas. */
 :root,#v3d{--navy:#1a2035;--navy2:#232b44;--accent:#e8820c;--accent2:#ffa533;--green:#2ecc71;--red:#e74c3c;--text:#e8eaf0;--muted:#8892a8;--surface:#1e2740;--surface2:#252f4a;--border:#2e3a56;--bg:#141929;--acct:#e8820c;--redt:#ff8a7d;--okt:#7fdc9a;--hi:#fff;--logo-t:#f9fbff;color-scheme:dark}

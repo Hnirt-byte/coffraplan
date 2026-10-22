@@ -28,7 +28,8 @@ développement : il progresse vite mais n'est pas développeur senior.
 - **Source : `app/CoffraPlan.source.html`** (HTML, CSS, JS vanilla : le seul fichier de l'appli à éditer à la main) ; **livrable :
   `app/CoffraPlan.html`**, construit (phase 8) par `python modules/import/assembler.py` (déterministe, environ 2 s ; `--check` vérifie),
   **non versionné** (.gitignore) ; environ 36 Mo (PDF.js ≈ 1,8 Mo, Tesseract ≈ 2,65 Mo, PP-OCR ≈ 30 Mo). Chaque marqueur
-  `<!--@bloc ID-->` de la source est remplacé par son bloc généré (`cpi-src`, `three-src`, `pdfjs-*`, `tess-*`, `ppocr-*`).
+  `<!--@bloc ID-->` de la source est remplacé par son bloc généré (`fonts-src`, `cpi-src`, `three-src`, `pdfjs-*`, `tess-*`, `ppocr-*`).
+  Polices (Barlow, Barlow Condensed, JetBrains Mono, OFL) embarquées depuis `app/vendor/fonts` : aucune requête réseau (plus de Google Fonts).
   Ne jamais modifier `app/CoffraPlan.html` à la main (réécrit à chaque construction) ni chercher le code de l'appli dedans pour l'éditer.
   Dépendance 3D : **three.js r170** (MIT), `app/vendor/three/three.module.min.js` = `build/three.module.min.js` du paquet npm
   three@0.170.0 (empreinte SHA-256 vérifiée par l'assembleur), chargée à la première vue 3D (`v3Three`). Mise à jour : remplacer ce

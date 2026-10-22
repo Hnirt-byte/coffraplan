@@ -6,12 +6,12 @@ Contrôlé : source sans bloc généré ; construction reproductible et à jour 
 essai réel du livrable en file:// (projets IndexedDB, PDF.js, PP-OCRv6, Tesseract, three.js, exports) sans aucune requête réseau."""
 import hashlib, json, os, shutil, subprocess, sys, tempfile
 from playwright.sync_api import sync_playwright
-from lib import Suite, open_app, APP, HERE
+from lib import Suite, APP, HERE, NOFS
 import pdf_ocr_fictifs as PO
 
 ROOT = os.path.abspath(os.path.join(HERE, '..'))
 ASM = os.path.join(ROOT, 'modules', 'import', 'assembler.py')
-BLOCS = ['cpi-src', 'three-src', 'pdfjs-src', 'pdfjs-worker-src', 'tess-src', 'tess-worker-src', 'tess-core-src', 'tess-wasm', 'tess-fra',
+BLOCS = ['cpi-src', 'fonts-src', 'three-src', 'pdfjs-src', 'pdfjs-worker-src', 'tess-src', 'tess-worker-src', 'tess-core-src', 'tess-wasm', 'tess-fra',
          'ppocr-ort-src', 'ppocr-ort-mjs', 'ppocr-ort-wasm', 'ppocr-rec', 'ppocr-dict']
 
 
@@ -28,6 +28,7 @@ def t(s):
     s.check(r.returncode == 0 and h1 == h2 and rc.returncode == 0 and 'inchangé' in r.stdout, 'construction déterministe : mêmes sources → mêmes octets ; --check vert', r.stdout + rc.stdout + rc.stderr)
     html = open(APP, encoding='utf-8').read()
     s.check(all(html.count(f'id="{b}"') == 1 for b in BLOCS) and '<!--@bloc' not in html, 'livrable : chaque bloc présent une fois, aucun marqueur restant')
+    s.check('fonts.googleapis' not in html and 'fonts.gstatic' not in html and not __import__('re').search(r'<link[^>]+href="https?:', src) and not __import__('re').search(r'(?:src|href)="https?:', html), 'aucune feuille ni police distante (Google Fonts retiré, polices embarquées)')
     s.check(36_000_000 < len(html.encode()) < 40_000_000, f'livrable : taille attendue ({len(html.encode())} octets)')
     # --check détecte un livrable modifié à la main
     tmp = tempfile.mkdtemp()
@@ -68,10 +69,20 @@ def t(s):
     # essai réel du livrable en file://, réseau coupé
     F = PO.fichiers(tempfile.mkdtemp())
     with sync_playwright() as pw:
-        b, pg, errs = open_app(pw); J = pg.evaluate
-        net = []
-        pg.context.route(lambda u: not u.startswith(('file:', 'blob:', 'data:')), lambda q: (None if 'fonts.g' in q.request.url else net.append(q.request.url), q.abort()))
-        pg.reload(); pg.wait_for_function('typeof gen==="function" && _ready')
+        # surveillance posée sur le contexte AVANT la 1re navigation : toute requête hors file: / blob: / data: est notée puis bloquée,
+        # sans exception de domaine (polices comprises), workers et sous-ressources compris
+        b = pw.chromium.launch(); ctx = b.new_context(viewport={'width': 1400, 'height': 1000}, accept_downloads=True); ctx.add_init_script(NOFS)
+        net, errs = [], []
+        ctx.on('request', lambda q: None if q.url.startswith(('file:', 'blob:', 'data:')) else net.append(q.url))
+        ctx.route(lambda u: not u.startswith(('file:', 'blob:', 'data:')), lambda q: q.abort())
+        pg = ctx.new_page(); J = pg.evaluate
+        pg.on('pageerror', lambda e: errs.append(str(e))); pg.on('console', lambda m: errs.append('console:' + m.text) if m.type == 'error' else None)
+        pg.on('dialog', lambda d: d.accept()); pg.on('filechooser', lambda f: None)
+        pg.goto('file://' + APP); pg.wait_for_function('typeof gen==="function" && _ready')
+        s.check(J('document.fonts.check("600 13px Barlow") && document.fonts.check("700 13px \'Barlow Condensed\'") && document.fonts.check("400 11px \'JetBrains Mono\'")')
+                and J('[...document.fonts].filter(f=>f.status==="loaded").map(f=>f.family.replace(/["\']/g,"")).filter((v,i,a)=>a.indexOf(v)===i).sort().join()') == 'Barlow,Barlow Condensed,JetBrains Mono',
+                'polices Barlow, Barlow Condensed, JetBrains Mono chargées depuis le livrable (aucune police distante)',
+                J('[...document.fonts].map(f=>f.family+" "+f.weight+" "+f.status).join(" | ")'))
         pg.add_script_tag(path=os.path.join(HERE, 'helpers.js'))
         s.check(J('location.protocol') == 'file:' and J('[STO.mode,el("appVer").textContent]') == ['idb', 'v3.1'], 'file:// : application ouverte, projets IndexedDB, v3.1')
         J("()=>{T.mk('rect',{dL:1200,dl:800,dh:300});el('iRef').value='B1';addP(false);if(dlgOpen())dlgEnd(true)}")
@@ -86,8 +97,8 @@ def t(s):
         pg.click('#bDxi'); pg.set_input_files('#dxiF', F['OCR_1_CONTOURS.pdf'][0])
         pg.wait_for_function('el("dxpPg")&&el("dxpPg").textContent.includes("/ 3")')
         s.check(True, 'PDF.js : PDF ouvert et rendu depuis le livrable')
-        s.check(not net, 'aucune requête réseau', json.dumps(net[:5]))
-        s.check(not [e for e in errs if 'net::ERR_FAILED' not in e], 'aucune erreur JS', json.dumps(errs[:5]))
+        s.check(not net, 'aucune requête réseau, de la 1re navigation à la fin (aucun domaine exclu)', json.dumps(net[:5]))
+        s.check(not errs, 'aucune erreur JS ni erreur console', json.dumps(errs[:5]))
         b.close()
 
 

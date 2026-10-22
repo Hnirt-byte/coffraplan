@@ -5,7 +5,7 @@
 Source : app/CoffraPlan.source.html (HTML, CSS, script principal : s'édite à la main) ; chaque marqueur <!--@bloc ID--> y est
 remplacé par son bloc généré : <script id="cpi-src"> (modules/import/*.js, dans l'ordre ORDRE) ; dépendances publiées, copiées
 sans modification et vérifiées par empreinte SHA-256, dans des <script type="text/plain" id="…"> chargés au premier besoin :
-three.js r170 (app/vendor/three), PDF.js (vendor/pdfjs), Tesseract.js (vendor/tesseract), ONNX Runtime Web + PP-OCRv6
+polices de l'interface (app/vendor/fonts, bloc <style id="fonts-src">, @font-face en base64 : aucune requête réseau), three.js r170 (app/vendor/three), PDF.js (vendor/pdfjs), Tesseract.js (vendor/tesseract), ONNX Runtime Web + PP-OCRv6
 (vendor/ppocr) ; fichiers .gz en base64. Bibliothèque standard Python seulement ; résultat déterministe (mêmes sources, mêmes
 octets). Ne jamais modifier app/CoffraPlan.html à la main : il est réécrit à chaque construction."""
 import base64, gzip, hashlib, os, re, sys
@@ -38,6 +38,52 @@ PPOCR = [('ppocr-ort-src', 'ort.min.js', '7ae472a8ec976bcb69ad46b89b0a6ec8f3c5db
          ('ppocr-rec', 'PP-OCRv6_rec_small.onnx.gz', 'de992e86c5af5515a4709c43d22a6bc49033259736c2835859e6cd88040e76b7',
           '6f327246b50388f3c176ae304bd95767ea6dc0c9ae92153ef8cbe210b3c14884'),
          ('ppocr-dict', 'PP-OCRv6_rec_small.dict.txt', 'f7aa897ca828a4c7c9e2739c30f9161a33306d532f020bcdb91dcfb664a5507e', None)]
+
+# Polices de l'interface et des feuilles (phase 8 : plus aucune requête vers Google Fonts) : fichiers woff2 des paquets npm
+# @fontsource/barlow, @fontsource/barlow-condensed, @fontsource/jetbrains-mono 5.3.0 (OFL-1.1, app/vendor/fonts/LICENSE-*), sous-ensembles
+# latin et latin-ext, mêmes graisses que celles demandées auparavant à Google Fonts ; (famille, graisse, fichier, SHA-256, unicode-range)
+POLICES = [
+    ('Barlow', 400, 'barlow-latin-ext-400-normal.woff2', '122b24bc2a90b0abe189f5229768bf2e9ba641324fe2459b48850079625934f1',
+     'U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF'),
+    ('Barlow', 400, 'barlow-latin-400-normal.woff2', 'b0a8ad37ac45f5fb22ced461576db72e44e295107aad7a9c8a7a4bad728fd03b',
+     'U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD'),
+    ('Barlow', 500, 'barlow-latin-ext-500-normal.woff2', '3facdf66b60778c7e64693013be7799e6686b2488dad65525b4036e211ab03e0',
+     'U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF'),
+    ('Barlow', 500, 'barlow-latin-500-normal.woff2', 'cd759df8ef9efc98fee14307b4eb5ba27f08b1f8f2f3ad2872432e25c89907a8',
+     'U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD'),
+    ('Barlow', 600, 'barlow-latin-ext-600-normal.woff2', 'b7f099c421968b583734bc631e6706bff8fc23908112a219f5f0e37f59b03b32',
+     'U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF'),
+    ('Barlow', 600, 'barlow-latin-600-normal.woff2', '4b52ddd4836b592df0e4832b8286956883cdc651b015126bdd18f184b7f90cc3',
+     'U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD'),
+    ('Barlow Condensed', 400, 'barlow-condensed-latin-ext-400-normal.woff2', '1eb62753e2922d13801bed22f0a35af396035da04958d4d7fcead522fbaae4ea',
+     'U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF'),
+    ('Barlow Condensed', 400, 'barlow-condensed-latin-400-normal.woff2', '7fff1bb22e5773f0d1a55d3093068b6dac4539e8bb3ac23fb9f0a729df2c7bb4',
+     'U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD'),
+    ('Barlow Condensed', 500, 'barlow-condensed-latin-ext-500-normal.woff2', 'a6ff9214bfa7832cb91d246454fd48b10ef921e8af052d479fdf1f0ecb903504',
+     'U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF'),
+    ('Barlow Condensed', 500, 'barlow-condensed-latin-500-normal.woff2', '460f141ec8f6c9a1516bfd2bd9fe71656246d7a9d04a0955faf53158d8970c4c',
+     'U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD'),
+    ('Barlow Condensed', 600, 'barlow-condensed-latin-ext-600-normal.woff2', 'aef7edf54f79a5329fbca9c065b56dcec3852c680d58cf89a9ef2db6940ca4b3',
+     'U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF'),
+    ('Barlow Condensed', 600, 'barlow-condensed-latin-600-normal.woff2', '215a93c696f442034a46fbb382958f753fda60e30490683aeea6b235fcbb2b66',
+     'U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD'),
+    ('Barlow Condensed', 700, 'barlow-condensed-latin-ext-700-normal.woff2', '9d351bd9222bfab90f943850f8039aa73cdb40e0a6cfe4127308a48bef59d5f5',
+     'U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF'),
+    ('Barlow Condensed', 700, 'barlow-condensed-latin-700-normal.woff2', '3787a5a419171630e6890cfa47c4da067474d005cd0ff8dc11ec090fdc3ee2b8',
+     'U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD'),
+    ('Barlow Condensed', 900, 'barlow-condensed-latin-ext-900-normal.woff2', '62fc8c02419c40cbccb8aff2de806999b1c4015936f4371d7055f7f223882f07',
+     'U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF'),
+    ('Barlow Condensed', 900, 'barlow-condensed-latin-900-normal.woff2', 'aa01966de3f608a765a172237a3ffc6161fe4c7e3870b1a904dc6437e54c4e24',
+     'U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD'),
+    ('JetBrains Mono', 400, 'jetbrains-mono-latin-ext-400-normal.woff2', '505dfba8ecbe77e82765f36d317ed7ef4ac42719dc5f4ae68d1c483fd22d0d14',
+     'U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF'),
+    ('JetBrains Mono', 400, 'jetbrains-mono-latin-400-normal.woff2', '14425ba9c695763c1547f48a206b7aa60350a33ae23de09f0407877f3fcd89eb',
+     'U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD'),
+    ('JetBrains Mono', 500, 'jetbrains-mono-latin-ext-500-normal.woff2', '879df9319f1cbf633bee1dd489e376a9e1e8c458f4abddcfe381cb83b5e6b027',
+     'U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF'),
+    ('JetBrains Mono', 500, 'jetbrains-mono-latin-500-normal.woff2', 'cb182feeed4d798ff6961d3c79f7026279448fca0676438aaecb21f3fc39553a',
+     'U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD'),
+]
 
 # three.js r170 (MIT) : build/three.module.min.js du paquet npm three@0.170.0, sans modification ; chargé à la 1re vue 3D (v3Three)
 THREE = ('three-src', 'three.module.min.js', '08fd7545d13d2c7fb65ab691530a802dafefd638596501854f267d0fb13c39e7')
@@ -77,9 +123,21 @@ def tess(ident, nom, sha, sha_gz, dossier='tesseract'):
     return f'<script type="text/plain" id="{ident}">' + src + '\n</script>'
 
 
+def polices():
+    """<style id="fonts-src"> : @font-face des polices embarquées (base64), empreintes vérifiées."""
+    out = ['<style id="fonts-src">/* Barlow, Barlow Condensed, JetBrains Mono (OFL-1.1) : fontsource 5.3.0, voir app/vendor/fonts */']
+    for fam, w, nom, sha, ur in POLICES:
+        b = open(os.path.join(APPD, 'vendor', 'fonts', nom), 'rb').read()
+        if hashlib.sha256(b).hexdigest() != sha:
+            sys.exit(f'app/vendor/fonts/{nom} : empreinte SHA-256 inattendue (fichier modifié ou autre version)')
+        out.append(f"@font-face{{font-family:'{fam}';font-style:normal;font-display:swap;font-weight:{w};"
+                   f"src:url(data:font/woff2;base64,{base64.b64encode(b).decode('ascii')}) format('woff2');unicode-range:{ur}}}")
+    return '\n'.join(out) + '\n</style>'
+
+
 def tous():
-    """Blocs générés : identifiant → texte complet du bloc (<script …>…</script>)."""
-    B = {'cpi-src': bloc()}
+    """Blocs générés : identifiant → texte complet du bloc (<script …>…</script>, <style>…</style>)."""
+    B = {'cpi-src': bloc(), 'fonts-src': polices()}
     i, n, h = THREE
     B[i] = tess(i, n, h, None, os.path.join('..', '..', '..', 'app', 'vendor', 'three'))
     B.update({i: pdfjs(i, n, h) for i, n, h in PDFJS})

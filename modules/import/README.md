@@ -456,6 +456,7 @@ automatique), unite_tableau}, corrige:['cotes','ref'], a_verifier, h_saisie, ind
 - `python modules/import/assembler.py` construit `app/CoffraPlan.html` (non versionné). Il remplace :
   - `cpi-src` par `lecteur.js`, `dxf.js`, `pdf.js`, `ocr.js`, `ppocr.js`, `detecteur.js`, `nomenclatures.js`, `geometrie.js`,
     `rapprochement.js`, `vues.js`, `adaptateur.js`, `fenetre.js`, dans cet ordre, chacun précédé de son nom ;
+  - `fonts-src` (`<style>`, `@font-face` en base64) par les polices de `app/vendor/fonts` ;
   - `three-src` par `app/vendor/three` ;
   - `pdfjs-*`, `tess-*` et `ppocr-*` par `vendor/`, avec les empreintes SHA-256 vérifiées et les `.gz` en base64.
 - Le résultat est déterministe : mêmes sources, mêmes octets. L'écriture est atomique et n'a lieu que si le contenu change.

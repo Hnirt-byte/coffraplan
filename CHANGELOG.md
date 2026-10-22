@@ -13,6 +13,10 @@ du format JSON ; pas de Tauri ni de nouveau modèle ; `#appVer` reste v3.1 ; auc
   `app/CoffraPlan.html` (déterministe, écriture atomique) ; `--check` le vérifie. three.js r170 extrait dans `app/vendor/three`
   (identique octet pour octet à `three@0.170.0/build/three.module.min.js`, empreinte SHA-256 vérifiée comme les autres dépendances).
 - Reproductibilité : sur les sources de main `b94a01e`, livrable **identique octet pour octet** au HTML versionné (36 515 091 octets).
+- Correctif de relecture : le livrable demandait les polices à Google Fonts (seule requête réseau, tolérée jusqu'ici par les tests) ;
+  Barlow, Barlow Condensed et JetBrains Mono (mêmes graisses, OFL-1.1, `@fontsource` 5.3.0, sous-ensembles latin / latin-ext)
+  sont maintenant embarquées (`app/vendor/fonts`, bloc `fonts-src`, empreintes vérifiées) ; plus aucune requête réseau, mise en
+  page conservée sans connexion. `t_build` surveille toutes les requêtes dès la 1re navigation, sans domaine exclu.
 - `app/CoffraPlan.html` retiré de l'index (historique non réécrit) et ignoré ; pas de Git LFS ; poids OCR toujours versionnés.
 - CI (`tests.yml`) : construction + `--check`, syntaxe, tests (rapides / complets / hebdomadaire inchangés), puis artefact
   `CoffraPlan-<commit>` (HTML + `CONSTRUCTION.txt` : commit construit, tête de PR, run, date, taille, SHA-256) seulement si tout est
@@ -46,7 +50,8 @@ du format JSON ; pas de Tauri ni de nouveau modèle ; `#appVer` reste v3.1 ; auc
 - Temps (passages séquentiels, mêmes scénarios qu'en phase 6) : A 170 → 161 s, B 120 → 125 s, C 238 → 224 s ; D (lecture automatique
   sans zone + analyse du dessin) : 67 s.
 
-**Écarts voulus** : aucun test existant modifié. Nouvelles suites `t_build` et `t_plan_d` (plan fictif anonyme `tests/plan_d_fictif.py`,
+**Écarts voulus** : `t_avap` adapté (construit la version de référence depuis git quand son HTML n'est pas versionné : sans cela, il ne
+pourrait plus comparer). Aucun autre test existant modifié. Nouvelles suites `t_build` et `t_plan_d` (plan fictif anonyme `tests/plan_d_fictif.py`,
 cas négatif « Sous Toiture » dans une note ou sans échelle, cartouche).
 
 **Tests** : `python tests/run.py complet -j 4` : 36 / 36 suites vertes (22/10/2026, Chromium), dont `t_build` (19), `t_plan_d` (17),
