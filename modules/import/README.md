@@ -1095,6 +1095,19 @@ calculs de fabrication ne sont pas modifiés. `openDossier`, `dosNumber` et
 PDF** via le navigateur ; aucun téléchargement PDF natif n'est annoncé.
 Le retour restitue le formulaire antérieur, et la génération ne modifie pas `P`.
 
+Le dossier sélectionné demande `dossierHtml(list, true)` et génère **toutes** les
+feuilles consolidées, au-delà de l'ancienne limite de 40 pages. Les sorties
+historiques sans sélection gardent leur pagination. `chantierCpErreurs`, partagé
+avec l'auto-contrôle, refuse les pièces non placées (référence, dimensions et
+matériau affichés) ainsi que les quantités estimées sans imbrication exacte.
+Au-delà de 1 500 pièces par matériau, répartir les ouvrages en plusieurs dossiers.
+Une estimation de surface n'est pas un plan de découpe complet. L'aperçu signale
+les estimations par « ≈ » et un avertissement ; le bouton de génération les bloque.
+Une erreur de génération laisse le sélecteur ouvert avec un message de refus,
+sans remplacer l'aperçu par un dossier incomplet. Les réglages d'impression sont
+restitués même en cas d'erreur.
+
+
 ### Parcours fictif et limites
 
 Le banc `t_preparation_chantier` crée huit lignes dans un PDF fictif : R01 complète,
@@ -1109,6 +1122,11 @@ Essais supplémentaires : homonymes, contours rattachés, filtres/navigation,
 modification du CP, empreintes périmées, collisions, refus atomique, double clic,
 annulation, export/reprise et identité du PDF, quantités et consolidation,
 pagination, feuilles particulières, impression appelée et retour au formulaire,
-thèmes et fenêtre Chromium 1024×768. Aucun nouveau calcul mécanique, aucun OCR,
+thèmes et fenêtre Chromium 1024×768. Le correctif de relecture contrôle aussi
+les 120 pièces d'un dossier fictif de 100 panneaux (plus de 40 pages consolidées),
+leurs références, dimensions et positions dans le HTML réellement affiché,
+l'exclusion d'un plan non sélectionné, le refus d'une pièce surdimensionnée
+injectée à l'entrée du véritable MaxRects et le refus des quantités estimées.
+Aucun nouveau calcul mécanique, aucun OCR,
 serveur ou stockage supplémentaire. Impression physique, tablette réelle,
 AutoCAD, navigateurs hors Chromium et tenue sur chantier non vérifiés.

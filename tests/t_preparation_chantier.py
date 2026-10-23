@@ -171,6 +171,48 @@ def t(s):
         J('doscRetour()');s.check(J('formSnap()===FORM11'),'retour au formulaire : état exact restitué')
         J('doscOuvrir();doscTout(true)');s.check(J('doscChoisis().length')==6,'tout sélectionner le chantier courant')
         J('doscTout(false)');s.check(J('doscChoisis().length')==0,'tout désélectionner')
+        # Au-delà de 40 pages : vraies pièces et vrai MaxRects, contrôle de chaque ligne de découpe.
+        J('''()=>{closeModal();window.SAVE11=dxprCopie(P);window.FS11=formSnap();
+          const d=T.mk('para',{ppB:2000,ppH:1000,ppE:1000,iRef:'GRAND-11'});d.nb=20;d.uid='GRAND-11';
+          P=[d,{...dxprCopie(d),uid:'HORS-11',ref:'NON-RETENU-11',nb:1}];setForm(d);doscOuvrir();doscSelection(d.uid,true);
+          window.LARGE11=chantierData(doscChoisis());window.LARGE_ROWS11=Object.values(LARGE11.cp).flatMap(o=>o.nest.sheets.flatMap(sh=>sh.items.map(p=>[p.ftag,p.dims+(p.rot?' ↻':''),'X '+nf(p.x,0)+' · Y '+nf(p.y,0)])));
+          window.STATE11=JSON.stringify({P,PROF,LIBU,ENT,PRT});window.HIST11=chantierPages(doscChoisis()).html;
+        }''')
+        s.check(J('LARGE11.warn.length===0&&Object.values(LARGE11.cp).every(o=>!o.est&&!o.nest.fail.length)&&LARGE_ROWS11.length===120'),'grand dossier fictif : 120 pièces réellement imbriquées, aucune estimation')
+        pg.click('#doscApercu');pg.wait_for_function('VIEW==="dossier"')
+        grand=J('''()=>{const pages=[...el('pvA').querySelectorAll('.ps')].filter(p=>p.querySelector('.ps-rf')?.textContent.includes('RÉCAPITULATIF CHANTIER')&&p.querySelector('.ps-rf')?.textContent.includes('CP À DÉCOUPER'));
+          const rows=pages.flatMap(p=>[...p.querySelectorAll('.inf table tr')].map(r=>[...r.cells].map(c=>c.textContent)));
+          return {pages:pages.length,complet:JSON.stringify(rows)===JSON.stringify(LARGE_ROWS11),nb:rows.length,texte:el('pvA').textContent,
+            historique:HIST11.includes('Panneaux 99 à 100 / 100'),stable:STATE11===JSON.stringify({P,PROF,LIBU,ENT,PRT})}}''')
+        s.check(grand['pages']>40 and grand['complet'] and grand['nb']==120,'plus de 40 pages consolidées : toutes les références, dimensions et positions de découpe présentes')
+        s.check('Panneaux 99 à 100 / 100' in grand['texte'] and not grand['historique'],'derniers panneaux présents dans le dossier ciblé, sortie historique conservée')
+        s.check('NON-RETENU-11' not in grand['texte'] and J('DOS.n===1'),'grand dossier : plan non sélectionné exclu aussi du bon de commande et des découpes')
+        s.check(grand['stable'],'grand dossier : projet et réglages d’impression strictement inchangés')
+        J('doscRetour()')
+        # Pièce adversaire à l'entrée du placement : aucune simulation du résultat MaxRects.
+        J('''()=>{P[0].nb=1;window.NP11=nestPieces;nestPieces=function(d,R){const pcs=NP11(d,R),k=Object.keys(pcs)[0];
+          pcs[k].push({tag:'IMPOSSIBLE',ftag:d.ref+'-IMPOSSIBLE',w:3000,h:3000,poly:[[0,0],[3000,0],[3000,3000],[0,3000]],dims:'3000 × 3000',lock:false});return pcs};
+          doscOuvrir();doscSelection(P[0].uid,true);window.FAIL11=chantierData(doscChoisis());window.FAILMAT11=cpName(Object.values(FAIL11.cp)[0].cp);
+          window.STATE11=JSON.stringify({P,PROF,LIBU,ENT,PRT});window.VIEW11=VIEW;window.HTML11=el('pvA').innerHTML;
+        }''')
+        s.check(J('Object.values(FAIL11.cp).some(o=>o.nest.fail.some(p=>p.ftag==="GRAND-11-IMPOSSIBLE"))'),'vrai MaxRects : pièce fictive 3000 × 3000 non placée dans le panneau CP')
+        s.check(J('acChantier(doscChoisis()).some(x=>!x[0]&&x[1]==="Imbrication CP consolidée")'),'échec détecté également par l’auto-contrôle existant')
+        pg.click('#doscApercu');message=pg.inner_text('#doscErreur')
+        s.check('Dossier bloqué' in message and 'non placées' in message and 'GRAND-11-IMPOSSIBLE' in message and J('FAILMAT11') in message,'dossier refusé : référence de la pièce et matériau explicitement affichés')
+        s.check(J('VIEW===VIEW11&&el("pvA").innerHTML===HTML11&&STATE11===JSON.stringify({P,PROF,LIBU,ENT,PRT})'),'refus sans remplacement de l’aperçu, ni mutation du projet ou de l’impression')
+        s.check(J('''()=>{try{doscHtml(doscChoisis());return false}catch(e){return e.message.includes('GRAND-11-IMPOSSIBLE')}}'''),'entrée de rendu ciblé refuse aussi une imbrication incomplète')
+        J('''()=>{nestPieces=NP11;P[0].nb=300;doscTable();window.EST11=chantierData(doscChoisis());window.STATE11=JSON.stringify({P,PROF,LIBU,ENT,PRT})}''')
+        s.check(J('Object.values(EST11.cp).some(o=>o.est&&!o.nest)') and '≈' in pg.inner_text('#doscBilan'),'quantité estimée signalée distinctement dans l’aperçu des quantités')
+        pg.click('#doscApercu');message=pg.inner_text('#doscErreur')
+        s.check('Dossier bloqué' in message and 'quantité estimée' in message and 'GRAND-11' in message and 'plusieurs dossiers' in message,'estimation sans plan exact bloquée, avec références et conseil de répartition')
+        s.check(J('STATE11===JSON.stringify({P,PROF,LIBU,ENT,PRT})'),'refus de l’estimation sans mutation du projet ni des réglages')
+        J('''()=>{P[0].nb=1;doscTable();window.STATE11=JSON.stringify({P,PROF,LIBU,ENT,PRT});window.CPAGES11=chantierPages;
+          chantierPages=()=>{throw Error('Rendu fictif indisponible')}}''')
+        pg.click('#doscApercu');message=pg.inner_text('#doscErreur')
+        s.check('Dossier bloqué' in message and 'Rendu fictif indisponible' in message and 'plusieurs dossiers' in message,'erreur de rendu consolidé propagée : aucun dossier partiel présenté')
+        s.check(J('VIEW===VIEW11&&el("pvA").innerHTML===HTML11&&STATE11===JSON.stringify({P,PROF,LIBU,ENT,PRT})'),'erreur de rendu : aperçu, projet et réglages d’impression préservés')
+        J('()=>{chantierPages=CPAGES11}')
+        J('()=>{P=SAVE11;setForm(JSON.parse(FS11));doscOuvrir()}')
         for theme in ['light','dark','auto']:
             J('setTheme',theme);s.check(pg.is_visible('#doscZ'),'dossier utilisable avec thème '+theme)
         pg.set_viewport_size({'width':1024,'height':768});s.check(pg.locator('#mdBody').bounding_box()['width']<=1024,'fenêtre utilisable en paysage 1024×768')

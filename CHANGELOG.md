@@ -37,6 +37,15 @@ atelier selon réglage, feuilles feuillure/chanfrein, commande et consolidation
 de la seule sélection. Aperçu des quantités/alertes, impression navigateur,
 retour au formulaire sans mutation du projet. Les options générales sont rétablies.
 
+**Correctif de relecture PR #25** : le dossier ciblé génère toutes les feuilles
+CP consolidées, sans la limite historique de 40 pages (sorties historiques
+conservées). Contrôle CP partagé avec l'auto-contrôle : blocage des pièces non
+placées avec référence et matériau, et des quantités estimées sans plan exact.
+Les estimations restent visibles ; répartir les dossiers dépassant 1 500 pièces
+par matériau. Une erreur de génération refuse explicitement le dossier et
+préserve les réglages d'impression. Tests ajoutés sur le contenu réel de plus
+de 40 pages, les échecs MaxRects et les estimations ; aucun test existant affaibli.
+
 **Tests** : banc fictif t_preparation_chantier et scénario à huit entrées, contrôles
 atomiques/identités, preuves, reprise, quantités et dossier. Aucune assertion,
 référence ou génération historique modifiée. Résultats exacts des campagnes et
