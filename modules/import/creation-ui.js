@@ -7,20 +7,20 @@ function dxcCles(kind,i){const D=DXI,base=D.empreinte||D.nom,keys=[];
     const {N,L}=D.NL[i],rep=dxcRep(L.repere);
     const ligne=[N.page??'?',N.id||'?',L.id||L.rang||rep||'?'].join('|');
     keys.push(base+'|ligne|'+ligne);
-    const a=dxnAS(L),ids=new Set((a.occurrences||[]).filter(o=>o.fiable&&o.contour).map(o=>o.contour));
-    const geo=D.NR?.[i]?.geo;if(geo!==''&&geo!=null&&D.C[+geo])ids.add(D.C[+geo].id);
+    const ids=dxnContoursLignes().liens[i];
     D.C.filter(c=>ids.has(c.id)).forEach(c=>keys.push(base+'|contour|'+dxrCle(c)));
   }else{const c=D.C[i];keys.push(base+'|contour|'+dxrCle(c));}
   return keys;
 }
 function dxcDeja(cles){return P.some(p=>((p.origineImport||{}).creationCles||[]).some(k=>cles.includes(k)))}
 function dxcAnalyse(kind,i){const D=DXI;
-  const a=kind==='n'&&D.SP&&D.SP[D.NL[i].L.id];
+  const partages=kind==='n'?dxnContoursLignes().partages[i]:new Set(),a=kind==='n'&&!partages.size&&D.SP&&D.SP[D.NL[i].L.id];
   const r=a?JSON.parse(JSON.stringify(a)):{ouverture:{},support:{type:'inconnu'},provenance:{},preuves:[],incertitudes:[]};
   const O=r.ouverture,p=r.provenance;
+  if(partages.size)r.incertitudes.push('Contour(s) proposé(s) pour plusieurs lignes : '+[...partages].join(', ')+'. Rattachement ambigu, ignoré pour le support et l’identité ; choisir le contour dans Nomenclature ou renseigner le support après relecture.');
   if(kind==='n'){
     const {N,L}=D.NL[i],d=L.dims,u=dxnU(N,L),k=DXI_MM[u];
-    r.source={table:N.id,ligne:L.id,page:N.page,repere:L.repere,cotes:L.dims||null,uniteRetenue:u||null,cellules:L.cellules||[],ocr:L.ocr||null};
+    r.source={table:N.id,ligne:L.id,page:N.page,repere:L.repere,cotes:L.dims||null,uniteRetenue:u||null,cellules:L.cellules||[],ocr:L.ocr||null,...(N.entetesSource?{entetesSource:N.entetesSource}:{})};
     if(d&&k&&!d.conflitUnite){
       O.type=d.type==='circ'?'circ':d.a===d.b?'carre':'rect';
       const set=(key,v)=>{if(O[key]==null&&v>0){O[key]=v;p['ouverture.'+key]={origine:'cote_explicite',source:'nomenclature',detail:d.texte||L.ouverture}}};
@@ -54,7 +54,7 @@ function dxcNouveau(kind,i){const D=DXI;
 }
 function dxcOuvrir(kind,i){const D=DXI;if(!D||D.fmt!=='pdf'||D.rJob)return;
   // Un contour déjà rattaché utilise la même identité que sa ligne de nomenclature.
-  if(kind==='g'){const k=D.NR.findIndex(r=>r.geo!==''&&+r.geo===i);if(k>=0){kind='n';i=k;}}
+  if(kind==='g'){const k=dxnContoursLignes().liens.findIndex(ids=>ids.has(D.C[i].id));if(k>=0){kind='n';i=k;}}
   if(!D.M)dxiModels();
   dxprSauver();DXC=dxprCharger(kind,i);const a=DXC.analyse,L=kind==='n'?D.NL[i].L:null;
   let z=el('dxcZ');if(!z){el('dxi').insertAdjacentHTML('beforeend','<section id="dxcZ" class="dxo" aria-label="Proposition de coffrage"></section>');z=el('dxcZ');}
@@ -64,6 +64,7 @@ function dxcOuvrir(kind,i){const D=DXI;if(!D||D.fmt!=='pdf'||D.rJob)return;
     <p>Complétez les données, choisissez une solution puis vérifiez le récapitulatif. Rien n'est créé avant votre confirmation finale.</p>
     <div class="mu">Chantier : ${esc(D.ch||'à saisir en haut de la fenêtre')} · Ouvrage : ${esc(D.ouv||'—')}</div>
     <details><summary>Données et preuves disponibles</summary><div>${esc(L?L.cellules.filter(Boolean).join(' · '):D.C[i].id)}</div>
+      ${a.source?.entetesSource?.length?'<p data-entetes-source>En-têtes du tableau lus : '+a.source.entetesSource.map(c=>esc(c.titre||'colonne sans titre')).join(' · ')+'. Une lecture ambiguë ne confirme ni l’ordre des dimensions ni leur unité.</p>':''}
       <ul>${(a.incertitudes||[]).map(x=>'<li>'+esc(x)+'</li>').join('')}</ul><pre style="white-space:pre-wrap">${esc(JSON.stringify(a.preuves,null,2))}</pre></details>
     ${dxcCotesHTML()}
     <label><input type="checkbox" id="dxc_mesures" onchange="dxcRefresh()"> Je confirme les échelles utilisées pour ces mesures, dans chaque vue concernée (vérifier le calibrage dans l'aperçu).</label>
@@ -125,6 +126,9 @@ function dxcProposition(X=DXC,lecture=null){const D=X&&X.D,lire=lecture||{case:C
   return p;
 }
 function dxcControlePreuves(X,p,lire){
+  const liens=dxnContoursLignes();
+  if(X.kind==='g'&&liens.partages.some(ids=>ids.has(DXI.C[X.i].id)))p.manquants.push('Contour proposé pour plusieurs lignes : choisir son rattachement dans Nomenclature avant création');
+  if(X.kind==='n'&&liens.conflits.has(X.i))p.manquants.push('Même contour choisi explicitement pour plusieurs lignes : corriger le rattachement avant création');
   for(const conflit of X.dossier.conflits)if(X.arbitrages[conflit.champ]!==p.valeurs[conflit.champ]||p.valeurs[conflit.champ]==null)p.manquants.push('arbitrage des cotes contradictoires : '+conflit.champ);
   const noteDetail=lire.val('dxc_detailNote','').normalize('NFD').replace(/[\u0300-\u036f]/g,'');
   const seuleFeuillure=brut=>{const t=String(brut).normalize('NFD').replace(/[\u0300-\u036f]/g,'');return /feuillure/i.test(t)&&!/(chanfrein|biais|decrochement|sections|incline)/i.test(t)};
@@ -216,7 +220,7 @@ function dxcCreer(){const X=DXC;if(!X||X.D!==DXI||!C('dxcConfirme')||!X.revision
 
 // Dossier rattaché à l'identité de la ligne / contour, jamais au seul repère.
 function dxcDossier(kind,i,analyse){const D=DXI,L=kind==='n'?D.NL[i].L:null;
-  const occurrences=L?(dxnAS(L).occurrences||[]):[],ids=new Set(occurrences.map(o=>o.contour).filter(Boolean));
+  const occurrences=L?(dxnAS(L).occurrences||[]):[],ids=L?dxnContoursLignes().liens[i]:new Set();
   const contours=kind==='g'?[D.C[i]]:D.C.filter(c=>ids.has(c.id));
   const dossier=CPI.cotesPreuves.analyser({analyse,repere:L?L.repere:(D.C[i].annot.repere||{}).texte,
     textes:D.doc&&D.NA?dxrTextes():[],vues:Object.values(D.VU||{}).flatMap(v=>v.vues),occurrences,

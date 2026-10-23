@@ -15,7 +15,7 @@ function dxprSauver(){const X=DXC;if(!X||X.D!==DXI||!el('dxcZ'))return;
   if(X.validation&&X.validation!==dxprEmpreinte(X,dxprCalcul(X)))dxprInvalider(X,'Données ou réglages modifiés depuis la validation');
 }
 function dxprInventaire(){const D=DXI,B=dxprBase();if(!B)return[];const lignes=D.NL.map((_,i)=>['n',i]),rattaches=new Set();
-  D.NL.forEach(({L},i)=>{(dxnAS(L).occurrences||[]).forEach(o=>{if(o.fiable&&o.contour)rattaches.add(o.contour)});const g=D.NR[i]?.geo;if(g!==''&&g!=null&&D.C[+g])rattaches.add(D.C[+g].id)});
+  dxnContoursLignes().liens.forEach(ids=>ids.forEach(id=>rattaches.add(id)));
   D.C.forEach((c,i)=>{if(!rattaches.has(c.id)&&c.statut==='a_confirmer')lignes.push(['g',i])});
   B.ordre=lignes.map(([kind,i])=>{const neuf=dxcNouveau(kind,i),key=neuf.cles[0],ex=B.rows[key];
     const source=JSON.stringify({analyse:neuf.analyse,dossier:neuf.dossier,cles:neuf.cles});

@@ -271,6 +271,18 @@ function dxnAssoc(){const D=DXI;if(!D.NL.length)return;
   D.NL.forEach(({L},k)=>{const r=D.NR[k],a=dxnAS(L);if(!r.cotesT)r.cotes=dxnPre(k);if(!r.geoT)r.geo=a.statut==='trouvee'&&!r.rej?String(a.principal!=null?a.principal:a.options[0].c):''});dxnLinks()}
 const DXN_AS0={statut:'absente',options:[],reperes:[],note:''};
 const dxnAS=L=>DXI.AS&&DXI.AS[L.id]||DXN_AS0;   // ligne saisie ou ajoutée après le rapprochement : aucune géométrie
+// Un texte fiable n'établit pas la propriété du contour voisin. Un choix explicite
+// unique prime ; sinon un contour revendiqué par plusieurs lignes reste ambigu.
+function dxnContoursLignes(){const D=DXI,NL=D.NL||[],C=D.C||[],liens=NL.map(()=>new Set()),partages=NL.map(()=>new Set()),conflits=new Set(),demandes=new Map();
+  NL.forEach(({L},i)=>{const r=D.NR?.[i]||{},ids=new Set();if(r.rej||r.geoT&&r.geo==='')return;
+    if(r.geoT){if(C[+r.geo])ids.add(C[+r.geo].id)}else{(dxnAS(L).occurrences||[]).filter(o=>o.fiable&&o.contour&&(!o.nature||o.nature==='repere')).forEach(o=>ids.add(o.contour));
+      if(r.geo!==''&&r.geo!=null&&C[+r.geo])ids.add(C[+r.geo].id);}
+    ids.forEach(id=>{if(!demandes.has(id))demandes.set(id,[]);demandes.get(id).push({i,explicite:!!r.geoT})});});
+  demandes.forEach((Q,id)=>{const E=Q.filter(q=>q.explicite),elu=E.length===1?E[0]:!E.length&&Q.length===1?Q[0]:null;
+    Q.forEach(q=>{if(q===elu)liens[q.i].add(id);else partages[q.i].add(id)});
+    if(E.length>1)E.forEach(q=>conflits.add(q.i));});
+  return{liens,partages,conflits};
+}
 // Contours rattachés : celui choisi pour chaque ligne et toutes les vues désignées par son repère (preuves d'une même entrée :
 // pas de doublon dans « hors nomenclature ») ; sauf ligne au rapprochement rejeté ou sans contour choisi par l'utilisateur
 function dxnLinks(){const D=DXI;D.lk=new Set(D.NR.filter(r=>r.geo!=='').map(r=>+r.geo));
@@ -635,7 +647,7 @@ function dxoValider(remplacer){const D=DXI,O=D&&D.OC;if(!O)return;const R=el('dx
       +`Annuler : rien n'est ajouté ni retiré (corriger la grille, ou garder le tableau existant).`,()=>dxoValider(true),{ok:'Remplacer le tableau'})}
   const vieux=new Set(D.NA.nomenclatures.filter(N=>(N.ocr||N.grilleTexte)&&dxoChevauche(N.zone,O.zone)||auto.has(N))),old=new Map();
   D.NL.forEach((x,k)=>{if(vieux.has(x.N)&&!auto.has(x.N)&&x.L.repere)old.set(cle(x.L.repere),D.NR[k])});
-  const N=CPI.ocr.versNomenclature(rows,{id:(O.pdfTexte?'Z':'O')+(++D.nz),fichier:D.doc.fichier,page:O.page,zone:O.zone,titre:O.titre,unite:O.unite,mesures:O.mesures,texte:O.pdfTexte});
+  const N=CPI.ocr.versNomenclature(rows,{id:(O.pdfTexte?'Z':'O')+(++D.nz),fichier:D.doc.fichier,page:O.page,zone:O.zone,titre:O.titre,unite:O.unite,mesures:O.mesures,texte:O.pdfTexte,entetesSource:O.src?.colonnes});
   const keep=D.NL.map((x,k)=>vieux.has(x.N)?-1:k).filter(k=>k>=0),NL2=N.lignes.map(L=>({N,L}));
   D.NL=keep.map(k=>D.NL[k]).concat(NL2);D.NR=keep.map(k=>D.NR[k]).concat(NL2.map(({L},i)=>{const o=L.repere&&old.get(cle(L.repere))||M.has(i)&&D.NR[M.get(i).k];return o?Object.assign(o,{x:null}):dxnNR(L)}));
   D.NA.nomenclatures=D.NA.nomenclatures.filter(N=>!vieux.has(N)).concat([N]);D.hl=-1;D.nsel=-1;
@@ -701,9 +713,9 @@ async function dxrGo(){const D=DXI;if(!D||!D.pdf||D.rJob||D.ocJob)return;const z
 // Observations : localisations fiables, avec contour, des lignes de nomenclature en concordance forte ou partielle (association
 // fiable seulement) ; échelle de la page (choisie) ou de la vue (écrite), les deux comparées ; page très chargée : relecture locale
 // autour des contours (7 fois leur taille : la fenêtre d'analyse en fait 6). → DXI.SP = {idLigne: résultat de CPI.support (vues consolidées)} ; nomenclature et contours inchangés.
-async function dxsAnalyser(){const D=DXI,SP={},P=new Map();D.SP={};D.SPerr=null;if(!D||!D.pdf||!window.CPI||!CPI.support)return D.SP;
-  D.NL.forEach(({N,L})=>{const a=dxnAS(L);if(!/^(forte|partielle)$/.test(a.concordance||''))return;
-    (a.occurrences||[]).forEach(o=>{if(!o.fiable)return;let c=o.contour?D.C.find(x=>x.id===o.contour):null,rep=null;
+async function dxsAnalyser(){const D=DXI,SP={},P=new Map(),liens=dxnContoursLignes();D.SP={};D.SPerr=null;if(!D||!D.pdf||!window.CPI||!CPI.support)return D.SP;
+  D.NL.forEach(({N,L},k)=>{const a=dxnAS(L);if(!/^(forte|partielle)$/.test(a.concordance||''))return;
+    (a.occurrences||[]).forEach(o=>{if(!o.fiable||o.contour&&!liens.liens[k].has(o.contour))return;let c=o.contour?D.C.find(x=>x.id===o.contour):null,rep=null;
       // repère sans contour proposé : contour écarté par le repérage (réservation dessinée dans l'épaisseur d'un voile, sommets raccordés aux
       // faces : « cellule d'un quadrillage ») le plus proche du repère, sans rival (même règle que le rapprochement) ; pas les lignes de
       // rappel : les faces du voile, voisines du repère, en sont prises pour des rappels

@@ -3,6 +3,45 @@
 Détail complet de chaque version (demandes, écarts voulus, tests, non validé) : `docs/historique/HANDOFF_<version>.md`.
 Chaque version est un tag git (`git diff v2.4 v2.5 -- app/` pour voir les changements).
 
+## Phase 12 — recette PDF réelle (v3.1 conservée)
+
+**Correctif reproduit** : la validation d'une grille OCR remplaçait les intitulés
+originaux du tableau par les colonnes normalisées et perdait leurs indications
+de rôle, d'unité ou d'ordre des dimensions. Les en-têtes sources sont désormais
+copiés dans une métadonnée facultative, visibles dans les preuves de la fiche,
+conservés à l'export/reprise et dans l'origine de l'ouvrage confirmé.
+Ils ne changent ni les cotes normalisées ni les règles d'attribution : une
+lecture ambiguë ne valide pas automatiquement une unité ou une orientation.
+Les anciens tableaux sans cette métadonnée restent compatibles.
+
+**Identités et contours** : un même contour pouvait être proposé près de plusieurs
+repères fiables, puis être utilisé comme identité commune d'ouvrages distincts.
+Les liens sont désormais résolus avant leur utilisation : seuls les liens
+univoques ou un choix explicite unique alimentent l'identité, les preuves de
+forme et le support. Les ambiguïtés restent visibles ; le contour isolé est
+bloqué jusqu'au choix de rattachement. Deux choix explicites du même contour
+bloquent la création. Un texte fiable seul ne valide pas le contour voisin.
+Les rattachements uniques et les protections contre les véritables doublons
+restent conservés. Aucun nouveau moteur de rapprochement ou de fabrication.
+
+**Dossier de fabrication** : la ligne d'hypothèses des voiles lisait l'ancien
+champ `Dcuve`, absent des données courantes, et pouvait afficher un diamètre
+nul alors que la géométrie utilisait le bon diamètre. Elle lit maintenant
+`DcuveM`, comme le formulaire et le moteur. Correction de restitution seulement,
+sans changement des cotes, du débit ou des algorithmes de fabrication.
+
+**Tests** : banc fictif `t_recette_pdf` : validation par la grille réelle,
+provenance indépendante des objets modifiables, affichage échappé, maintien du
+blocage des cotes manquantes, export/reprise, création explicite et valeurs de
+fabrication issues des saisies ; identités de lignes distinctes malgré un contour
+commun, conflits de rattachement, choix explicite et vrais doublons. Aucun test historique retiré ou affaibli.
+Aucun algorithme de reconnaissance ou de fabrication ni stockage refondu.
+
+**Recette** : cinq documents réels, référence de lecture indépendante et essais
+Chromium dans l'HTML autonome, sans accès réseau. Détails, cotes et rendus réels
+restent hors dépôt et hors artefacts CI. Synthèse anonymisée, portée et réserves :
+`docs/recette-pdf-phase12.md`. Aucun changement de version, tag ou Release.
+
 ## Phase 11 — préparation de chantier (v3.1 conservée)
 
 **Fait** : onglet Préparation des réservations PDF, inventaire par identité de

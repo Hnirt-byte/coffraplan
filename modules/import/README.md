@@ -1130,3 +1130,41 @@ injectée à l'entrée du véritable MaxRects et le refus des quantités estimé
 Aucun nouveau calcul mécanique, aucun OCR,
 serveur ou stockage supplémentaire. Impression physique, tablette réelle,
 AutoCAD, navigateurs hors Chromium et tenue sur chantier non vérifiés.
+
+
+## Phase 12 — provenance des en-têtes et recette réelle
+
+Lors de la validation d'une grille, `CPI.ocr.versNomenclature` conserve, si
+présents, les en-têtes lus dans `N.entetesSource` (copie indépendante). Les
+colonnes normalisées et leur interprétation numérique restent inchangées.
+`dxcAnalyse.source` transmet cette preuve à la fiche **Données et preuves
+disponibles**, à l'export/reprise de préparation et à `origineImport` après
+confirmation. Un en-tête OCR ambigu reste affiché tel que lu ; elle
+n'autorise aucune conversion d'unité ni attribution automatique de l'ordre des
+dimensions. Les anciennes préparations sans ce champ restent lisibles.
+
+Le banc `t_recette_pdf` utilise exclusivement des données fictives. Les essais
+sur documents réels et leur lecture indépendante sont conservés localement,
+hors Git ; seule la synthèse anonymisée `docs/recette-pdf-phase12.md` est publiée.
+
+
+La recette a également révélé qu'un texte de repère fiable ne prouve pas
+l'appartenance du contour voisin. `dxnContoursLignes` résout les demandes issues
+des occurrences et du sélecteur de rattachement existants. Un choix explicite
+unique prime ; plusieurs demandes automatiques restent ambiguës. Deux choix
+explicites du même contour constituent un conflit bloquant.
+
+`dxcCles`, l'inventaire de préparation, les preuves de forme et l'analyse des
+supports emploient ces seuls liens univoques. Un support provenant d'une
+association ambiguë est ignoré et l'incertitude affichée. Le contour disputé
+reste consultable mais sa création isolée demande d'abord un rattachement dans
+**Nomenclature**. Les lignes conservent leurs identités propres et leurs cotes
+de tableau ; une ligne créée ne transforme pas les autres en « déjà créées ».
+La création d'une même ligne / d'un contour réellement rattaché reste unique.
+Les anciens ouvrages, leurs cotes et leurs calculs ne sont pas modifiés.
+
+
+La ligne d'hypothèses **Faces cintrées** lit le champ courant `DcuveM` ; l'ancien
+champ `Dcuve` y produisait une fausse valeur nulle sans affecter la géométrie.
+Le banc de recette contrôle les hypothèses et les feuilles réellement générées
+sur deux cuves fictives. Aucun calcul de fabrication n'est modifié.

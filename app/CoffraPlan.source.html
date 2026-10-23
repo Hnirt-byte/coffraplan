@@ -2915,7 +2915,7 @@ function hypRows(d,g,R){const f=d.forme,H=[],h=(a,b,c)=>H.push([a,b,c]);
   if(f==='voile'&&g&&g.ok){if(d.constr!=='caisson'){const M=manGeo(d,g);h('Cerces / montants',`entraxes maxi ${nf(d.eC||0)} / ${nf(d.eM||0)} mm (0 = aucun) → ${M.nC} cerce(s), ${M.nM} montant(s) par niveau`,'Saisie');
       h('Renfort minimal du mannequin','au moins un renfort perpendiculaire au plus grand côté (montant au milieu si largeur > hauteur, cerce à mi-hauteur sinon)','Règle de l\'appli — à valider');
       if(M.gous>0&&M.gousAuto)h('Goussets du mannequin','a = '+nf(M.gous)+' mm (même règle automatique que les goussets d\'angle)','Règle de l\'appli — à valider')}
-    h('Faces cintrées','longueurs développées à la fibre neutre ; Ø cuve '+nf(d.Dcuve||0,2)+' m','Calcul')}
+    h('Faces cintrées','longueurs développées à la fibre neutre ; Ø cuve '+nf(d.DcuveM||0,2)+' m','Calcul')}
   if(['voile','circ_fond','circ_sf','goulotte'].includes(f)||(f==='special'&&(d.base==='circ'||d.conc)))h('Cintrage du CP','rayon mini à vérifier sur la fiche du fournisseur (CP cintrable si besoin)','Fournisseur');
   if(f==='special'&&d.pot)h('Poteaux (tubes carton)',`du dessous de la boîte au-dessus du fond sup. ; fonds percés Ø poteau + ${nf(d.pJ||0)} mm`,'Saisie');
   if(f==='poutre'||(f==='dalle'&&d.dlPt))h('Raidisseurs des joues de poutre','entraxe ≤ 500 mm si h ≤ 500 · ≤ 400 si h ≤ 800 · ≤ 300 au-delà','Règle de l\'appli — à valider');
