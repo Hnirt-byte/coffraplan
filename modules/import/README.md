@@ -1163,6 +1163,14 @@ de tableau ; une ligne créée ne transforme pas les autres en « déjà créée
 La création d'une même ligne / d'un contour réellement rattaché reste unique.
 Les anciens ouvrages, leurs cotes et leurs calculs ne sont pas modifiés.
 
+L'ancien bouton PDF **Créer les ouvrages sélectionnés** applique aussi ces
+liens dans `dxnEval` et `dxnProv`. Un contour partagé est ignoré avec avertissement,
+sans empêcher la création avec les cotes indépendantes du tableau. Il n'est
+conservé ni comme géométrie ni comme contour fiable dans les localisations de
+provenance ; l'incertitude reste dans `a_verifier` et les doutes. Le sélecteur
+**Nomenclature** permet un rattachement manuel unique. Ces garde-fous concernent
+uniquement le PDF ; le parcours DXF reste inchangé.
+
 
 La ligne d'hypothèses **Faces cintrées** lit le champ courant `DcuveM` ; l'ancien
 champ `Dcuve` y produisait une fausse valeur nulle sans affecter la géométrie.

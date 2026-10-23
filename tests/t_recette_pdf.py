@@ -5,6 +5,7 @@ import json, sys, tempfile, traceback
 from playwright.sync_api import sync_playwright
 from lib import Suite, open_app
 import preparation_fictif as PF
+import pdf_fictifs as PDF
 
 
 def t(s):
@@ -79,8 +80,58 @@ def t(s):
         s.check(not net,'aucune requête réseau');s.check(not errs,'aucune erreur JavaScript',str(errs[:2]));b.close()
 
 
+def historique_pdf(s):
+    """Ancien bouton de création, vrai PDF et moteur ; seuls les rapprochements sont imposés."""
+    with tempfile.TemporaryDirectory() as tmp, sync_playwright() as pw:
+        page=PDF.Page()
+        PDF.tableau(page,30,550,[('Repère',65),('Largeur (mm)',100),('Hauteur (mm)',100),('Quantité',65)],
+                    [['F11','600','800','1'],['F12','900','700','1']],titre='NOMENCLATURE DES RÉSERVATIONS')
+        chemin=PDF.ecrire(tmp+'/HISTORIQUE_FICTIF.pdf',[page])
+        for manuel in (False,True):
+            b,pg,errs=open_app(pw);J=pg.evaluate
+            pg.click('#bDxi');pg.set_input_files('#dxiF',chemin)
+            pg.wait_for_function('DXI&&DXI.fmt==="pdf"&&DXI.NL.length===2')
+            J('''()=>{const D=DXI,c={id:'CONTOUR-FICTIF-PARTAGE',type:'rect',statut:'a_confirmer',source:{id:'FICTIF',page:1},
+              bbox:[400,200,410,208],centre:[405,204],dims:{L:10,l:8},geometrie:{type:'polyligne',points:[[400,200],[410,200],[410,208],[400,208]],ferme:true},annot:{},remarques:[]};
+              D.C=[c];D.R=[{conf:false,forme:'',h:'',ref:'',cotes:''}];D.ana={};D.AS={};
+              D.NL.forEach(({L},k)=>{D.AS[L.id]={statut:'trouvee',concordance:'partielle',options:[{c:0}],reperes:[],preuves:[0],note:'',
+                occurrences:[{page:1,x:405,y:204,texte:L.repere,source:'pdf',corrections:[],fiable:true,doutes:[],contour:c.id,cotes:[]}]};
+                D.NR[k].geo='0';D.NR[k].cotes=dxnPre(k)});
+              dxnLinks();dxnRefresh();dxiVue('n');
+              window.candidatsHist=[];const versPlan=CPI.adaptateur.versPlan;
+              CPI.adaptateur.versPlan=(c,...args)=>{candidatsHist.push(JSON.parse(JSON.stringify(c)));return versPlan(c,...args)};
+            }''')
+            pg.fill('#dxiCh','CHANTIER FICTIF HISTORIQUE');pg.dispatch_event('#dxiCh','change')
+            pg.fill('#dxiOuv','VOILE FICTIF');pg.dispatch_event('#dxiOuv','change');pg.fill('#dxiH','230')
+            s.check(all('Contour proposé à plusieurs lignes' in pg.inner_text(f'#dxnT tr[data-n="{k}"] .st') for k in (0,1)),
+                    'ancien PDF : les deux lignes signalent le contour ignoré avant confirmation')
+            if manuel:
+                pg.select_option('#dxnT tr[data-n="0"] [data-k=geo]','0')
+                s.check(J('dxnContoursLignes().liens[0].has(DXI.C[0].id)&&!dxnContoursLignes().liens[1].size'),
+                        'ancien PDF : sélecteur réel, rattachement manuel unique à F11')
+            for k in (0,1):pg.check(f'#dxnT tr[data-n="{k}"] [data-k=conf]')
+            s.check(J('P.length===0') and not pg.is_disabled('#dxiGo'),'ancien PDF : sélection prête sans création avant confirmation')
+            J('candidatsHist=[]');pg.click('#dxiGo')
+            plans=J('P');centres=J('candidatsHist.slice(-2).map(c=>c.centre)')
+            s.check(len(plans)==2 and [(p['ref'],p['L'],p['l'],p['h']) for p in plans]==[('F11',800,600,230),('F12',900,700,230)],
+                    'ancien PDF : deux ouvrages réels, cotes distinctes du tableau préservées'+(' après choix manuel' if manuel else ' malgré l’ambiguïté'))
+            s.check(centres==([[405,204],None] if manuel else [None,None]),
+                    'ancien PDF : adaptateur métier alimenté seulement par le contour univoque',str(centres))
+            origines=[p['origineImport'] for p in plans]
+            s.check([o['geometrie']['candidat'] if o['geometrie'] else None for o in origines]==
+                    (['CONTOUR-FICTIF-PARTAGE',None] if manuel else [None,None]),
+                    'ancien PDF : contour absent des provenances ambiguës, attribué une seule fois après choix manuel')
+            loc=[o['rapprochement']['localisations'][0] for o in origines]
+            s.check([o['contour'] for o in loc]==(['CONTOUR-FICTIF-PARTAGE',None] if manuel else [None,None]) and
+                    all(not o['fiable'] and o['doutes'] for o in (loc[1:] if manuel else loc)),
+                    'ancien PDF : observations non rattachées signalées, aucun lien ambigu conservé comme preuve fiable')
+            s.check(all(any('rattachement à clarifier' in x for x in o['a_verifier']) for o in (origines[1:] if manuel else origines)),
+                    'ancien PDF : incertitude gardée dans les ouvrages créés')
+            s.check(not errs,'ancien PDF : aucune erreur JavaScript',str(errs[:2]));b.close()
+
+
 if __name__=='__main__':
     s=Suite('t_recette_pdf')
-    try:t(s)
+    try:t(s);historique_pdf(s)
     except Exception:s.check(False,'exception',traceback.format_exc()[-2200:])
     sys.exit(0 if s.report() else 1)

@@ -24,6 +24,15 @@ bloquent la création. Un texte fiable seul ne valide pas le contour voisin.
 Les rattachements uniques et les protections contre les véritables doublons
 restent conservés. Aucun nouveau moteur de rapprochement ou de fabrication.
 
+**Relecture — ancien parcours PDF** : `dxnEval` et `dxnProv` vérifient à leur
+tour les liens univoques avant de transmettre un contour à l'adaptateur ou à la
+provenance. Les propositions partagées sont ignorées avec avertissement, sans
+modifier les cotes propres à chaque ligne. Les localisations de provenance ne
+présentent plus ces contours comme des liens fiables ; le choix manuel unique
+est respecté. Aucun changement du DXF. Le banc fictif utilise le véritable
+bouton historique pour créer deux ouvrages, avec puis sans ambiguïté de contour,
+et contrôle leurs dimensions, les entrées de l'adaptateur et les provenances.
+
 **Dossier de fabrication** : la ligne d'hypothèses des voiles lisait l'ancien
 champ `Dcuve`, absent des données courantes, et pouvait afficher un diamètre
 nul alors que la géométrie utilisait le bon diamètre. Elle lit maintenant

@@ -332,21 +332,28 @@ function dxnAll(on){const D=DXI;if(!D)return;D.NR.forEach(r=>r.conf=on);document
 function dxnRefs(tab){const D=DXI;if(!D)return;D.NR.forEach((r,k)=>r.ref=tab?String(D.NL[k].L.repere||'').toUpperCase():'');
   document.querySelectorAll('#dxnT tr[data-n]').forEach(t=>t.querySelector('[data-k=ref]').value=D.NR[+t.dataset.n].ref);dxiUpd()}
 // Lignes de nomenclature : cotes (mm) et forme saisies ou reprises du tableau → adaptateur (contrôles du moteur), comme les géométries
-function dxnEval(moteur,hc){const D=DXI;if(!D.NL||!D.NL.length)return;
+function dxnEval(moteur,hc){const D=DXI;if(!D.NL||!D.NL.length)return;const liens=D.fmt==='pdf'?dxnContoursLignes():null;
   D.NL.forEach(({N,L},k)=>{const r=D.NR[k],dm=dxnDims(r),fo=r.forme||dxnDef(dm);r.x=null;
     let h=hc;if(String(r.h).trim()!==''){try{h=parseCote(r.h,'mm')}catch(e){h=null}}
     const man=[];if(dm.etat!=='rect'&&dm.etat!=='circ')man.push(String(r.cotes).trim()?'cotes illisibles (ex. 650x800 ou Ø250)':L.dims&&!dxnU(N,L)?'unité des cotes du tableau':'cotes');
     const nb=/^\s*\d{1,4}\s*$/.test(r.nb==null?'1':String(r.nb))?parseInt(r.nb==null?'1':r.nb,10):0;
     if(!fo)man.push('forme');if(!(h>0))man.push(String(r.h).trim()?'hauteur illisible':'hauteur à coffrer');if(!(nb>=1))man.push('nombre (entier ≥ 1)');if(!String(D.ch||'').trim())man.push('chantier');
     if(man.length){r.st='ac';r.msg='à compléter : '+man.join(', ');return}
-    const g=r.geo!==''?D.C[+r.geo]:null,x=CPI.adaptateur.versPlan(CPI.nomenclatures.candidat(N,L,{dims:dm,geo:g}),{confirme:true,forme:fo,h,unite:'mm',ref:r.ref.trim(),nb},{moteur,modele:D.M[fo]});
+    const propose=r.geo!==''?D.C[+r.geo]:null,g=propose&&(!liens||liens.liens[k].has(propose.id))?propose:null,x=CPI.adaptateur.versPlan(CPI.nomenclatures.candidat(N,L,{dims:dm,geo:g}),{confirme:true,forme:fo,h,unite:'mm',ref:r.ref.trim(),nb},{moteur,modele:D.M[fo]});
     if(!x.ok){r.st='er';r.msg=x.message+(x.messages&&x.messages.length?' : '+x.messages.join(' · '):'');return}
     const p=x.plan;
     if(p.ref&&P.some(q=>chKey(q.ch)===chKey(p.ch)&&ouKey(q.ouv).toLowerCase()===ouKey(p.ouv).toLowerCase()&&String(q.ref||'').toUpperCase()===p.ref)){r.st='er';r.msg=`référence ${p.ref} déjà utilisée dans cet ouvrage`;return}
+    if(liens?.partages[k].size)x.alertes.push('Contour proposé à plusieurs lignes : ignoré, rattachement à clarifier');
     r.x=x;r.st=x.alertes.length?'wn':'ok';r.msg=x.alertes.join(' · ')})}
-function dxnProv(k){const D=DXI,{N,L}=D.NL[k],r=D.NR[k],a=dxnAS(L),g=r.geo!==''?D.C[+r.geo]:null,u=dxnU(N,L);
+function dxnProv(k){const D=DXI,{N,L}=D.NL[k],r=D.NR[k],a=dxnAS(L),liens=D.fmt==='pdf'?dxnContoursLignes():null,propose=r.geo!==''?D.C[+r.geo]:null,
+    g=propose&&(!liens||liens.liens[k].has(propose.id))?propose:null,u=dxnU(N,L);
   const p=CPI.nomenclatures.provenance(N,L,{forme:r.x.plan.forme,nb:r.x.plan.nb,cotes:r.cotes,dims:dxnDims(r),ref:r.ref.trim().toUpperCase(),uniteTableau:u||null,uniteDessin:D.fmt==='pdf'?'pt':D.u||null,
-    uniteChoisie:!!(u&&!(L.dims&&L.dims.unite)&&!N.unite),geo:g?{c:g,statut:!r.geoT&&a.statut==='trouvee'?'trouvee':'choisie'}:null,rapprochement:D.fmt==='pdf'&&D.ana?dxrRapProv(a,r,D.CS[L.id]):null});if(g&&g.reconstruction&&p.geometrie)p.geometrie.reconstruction=g.reconstruction;return p}
+    uniteChoisie:!!(u&&!(L.dims&&L.dims.unite)&&!N.unite),geo:g?{c:g,statut:!r.geoT&&a.statut==='trouvee'?'trouvee':'choisie'}:null,rapprochement:D.fmt==='pdf'&&D.ana?dxrRapProv(a,r,D.CS[L.id]):null});
+  if(liens&&p.rapprochement){
+    p.rapprochement.localisations.forEach(o=>{if(o.contour&&!liens.liens[k].has(o.contour)){o.contour=null;o.fiable=false;o.doutes.push('Contour non rattaché univoquement à cette ligne');}});
+    if(liens.partages[k].size)p.a_verifier.push('Contour proposé à plusieurs lignes : ignoré, rattachement à clarifier');
+  }
+  if(g&&g.reconstruction&&p.geometrie)p.geometrie.reconstruction=g.reconstruction;return p}
 // Statuts, formes possibles, géométries proposées, bilan (sans reconstruire la liste : garde la saisie en cours)
 function dxnUpd(){const D=DXI;if(!D||!el('dxnT'))return;const lb={ok:'✓ prêt',wn:'⚠ prêt — ',ac:'… ',er:'⛔ non créé — '};
   document.querySelectorAll('#dxnT tr[data-n]').forEach(t=>{const k=+t.dataset.n,r=D.NR[k],{L}=D.NL[k],a=dxnAS(L),dm=dxnDims(r),F=dxnFormes(dm);
