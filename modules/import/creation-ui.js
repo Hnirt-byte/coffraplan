@@ -8,6 +8,7 @@ function dxcCles(kind,i){const D=DXI,base=D.empreinte||D.nom,keys=[];
     const ligne=[N.page??'?',N.id||'?',L.id||L.rang||rep||'?'].join('|');
     keys.push(base+'|ligne|'+ligne);
     const a=dxnAS(L),ids=new Set((a.occurrences||[]).filter(o=>o.fiable&&o.contour).map(o=>o.contour));
+    const geo=D.NR?.[i]?.geo;if(geo!==''&&geo!=null&&D.C[+geo])ids.add(D.C[+geo].id);
     D.C.filter(c=>ids.has(c.id)).forEach(c=>keys.push(base+'|contour|'+dxrCle(c)));
   }else{const c=D.C[i];keys.push(base+'|contour|'+dxrCle(c));}
   return keys;
@@ -40,18 +41,22 @@ function dxcAnalyse(kind,i){const D=DXI;
   }
   return r;
 }
-function dxcOuvrir(kind,i){const D=DXI;if(!D||D.fmt!=='pdf'||D.rJob)return;
-  // Un contour déjà rattaché utilise la même identité que sa ligne de nomenclature.
-  if(kind==='g'){const k=D.NR.findIndex(r=>r.geo!==''&&+r.geo===i);if(k>=0){kind='n';i=k;}}
-  if(!D.M)dxiModels();
+function dxcNouveau(kind,i){const D=DXI;
   const a=dxcAnalyse(kind,i),L=kind==='n'?D.NL[i].L:null;
   const dossier=dxcDossier(kind,i,a);
-  DXC={D,kind,i,analyse:a,dossier,retenues:{},arbitrages:{},saisie:{},saisiesBrutes:{},cles:dxcCles(kind,i),ref:L?dxcRep(L.repere):'',revision:null};
+  const X={D,kind,i,analyse:a,dossier,retenues:{},arbitrages:{},saisie:{},saisiesBrutes:{},cles:dxcCles(kind,i),ref:L?String(L.repere||'').trim().toUpperCase():'',nombre:L?.nb>0?L.nb:1,revision:null,modeles:JSON.parse(JSON.stringify(D.M))};
   for(const c of dossier.candidats.filter(c=>c.automatique&&c.origine==='texte')){
     const path=CPI.cotesPreuves.CHAMPS[c.champ], [g,k]=path.split('.');
     a[g]=a[g]||{};a[g][k]=c.valeur_mm;a.provenance[path]={origine:'cote_explicite',source:'annotation PDF',detail:c.brut,candidate:c};
   }
   for(const c of dossier.conflits){const [g,k]=CPI.cotesPreuves.CHAMPS[c.champ].split('.');if(a[g])a[g][k]=null;}
+  return X;
+}
+function dxcOuvrir(kind,i){const D=DXI;if(!D||D.fmt!=='pdf'||D.rJob)return;
+  // Un contour déjà rattaché utilise la même identité que sa ligne de nomenclature.
+  if(kind==='g'){const k=D.NR.findIndex(r=>r.geo!==''&&+r.geo===i);if(k>=0){kind='n';i=k;}}
+  if(!D.M)dxiModels();
+  dxprSauver();DXC=dxprCharger(kind,i);const a=DXC.analyse,L=kind==='n'?D.NL[i].L:null;
   let z=el('dxcZ');if(!z){el('dxi').insertAdjacentHTML('beforeend','<section id="dxcZ" class="dxo" aria-label="Proposition de coffrage"></section>');z=el('dxcZ');}
   const input=(id,label)=>`<div class="fd"><label for="dxc_${id}">${label}</label><input class="fi" id="dxc_${id}" inputmode="decimal" placeholder="inconnue — à renseigner" oninput="dxcSaisie('${id}',this.value)"><small id="dxcOrig_${id}"></small></div>`;
   const select=(id,label,opts,value)=>`<div class="fd"><label for="dxc_${id}">${label}</label><select class="fi" id="dxc_${id}" onchange="dxcChoix('${id}',this.value)">${opts.map(([v,t])=>`<option value="${v}"${v===value?' selected':''}>${t}</option>`).join('')}</select></div>`;
@@ -84,54 +89,58 @@ function dxcOuvrir(kind,i){const D=DXI;if(!D||D.fmt!=='pdf'||D.rJob)return;
     <label><input type="checkbox" id="dxc_traversee" onchange="dxcRefresh()"> Je confirme une traversée normale au voile, sans biais ni pente, et les contraintes de maintien.</label>
     ${select('solution','Solution à choisir',[['','À choisir'],['simple','Mannequin rectangulaire simple'],['cintre','Mannequin cintré'],['fourreau','Fourreau circulaire']],null)}
     <div class="fd"><label for="dxc_ref">Référence</label><input class="fi" id="dxc_ref" value="${esc(DXC.ref)}" placeholder="automatique" oninput="dxcRefresh()"></div>
+    <div class="fd"><label for="dxc_nb">Exemplaires — quantité du tableau à vérifier, sinon 1 à confirmer</label><input class="fi" id="dxc_nb" inputmode="numeric" value="${DXC.nombre}" oninput="dxcRefresh()"></div>
     <div class="fd"><label for="dxc_note">Source des corrections / contraintes à conserver (facultatif)</label><input class="fi" id="dxc_note" oninput="dxcRefresh()" placeholder="Ex. coupe et unité relues, cote de traversée confirmée"></div><div id="dxcEtat" role="status"></div><button class="btn bs bo" onclick="dxcFermer()">Annuler la proposition</button>
     <button class="btn bs bpr" id="dxcRecap" onclick="dxcRecap()">Vérifier le récapitulatif</button><div id="dxcResume"></div>`;
-  dxcRefresh();z.scrollIntoView({block:'start'});
+  dxprRestaurer();dxcRefresh();dxprFiche();z.scrollIntoView({block:'start'});
 }
-function dxcFermer(){DXC=null;const z=el('dxcZ');if(z)z.remove()}
-function dxcSaisie(k,v){if(!DXC)return;delete DXC.arbitrages[k];DXC.saisiesBrutes[k]=v;DXC.saisie[k]=v.trim()===''?null:(parseCote(v,'mm')??NaN);dxcRefresh()}
+function dxcFermer(){dxprSauver();DXC=null;const z=el('dxcZ');if(z)z.remove()}
+function dxcSaisie(k,v){if(!DXC)return;delete DXC.arbitrages[k];DXC.saisiesBrutes[k]=v;DXC.saisie[k]=v.trim()===''?null:(parseCote(v,'mm')??NaN);if(k==='epChanfrein'&&DXC.modeles?.para?.cp?.j)DXC.modeles.para.cp.j.e=DXC.saisie[k];dxcRefresh()}
 function dxcChoix(k,v){if(!DXC)return;DXC.saisie[k==='geometrie'?'detail':k]=v;dxcRefresh()}
-function dxcProposition(){const X=DXC,D=DXI;if(!X||X.D!==D)return null;
+function dxcProposition(X=DXC,lecture=null){const D=X&&X.D,lire=lecture||{case:C,val:S};if(!X||D!==DXI)return null;
   const ch=profCh(D.ch)||{},ou=profOu(D.ch,D.ouv)||{},tol=ou.tolCourb!=null?ou.tolCourb:ch.tolCourb;
-  const p=CPI.creation.proposer(X.analyse,Object.assign({},X.saisie,{traversee:C('dxc_traversee'),confirmChanfrein:C('dxc_confirmChanfrein')}),{mesuresConfirmees:C('dxc_mesures'),tolerance:tol,toleranceSource:ou.tolCourb!=null?'profil ouvrage':'profil chantier',voileGeo,sag:GEO.sag});
+  const p=CPI.creation.proposer(X.analyse,Object.assign({},X.saisie,{traversee:lire.case('dxc_traversee'),confirmChanfrein:lire.case('dxc_confirmChanfrein')}),{mesuresConfirmees:lire.case('dxc_mesures'),tolerance:tol,toleranceSource:ou.tolCourb!=null?'profil ouvrage':'profil chantier',voileGeo,sag:GEO.sag});
   for(const [k,c] of Object.entries(X.retenues)){
     if(p.valeurs[k]!=null)p.origines[k]=p.valeurs[k]===c.valeur&&!Object.hasOwn(X.saisiesBrutes,k)?c:{origine:'saisie',avant:c,brut:X.saisiesBrutes[k],role_confirme:k};
   }
-  for(const conflit of X.dossier.conflits)if(X.arbitrages[conflit.champ]!==p.valeurs[conflit.champ]||p.valeurs[conflit.champ]==null)p.manquants.push('arbitrage des cotes contradictoires : '+conflit.champ);
-  const noteDetail=S('dxc_detailNote','').normalize('NFD').replace(/[\u0300-\u036f]/g,'');
-  const seuleFeuillure=brut=>{const t=String(brut).normalize('NFD').replace(/[\u0300-\u036f]/g,'');return /feuillure/i.test(t)&&!/(chanfrein|biais|decrochement|sections|incline)/i.test(t)};
-  const compatible=(!C('dxc_detail')||seuleFeuillure(noteDetail))&&X.dossier.details.every(d=>d.type==='mention_textuelle'&&seuleFeuillure(d.brut));
-  const qualifie=p.detail==='feuillure'&&compatible&&C('dxc_qualification');
-  if(p.detail==='feuillure'&&!qualifie)p.manquants.push('qualification explicite de la seule feuillure périphérique (preuves compatibles)');
-  const seulChanfrein=brut=>{const t=String(brut).normalize('NFD').replace(/[\u0300-\u036f]/g,'');
-    return /chanfrein/i.test(t)&&!/(feuillure|biais|decrochement|sections|incline|pente|horizontal|\b(?:plusieurs|deux)\s+chanfrein)/i.test(t)
-      &&[...t.matchAll(/\b(\d+)\s+chanfreins?\b/gi)].every(m=>Number(m[1])===1)
-      &&[...t.matchAll(/(\d+(?:[.,]\d+)?)\s*(?:°|degr)/gi)].every(m=>Number(m[1].replace(',','.'))===45);};
-  const chanCompatible=(!C('dxc_detail')||seulChanfrein(noteDetail))&&X.dossier.details.every(d=>d.type==='mention_textuelle'&&seulChanfrein(d.brut));
-  const qualifieChan=p.detail==='chanfrein45'&&chanCompatible&&C('dxc_confirmChanfrein');
-  if(p.detail==='chanfrein45'&&!qualifieChan)p.manquants.push('qualification du seul chanfrein vertical 45°, preuves compatibles');
-  if((X.dossier.details.length||C('dxc_detail'))&&!qualifie&&!qualifieChan)p.manquants.push('détail particulier : étude de fabrication requise, création standard indisponible');
-  p.qualificationChanfrein=qualifieChan;
-  p.qualificationFeuillure=qualifie;
+  dxcControlePreuves(X,p,lire);
   if(p.detail==='chanfrein45'){
     p.geometrieEtudiee=CPI.geometriesParticulieres.chanfrein45({L:p.valeurs.L,e:p.valeurs.e,H:p.valeurs.h,
       retrait:X.saisie.retrait,ep:X.saisie.epChanfrein,angle:X.saisie.angleChanfrein,orientation:X.saisie.orientationChanfrein},
       {L:p.origines.L,e:p.origines.e,H:p.origines.h,retrait:{origine:'saisie',brut:X.saisiesBrutes.retrait},ep:{origine:'saisie',brut:X.saisiesBrutes.epChanfrein},angle:{origine:'saisie'},orientation:{origine:'saisie'}});
     if(p.support!=='voile_droit'||!['rect','carre'].includes(p.type))p.geometrieEtudiee.erreurs.push('Étude limitée à une ouverture rectangulaire en voile droit');
-    if(!C('dxc_confirmChanfrein'))p.geometrieEtudiee.erreurs.push('Convention de mesure à confirmer');
+    if(!lire.case('dxc_confirmChanfrein'))p.geometrieEtudiee.erreurs.push('Convention de mesure à confirmer');
     if(p.fabricationChanfrein?.fabricable){
-      const d=canon(migr(CPI.creation.modele(p,DXI.M.para,S('dxc_ref','')))),w=checks(d,null);
+      const d=canon(migr(CPI.creation.modele(p,(X.modeles||D.M).para,lire.val('dxc_ref','')))),w=checks(d,null);
       const erreurs=w.filter(x=>x[0]!=='warn').map(x=>x[1]);p.manquants.push(...erreurs);
       p.fabricationChanfrein.erreurs.push(...erreurs);p.fabricationChanfrein.fabricable=!erreurs.length;
-      p.fabricable=qualifieChan&&!p.manquants.length;
+      p.fabricable=p.qualificationChanfrein&&!p.manquants.length;
     }
 
   }
   const coteL=X.retenues.L?X.retenues.L.candidate:(X.analyse.provenance['ouverture.largeur_suivant_paroi_mm']||{}).candidate;
   if(p.support==='voile_circulaire'&&coteL&&coteL.referenceLargeur&&p.largeurRef!==coteL.referenceLargeur)p.manquants.push('L issue du PDF : référence de corde incompatible avec les joues choisies');
-  p.cotesPdf={...X.dossier,geometrieSelectionnee:p.detail,fabricationChanfrein:p.fabricationChanfrein||null,creationChanfreinPossible:p.fabricable===true,geometrieEtudiee:p.geometrieEtudiee||null,retenues:X.retenues,arbitrages:X.arbitrages,saisiesBrutes:{...X.saisiesBrutes},valeurs:{...p.valeurs},origines:JSON.parse(JSON.stringify(p.origines)),detailUtilisateur:C('dxc_detail')?S('dxc_detailNote',''):null};
+  p.cotesPdf={...X.dossier,geometrieSelectionnee:p.detail,fabricationChanfrein:p.fabricationChanfrein||null,creationChanfreinPossible:p.fabricable===true,geometrieEtudiee:p.geometrieEtudiee||null,retenues:X.retenues,arbitrages:X.arbitrages,saisiesBrutes:{...X.saisiesBrutes},valeurs:{...p.valeurs},origines:JSON.parse(JSON.stringify(p.origines)),detailUtilisateur:lire.case('dxc_detail')?lire.val('dxc_detailNote',''):null};
   DXI.CP[X.cles[0]]=p.cotesPdf;
   return p;
+}
+function dxcControlePreuves(X,p,lire){
+  for(const conflit of X.dossier.conflits)if(X.arbitrages[conflit.champ]!==p.valeurs[conflit.champ]||p.valeurs[conflit.champ]==null)p.manquants.push('arbitrage des cotes contradictoires : '+conflit.champ);
+  const noteDetail=lire.val('dxc_detailNote','').normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  const seuleFeuillure=brut=>{const t=String(brut).normalize('NFD').replace(/[\u0300-\u036f]/g,'');return /feuillure/i.test(t)&&!/(chanfrein|biais|decrochement|sections|incline)/i.test(t)};
+  const compatible=(!lire.case('dxc_detail')||seuleFeuillure(noteDetail))&&X.dossier.details.every(d=>d.type==='mention_textuelle'&&seuleFeuillure(d.brut));
+  const qualifie=p.detail==='feuillure'&&compatible&&lire.case('dxc_qualification');
+  if(p.detail==='feuillure'&&!qualifie)p.manquants.push('qualification explicite de la seule feuillure périphérique (preuves compatibles)');
+  const seulChanfrein=brut=>{const t=String(brut).normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+    return /chanfrein/i.test(t)&&!/(feuillure|biais|decrochement|sections|incline|pente|horizontal|\b(?:plusieurs|deux)\s+chanfrein)/i.test(t)
+      &&[...t.matchAll(/\b(\d+)\s+chanfreins?\b/gi)].every(m=>Number(m[1])===1)
+      &&[...t.matchAll(/(\d+(?:[.,]\d+)?)\s*(?:°|degr)/gi)].every(m=>Number(m[1].replace(',','.'))===45);};
+  const chanCompatible=(!lire.case('dxc_detail')||seulChanfrein(noteDetail))&&X.dossier.details.every(d=>d.type==='mention_textuelle'&&seulChanfrein(d.brut));
+  const qualifieChan=p.detail==='chanfrein45'&&chanCompatible&&lire.case('dxc_confirmChanfrein');
+  if(p.detail==='chanfrein45'&&!qualifieChan)p.manquants.push('qualification du seul chanfrein vertical 45°, preuves compatibles');
+  if((X.dossier.details.length||lire.case('dxc_detail'))&&!qualifie&&!qualifieChan)p.manquants.push('détail particulier : étude de fabrication requise, création standard indisponible');
+  p.qualificationChanfrein=qualifieChan;
+  p.qualificationFeuillure=qualifie;
 }
 function dxcRefresh(){if(!DXC||DXC.D!==DXI||!el('dxcEtat'))return;
   DXC.revision=null;el('dxcResume').innerHTML='';const p=dxcProposition(),X=DXC;
@@ -145,14 +154,14 @@ function dxcRefresh(){if(!DXC||DXC.D!==DXI||!el('dxcEtat'))return;
   el('dxcChanfrein').hidden=p.detail!=='chanfrein45';
   el('dxcGeo').innerHTML='';
   if(feu){
-    const d=canon(migr(CPI.creation.modele(p,DXI.M.para,S('dxc_ref','')))),w=checks(d,null);
+    const d=canon(migr(CPI.creation.modele(p,(DXC.modeles||DXI.M).para,S('dxc_ref','')))),w=checks(d,null);
     if(!badDims(w)&&p.type!=='circ'&&p.support==='voile_droit'){
       const v=feuilTraverseVues(d);
       el('dxcGeo').innerHTML='<h3>Feuillure — aperçu coté dans le repère de fabrication</h3><p>Face A ouverte : X = 0 ; face B ouverte : X = e. L = largeur, l = hauteur du vide, h = traversée. Les 4 tasseaux sont hors du vide, entre départ et départ + profondeur depuis A. Assemblage : longs filants, courts entre, abouts carrés. Fixation et maintien à vérifier.</p>'+v.top+v.a+v.b;
     }else el('dxcGeo').textContent='Aperçu à compléter : '+w.filter(x=>x[0]!=='warn').map(x=>x[1]).join(' ; ');
   }
   if(p.geometrieEtudiee){el('dxcGeo').innerHTML=dxcChanfreinVue(p.geometrieEtudiee);
-    if(p.fabricationChanfrein?.fabricable){const d=canon(migr(CPI.creation.modele(p,DXI.M.para,S('dxc_ref','')))),F=chanfreinGeo(d);if(F.fabricable)el('dxcGeo').innerHTML='<h3>Chanfrein 45° — panneaux calculés, création à confirmer</h3><p>'+esc(F.assemblage)+'</p>'+genChanfrein(d).top+chanfreinDetail(d,debit(d,null));}for(const k of ['retrait','epChanfrein'])el('dxcOrig_'+k).textContent=X.saisie[k]>0?'saisie utilisateur':'inconnue — à renseigner';}
+    if(p.fabricationChanfrein?.fabricable){const d=canon(migr(CPI.creation.modele(p,(DXC.modeles||DXI.M).para,S('dxc_ref','')))),F=chanfreinGeo(d);if(F.fabricable)el('dxcGeo').innerHTML='<h3>Chanfrein 45° — panneaux calculés, création à confirmer</h3><p>'+esc(F.assemblage)+'</p>'+genChanfrein(d).top+chanfreinDetail(d,debit(d,null));}for(const k of ['retrait','epChanfrein'])el('dxcOrig_'+k).textContent=X.saisie[k]>0?'saisie utilisateur':'inconnue — à renseigner';}
   const circ=p.type==='circ',courbe=p.support==='voile_circulaire';
   for(const k of ['L','h'])el('dxc_'+k).parentElement.hidden=circ;
   for(const k of ['D','profondeur'])el('dxc_'+k).parentElement.hidden=!circ;
@@ -168,19 +177,25 @@ function dxcRefresh(){if(!DXC||DXC.D!==DXI||!el('dxcEtat'))return;
   el('dxcEtat').innerHTML=`<p><b>Proposition à confirmer : ${esc(({simple:'mannequin rectangulaire simple',cintre:'mannequin cintré',fourreau:'fourreau circulaire'})[p.recommandation]||'solution à déterminer')}</b></p>`
     +(courbe?`<div>Flèches intérieure / extérieure : ${nf(p.fleches.interieure)} / ${nf(p.fleches.exterieure)} mm (GEO.sag). Tolérance : ${nf(p.tolerance)} mm.</div>`:'')
     +`<ul>${p.alertes.map(x=>'<li>'+esc(x)+'</li>').join('')}</ul>`+(manque.length?'<p>À compléter : '+esc(manque.join(' ; '))+'</p>':'')+(deja?'<p>Cette réservation a déjà été créée dans le projet.</p>':'');
-  el('dxcRecap').disabled=!!manque.length||deja;
+  el('dxcRecap').disabled=!!manque.length||deja;dxprSauver();if(el('dxprReglages'))dxprReglages();
 }
-function dxcPreparer(){const p=dxcProposition();if(!p)return null;const f=p.solution==='fourreau'?'circ':p.solution==='cintre'?'voile':'para';
-  const m=Object.assign({},DXI.M[f],{ch:chKey(DXI.ch),ouv:ouKey(DXI.ouv)});
-  const r=CPI.creation.preparer(p,{confirme:true,ref:S('dxc_ref','')},{modele:m,moteur:{migr,canon,limErr,checks,badDims,voileGeo}});
-  return{p,r,note:S('dxc_note','').trim(),saisiesBrutes:Object.assign({},DXC.saisiesBrutes)};
+function dxcPreparer(X=DXC,lecture=null){const lire=lecture||{case:C,val:S},p=dxcProposition(X,lire);if(!p)return null;const D=X.D,f=p.solution==='fourreau'?'circ':p.solution==='cintre'?'voile':'para';
+  const m=Object.assign({},(X.modeles||D.M)[f],{ch:chKey(D.ch),ouv:ouKey(D.ouv)});
+  const r=CPI.creation.preparer(p,{confirme:true,ref:lire.val('dxc_ref','')},{modele:m,moteur:{migr,canon,limErr,checks,badDims,voileGeo}});
+  const formats=cpParts(f,m.constr).map(([k])=>m.cp?.[k]||m.cp?.j);if(formats.some(c=>!c||!CPT[c.t]||!/^([1-9]\d*)x([1-9]\d*)(?:FL|FT)?$/.test(String(c.f)))){r.ok=false;r.messages=[...(r.messages||[]),'Type ou format de CP à choisir explicitement'];}
+  const nb=lire.val('dxc_nb',String(X.nombre||1));if(!/^\d{1,4}$/.test(nb)||Number(nb)<1){r.ok=false;r.messages=[...(r.messages||[]),'Nombre d’exemplaires : entier de 1 à 9999 requis'];}else if(r.ok)r.plan.nb=Number(nb);
+  return{p,r,note:lire.val('dxc_note','').trim(),saisiesBrutes:Object.assign({},X.saisiesBrutes)};
+}
+function dxcOrigine(X,x){const D=X.D,date=new Date().toISOString().slice(0,10),d=JSON.parse(JSON.stringify(x.r.plan));d.date=date;
+  d.origineImport={type:'creation_confirmee',format:'pdf',fichier:D.nom,indice:D.ind||null,date,creationCles:X.cles.slice(),
+    cotesPdf:JSON.parse(JSON.stringify(x.p.cotesPdf)),proposition:JSON.parse(JSON.stringify(x.p)),analyse:JSON.parse(JSON.stringify(X.analyse)),confirmation_utilisateur:true,note_utilisateur:x.note,saisiesBrutes:x.saisiesBrutes};return d;
 }
 function dxcRecap(){if(!DXC||DXC.D!==DXI)return;const x=dxcPreparer();if(!x)return;
   const {p,r}=x,z=el('dxcResume');if(!r.ok){z.innerHTML='<p>Non créé : '+esc(r.messages.join(' ; '))+'</p>';return;}
   if(!String(DXI.ch||'').trim()||dxcDeja(DXC.cles))return;
   DXC.revision=JSON.stringify(x);
   const panneaux=p.detail==='chanfrein45'?debit(canon(migr(r.plan)),null):[];
-  z.innerHTML=`<h3>Récapitulatif — un seul ouvrage, aucun existant remplacé</h3><p>${esc(r.plan.ch)} · ${esc(r.plan.ouv)} · ${esc(r.plan.ref||'référence automatique')} · ${esc(fmLb(r.plan.forme))}</p>
+  z.innerHTML=`<h3>Récapitulatif — un seul ouvrage, aucun existant remplacé</h3><p>${esc(r.plan.ch)} · ${esc(r.plan.ouv)} · ${esc(r.plan.ref||'référence automatique')} · ${esc(fmLb(r.plan.forme))} · × ${r.plan.nb}</p>
     <ul>${Object.entries(p.valeurs).filter(([,v])=>v!=null).map(([k,v])=>`<li>${esc(({L:'L corde',h:'Hauteur',D:'Diamètre',e:'Épaisseur voile',R:'Rayon intérieur',profondeur:'Longueur du fourreau',fL:'Largeur feuillure',fH:'Profondeur feuillure',fNiv:'Départ feuillure depuis A'})[k])} : ${nf(v)} mm — ${esc(p.origines[k].origine)}</li>`).join('')}</ul>
     ${p.detail==='chanfrein45'?'<p>Modèle : mannequin chanfreiné 45° ouvert sur A et B. Coin '+esc(p.fabricationChanfrein.parametres.angle)+' ; retrait '+nf(p.fabricationChanfrein.parametres.retrait)+' mm ; CP '+nf(r.plan.ep)+' mm. '+esc(p.fabricationChanfrein.assemblage)+'</p><ul>'+p.fabricationChanfrein.pieces.map(q=>'<li>'+esc((panneaux.find(row=>row.sh?.pieceId===q.id)?.tag||q.id)+' — '+q.nom)+' : brut '+nf(q.a,3)+' × '+nf(q.b,3)+' mm ; '+q.coupes.map(c=>esc((c.extremite||c.nature)+' '+nf(c.inclinaisonScie,1)+'°')).join(' ; ')+'</li>').join('')+'</ul><p>Volumes nets après biseaux distincts des bruts de débit. Traverses 50×50 du modèle existant, tenue mécanique non vérifiée.</p>':''}
     ${p.detail==='feuillure'?'<p>Modèle : mannequin traversant droit + feuillure périphérique. 4 parois CP du corps (en tronçons si nécessaire), 4 tasseaux de feuillure, débit bois, feuille cotée dédiée, 3D et exports du même modèle. Départ depuis A, pas depuis le linteau ; largeur hors du vide. Contrôle mécanique du mannequin : non vérifié.</p>':''}
@@ -194,9 +209,7 @@ function dxcCreer(){const X=DXC;if(!X||X.D!==DXI||!C('dxcConfirme')||!X.revision
   const x=dxcPreparer();if(!x||!x.r.ok||JSON.stringify(x)!==X.revision){dxcRefresh();return;}
   if(dxcDeja(X.cles)||!String(DXI.ch||'').trim())return dxcRefresh();
   const d=x.r.plan;if(!dxiRefs([d])){toast('Référence déjà utilisée : choisir une autre référence');return;}
-  const date=new Date().toISOString().slice(0,10);d.date=date;
-  d.origineImport={type:'creation_confirmee',format:'pdf',fichier:DXI.nom,indice:DXI.ind||null,date,creationCles:X.cles,
-    cotesPdf:JSON.parse(JSON.stringify(x.p.cotesPdf)),proposition:JSON.parse(JSON.stringify(x.p)),analyse:JSON.parse(JSON.stringify(X.analyse)),confirmation_utilisateur:true,note_utilisateur:x.note,saisiesBrutes:x.saisiesBrutes};
+  Object.assign(d,dxcOrigine(X,x));
   planUid(d);P.push(d);X.revision=null;svP();profFromPlans([d]);profLists();rnL();updBtn();markDirty();
   dxcRefresh();toast('✓ Ouvrage '+d.ref+' créé après confirmation');
 }

@@ -270,6 +270,7 @@ body.pm .inf{font-size:calc(9.5px + 2pt);line-height:1.25}body.pm .inf .nt{font-
 <div class="cd"><div class="ct">📑 Plans (<span id="pc">0</span>)</div>
 <div style="display:flex;gap:6px;margin-bottom:8px"><input class="fi" id="plQ" type="search" placeholder="Rechercher : réf., ouvrage, forme…" aria-label="Rechercher un plan" oninput="this.dataset.fresh=1;event.stopPropagation();rnL()" onchange="event.stopPropagation()">
 <select class="fi" id="plS" style="width:auto" title="Ordre des plans dans chaque ouvrage" aria-label="Trier les plans" onchange="event.stopPropagation();try{localStorage.setItem('resaSort',this.value)}catch(e){}rnL()"><option value="i">Saisie</option><option value="r">Réf.</option><option value="f">Forme</option></select></div>
+<button class="btn bs bo" id="bPrepDossier" onclick="doscOuvrir()" style="width:100%;margin-bottom:8px">Préparer un dossier de fabrication</button>
 <div id="sl" style="max-height:260px;overflow-y:auto"></div>
 <button class="btn bs bo" onclick="openSeries()" style="width:100%;margin-top:8px" title="Créer plusieurs plans d'un coup depuis un tableau copié d'Excel">📋 Série de plans depuis un tableau</button>
 <button class="btn bs bo" onclick="dxiOpen()" style="width:100%;margin-top:8px" title="Lire les réservations d'un plan DXF ou PDF et créer les ouvrages confirmés">📥 Importer un plan</button>
@@ -4288,6 +4289,15 @@ function chantierData(list){
   return C;
 }
 
+// Complétude CP : partagé avec l'auto-contrôle et le dossier sélectionné.
+function chantierCpErreurs(C){
+  return Object.values(C.cp).flatMap(o=>{const mat=cpName(o.cp),refs=[...new Set(o.lines.map(l=>l.ref||'Sans référence'))].join(', '),m=[];
+    if(o.est)m.push(`${mat} — ${refs} : quantité estimée (plus de 1 500 pièces), aucun plan de découpe complet ; répartir les ouvrages en plusieurs dossiers`);
+    if(o.extraM2>0)m.push(`${mat} — ${refs} : quantité estimée sur surface, pièces sans imbrication exacte`);
+    if(o.nest?.fail?.length)m.push(`${mat} : pièces non placées : `+[...new Set(o.nest.fail.map(p=>(p.plan||'Sans référence')+' / '+p.ftag+' ('+p.dims+')'))].join(', '));
+    return m;});
+}
+
 // ---------- Pages : bon de commande, plan de débit des barres, calepinage CP du chantier ----------
 function chHd(ch,sub){return`<div class="ps-h"><div><div class="ps-ch">CHANTIER : ${esc(ch)||'—'}</div><div class="ps-rf">RÉCAPITULATIF CHANTIER <span class="ps-sub">· ${sub}</span></div></div><div style="text-align:right;color:#8892a8;font-size:11px"><div>${new Date().toLocaleDateString('fr-FR')}</div></div></div>`}
 const chFt='<div class="ps-foot">Conçu par Kévin TRINH · Conducteur de travaux · CoffraPlan</div>';
@@ -4301,7 +4311,7 @@ function woodBarsSvg(o,from,to){
     if(b.waste>1){const wx=x0+(b.L-b.waste)*sc,ww=b.waste*sc,lb='chute '+nf(b.waste,0);if(ww>lb.length*0.62*(5+FS)+4)t.T(wx+ww/2,y+14,lb,5,'#999','middle',400)}});
   return t.out();
 }
-function chantierPages(list){
+function chantierPages(list,complet=false){
   const ch=(list[0]&&list[0].ch)||'',C=chantierData(list),pages=[];
   const cpRows=Object.values(C.cp).sort((a,b)=>b.m2-a.m2).map(o=>`<tr><td>${esc(cpName(o.cp))}</td><td class="nm">${nf(o.m2,2)} m²</td><td class="nm"><b>${o.est?'≈ ':''}${o.nP}</b></td><td class="nm">${nf(100*o.rate,0)} %</td></tr>`).join('');
   const bRows=Object.values(C.bois).map(o=>`<tr><td>${esc(o.sec)}</td><td class="nm">${nf(o.ml,1)} ml</td><td class="nm"><b>${Object.keys(o.byL).sort((a,b)=>b-a).map(L=>o.byL[L]+' × '+nf(L/1000,1)+' m').join(' + ')}</b></td><td class="nm">${nf(100*o.cut.rate,0)} %</td></tr>`).join('');
@@ -4320,7 +4330,7 @@ ${C.warn.length?`<div class="sub">À revoir</div>${C.warn.map(w=>`<div class="er
     pages.push(`<div class="ps">${chHd(ch,'DÉBIT DES BARRES — '+o.sec)}<div class="ps-bd"><div class="ps-c ps-w2"><div class="ps-cl">Barres ${esc(o.sec)} · ${i+1} à ${j} / ${o.cut.bars.length} · trait de scie ${nf(C.kerf)} mm</div>${woodBarsSvg(o,i,j)}</div><div class="ps-c ps-tall"><div class="inf"><div class="sub">Pièces ${esc(o.sec)}</div><table>${tb}</table><div class="nt">Linéaire utile ${nf(o.cut.need/1000,2)} ml · acheté ${nf(o.cut.tot/1000,2)} ml · rendement ${nf(100*o.cut.rate,0)} %${o.cut.ab?' · pièces plus longues qu\'une barre : aboutées (ab.)':''}</div></div></div>${chFt}</div></div>`)}});
   // calepinage CP consolidé
   Object.values(C.cp).forEach(o=>{if(!o.nest||!o.nest.sheets.length)return;const N={W:cpFmt(o.cp)[0],H:cpFmt(o.cp)[1],kerf:C.kerf,cp:o.cp,sheets:o.nest.sheets.map(s=>s.items)};
-    for(let i=0;i<N.sheets.length&&pages.length<40;){let j=i,rows=0;while(j<N.sheets.length&&j-i<CUT_PER&&(j===i||rows+N.sheets[j].length+1<=34)){rows+=N.sheets[j].length+1;j++}
+    for(let i=0;i<N.sheets.length&&(complet||pages.length<40);){let j=i,rows=0;while(j<N.sheets.length&&j-i<CUT_PER&&(j===i||rows+N.sheets[j].length+1<=34)){rows+=N.sheets[j].length+1;j++}
       const grp=N.sheets.slice(i,j),cols=1,rws=grp.length,cw=CUT_W,chh=Math.round((cw-52)*N.H/N.W+90),t=SB(cw,rws*chh);
       grp.forEach((s,gi)=>nestPanelSvg(t,N,s,i+gi,(gi%cols)*cw,Math.floor(gi/cols)*chh,cw,chh,null,N.sheets.length));
       const side=`<div class="sub">${esc(cpName(o.cp))}</div><div class="nt">Toutes pièces du chantier · X / Y depuis le coin ● · ↻ tournée de 90°.</div>`+grp.map((s,gi)=>`<div class="sub" style="margin-top:4px">Panneau ${i+gi+1}</div><table>${s.map(p=>`<tr><td style="font-family:'JetBrains Mono',monospace">${esc(p.ftag)}</td><td class="nm">${p.dims}${p.rot?' ↻':''}</td><td class="nm">X ${nf(p.x,0)} · Y ${nf(p.y,0)}</td></tr>${p.drill?`<tr><td></td><td colspan="2" style="white-space:normal;font-size:10px;line-height:1.35;font-family:'JetBrains Mono',monospace">perçages Ø${nf(p.drill[0].D)}, centres depuis ● : ${p.drill.map(q=>`X ${nf(q.x,0)} · Y ${nf(q.y,0)}`).join(' ; ')}</td></tr>`:''}`).join('')}</table>`).join('');
@@ -5952,10 +5962,10 @@ function expDxfChantier(){const ch=S('iCh',''),list=chantierPlans(ch);if(!list.l
 
 // ---------- Dossier chantier (PDF via l'impression) : page de garde, sommaire paginé, plans, récapitulatif, numérotation continue ----------
 let DOS=null;
-function dossierHtml(list){
+function dossierHtml(list,complet=false){
   const ch=(list.find(d=>d.ch)||{}).ch||S('iCh','')||'',date=new Date().toLocaleDateString('fr-FR');
   const parts=list.map((d,i)=>({d,h:gen(d).replace(/<div class="ps(?=[ "])/,`<div data-plan="${i}" class="ps`)}));
-  let rc={html:'',C:null};try{rc=chantierPages(list)}catch(e){}
+  let rc={html:'',C:null};try{rc=chantierPages(list,complet)}catch(e){if(complet)throw e}
   const C=rc.C,recap=rc.html.replace(/<div class="ps(?=[ "])/,'<div data-recap="1" class="ps');
   const cpL=C?Object.values(C.cp).map(o=>`<tr><td>${esc(cpName(o.cp))}</td><td class="nm">${o.est?'≈ ':''}${o.nP} panneau(x)</td><td class="nm">${nf(o.m2,1)} m²</td></tr>`).join(''):'';
   const bL=C?Object.values(C.bois).map(o=>`<tr><td>Bois ${esc(o.sec)}</td><td class="nm">${Object.values(o.byL).reduce((a,b)=>a+b,0)} barre(s)</td><td class="nm">${nf(o.ml,1)} ml</td></tr>`).join(''):'';
@@ -5981,9 +5991,9 @@ function dosNumber(){const ps=[...document.querySelectorAll('#pvA .ps')],n=ps.le
     td.textContent=a<0?'—':(a===b?String(a+1):`${a+1} → ${b+1}`)});
   document.querySelectorAll('#pvA [data-dos-tot]').forEach(x=>x.textContent=String(n));return n}
 function dosFlush(){try{clearTimeout(_tm);syncVis();liveCalc();hisPush()}catch(e){}}
-function openDossier(){dosFlush();const ch=S('iCh','');let list=P.length?chantierPlans(ch):[];if(!list.length)list=[coll()];
-  VIEW='dossier';const r=dossierHtml(list);DOS={ch:r.ch,n:r.n};
-  el('pvA').innerHTML=`<div class="no-print" style="max-width:1150px;margin:0 auto 12px;display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap"><span style="margin-right:auto;color:#555;font-size:12px">Dossier : ${r.n} plan(s) — « Imprimer » puis « Enregistrer au format PDF »</span><button class="btn bs bo" style="background:#fff" onclick="VIEW='plan';prev()">✖ Retour au plan</button><button class="btn bs" id="bDosPrint" style="background:var(--accent);color:#fff" onclick="printDossier()">🖨 Imprimer / PDF</button></div>`+r.html;
+function openDossier(selection){dosFlush();const ch=S('iCh',''),cible=Array.isArray(selection);let list=cible?selection:P.length?chantierPlans(ch):[];if(!list.length){if(cible)return;list=[coll()]}
+  const retour=cible?{form:formSnap(),ei:EI,vue:VIEW}:null;const r=cible?doscHtml(list):dossierHtml(list);VIEW='dossier';DOS={ch:r.ch,n:r.n,retour};
+  el('pvA').innerHTML=`<div class="no-print" style="max-width:1150px;margin:0 auto 12px;display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap"><span style="margin-right:auto;color:#555;font-size:12px">Dossier : ${r.n} plan(s) — « Imprimer » puis « Enregistrer au format PDF »</span><button class="btn bs bo" style="background:#fff" onclick="doscRetour()">✖ Retour au plan</button><button class="btn bs" id="bDosPrint" style="background:var(--accent);color:#fff" onclick="printDossier()">🖨 Imprimer / PDF</button></div>`+r.html;
   try{declutter(el('pvA'))}catch(e){}try{bwApply(el('pvA'))}catch(e){}dosNumber();glSheets(el('pvA'));return r.n}
 function printDossier(){if(VIEW!=='dossier')openDossier();const bad=fitPrint();dosNumber();
   if(bad.length)toast(`Feuille(s) ${bad.join(', ')} : texte resserré au minimum`);
@@ -6003,14 +6013,13 @@ window.addEventListener('afterprint',()=>{if(VIEW==='dossier'){if(DOS&&DOS.t0){d
 // ====== v17 — LOT 7 : AUTO-CONTRÔLE DU RÉCAPITULATIF CHANTIER ======
 // Plans pris en compte, imbrication consolidée (dans le panneau, trait de scie, toutes pièces placées, surfaces),
 // débit des barres (toutes les pièces débitées, longueurs de barre du commerce), bon de commande, lisibilité et valeurs des feuilles.
-function acChantier(){
-  const ch=S('iCh',''),list=chantierPlans(ch);if(!list.length)return null;
+function acChantier(selection){
+  const ch=S('iCh',''),list=Array.isArray(selection)?selection:chantierPlans(ch);if(!list.length)return null;
   const out=[],ok=(t,m)=>out.push([true,t,m||'']),ko=(t,m)=>out.push([false,t,m||'']),C=chantierData(list);
   C.warn.length?ko('Plans pris en compte',C.warn.join(' · ')):ok('Plans pris en compte',C.plans.length+' plan(s), '+C.plans.reduce((s,p)=>s+p.nb,0)+' exemplaire(s)');
   // imbrication consolidée
-  const m=[];let nP=0,nI=0;
-  Object.values(C.cp).forEach(o=>{if(!o.nest){if(o.est)m.push(cpName(o.cp)+' : trop de pièces, quantité estimée');return}const [W,H]=cpFmt(o.cp);
-    if(o.nest.fail&&o.nest.fail.length)m.push(`${cpName(o.cp)} : ${o.nest.fail.length} pièce(s) non placée(s)`);
+  const m=chantierCpErreurs(C);let nP=0,nI=0;
+  Object.values(C.cp).forEach(o=>{if(!o.nest)return;const [W,H]=cpFmt(o.cp);
     o.nest.sheets.forEach((s,si)=>{nP++;s.items.forEach((p,i)=>{nI++;const B=bbox(p.poly);if(B[0]<-0.01||B[1]<-0.01||B[2]>W+0.01||B[3]>H+0.01)m.push(`${p.ftag} hors panneau ${si+1}`);
       for(let j=i+1;j<s.items.length;j++){const q=s.items[j],g=Math.max(q.x-(p.x+p.pw),p.x-(q.x+q.pw),q.y-(p.y+p.ph),p.y-(q.y+q.ph));if(g<C.kerf-0.01)m.push(`${p.ftag} / ${q.ftag} : écart ${nf(g,1)} mm < trait de scie`)}})});
     const a=o.nest.sheets.reduce((s,sh)=>s+sh.items.reduce((t,p)=>t+polyArea(p.poly)-(p.hole?polyArea(p.hole):0),0),0)/1e6,ref=o.pcs.reduce((s,p)=>s+polyArea(p.poly)-(p.hole?polyArea(p.hole):0),0)/1e6;

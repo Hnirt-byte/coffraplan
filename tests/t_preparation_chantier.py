@@ -1,0 +1,225 @@
+"""Phase 11 : vrai parcours PDF fictif → validation → lot atomique → dossier ciblé."""
+import copy, json, os, sys, tempfile, traceback
+from playwright.sync_api import sync_playwright
+from lib import Suite, open_app, HERE
+import preparation_fictif as PF
+
+
+def t(s):
+    with tempfile.TemporaryDirectory() as tmp, sync_playwright() as pw:
+        fichier=PF.fichier(tmp);b,pg,errs=open_app(pw,width=1500);J=pg.evaluate
+        net=[];pg.context.route(lambda u:not u.startswith(('file:','blob:','data:')),lambda r:(net.append(r.request.url),r.abort()))
+        pg.click('#bDxi');pg.set_input_files('#dxiF',fichier);pg.wait_for_function('DXI&&DXI.fmt==="pdf"')
+        J('()=>{DXI.ch="CHANTIER FICTIF 11";DXI.ouv="VOILE A";dxprOuvrir();window.P11=(rep)=>dxprBase().ordre.findIndex(k=>dxprBase().rows[k].ref===rep)}')
+        s.check(J('DXI.NL.length===8&&dxprBase().ordre.length===8'),'inventaire des huit entrées sans second OCR')
+        initial=J('JSON.stringify({P,PROF,LIBU,ENT})')
+        J('()=>{DXI.NR[2].h="300";DXI.NR[2].conf=true;dxiVue("n");dxiCreate();DXI.NR[2].conf=false;dxprOuvrir()}')
+        s.check(J('P.length')==0 and 'bloquée' in pg.inner_text('#toast'),'ancien chemin PDF bloque les mêmes contradictions, sans repli de fabrication')
+        s.check(J('dxprControleHistorique([3,4,5,6],[]).length')>=4,'ancien chemin PDF refuse aussi les détails particuliers non qualifiés')
+        def ouvrir(rep):J('r=>dxprFicheOuvrir(P11(r))',rep)
+        def config(rep,detail='aucun',ep=True):
+            ouvrir(rep)
+            pg.select_option('#dxc_type','rect');pg.select_option('#dxc_support','voile_droit');pg.select_option('#dxc_solution','simple')
+            if ep:pg.fill('#dxc_e','240')
+            pg.check('#dxc_traversee')
+            pg.select_option('#dxc_geometrie',detail)
+        def valider():
+            pg.click('#dxprValider');pg.check('#dxcConfirme');pg.click('#dxprConfirmer')
+        def retour():J('dxprOuvrir()')
+        # R08 a déjà été créée auparavant : vrai parcours de confirmation individuelle.
+        config('R08');pg.click('#dxcRecap');pg.check('#dxcConfirme');pg.click('#dxcCreer');retour()
+        s.check(J('P.length===1&&dxprEtat(dxprBase().rows[dxprBase().ordre[P11("R08")]])==="Créé"'),'R08 déjà créée identifiée par son origine PDF')
+        initial=J('JSON.stringify({P,PROF,LIBU,ENT})')
+        J('dxprIgnorer(P11("R07"))');s.check(J('dxprEtat(dxprBase().rows[dxprBase().ordre[P11("R07")]])')=='Ignoré','réservation volontairement ignorée distinguée des blocages')
+        J('dxprIgnorer(P11("R07"))')
+        J('dxiVue("n")');s.check('Créer les ouvrages sélectionnés' in pg.text_content('#dxiGo'),'retour à la nomenclature : action historique correctement nommée')
+        J('dxprOuvrir()');s.check(pg.get_attribute('#dxprTab','aria-selected')=='true','onglet de préparation actif accessible au clavier')
+        s.check(J('dxprBase().selection.length===0') and pg.locator('#dxprT input:checked').count()==0,'aucune sélection automatique')
+        s.check('Total détecté : 8' in pg.inner_text('#dxprBilan'),'bilan par identité de réservation')
+        pg.select_option('#dxprStat','Créé');s.check(pg.locator('#dxprT tbody tr').count()==1,'filtre statut créé')
+        pg.select_option('#dxprStat','');pg.fill('#dxprRef','R03');s.check(pg.locator('#dxprT tbody tr').count()==1,'filtre référence')
+        pg.fill('#dxprRef','');pg.select_option('#dxprPage','1');s.check(pg.locator('#dxprT tbody tr').count()==8,'filtre page')
+        pg.select_option('#dxprRest','Restantes');s.check(pg.locator('#dxprT tbody tr').count()==7,'filtre restantes exclut ouvrage créé')
+        pg.select_option('#dxprRest','');pg.select_option('#dxprVue','N1')
+        s.check(pg.locator('#dxprT tbody tr').count()==8,'filtre tableau / vue')
+        pg.select_option('#dxprType','rect');s.check(pg.locator('#dxprT tbody tr').count()==8,'filtre forme présumée')
+        pg.select_option('#dxprType','');pg.select_option('#dxprVue','')
+        config('R01');s.check(not pg.is_disabled('#dxcRecap'),'R01 dimensions complètes, proposition calculable')
+        J('dxprSuivante(1)');s.check(J('DXC.ref')=='R02','navigation suivante')
+        s.check(pg.input_value('#dxc_e')=='','épaisseur de R01 jamais propagée à R02')
+        s.check(pg.is_disabled('#dxcRecap'),'R02 épaisseur manquante bloquante')
+        pg.fill('#dxc_e','260');pg.select_option('#dxc_type','rect');pg.select_option('#dxc_support','voile_droit');pg.select_option('#dxc_solution','simple');pg.check('#dxc_traversee')
+        pg.fill('#dxc_note','Épaisseur relue manuellement pour R02')
+        J('dxprSuivante(-1)');s.check(J('DXC.ref')=='R01' and pg.input_value('#dxc_e')=='240','précédente restaure les saisies propres à R01')
+        ouvrir('R02');s.check(pg.input_value('#dxc_e')=='260' and 'R02' in pg.input_value('#dxc_note'),'correction et note conservées à la navigation')
+        pg.click('#dxprValider');J('dxprConfirmer()');s.check(J('!DXC.validation'),'validation individuelle exige confirmation explicite')
+        pg.check('#dxcConfirme');pg.click('#dxprConfirmer');s.check(J('!!DXC.validation'),'validation de R02 sans création')
+        pg.fill('#dxc_e','261');s.check(J('!DXC.validation'),'modification invalide la validation')
+        pg.fill('#dxc_e','260');valider();retour()
+        config('R03');s.check(pg.is_disabled('#dxcRecap'),'contradictions PDF non arbitrées bloquantes')
+        J('dxcArbitrer("e")');valider();retour()
+        config('R04','feuillure');
+        for k,v in [('fL','40'),('fH','30'),('fNiv','20')]:pg.fill('#dxc_'+k,v)
+        s.check(pg.is_disabled('#dxcRecap'),'feuillure non qualifiée bloquée')
+        pg.check('#dxc_qualification');valider();retour()
+        config('R05','chanfrein45')
+        for k,v in [('retrait','40'),('epChanfrein','18')]:pg.fill('#dxc_'+k,v)
+        pg.select_option('#dxc_angleChanfrein','GA');pg.select_option('#dxc_orientationChanfrein','vers_beton');pg.check('#dxc_confirmChanfrein')
+        pg.get_by_text('CP et montage de cette proposition',exact=True).click();pg.fill('#dxprCPep','21');pg.dispatch_event('#dxprCPep','change')
+        s.check(J('DXC.saisie.epChanfrein===21&&dxprCalcul(DXC).r.plan.cp.j.e===21'),'CP du chanfrein synchronisé avec son épaisseur confirmée et sa fabrication')
+        pg.fill('#dxc_epChanfrein','18')
+        s.check(pg.input_value('#dxprCPep')=='18','correction de l’épaisseur du chanfrein répercutée dans les réglages CP')
+        s.check(J('dxprCalcul(DXC).r.ok&&dxprCalcul(DXC).p.fabricable'),'chanfrein GA passe les vrais contrôles 10C')
+        valider();retour()
+        config('R06','chanfrein45')
+        for k,v in [('retrait','40'),('epChanfrein','18')]:pg.fill('#dxc_'+k,v)
+        pg.select_option('#dxc_angleChanfrein','GA');pg.select_option('#dxc_orientationChanfrein','vers_vide');pg.check('#dxc_confirmChanfrein')
+        s.check(pg.is_disabled('#dxcRecap') and J('dxprEtat(DXC)')=='Non pris en charge','R06 orientation non fabricable, sans repli standard')
+        pg.select_option('#dxc_geometrie','aucun')
+        s.check(J('dxprEtat(DXC)')!='Non pris en charge','orientation masquée ne détermine pas le statut d’un autre modèle')
+        pg.select_option('#dxc_geometrie','chanfrein45')
+        retour();config('R07','autre');s.check(pg.is_disabled('#dxcRecap') and J('dxprEtat(DXC)')=='Non pris en charge','R07 hors périmètre conserve le blocage et les preuves')
+        retour();config('R01');pg.fill('#dxc_nb','0');pg.click('#dxprValider')
+        s.check(J('!DXC.validation'),'quantité nulle refusée avant validation')
+        pg.fill('#dxc_nb','1');valider()
+        pg.get_by_text('CP et montage de cette proposition',exact=True).click()
+        pg.fill('#dxprCPformat','inconnu');pg.dispatch_event('#dxprCPformat','change')
+        s.check(J('!DXC.validation&&!dxprCalcul(DXC).r.ok'),'format CP illisible bloqué sans format supposé')
+        pg.fill('#dxprCPformat','2500x1250');pg.dispatch_event('#dxprCPformat','change');valider()
+        pg.fill('#dxprCPep','21');pg.dispatch_event('#dxprCPep','change')
+        s.check(J('!DXC.validation&&DXC.modeles.para.cp.j.e===21'),'changement du CP invalide la validation et conserve le réglage du brouillon')
+        pg.fill('#dxprCPep','18');pg.dispatch_event('#dxprCPep','change');valider();retour()
+        s.check(J('JSON.stringify({P,PROF,LIBU,ENT})')==initial,'préparer sept autres réservations ne modifie pas le projet')
+        s.check(J('dxprBase().ordre.filter(k=>dxprEtat(dxprBase().rows[k])==="Validé pour le lot").length')==5,'cinq propositions validées, deux bloquées et une créée')
+        # Export / reprise avec le PDF effectivement ouvert, pas de PDF incorporé.
+        with pg.expect_download() as dl:pg.get_by_text('Exporter la préparation',exact=True).click()
+        prep=json.load(open(dl.value.path(),encoding='utf8'))
+        s.check(prep['pdf']['empreinte']==J('DXI.empreinte') and len(prep['lignes'])==8 and '%PDF' not in json.dumps(prep),'export local complet sans contenu PDF')
+        mauvais=copy.deepcopy(prep);mauvais['pdf']['empreinte']='0'*64
+        s.check(J('j=>{try{dxprReprendre(j);return false}catch(e){return e.message.includes("Empreinte différente")}}',mauvais),'PDF différent refusé par SHA-256')
+        s.check(J('JSON.stringify({P,PROF,LIBU,ENT})')==initial,'refus de reprise sans mutation du projet')
+        J('dxiQuit();closeModal()');pg.click('#bDxi');pg.set_input_files('#dxiF',fichier);pg.wait_for_function('DXI&&DXI.fmt==="pdf"')
+        reprise=os.path.join(tmp,'preparation.json')
+        with open(reprise,'w',encoding='utf8') as f:json.dump(prep,f,ensure_ascii=False)
+        J('dxprOuvrir()');pg.set_input_files('#dxprFichier',reprise);pg.wait_for_function('dxprBase().message.includes("reprise")')
+        s.check(J('dxprBase().selection.length===0&&dxprBase().ordre.length===8'),'reprise même PDF : huit identités, aucune sélection restaurée automatiquement')
+        s.check(J('JSON.stringify({P,PROF,LIBU,ENT})')==initial,'charger un brouillon ne crée aucun ouvrage')
+        s.check(J('dxprBase().ordre.filter(k=>dxprEtat(dxprBase().rows[k])==="Validé pour le lot").length')==5,'validations recalculées et reconnues à la reprise')
+        alt=copy.deepcopy(prep);ligne=next(x for x in alt['lignes'] if x['i']==1);ligne['saisie']['e']=261;ligne['controles']['dxc_e']['value']='261'
+        J('j=>dxprReprendre(j)',alt)
+        s.check(J('dxprBase().ordre.filter(k=>dxprEtat(dxprBase().rows[k])==="Validé pour le lot").length')==4,'validation exportée refusée si les données du brouillon ont été modifiées')
+        J('j=>dxprReprendre(j)',prep)
+        ouvrir('R03');s.check(J('DXC.arbitrages.e===240&&DXC.dossier.conflits.length>0'),'arbitrage conservé avec les preuves contradictoires');retour()
+        # Lot : sélection explicite, collisions, modification après récapitulatif, tout ou rien.
+        def selection(reps):
+            J('rs=>{const B=dxprBase();B.selection=[];for(const r of rs)dxprSelection(P11(r),true)}',reps)
+        selection(['R01','R02','R03','R04','R05']);pg.click('#dxprLot');J('dxprCreer()')
+        s.check(J('P.length')==1,'récapitulatif de lot sans confirmation : zéro création')
+        J('()=>{const B=dxprBase(),X=B.rows[B.ordre[P11("R02")]];X.saisie.e=262}')
+        pg.check('#dxprConfirmeLot');pg.click('#dxprCreer')
+        s.check(J('P.length')==1 and 'Aucun ouvrage créé' in pg.inner_text('#dxprResume'),'proposition devenue invalide : lot intégralement refusé')
+        ouvrir('R02');pg.fill('#dxc_e','260');valider();retour()
+        ouvrir('R02');pg.fill('#dxc_ref','R01');valider();retour();selection(['R01','R02']);pg.click('#dxprLot')
+        s.check(J('P.length')==1 and 'collision' in pg.inner_text('#dxprResume'),'collision de référence entre propositions bloquante')
+        ouvrir('R02');pg.fill('#dxc_ref','R08');valider();retour();selection(['R02']);pg.click('#dxprLot')
+        s.check(J('P.length')==1 and 'collision' in pg.inner_text('#dxprResume'),'collision de référence avec le projet bloquante')
+        ouvrir('R02');pg.fill('#dxc_ref','R02');valider();retour();selection(['R01','R02','R03','R04','R05'])
+        pg.click('#dxprLot');pg.check('#dxprConfirmeLot');pg.click('#dxprCreer');J('dxprCreer()')
+        s.check(J('P.length===6&&new Set(P.map(p=>p.uid)).size===6'),'cinq ouvrages créés atomiquement, double clic sans doublon')
+        s.check(J('P.slice(1).every(p=>p.origineImport.confirmation_utilisateur&&p.origineImport.creationCles.length)&&P.some(p=>p.feuilTraversee)&&P.some(p=>p.chanfrein45?.version===1)'),'origines, feuillure 10B et assemblage 10C conservés')
+        s.check(J('dxprBase().selection.length===0') and '5 ouvrage(s) effectivement' in pg.inner_text('#dxprMessage'),'nombre réel annoncé, sélection consommée')
+        # Annulation par UID, protection des modifications et des autres plans.
+        J('()=>{window.L11=dxprCopie(P);P[1].ref="MODIF";dxprAnnuler()}')
+        s.check(J('P.length===6') and 'refusée' in pg.inner_text('#dxprMessage'),'annulation interdite si un ouvrage du lot a changé')
+        J('()=>{P=dxprCopie(L11);P.push({...dxprCopie(P[0]),uid:"AUTRE",ref:"AUTRE"});dxprAnnuler()}')
+        s.check(J('P.length===2&&P.some(p=>p.uid==="AUTRE")'),'annulation retire seulement les UID du lot, autres plans préservés')
+        # Recréer le lot pour le dossier puis reprendre le brouillon déjà créé.
+        J('()=>{P=P.filter(p=>p.uid!=="AUTRE")}');selection(['R01','R02','R03','R04','R05']);pg.click('#dxprLot');pg.check('#dxprConfirmeLot');pg.click('#dxprCreer')
+        J('j=>dxprReprendre(j)',prep)
+        s.check(J('P.length===6&&dxprBase().ordre.filter(k=>dxprEtat(dxprBase().rows[k])==="Créé").length===6'),'reprise après création : statuts actualisés, aucun doublon proposé')
+        # Homonymes distincts et contours rattachés, sans relancer l’OCR.
+        hom=J('''()=>{const D=DXI,na=D.NA,nl=D.NL,nr=D.NR,c=D.C,as=D.AS,pr=D.PR;try{
+          const N=dxprCopie(D.NL[0].N),L=dxprCopie(D.NL[0].L);N.id='HOMONYME';L.id='HOMONYME-L01';L.repere='R01';N.lignes=[L];D.NL=nl.concat([{N,L}]);D.NR=nr.concat([dxnNR(L)]);
+          D.C=[{id:'C-LIE',statut:'a_confirmer',type:'rect',source:{page:1},bbox:[10,10,20,20],geometrie:{points:[[10,10],[20,10],[20,20],[10,20]]},remarques:[],annot:{},dims:{L:10,l:10}}];D.AS={...as,[nl[0].L.id]:{occurrences:[{fiable:true,contour:'C-LIE'}]}};D.PR=null;const r=dxprInventaire();return {n:r.length,cles:r.filter(x=>x.ref==='R01').map(x=>x.cles[0]),g:r.filter(x=>x.kind==='g').length};
+        }finally{Object.assign(D,{NA:na,NL:nl,NR:nr,C:c,AS:as,PR:pr})}}''')
+        s.check(hom['n']==9 and len(set(hom['cles']))==2 and hom['g']==0,'repères homonymes restent distincts, contour rattaché non recompté')
+        # Dossier sélectionné : quantités, feuilles particulières, consolidation et retour sans mutation.
+        J('()=>{dxcFermer();dxiQuit();closeModal();P.find(p=>p.ref==="R01").nb=3;P.find(p=>p.ref==="R04").ouv="VOILE B";P.find(p=>p.ref==="R05").ouv="VOILE B";P.push({...dxprCopie(P[0]),uid:"AUTRE-CHANTIER",ref:"EXCLU",ch:"AUTRE CHANTIER"});setForm(P[0]);window.FORM11=formSnap();window.PROJ11=JSON.stringify({P,PROF,LIBU,ENT});doscOuvrir()}')
+        s.check(J('doscChoisis().length')==0 and pg.is_disabled('#doscApercu'),'dossier : aucune sélection automatique')
+        J('()=>doscSelection(doscCle(P.find(p=>p.ref==="R01")),true)')
+        s.check('1 plan(s) · 3 exemplaire(s)' in pg.inner_text('#doscBilan'),'un seul plan sélectionné, nb=3 sans duplication de ligne')
+        J('doscOuvrage("VOILE B")')
+        s.check(J('doscChoisis().length')==3 and '5 exemplaire(s)' in pg.inner_text('#doscBilan'),'sélection de plusieurs ouvrages, quantités conservées')
+        attendu=J('''()=>{const C=chantierData(doscChoisis());return {cp:Object.values(C.cp).reduce((s,c)=>s+c.m2,0),bois:Object.values(C.bois).reduce((s,c)=>s+c.ml,0),n:C.plans.length}}''')
+        s.check(attendu['n']==3 and attendu['cp']>0 and attendu['bois']>0,'consolidation CP et bois uniquement sur la sélection')
+        independant=J('''()=>doscChoisis().reduce((o,p)=>{const d=canon(migr(p)),R=debit(d,d.forme==='voile'?voileGeo(d):null);o.cp+=R.reduce((s,r)=>s+r.m2,0)*p.nb;o.bois+=(R.bois||[]).reduce((s,r)=>s+r.q*r.L/1000,0)*p.nb;return o},{cp:0,bois:0})''')
+        s.check(abs(independant['cp']-attendu['cp'])<1e-8 and abs(independant['bois']-attendu['bois'])<1e-8,'quantités consolidées = débits individuels × nb, sans plan supplémentaire')
+        s.check(J('acChantier(doscChoisis()).every(x=>x[0])'),'auto-contrôle du récapitulatif existant appliqué à la sélection')
+        pg.fill('#doscQ','R05');s.check(pg.locator('#doscZ input[data-plan-uid]').count()==1,'recherche de référence dans le dossier')
+        pg.fill('#doscQ','');J('()=>{window.DOSLIST11=dxprCopie(doscChoisis());PRT.cp=false;PRT.mt=false;window.PRT11=JSON.stringify(PRT)}')
+        pg.click('#doscApercu');pg.wait_for_function('VIEW==="dossier"&&document.querySelector("[data-sommaire]")')
+        s.check(J('DOS.n')==3 and J('document.querySelectorAll("#pvA [data-plan]").length')==3,'dossier : un bloc par plan retenu')
+        texte=pg.inner_text('#pvA')
+        s.check('R01' in texte and 'R04' in texte and 'R05' in texte and 'R02' not in texte and 'R03' not in texte and 'R08' not in texte and 'EXCLU' not in texte,'plans non sélectionnés exclus des feuilles et du récapitulatif')
+        s.check('CHANFREIN — DÉCOUPES' in texte and 'FEUILLURE TRAVERSANTE' in texte and 'BON DE COMMANDE' in texte.upper(),'feuilles particulières et bon de commande conservés')
+        s.check('CP À DÉCOUPER' in texte and 'MONTAGE' in texte,'découpe et montage inclus même si les annexes générales sont désactivées')
+        s.check(J('JSON.stringify(PRT)===PRT11'),'réglages d’impression restitués après génération ciblée')
+        s.check(J('dosNumber()>3&&[...document.querySelectorAll("#pvA [data-som]")].every(e=>!e.textContent.includes("—"))'),'sommaire et pagination de la seule sélection')
+        s.check(J('JSON.stringify({P,PROF,LIBU,ENT})===PROJ11'),'aperçu du dossier sans mutation du projet')
+        J('window.__imprime=0;window.print=()=>{window.__imprime++};printDossier()');pg.wait_for_function('__imprime===1',timeout=60000)
+        s.check(J('JSON.stringify({P,PROF,LIBU,ENT})===PROJ11'),'impression via navigateur sans mutation du projet')
+        J('doscRetour()');s.check(J('formSnap()===FORM11'),'retour au formulaire : état exact restitué')
+        J('doscOuvrir();doscTout(true)');s.check(J('doscChoisis().length')==6,'tout sélectionner le chantier courant')
+        J('doscTout(false)');s.check(J('doscChoisis().length')==0,'tout désélectionner')
+        # Au-delà de 40 pages : vraies pièces et vrai MaxRects, contrôle de chaque ligne de découpe.
+        J('''()=>{closeModal();window.SAVE11=dxprCopie(P);window.FS11=formSnap();
+          const d=T.mk('para',{ppB:2000,ppH:1000,ppE:1000,iRef:'GRAND-11'});d.nb=20;d.uid='GRAND-11';
+          P=[d,{...dxprCopie(d),uid:'HORS-11',ref:'NON-RETENU-11',nb:1}];setForm(d);doscOuvrir();doscSelection(d.uid,true);
+          window.LARGE11=chantierData(doscChoisis());window.LARGE_ROWS11=Object.values(LARGE11.cp).flatMap(o=>o.nest.sheets.flatMap(sh=>sh.items.map(p=>[p.ftag,p.dims+(p.rot?' ↻':''),'X '+nf(p.x,0)+' · Y '+nf(p.y,0)])));
+          window.STATE11=JSON.stringify({P,PROF,LIBU,ENT,PRT});window.HIST11=chantierPages(doscChoisis()).html;
+        }''')
+        s.check(J('LARGE11.warn.length===0&&Object.values(LARGE11.cp).every(o=>!o.est&&!o.nest.fail.length)&&LARGE_ROWS11.length===120'),'grand dossier fictif : 120 pièces réellement imbriquées, aucune estimation')
+        pg.click('#doscApercu');pg.wait_for_function('VIEW==="dossier"')
+        grand=J('''()=>{const pages=[...el('pvA').querySelectorAll('.ps')].filter(p=>p.querySelector('.ps-rf')?.textContent.includes('RÉCAPITULATIF CHANTIER')&&p.querySelector('.ps-rf')?.textContent.includes('CP À DÉCOUPER'));
+          const rows=pages.flatMap(p=>[...p.querySelectorAll('.inf table tr')].map(r=>[...r.cells].map(c=>c.textContent)));
+          return {pages:pages.length,complet:JSON.stringify(rows)===JSON.stringify(LARGE_ROWS11),nb:rows.length,texte:el('pvA').textContent,
+            historique:HIST11.includes('Panneaux 99 à 100 / 100'),stable:STATE11===JSON.stringify({P,PROF,LIBU,ENT,PRT})}}''')
+        s.check(grand['pages']>40 and grand['complet'] and grand['nb']==120,'plus de 40 pages consolidées : toutes les références, dimensions et positions de découpe présentes')
+        s.check('Panneaux 99 à 100 / 100' in grand['texte'] and not grand['historique'],'derniers panneaux présents dans le dossier ciblé, sortie historique conservée')
+        s.check('NON-RETENU-11' not in grand['texte'] and J('DOS.n===1'),'grand dossier : plan non sélectionné exclu aussi du bon de commande et des découpes')
+        s.check(grand['stable'],'grand dossier : projet et réglages d’impression strictement inchangés')
+        J('doscRetour()')
+        # Pièce adversaire à l'entrée du placement : aucune simulation du résultat MaxRects.
+        J('''()=>{P[0].nb=1;window.NP11=nestPieces;nestPieces=function(d,R){const pcs=NP11(d,R),k=Object.keys(pcs)[0];
+          pcs[k].push({tag:'IMPOSSIBLE',ftag:d.ref+'-IMPOSSIBLE',w:3000,h:3000,poly:[[0,0],[3000,0],[3000,3000],[0,3000]],dims:'3000 × 3000',lock:false});return pcs};
+          doscOuvrir();doscSelection(P[0].uid,true);window.FAIL11=chantierData(doscChoisis());window.FAILMAT11=cpName(Object.values(FAIL11.cp)[0].cp);
+          window.STATE11=JSON.stringify({P,PROF,LIBU,ENT,PRT});window.VIEW11=VIEW;window.HTML11=el('pvA').innerHTML;
+        }''')
+        s.check(J('Object.values(FAIL11.cp).some(o=>o.nest.fail.some(p=>p.ftag==="GRAND-11-IMPOSSIBLE"))'),'vrai MaxRects : pièce fictive 3000 × 3000 non placée dans le panneau CP')
+        s.check(J('acChantier(doscChoisis()).some(x=>!x[0]&&x[1]==="Imbrication CP consolidée")'),'échec détecté également par l’auto-contrôle existant')
+        pg.click('#doscApercu');message=pg.inner_text('#doscErreur')
+        s.check('Dossier bloqué' in message and 'non placées' in message and 'GRAND-11-IMPOSSIBLE' in message and J('FAILMAT11') in message,'dossier refusé : référence de la pièce et matériau explicitement affichés')
+        s.check(J('VIEW===VIEW11&&el("pvA").innerHTML===HTML11&&STATE11===JSON.stringify({P,PROF,LIBU,ENT,PRT})'),'refus sans remplacement de l’aperçu, ni mutation du projet ou de l’impression')
+        s.check(J('''()=>{try{doscHtml(doscChoisis());return false}catch(e){return e.message.includes('GRAND-11-IMPOSSIBLE')}}'''),'entrée de rendu ciblé refuse aussi une imbrication incomplète')
+        J('''()=>{nestPieces=NP11;P[0].nb=300;doscTable();window.EST11=chantierData(doscChoisis());window.STATE11=JSON.stringify({P,PROF,LIBU,ENT,PRT})}''')
+        s.check(J('Object.values(EST11.cp).some(o=>o.est&&!o.nest)') and '≈' in pg.inner_text('#doscBilan'),'quantité estimée signalée distinctement dans l’aperçu des quantités')
+        pg.click('#doscApercu');message=pg.inner_text('#doscErreur')
+        s.check('Dossier bloqué' in message and 'quantité estimée' in message and 'GRAND-11' in message and 'plusieurs dossiers' in message,'estimation sans plan exact bloquée, avec références et conseil de répartition')
+        s.check(J('STATE11===JSON.stringify({P,PROF,LIBU,ENT,PRT})'),'refus de l’estimation sans mutation du projet ni des réglages')
+        J('''()=>{P[0].nb=1;doscTable();window.STATE11=JSON.stringify({P,PROF,LIBU,ENT,PRT});window.CPAGES11=chantierPages;
+          chantierPages=()=>{throw Error('Rendu fictif indisponible')}}''')
+        pg.click('#doscApercu');message=pg.inner_text('#doscErreur')
+        s.check('Dossier bloqué' in message and 'Rendu fictif indisponible' in message and 'plusieurs dossiers' in message,'erreur de rendu consolidé propagée : aucun dossier partiel présenté')
+        s.check(J('VIEW===VIEW11&&el("pvA").innerHTML===HTML11&&STATE11===JSON.stringify({P,PROF,LIBU,ENT,PRT})'),'erreur de rendu : aperçu, projet et réglages d’impression préservés')
+        J('()=>{chantierPages=CPAGES11}')
+        J('()=>{P=SAVE11;setForm(JSON.parse(FS11));doscOuvrir()}')
+        for theme in ['light','dark','auto']:
+            J('setTheme',theme);s.check(pg.is_visible('#doscZ'),'dossier utilisable avec thème '+theme)
+        pg.set_viewport_size({'width':1024,'height':768});s.check(pg.locator('#mdBody').bounding_box()['width']<=1024,'fenêtre utilisable en paysage 1024×768')
+        s.check(not net,'parcours sans requête réseau',str(net[:2]));s.check(not errs,'aucune erreur JavaScript',str(errs[:3]));b.close()
+
+if __name__=='__main__':
+    s=Suite('t_preparation_chantier')
+    try:t(s)
+    except Exception:s.check(False,'exception',traceback.format_exc()[-2500:])
+    sys.exit(0 if s.report() else 1)
