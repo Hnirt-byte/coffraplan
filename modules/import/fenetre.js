@@ -286,7 +286,8 @@ function dxnContoursLignes(){const D=DXI,NL=D.NL||[],C=D.C||[],liens=NL.map(()=>
 // Contours rattachés : celui choisi pour chaque ligne et toutes les vues désignées par son repère (preuves d'une même entrée :
 // pas de doublon dans « hors nomenclature ») ; sauf ligne au rapprochement rejeté ou sans contour choisi par l'utilisateur
 function dxnLinks(){const D=DXI;D.lk=new Set(D.NR.filter(r=>r.geo!=='').map(r=>+r.geo));
-  if(D.fmt==='pdf')D.NL.forEach(({L},k)=>{const r=D.NR[k];if(r.rej||r.geoT&&r.geo==='')return;(dxnAS(L).preuves||[]).forEach(i=>D.lk.add(i))})}
+  if(D.fmt==='pdf')D.NL.forEach(({L},k)=>{const r=D.NR[k];if(r.rej||r.geoT&&r.geo==='')return;(dxnAS(L).preuves||[]).forEach(i=>D.lk.add(i))})
+  if(D.fmt==='pdf'&&D.PR){dxprInventaire();if(DXC?.D===D)dxcRefresh();}}
 function dxnPane(){const D=DXI,NA=D.NA,pdf=D.fmt==='pdf';
   const vide=pdf&&!D.NL.length?`<div class="hint" style="margin:8px 0;border-left-color:var(--acct)"><b>Aucune nomenclature de réservations exploitable n'a été reconnue automatiquement.</b>
     Rien n'est inventé : aucune ligne n'est proposée. ${D.doc.pages.map(p=>`Page ${p.n} : ${esc(CPI.pdf.LIB_NAT[p.nature]||p.nature)}`).join(' · ')}.
@@ -741,6 +742,24 @@ async function dxsAnalyser(){const D=DXI,SP={},P=new Map(),liens=dxnContoursLign
       (SP[L.id]=SP[L.id]||[]).push(CPI.support.analyser({repere:L.repere,candidat:c,page:n,vue:v?{id:v.id,type:v.type,titre:v.titre}:null},env,
         {k:e?e.k:kv,echelle:ech,ligne:lg,cadres:cad,repris:rep,sag:typeof GEO!=='undefined'?GEO.sag:null}))})}
   D.SP=Object.fromEntries(Object.entries(SP).map(([id,R])=>[id,CPI.support.consolider(R,{sag:typeof GEO!=='undefined'?GEO.sag:null})]));return D.SP}
+// Une analyse reste liée à ses observations, pas seulement au repère de nomenclature.
+function dxsCourant(k){const D=DXI,a=D.SP?.[D.NL[k].L.id];if(!a||D.fmt!=='pdf')return a;
+  const r=D.NR[k],liens=dxnContoursLignes(),O=a.observations||(a.observation?[a.observation]:[]);
+  const valide=o=>!r.rej&&(o.contour?liens.liens[k].has(o.contour):!r.geoT&&!liens.liens[k].size&&!liens.partages[k].size);
+  if(O.length&&O.every(valide))return a;
+  const V=O.flatMap((o,i)=>!valide(o)?[]:a.observation?[a]:[{
+    repere:a.repere,observation:{page:o.page,contour:o.contour,forme_dessin:o.forme_dessin,vue:o.vue,...(o.reconstruction?{reconstruction:o.reconstruction}:{})},
+    support:o.support,ouverture:o.ouverture,provenance:o.provenance,correspondance_voile:o.correspondance_voile,
+    coffrage:{...o.coffrage,pistes:[],solution_proposee:'a_determiner',tolerance_mm:null},
+    preuves:(a.preuves||[]).filter(p=>p.vue===i+1).map(({vue,...p})=>p),incertitudes:o.incertitudes||[],validation_utilisateur_requise:true}]);
+  const courant=V.length?CPI.support.consolider(V,{sag:GEO.sag}):{ouverture:{},support:{type:'inconnu'},coffrage:{},provenance:{},preuves:[],incertitudes:[]};
+  const x=JSON.parse(JSON.stringify(courant));
+  // Les cotes orientées grâce au dessin dépendent aussi du contour ; les saisies et cotes indépendantes restent valables.
+  for(const [path,p] of Object.entries(a.provenance||{}))if(p.origine==='saisie'||p.source==='nomenclature'&&!/orientation par la mesure/.test(p.detail||'')){
+    const [g,n]=path.split('.');if(a[g]?.[n]!=null){x[g]=x[g]||{};if(x[g][n]==null){x[g][n]=a[g][n];x.provenance[path]=JSON.parse(JSON.stringify(p));}}
+  }
+  x.incertitudes.push('Support à réexaminer : observations sans rattachement actuel univoque ignorées. Relire les preuves ou relancer l’analyse du dessin.');return x;
+}
 // Identité stable d'un contour (page, forme, emprise à 0,5 pt) : une nouvelle analyse garde les corrections du même contour
 // (cotes, hauteur, forme, référence, coche, rattachement à une ligne) ; un contour disparu ne les transmet à aucun autre
 const dxrCle=c=>[c.source.page,c.type].concat(c.bbox.map(v=>Math.round(v*2)/2)).join('|');
@@ -790,7 +809,7 @@ function dxrJSON(){const D=DXI,q=x=>Math.round(x*100)/100,bx=b=>b?b.map(q):null,
     graphicalObservations:[],physicalOccurrences:[],associations:[],evidence:[],uncertainties:[],
     // phase 9A : support (voile droit, voile circulaire…) de chaque réservation associée, valeurs et provenances (jamais appliqué)
     cotesPdf:D.CP||{},
-    supports:Object.entries(D.SP||{}).map(([ligne,r])=>Object.assign({ligne},r)),
+    supports:D.NL.flatMap(({L},k)=>{const r=dxsCourant(k);return r?[Object.assign({ligne:L.id},r)]:[]}),
     // état de l'analyse des supports : une liste vide après un échec ne se confond pas avec une analyse réussie sans résultat
     supportsAnalyse:D.SPerr?{etat:'echec',erreur:D.SPerr}:D.SP?{etat:'reussie',lignes:Object.keys(D.SP).length}:{etat:'non_lancee'}};
   D.C.forEach((c,i)=>{const cl=c.statut==='a_confirmer'&&!D.lk.has(i)?dxrCl(i):null;

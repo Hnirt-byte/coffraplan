@@ -33,6 +33,29 @@ est respecté. Aucun changement du DXF. Le banc fictif utilise le véritable
 bouton historique pour créer deux ouvrages, avec puis sans ambiguïté de contour,
 et contrôle leurs dimensions, les entrées de l'adaptateur et les provenances.
 
+**Relecture — support et rattachement courant** : les observations de support
+sont vérifiées contre les liens PDF univoques avant réutilisation. Un contour
+retiré, rejeté, remplacé ou attribué à une autre ligne ne transmet plus son
+support, son épaisseur, son rayon ou ses preuves géométriques à la proposition.
+Les vues encore liées sont reconsolidées par le moteur existant. Les cotes
+indépendantes du tableau, les annotations encore attribuées et les saisies
+explicites restent disponibles ; une orientation déduite du dessin est aussi
+invalidée quand sa preuve disparaît. Le cache brut n'est pas détruit.
+
+Les brouillons sont actualisés à l'ouverture et avant calcul ; les changements
+de preuves invalident récapitulatifs, validation et sélection du lot concerné.
+La confirmation des mesures est à renouveler. Les autres lignes et leurs
+validations restent conservées. À sources inchangées, le dossier local reste
+intact, y compris ses preuves bloquant une qualification abusive de détail. Les exports d'analyse et de préparation ne
+réutilisent pas les observations périmées ; une ancienne préparation est
+revérifiée à la reprise, y compris les anciennes cotes retenues depuis une
+preuve d’analyse disparue. Pas de changement du DXF, du format projet ou du moteur
+de fabrication. Les tests fictifs passent par les sélecteurs, la validation,
+l'export/reprise et la création réels, avec des supports calculés par les modules
+existants. **Limite de ce correctif : les cinq PDF privés ne sont pas rejoués** ;
+Chromium et les campagnes automatisées ne qualifient pas l'impression physique
+ni la tenue mécanique.
+
 **Dossier de fabrication** : la ligne d'hypothèses des voiles lisait l'ancien
 champ `Dcuve`, absent des données courantes, et pouvait afficher un diamètre
 nul alors que la géométrie utilisait le bon diamètre. Elle lit maintenant

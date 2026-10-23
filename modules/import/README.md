@@ -1172,6 +1172,28 @@ provenance ; l'incertitude reste dans `a_verifier` et les doutes. Le sélecteur
 uniquement le PDF ; le parcours DXF reste inchangé.
 
 
+`dxsCourant` vérifie chaque `observation.contour` / `observations[].contour`
+de `DXI.SP` contre les liens courants de sa ligne. L'absence de contour partagé
+ne suffit pas à rendre une ancienne analyse valable. Les observations encore
+liées sont reconsolidées par `CPI.support.consolider` ; les preuves des vues
+écartées ne sont pas transmises. Les valeurs indépendantes de provenance
+`nomenclature` ou `saisie` restent disponibles, sauf l'orientation de cotes
+déduite d'une mesure devenue périmée. Les annotations indépendantes sont relues
+par le dossier de cotes existant. Le cache brut est conservé pour l'analyse ;
+les exports `dxrJSON` et `dxprPreparation` utilisent les résultats vérifiés.
+
+`dxprActualiser` partage le rafraîchissement des brouillons entre inventaire et
+calcul de proposition. Si les sources sont inchangées, le dossier local n’est
+pas remplacé et conserve ses preuves complémentaires. Un changement de sources invalide récapitulatif,
+validation et sélection, et demande de confirmer de nouveau les mesures. Les
+saisies brutes restent conservées ; une cote retenue provenant uniquement d'une
+analyse disparue est retirée si elle n'a pas été corrigée manuellement. Le choix
+de contour dans Nomenclature actualise aussi la fiche déjà ouverte. La reprise
+recalcule les propositions : les anciennes validations ne peuvent pas autoriser
+une création avec un support périmé. Aucun format de projet ni moteur de
+fabrication modifié.
+
+
 La ligne d'hypothèses **Faces cintrées** lit le champ courant `DcuveM` ; l'ancien
 champ `Dcuve` y produisait une fausse valeur nulle sans affecter la géométrie.
 Le banc de recette contrôle les hypothèses et les feuilles réellement générées

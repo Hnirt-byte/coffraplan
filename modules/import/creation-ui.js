@@ -14,7 +14,7 @@ function dxcCles(kind,i){const D=DXI,base=D.empreinte||D.nom,keys=[];
 }
 function dxcDeja(cles){return P.some(p=>((p.origineImport||{}).creationCles||[]).some(k=>cles.includes(k)))}
 function dxcAnalyse(kind,i){const D=DXI;
-  const partages=kind==='n'?dxnContoursLignes().partages[i]:new Set(),a=kind==='n'&&!partages.size&&D.SP&&D.SP[D.NL[i].L.id];
+  const partages=kind==='n'?dxnContoursLignes().partages[i]:new Set(),a=kind==='n'?dxsCourant(i):null;
   const r=a?JSON.parse(JSON.stringify(a)):{ouverture:{},support:{type:'inconnu'},provenance:{},preuves:[],incertitudes:[]};
   const O=r.ouverture,p=r.provenance;
   if(partages.size)r.incertitudes.push('Contour(s) proposé(s) pour plusieurs lignes : '+[...partages].join(', ')+'. Rattachement ambigu, ignoré pour le support et l’identité ; choisir le contour dans Nomenclature ou renseigner le support après relecture.');
@@ -65,8 +65,8 @@ function dxcOuvrir(kind,i){const D=DXI;if(!D||D.fmt!=='pdf'||D.rJob)return;
     <div class="mu">Chantier : ${esc(D.ch||'à saisir en haut de la fenêtre')} · Ouvrage : ${esc(D.ouv||'—')}</div>
     <details><summary>Données et preuves disponibles</summary><div>${esc(L?L.cellules.filter(Boolean).join(' · '):D.C[i].id)}</div>
       ${a.source?.entetesSource?.length?'<p data-entetes-source>En-têtes du tableau lus : '+a.source.entetesSource.map(c=>esc(c.titre||'colonne sans titre')).join(' · ')+'. Une lecture ambiguë ne confirme ni l’ordre des dimensions ni leur unité.</p>':''}
-      <ul>${(a.incertitudes||[]).map(x=>'<li>'+esc(x)+'</li>').join('')}</ul><pre style="white-space:pre-wrap">${esc(JSON.stringify(a.preuves,null,2))}</pre></details>
-    ${dxcCotesHTML()}
+      <ul id="dxcIncertitudes">${(a.incertitudes||[]).map(x=>'<li>'+esc(x)+'</li>').join('')}</ul><pre id="dxcPreuves" style="white-space:pre-wrap">${esc(JSON.stringify(a.preuves,null,2))}</pre></details>
+    <div id="dxcCotes">${dxcCotesHTML()}</div>
     <label><input type="checkbox" id="dxc_mesures" onchange="dxcRefresh()"> Je confirme les échelles utilisées pour ces mesures, dans chaque vue concernée (vérifier le calibrage dans l'aperçu).</label>
     <div class="g2">${select('type','Ouverture',[['','À choisir'],['rect','Rectangulaire'],['carre','Carrée'],['circ','Circulaire']],a.ouverture.type)}
     ${select('support','Support',[['inconnu','À confirmer'],['voile_droit','Voile droit'],['voile_circulaire','Voile circulaire']],a.support.type)}</div>
@@ -98,7 +98,7 @@ function dxcOuvrir(kind,i){const D=DXI;if(!D||D.fmt!=='pdf'||D.rJob)return;
 function dxcFermer(){dxprSauver();DXC=null;const z=el('dxcZ');if(z)z.remove()}
 function dxcSaisie(k,v){if(!DXC)return;delete DXC.arbitrages[k];DXC.saisiesBrutes[k]=v;DXC.saisie[k]=v.trim()===''?null:(parseCote(v,'mm')??NaN);if(k==='epChanfrein'&&DXC.modeles?.para?.cp?.j)DXC.modeles.para.cp.j.e=DXC.saisie[k];dxcRefresh()}
 function dxcChoix(k,v){if(!DXC)return;DXC.saisie[k==='geometrie'?'detail':k]=v;dxcRefresh()}
-function dxcProposition(X=DXC,lecture=null){const D=X&&X.D,lire=lecture||{case:C,val:S};if(!X||D!==DXI)return null;
+function dxcProposition(X=DXC,lecture=null){const D=X&&X.D,lire=lecture||{case:C,val:S};if(!X||D!==DXI)return null;dxprActualiser(X);
   const ch=profCh(D.ch)||{},ou=profOu(D.ch,D.ouv)||{},tol=ou.tolCourb!=null?ou.tolCourb:ch.tolCourb;
   const p=CPI.creation.proposer(X.analyse,Object.assign({},X.saisie,{traversee:lire.case('dxc_traversee'),confirmChanfrein:lire.case('dxc_confirmChanfrein')}),{mesuresConfirmees:lire.case('dxc_mesures'),tolerance:tol,toleranceSource:ou.tolCourb!=null?'profil ouvrage':'profil chantier',voileGeo,sag:GEO.sag});
   for(const [k,c] of Object.entries(X.retenues)){
@@ -148,10 +148,13 @@ function dxcControlePreuves(X,p,lire){
 }
 function dxcRefresh(){if(!DXC||DXC.D!==DXI||!el('dxcEtat'))return;
   DXC.revision=null;el('dxcResume').innerHTML='';const p=dxcProposition(),X=DXC;
+  el('dxcIncertitudes').innerHTML=(X.analyse.incertitudes||[]).map(x=>'<li>'+esc(x)+'</li>').join('');
+  el('dxcPreuves').textContent=JSON.stringify(X.analyse.preuves,null,2);
   for(const k of Object.keys(p.valeurs)){
     const e=el('dxc_'+k),o=el('dxcOrig_'+k);if(e&&!Object.hasOwn(X.saisie,k))e.value=p.valeurs[k]==null?'':String(p.valeurs[k]);
     if(o)o.textContent=(p.origines[k].origine||'inconnue')+(p.origines[k].detail?' · '+p.origines[k].detail:'');
   }
+  for(const k of ['type','support'])if(!Object.hasOwn(X.saisie,k))el('dxc_'+k).value=p[k]||'';
   const feu=p.detail==='feuillure';
   for(const k of ['fL','fH','fNiv'])el('dxc_'+k).parentElement.hidden=!feu;
   el('dxcQualification').hidden=!feu;

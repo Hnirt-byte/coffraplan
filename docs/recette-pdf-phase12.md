@@ -94,3 +94,18 @@ permet pas de revendiquer une importation sans intervention, une prise en charge
 de tous les détails, ni une qualification sur scans réels. Version v3.1 conservée.
 Impression physique, tenue mécanique, tablette réelle et navigateurs hors
 Chromium non vérifiés. Aucune autorisation de publication ou fusion implicite.
+
+
+## Correctif de relecture : dépendance du support aux contours
+
+Le contrôle des contours partagés ne couvrait pas le support calculé avant un
+retrait, rejet ou remplacement de rattachement. Le correctif vérifie les
+observations sources avant utilisation, conserve les vues et cotes indépendantes
+encore valables et invalide les validations concernées. Le banc fictif utilise
+les vrais modules de support, les sélecteurs de Nomenclature, les confirmations,
+l'export/reprise et les ouvrages effectivement créés ; aucun PDF privé n'y figure.
+
+Les cinq PDF privés n'ont pas été rejoués pour ce correctif. Les résultats de la
+recette réelle ci-dessus ne constituent donc pas une validation de ces nouvelles
+transitions sur les cinq documents. Impression physique, autres navigateurs et
+tenue mécanique restent hors validation.

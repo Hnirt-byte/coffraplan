@@ -3,7 +3,7 @@ Les PDF réels et leurs données ne font jamais partie de ce banc.
 """
 import json, sys, tempfile, traceback
 from playwright.sync_api import sync_playwright
-from lib import Suite, open_app
+from lib import Suite, open_app, HERE
 import preparation_fictif as PF
 import pdf_fictifs as PDF
 
@@ -129,9 +129,125 @@ def historique_pdf(s):
                     'ancien PDF : incertitude gardée dans les ouvrages créés')
             s.check(not errs,'ancien PDF : aucune erreur JavaScript',str(errs[:2]));b.close()
 
+def support_rattache(s):
+    """Supports calculés par les vrais modules ; modifications et confirmations par les contrôles réels."""
+    with tempfile.TemporaryDirectory() as tmp, sync_playwright() as pw:
+        for cas in ('retrait','rejet','autre','partage','saisie','multivue','cote_tableau','cote_liee'):
+            p=PDF.Page(1190,842)
+            PDF.tableau(p,30,780,[('Repère',65),('Désignation',180),('Largeur (mm)',100),('Hauteur (mm)',100),('Quantité',65)],
+                [['F11','Voile ép. 280 mm' if cas=='cote_tableau' else 'Réservation fictive','600','800','1'],
+                 ['F12','Réservation fictive','900','700','1'],['F13','Réservation indépendante','700','900','1']],titre='NOMENCLATURE DES RÉSERVATIONS')
+            chemin=PDF.ecrire(tmp+'/SUPPORT_RATTACHE_FICTIF.pdf',[p])
+            b,pg,errs=open_app(pw,width=1500);J=pg.evaluate
+            pg.add_script_tag(path=HERE+'/support_cas.js')
+            pg.click('#bDxi');pg.set_input_files('#dxiF',chemin);pg.wait_for_function('DXI&&DXI.fmt==="pdf"&&DXI.NL.length===3')
+            J('''cas=>{const D=DXI,courbe=['autre','partage'].includes(cas),S=[
+              courbe?SC.voileCirc({Ri:6000,t:200,w:600,ouverture:'rect',k:1}):SC.voileDroit({t:200,w:600,ouverture:'rect',k:1,x:500,y:200}),
+              SC.voileDroit({t:350,w:900,ouverture:'rect',k:1,x:500,y:450}),SC.voileDroit({t:280,w:700,ouverture:'rect',k:1,x:500,y:650})];
+              if(cas==='multivue')S.push(SC.voileDroit({t:200,w:600,ouverture:'rect',k:1,x:850,y:500}));
+              if(cas==='cote_liee')S[0].env.textes=[{id:'EP-FICTIVE',texte:'épaisseur voile = 200 mm',x:500,y:200,h:10}];
+              D.C=S.map((s,i)=>{const c=s.obs.candidat;c.id='SUPPORT-FICTIF-'+i;c.annot={};const P=c.geometrie.points;c.bbox=[Math.min(...P.map(p=>p[0])),Math.min(...P.map(p=>p[1])),Math.max(...P.map(p=>p[0])),Math.max(...P.map(p=>p[1]))];return c});
+              D.R=S.map(()=>({conf:false,forme:'',h:'',ref:'',cotes:''}));D.ana={};D.AS={};D.SP={};D.ch='CHANTIER FICTIF SUPPORT';D.ouv='VOILE';
+              const observation=i=>({page:1,x:D.C[i].centre[0],y:D.C[i].centre[1],texte:'F'+(11+i),source:'pdf',corrections:[],fiable:true,doutes:[],contour:D.C[i].id,cotes:[]});
+              D.NL.forEach(({L},k)=>{D.NR[k].geo=String(k);D.NR[k].cotes=dxnPre(k);D.AS[L.id]={statut:'trouvee',concordance:'partielle',options:D.C.map((_,c)=>({c})),reperes:[],preuves:[k],note:'',occurrences:[observation(k)]};
+                const indices=cas==='multivue'&&k===0?[0,3]:[k];if(indices.length>1)D.AS[L.id].occurrences.push(observation(3));
+                D.SP[L.id]=CPI.support.consolider(indices.map(i=>CPI.support.analyser(S[i].obs,S[i].env,{k:1,sag:GEO.sag,ligne:L})),{sag:GEO.sag});});
+              dxnLinks();dxnRefresh();dxiVue('n');window.supportInitial=JSON.stringify(D.SP);window.keySupport=k=>dxcCles('n',k)[0];
+            }''',cas)
+            def ouvrir(k):
+                pg.click('#dxiTabN');pg.locator(f'#dxnT tr[data-n="{k}"]').get_by_role('button',name='Proposer un coffrage').click()
+            def valider(courbe=False):
+                pg.check('#dxc_mesures');pg.check('#dxc_traversee')
+                pg.select_option('#dxc_solution','cintre' if courbe else 'simple')
+                if courbe:pg.select_option('#dxc_joues','par');pg.select_option('#dxc_largeurRef','commune')
+                pg.click('#dxprValider');pg.check('#dxcConfirme');pg.click('#dxprConfirmer')
+            ouvrir(2);valider();ouvrir(0)
+            s.check(J('DXC.analyse.support.epaisseur_mm')==(280 if cas=='cote_tableau' else 200),cas+' : support calculé, épaisseur initiale disponible')
+            if cas=='cote_liee':
+                j=J('DXC.dossier.candidats.findIndex(c=>c.id==="source-e")')
+                pg.locator('#dxcCible_'+str(j)).locator('..').get_by_role('button',name='Retenir cette cote').click()
+            if cas=='saisie':pg.select_option('#dxc_support','voile_droit');pg.fill('#dxc_e','260')
+            valider(cas in ('autre','partage'))
+            pg.click('#dxprTab');pg.check('#dxprT tr[data-prep="0"] input');pg.check('#dxprT tr[data-prep="2"] input');pg.click('#dxprLot')
+            s.check(J('!!DXI.PR.revision&&P.length===0'),cas+' : lot validé et récapitulé sans création')
+            avant=J('dxprPreparation()')
+            validation_independante=J('DXI.PR.rows[keySupport(2)].validation')
+            ouvrir(0);pg.click('#dxcRecap');s.check(J('!!DXC.revision'),cas+' : récapitulatif individuel prêt avant changement')
+            pg.click('#dxiTabN')
+            if cas=='partage':
+                pg.select_option('#dxnT tr[data-n="0"] [data-k=geo]','0')
+                pg.select_option('#dxnT tr[data-n="1"] [data-k=geo]','0')
+                s.check(J('dxnContoursLignes().conflits.size===2&&dxcAnalyse("n",0).support.type==="inconnu"&&dxcAnalyse("n",1).support.type==="inconnu"'),
+                        'partage : double rattachement explicite, supports périmés ignorés et conflit bloquant')
+            choix='rej' if cas=='rejet' else '1' if cas=='autre' else '3' if cas=='multivue' else ''
+            pg.select_option('#dxnT tr[data-n="0"] [data-k=geo]',choix)
+            s.check(J('!DXC.revision&&!DXC.validation&&!DXI.PR.revision&&!DXI.PR.selection.includes(keySupport(0))&&P.length===0'),
+                    cas+' : récapitulatifs, validation et sélection invalidés avant toute création')
+            s.check(J('DXI.PR.rows[keySupport(2)].validation')==validation_independante and J('dxcAnalyse("n",2).support.epaisseur_mm===280'),
+                    cas+' : autre ligne, support et validation indépendants conservés')
+            s.check(J('JSON.stringify(DXI.SP)===supportInitial'),cas+' : résultats bruts non détruits, filtrage des dépendances à la lecture')
+            pg.locator('#dxcZ').get_by_text('Données et preuves disponibles',exact=True).click()
+            s.check(pg.locator('#dxcIncertitudes').count()==1 and 'rattachement actuel' in pg.inner_text('#dxcIncertitudes') and 'À revalider' in pg.inner_text('#dxprValidation') and
+                    pg.inner_text('#dxcPreuves')==J('JSON.stringify(DXC.analyse.preuves,null,2)'),cas+' : preuves et statut de la fiche déjà ouverte actualisés')
+            attendu=200 if cas=='multivue' else 280 if cas=='cote_tableau' else None
+            a=J('dxcAnalyse("n",0)')
+            s.check(a['support'].get('epaisseur_mm')==attendu and a['support'].get('rayon_interieur_mm') is None and
+                    a['support']['type']==('voile_droit' if cas=='multivue' else 'inconnu'),cas+' : analyse actuelle sans support ni rayon du contour retiré')
+            s.check(any('rattachement actuel' in x for x in a['incertitudes']) and
+                    not any(x.get('contour')=='SUPPORT-FICTIF-0' for x in a.get('observations',[a.get('observation',{})])),
+                    cas+' : incertitude visible et observations périmées absentes de l’analyse utilisée')
+            if cas=='partage':s.check(J('dxnContoursLignes().liens[1].has("SUPPORT-FICTIF-0")&&dxcAnalyse("n",1).support.type==="inconnu"'),
+                    'attribution à F12 : aucun transfert du support calculé pour F11 et aucun repli sur le précédent contour de F12')
+            ouvrir(0);pg.check('#dxc_mesures')
+            valeur=260 if cas=='saisie' else attendu
+            s.check(J('dxcProposition().valeurs.e')==valeur and J('dxcProposition().valeurs.R===null'),
+                    cas+' : confirmer les mesures ne ressuscite aucune cote géométrique périmée')
+            s.check(J('dxcProposition().valeurs.L===600&&dxcProposition().valeurs.h===800'),cas+' : cotes indépendantes de nomenclature conservées')
+            if cas=='multivue':s.check(a.get('observation',{}).get('contour')=='SUPPORT-FICTIF-3' and a['preuves'],
+                    'multivue : observation encore liée et ses preuves préservées, sans dupliquer les formules métier')
+            if cas=='cote_tableau':s.check(a['provenance']['support.epaisseur_mm']['source']=='nomenclature',
+                    'cote écrite indépendante : épaisseur de nomenclature et provenance conservées')
+            if valeur is None:s.check(pg.is_disabled('#dxcRecap'),cas+' : création bloquée tant que les données nécessaires manquent')
+            # Export par le bouton réel ; les supports actifs exportés sont filtrés, même si le cache brut est conservé.
+            pg.click('#dxprTab')
+            with pg.expect_download() as dl:pg.get_by_text('Exporter la préparation',exact=True).click()
+            prepare=json.load(open(dl.value.path(),encoding='utf8'))
+            ligne=J('DXI.NL[0].L.id')
+            analyse_exportee=J('dxrJSON().supports.find(x=>x.ligne===DXI.NL[0].L.id).support')
+            s.check(analyse_exportee.get('epaisseur_mm')==attendu and analyse_exportee.get('rayon_interieur_mm') is None,
+                    cas+' : export d’analyse historique sans support périmé')
+            s.check(prepare['source']['SP'][ligne]['support'].get('epaisseur_mm')==attendu and
+                    prepare['source']['SP'][ligne]['support'].get('rayon_interieur_mm') is None,
+                    cas+' : export sans épaisseur ni rayon périmés')
+            # Reprendre aussi un ancien export : il contient encore l’ancien SP et d’anciennes validations.
+            ancien=json.loads(json.dumps(avant));ancien['source']['NR']=prepare['source']['NR']
+            fichier=tmp+'/REPRISE_SUPPORT_FICTIVE.json'
+            with open(fichier,'w',encoding='utf8') as f:json.dump(ancien,f)
+            pg.set_input_files('#dxprFichier',fichier);pg.wait_for_function('dxprBase().message.includes("reprise")')
+            s.check(J('P.length===0&&!DXI.PR.rows[keySupport(0)].validation&&dxcAnalyse("n",0).support.rayon_interieur_mm==null') and
+                    J('dxcAnalyse("n",0).support.epaisseur_mm??null')==attendu,
+                    cas+' : reprise ancienne, preuves filtrées et validation périmée refusée')
+            s.check(J('dxprCalcul(DXI.PR.rows[keySupport(0)]).p.valeurs.e')==(260 if cas=='saisie' else attendu),
+                    cas+' : reprise ancienne sans réutilisation d’une cote retenue dépendante du contour retiré')
+            with open(fichier,'w',encoding='utf8') as f:json.dump(prepare,f)
+            pg.set_input_files('#dxprFichier',fichier);pg.wait_for_function('dxprBase().message.includes("reprise")');ouvrir(0)
+            s.check(J('dxcProposition().valeurs.e')==(260 if cas=='saisie' else attendu),cas+' : export/reprise actuel sans réapparition de l’ancienne épaisseur')
+            pg.select_option('#dxc_support','voile_droit');pg.select_option('#dxc_solution','simple');pg.check('#dxc_traversee')
+            if cas=='multivue':pg.check('#dxc_mesures')
+            if valeur is None:pg.fill('#dxc_e','260')
+            if cas=='saisie':s.check(pg.input_value('#dxc_e')=='260' and J('DXC.saisiesBrutes.e==="260"'),
+                    'saisie explicite confirmée : valeur et provenance préservées après retrait et reprise')
+            pg.click('#dxcRecap');pg.check('#dxcConfirme');pg.click('#dxcCreer')
+            s.check(J('P.length===1&&P[0].forme==="para"&&P[0].ppB===600&&P[0].ppH===800') and
+                    J('P[0].ppE')==(valeur if valeur is not None else 260),cas+' : vraie création avec les seules données actuelles ou saisies explicitement')
+            s.check(J('P[0].origineImport.analyse.support.rayon_interieur_mm==null&&P[0].origineImport.proposition.valeurs.R===null&&P[0].origineImport.confirmation_utilisateur'),
+                    cas+' : provenance de création sans ancien rayon ni validation automatique')
+            J('dxcCreer()');s.check(J('P.length===1') and pg.is_disabled('#dxcRecap'),cas+' : double validation et nouvelle création de la même réservation refusées')
+            s.check(not errs,cas+' : aucune erreur JavaScript',str(errs[:2]));b.close()
+
 
 if __name__=='__main__':
     s=Suite('t_recette_pdf')
-    try:t(s);historique_pdf(s)
+    try:t(s);historique_pdf(s);support_rattache(s)
     except Exception:s.check(False,'exception',traceback.format_exc()[-2200:])
     sys.exit(0 if s.report() else 1)
