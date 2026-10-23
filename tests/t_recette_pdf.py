@@ -221,9 +221,15 @@ def support_rattache(s):
                     cas+' : export sans épaisseur ni rayon périmés')
             # Reprendre aussi un ancien export : il contient encore l’ancien SP et d’anciennes validations.
             ancien=json.loads(json.dumps(avant));ancien['source']['NR']=prepare['source']['NR']
+            if cas=='rejet':
+                ancien['source']['SP'][ligne]['__proto__']={'preuveSupport26':200}
+                ancien['source']['SP'][ligne]['provenance']['__proto__.preuveSupport26']={'origine':'saisie'}
             fichier=tmp+'/REPRISE_SUPPORT_FICTIVE.json'
             with open(fichier,'w',encoding='utf8') as f:json.dump(ancien,f)
             pg.set_input_files('#dxprFichier',fichier);pg.wait_for_function('dxprBase().message.includes("reprise")')
+            if cas=='rejet':
+                s.check(J('!Object.hasOwn(Object.prototype,"preuveSupport26")'),'reprise : clé de provenance hors des groupes métier ignorée sans modifier le prototype partagé')
+                J('delete Object.prototype.preuveSupport26')
             s.check(J('P.length===0&&!DXI.PR.rows[keySupport(0)].validation&&dxcAnalyse("n",0).support.rayon_interieur_mm==null') and
                     J('dxcAnalyse("n",0).support.epaisseur_mm??null')==attendu,
                     cas+' : reprise ancienne, preuves filtrées et validation périmée refusée')

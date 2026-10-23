@@ -49,7 +49,8 @@ validations restent conservées. À sources inchangées, le dossier local reste
 intact, y compris ses preuves bloquant une qualification abusive de détail. Les exports d'analyse et de préparation ne
 réutilisent pas les observations périmées ; une ancienne préparation est
 revérifiée à la reprise, y compris les anciennes cotes retenues depuis une
-preuve d’analyse disparue. Pas de changement du DXF, du format projet ou du moteur
+preuve d’analyse disparue. Les clés de provenance importées hors des groupes
+métier sont ignorées, sans modifier le prototype JavaScript partagé. Pas de changement du DXF, du format projet ou du moteur
 de fabrication. Les tests fictifs passent par les sélecteurs, la validation,
 l'export/reprise et la création réels, avec des supports calculés par les modules
 existants. **Limite de ce correctif : les cinq PDF privés ne sont pas rejoués** ;

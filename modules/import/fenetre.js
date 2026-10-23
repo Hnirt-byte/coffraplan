@@ -756,7 +756,7 @@ function dxsCourant(k){const D=DXI,a=D.SP?.[D.NL[k].L.id];if(!a||D.fmt!=='pdf')r
   const x=JSON.parse(JSON.stringify(courant));
   // Les cotes orientées grâce au dessin dépendent aussi du contour ; les saisies et cotes indépendantes restent valables.
   for(const [path,p] of Object.entries(a.provenance||{}))if(p.origine==='saisie'||p.source==='nomenclature'&&!/orientation par la mesure/.test(p.detail||'')){
-    const [g,n]=path.split('.');if(a[g]?.[n]!=null){x[g]=x[g]||{};if(x[g][n]==null){x[g][n]=a[g][n];x.provenance[path]=JSON.parse(JSON.stringify(p));}}
+    const [g,n]=path.split('.');if(!['ouverture','support','coffrage'].includes(g))continue;if(a[g]?.[n]!=null){x[g]=x[g]||{};if(x[g][n]==null){x[g][n]=a[g][n];x.provenance[path]=JSON.parse(JSON.stringify(p));}}
   }
   x.incertitudes.push('Support à réexaminer : observations sans rattachement actuel univoque ignorées. Relire les preuves ou relancer l’analyse du dessin.');return x;
 }
