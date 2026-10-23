@@ -270,6 +270,7 @@ body.pm .inf{font-size:calc(9.5px + 2pt);line-height:1.25}body.pm .inf .nt{font-
 <div class="cd"><div class="ct">📑 Plans (<span id="pc">0</span>)</div>
 <div style="display:flex;gap:6px;margin-bottom:8px"><input class="fi" id="plQ" type="search" placeholder="Rechercher : réf., ouvrage, forme…" aria-label="Rechercher un plan" oninput="this.dataset.fresh=1;event.stopPropagation();rnL()" onchange="event.stopPropagation()">
 <select class="fi" id="plS" style="width:auto" title="Ordre des plans dans chaque ouvrage" aria-label="Trier les plans" onchange="event.stopPropagation();try{localStorage.setItem('resaSort',this.value)}catch(e){}rnL()"><option value="i">Saisie</option><option value="r">Réf.</option><option value="f">Forme</option></select></div>
+<button class="btn bs bo" id="bPrepDossier" onclick="doscOuvrir()" style="width:100%;margin-bottom:8px">Préparer un dossier de fabrication</button>
 <div id="sl" style="max-height:260px;overflow-y:auto"></div>
 <button class="btn bs bo" onclick="openSeries()" style="width:100%;margin-top:8px" title="Créer plusieurs plans d'un coup depuis un tableau copié d'Excel">📋 Série de plans depuis un tableau</button>
 <button class="btn bs bo" onclick="dxiOpen()" style="width:100%;margin-top:8px" title="Lire les réservations d'un plan DXF ou PDF et créer les ouvrages confirmés">📥 Importer un plan</button>
@@ -5981,9 +5982,9 @@ function dosNumber(){const ps=[...document.querySelectorAll('#pvA .ps')],n=ps.le
     td.textContent=a<0?'—':(a===b?String(a+1):`${a+1} → ${b+1}`)});
   document.querySelectorAll('#pvA [data-dos-tot]').forEach(x=>x.textContent=String(n));return n}
 function dosFlush(){try{clearTimeout(_tm);syncVis();liveCalc();hisPush()}catch(e){}}
-function openDossier(){dosFlush();const ch=S('iCh','');let list=P.length?chantierPlans(ch):[];if(!list.length)list=[coll()];
-  VIEW='dossier';const r=dossierHtml(list);DOS={ch:r.ch,n:r.n};
-  el('pvA').innerHTML=`<div class="no-print" style="max-width:1150px;margin:0 auto 12px;display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap"><span style="margin-right:auto;color:#555;font-size:12px">Dossier : ${r.n} plan(s) — « Imprimer » puis « Enregistrer au format PDF »</span><button class="btn bs bo" style="background:#fff" onclick="VIEW='plan';prev()">✖ Retour au plan</button><button class="btn bs" id="bDosPrint" style="background:var(--accent);color:#fff" onclick="printDossier()">🖨 Imprimer / PDF</button></div>`+r.html;
+function openDossier(selection){dosFlush();const ch=S('iCh',''),cible=Array.isArray(selection);let list=cible?selection:P.length?chantierPlans(ch):[];if(!list.length){if(cible)return;list=[coll()]}
+  const retour=cible?{form:formSnap(),ei:EI,vue:VIEW}:null;VIEW='dossier';const r=cible?doscHtml(list):dossierHtml(list);DOS={ch:r.ch,n:r.n,retour};
+  el('pvA').innerHTML=`<div class="no-print" style="max-width:1150px;margin:0 auto 12px;display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap"><span style="margin-right:auto;color:#555;font-size:12px">Dossier : ${r.n} plan(s) — « Imprimer » puis « Enregistrer au format PDF »</span><button class="btn bs bo" style="background:#fff" onclick="doscRetour()">✖ Retour au plan</button><button class="btn bs" id="bDosPrint" style="background:var(--accent);color:#fff" onclick="printDossier()">🖨 Imprimer / PDF</button></div>`+r.html;
   try{declutter(el('pvA'))}catch(e){}try{bwApply(el('pvA'))}catch(e){}dosNumber();glSheets(el('pvA'));return r.n}
 function printDossier(){if(VIEW!=='dossier')openDossier();const bad=fitPrint();dosNumber();
   if(bad.length)toast(`Feuille(s) ${bad.join(', ')} : texte resserré au minimum`);
@@ -6003,8 +6004,8 @@ window.addEventListener('afterprint',()=>{if(VIEW==='dossier'){if(DOS&&DOS.t0){d
 // ====== v17 — LOT 7 : AUTO-CONTRÔLE DU RÉCAPITULATIF CHANTIER ======
 // Plans pris en compte, imbrication consolidée (dans le panneau, trait de scie, toutes pièces placées, surfaces),
 // débit des barres (toutes les pièces débitées, longueurs de barre du commerce), bon de commande, lisibilité et valeurs des feuilles.
-function acChantier(){
-  const ch=S('iCh',''),list=chantierPlans(ch);if(!list.length)return null;
+function acChantier(selection){
+  const ch=S('iCh',''),list=Array.isArray(selection)?selection:chantierPlans(ch);if(!list.length)return null;
   const out=[],ok=(t,m)=>out.push([true,t,m||'']),ko=(t,m)=>out.push([false,t,m||'']),C=chantierData(list);
   C.warn.length?ko('Plans pris en compte',C.warn.join(' · ')):ok('Plans pris en compte',C.plans.length+' plan(s), '+C.plans.reduce((s,p)=>s+p.nb,0)+' exemplaire(s)');
   // imbrication consolidée

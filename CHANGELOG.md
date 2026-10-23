@@ -3,6 +3,53 @@
 Détail complet de chaque version (demandes, écarts voulus, tests, non validé) : `docs/historique/HANDOFF_<version>.md`.
 Chaque version est un tag git (`git diff v2.4 v2.5 -- app/` pour voir les changements).
 
+## Phase 11 — préparation de chantier (v3.1 conservée)
+
+**Fait** : onglet Préparation des réservations PDF, inventaire par identité de
+ligne/contour sans nouvel OCR, bilan, sept statuts, filtres, preuves et navigation.
+Brouillons individuels conservés entre fiches, réglages CP/montage repris des
+modèles/profils existants, sans propagation de cotes géométriques. Références
+proposées conservant les zéros du repère source, quantité à confirmer.
+
+Validation individuelle par le récapitulatif existant, sans création. Empreinte
+recalculée et invalidée après correction/changement de réglage ou de preuves.
+Sélection explicite puis récapitulatif et confirmation de lot ; recalcul de
+chaque proposition, contrôles 9C–10C, identités PDF et collisions de références
+avant l'ajout tout ou rien. Double clic sans doublon. Annulation par UID et
+contenu, refusée si un ouvrage ajouté a changé ; autres ouvrages conservés.
+
+**Réemploi** : proposition/préparation, qualification des preuves, fabrication,
+profils, références, UID et sauvegarde existants. L'ancien import PDF de boîtes
+reste disponible mais appelle les mêmes contrôles de contradictions/détails :
+pas de contournement des qualifications par cette voie. DXF inchangé. Les
+moteurs géométriques, algorithmes de débit, découpe et fabrication ne changent pas.
+
+**Brouillons** : export/reprise JSON local de préparation, SHA-256 du PDF exigé,
+preuves et corrections conservées, validations recalculées, identités déjà
+créées actualisées, aucune sélection automatique. Aucun PDF incorporé, aucun
+ajout dans P lors de la reprise. Ancienne analyse sans empreinte non assimilée
+à une préparation confirmée. Pas de nouvelle base ; projet v10 inchangé.
+
+**Dossier ciblé** : sélection des plans enregistrés du chantier courant par
+ouvrage/référence. Réemploi de chantierData, dossierHtml et des feuilles
+existantes, avec quantités nb, garde, sommaire paginé, découpe, montage, fiches
+atelier selon réglage, feuilles feuillure/chanfrein, commande et consolidation
+de la seule sélection. Aperçu des quantités/alertes, impression navigateur,
+retour au formulaire sans mutation du projet. Les options générales sont rétablies.
+
+**Tests** : banc fictif t_preparation_chantier et scénario à huit entrées, contrôles
+atomiques/identités, preuves, reprise, quantités et dossier. Aucune assertion,
+référence ou génération historique modifiée. Résultats exacts des campagnes et
+des 1 090 comparaisons AVAP dans la PR. README et manuel mis à jour.
+
+**Limites** : exporter le brouillon avant de quitter ; annulation du dernier lot
+limitée à la séance et aux ouvrages non modifiés, profils conservés. Erreurs de
+stockage gérées par le mécanisme existant, pas de garantie d'écriture en cas de
+quota/conflit. Données ambiguës à confirmer et géométries hors périmètre bloquées.
+Pas de validation mécanique, d'impression physique, de tablette réelle ou de
+navigateurs hors Chromium. Aucun document réel publié, configuration Cloud,
+version et enveloppe projet inchangées.
+
 ## Phase 10C — fabrication du chanfrein 45° (v3.1 conservée)
 
 **Fait** : mannequin ouvert sur A et B, un seul coin vertical GA / DA / DB / GB,

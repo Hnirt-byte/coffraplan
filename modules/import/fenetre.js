@@ -140,7 +140,7 @@ function dxiEval(){const D=DXI;if(!D.M)dxiModels();const hc=parseCote(D.hCom,'mm
   Lr.forEach(r=>{if(n[r.x.plan.ref]>1){r.x=null;r.st='er';r.msg='référence en double dans l\'import'}})}
 const dxiReady=()=>DXI?DXI.R.map((r,i)=>i).filter(i=>DXI.R[i].conf&&DXI.R[i].x&&dxiVis(i)):[];
 const dxnReady=()=>DXI&&DXI.NR?DXI.NR.map((r,k)=>k).filter(k=>DXI.NR[k].conf&&DXI.NR[k].x):[];
-function dxiBtn(){const b=el('dxiGo');if(!b)return;const n=dxiReady().length+dxnReady().length;b.disabled=!n;b.textContent=`Créer les ouvrages sélectionnés (${n})`}
+function dxiBtn(){const b=el('dxiGo');if(!b)return;if(DXI?.fmt==='pdf'&&DXI.vue==='prep'){b.disabled=!!DXI.rJob;b.textContent='Vérifier le lot préparé';return;}const n=dxiReady().length+dxnReady().length;b.disabled=!n;b.textContent=`Créer les ouvrages sélectionnés (${n})`}
 
 function dxiHead(){const D=DXI,d=D.doc,pdf=D.fmt==='pdf';if(!el('dxiN'))return;
   const nO=D.NL.filter(x=>x.N.ocr).length;
@@ -171,7 +171,7 @@ function dxiRender(){const D=DXI,Z=el('dxiZ');if(!Z||!D)return;const d=D.doc,pdf
   <div class="dxi-t"><table class="ser" id="dxiT"><thead><tr><th title="Confirmer">Créer</th><th>#</th><th>Entité DXF</th><th>Calque</th><th>Forme</th><th>Cotes (mm)</th><th>h (mm)</th><th>Réf.</th><th>Statut</th></tr></thead><tbody></tbody></table></div></div></div>
   <details id="dxiNP"><summary></summary><table class="ser"><thead><tr><th>#</th><th>Entité DXF</th><th>Calque</th><th>Raison</th></tr></thead><tbody></tbody></table></details></div>
   <div class="hint" id="dxiP" style="margin:8px 0 0"></div>`;
-  dxiRows();if(D.NL.length||pdf){dxnRows();dxiVue(D.vue)}if(pdf)dxoGrille()}
+  dxiRows();if(D.NL.length||pdf){dxnRows();dxiVue(D.vue)}if(pdf){dxoGrille();dxprAcces()}}
 const dxnOu=N=>N.page?'page '+N.page:N.espace==='objet'?'espace Objet':'présentation « '+esc(N.presentation||'?')+' »';
 function dxiHph(){const v=DXI.hCom.trim();document.querySelectorAll('#dxiT input[data-k=h],#dxnT input[data-k=h]').forEach(e=>{e.placeholder=v||'à saisir'})}
 // Liste, aperçu et bilan des lignes visibles (calques cochés) ; cotes affichées selon l'unité choisie
@@ -231,13 +231,13 @@ function dxiRefs(L){const used=new Set(P.map(p=>dxiKey(p)));L.forEach(d=>{if(d.r
   const seen=new Set(P.map(p=>dxiKey(p)));return L.every(d=>!seen.has(dxiKey(d))&&(seen.add(dxiKey(d)),true))}
 
 // Création : lignes confirmées et acceptées par le moteur seulement ; ajoutées à la suite (rien n'est remplacé), annulables
-function dxiCreate(){const D=DXI;if(!D)return;dxiEval();const L=dxiReady(),LN=dxnReady();if(!L.length&&!LN.length)return dxiBtn();
+function dxiCreate(){const D=DXI;if(!D)return;if(D.fmt==='pdf'&&D.vue==='prep')return dxprRecap();dxiEval();const L=dxiReady(),LN=dxnReady();if(!L.length&&!LN.length)return dxiBtn();
   const uids=[],today=new Date().toISOString().slice(0,10),ind=String(D.ind||'').trim().toUpperCase()||null;
   // lignes de nomenclature d'abord (ordre du tableau), puis géométries ; provenance de la ligne (textes sources, choix, géométrie rattachée)
   const N=LN.map(k=>{const r=D.NR[k],d=JSON.parse(JSON.stringify(r.x.plan));d.date=today;d.origineImport=Object.assign(dxnProv(k),{indice:ind,date:today});return d})
     .concat(L.map(i=>{const x=D.R[i].x,d=JSON.parse(JSON.stringify(x.plan));d.date=today;
     d.origineImport=Object.assign(JSON.parse(JSON.stringify(x.provenance)),{indice:ind,date:today});return d}));
-  if(D.fmt==='pdf'){const keys=LN.map(k=>dxcCles('n',k)).concat(L.map(i=>dxcCles('g',i)));
+  if(D.fmt==='pdf'){const erreurs=dxprControleHistorique(LN,L);if(erreurs.length){toast('Création bloquée : '+erreurs.join(' ; ')+' — ouvrir Préparation des réservations');return;}const keys=LN.map(k=>dxcCles('n',k)).concat(L.map(i=>dxcCles('g',i)));
     const seen=new Set();if(keys.some(dxcDeja)||keys.flat().some(k=>seen.has(k)||(seen.add(k),false))){toast('Réservation déjà créée ou sélectionnée deux fois : aucun ouvrage ajouté');return;}
     N.forEach((d,i)=>d.origineImport.creationCles=keys[i]);}
   // dernière vérification avant de toucher aux plans enregistrés : aucune référence en double, sinon rien n'est créé
@@ -296,8 +296,8 @@ function dxnPane(){const D=DXI,NA=D.NA,pdf=D.fmt==='pdf';
     :`<svg id="dxnV" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Correspondances possibles dans le dessin"></svg>
     <div class="hint" style="margin:6px 0 0">Schéma des géométries proposées pour les lignes (espace Objet) ; points : repères trouvés dans le dessin. Ligne sélectionnée : propositions en orange, un clic en choisit une.</div></div>`}`}
 function dxiVue(v){const D=DXI;if(!D||!el('dxiPN'))return;D.vue=v;
-  [['n','dxiPN','dxiTabN'],['g','dxiPG','dxiTabG'],['p','dxiPP','dxiTabP']].forEach(([k,z,t])=>{if(el(z))el(z).style.display=v===k?'':'none';if(el(t)){el(t).classList.toggle('on',v===k);el(t).setAttribute('aria-selected',v===k)}});
-  if(v==='g')dxiRows();if(v==='p')dxpPage()}
+  [['n','dxiPN','dxiTabN'],['g','dxiPG','dxiTabG'],['p','dxiPP','dxiTabP'],['prep','dxprZ','dxprTab']].forEach(([k,z,t])=>{if(el(z))el(z).style.display=v===k?'':'none';if(el(t)){el(t).classList.toggle('on',v===k);el(t).setAttribute('aria-selected',v===k)}});
+  if(v==='g')dxiRows();if(v==='p')dxpPage();if(el('dxprZ'))el('dxprZ').hidden=v!=='prep';dxiBtn()}
 function dxnRows(){const D=DXI,T=el('dxnT');if(!T)return;
   T.tBodies[0].innerHTML=D.NL.map(({N,L},k)=>{const r=D.NR[k],det=N.colonnes.map((c,j)=>L.cellules[j]?`${(c.titre||'colonne '+(j+1)).replace(/\n/g,' ')} : ${L.cellules[j].replace(/\n/g,' ')}`:'').filter(Boolean).join('\n'),
       ds=[L.description,L.type&&'Type : '+L.type,L.observations&&'Obs. : '+L.observations,L.lot&&'Lot : '+L.lot].filter(Boolean).join('\n');

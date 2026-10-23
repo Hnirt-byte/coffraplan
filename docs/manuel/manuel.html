@@ -535,7 +535,7 @@ Les indices graphiques ne prouvent pas la nature exacte du détail.</div>
 l'ouvrage, dans la sauvegarde et l'export JSON du projet. Pour une réservation bloquée,
 utiliser <b>Analyse (JSON)</b> avant de fermer l'import : ce dossier conserve aussi
 les cotes et les particularités signalées, sans créer d'ouvrage.</p>
-<h3>Feuillure périphérique et chanfrein à étudier</h3>
+<h3>Feuillure périphérique et chanfrein 45°</h3>
 <p>Dans <b>Géométrie particulière</b>, choisir <b>Feuillure périphérique rectangulaire</b>
 pour une ouverture rectangulaire traversant normalement un voile droit. Renseigner largeur,
 hauteur, épaisseur du voile, largeur et profondeur de feuillure, et départ. Les preuves PDF
@@ -597,6 +597,70 @@ sont pas validés par ce calcul. D13 n'est pas annoncé reproduit à l'identique
 
 
 <!-- ======================= 8 ======================= -->
+<h2>7.23 Préparation des réservations PDF et création par lot</h2>
+<p>Dans l'import PDF, ouvrir <b>Préparation des réservations</b>. Le tableau rassemble
+les lignes de nomenclature et les contours non rattachés, avec page, tableau/vue,
+forme, cotes, support, détail et preuves. Les contours rattachés avec preuve fiable
+ne sont pas comptés deux fois ; deux lignes homonymes restent distinctes.
+Filtrer par statut, page, tableau/vue, référence, forme ou créées/restantes.</p>
+<table><tr><th>Statut</th><th>Action</th></tr>
+<tr><td>À examiner</td><td>Relire l'identité, les preuves et les contradictions.</td></tr>
+<tr><td>À compléter</td><td>Renseigner les cotes ou choix manquants.</td></tr>
+<tr><td>Prêt à confirmer</td><td>Le calcul est possible ; la proposition n'est pas encore validée.</td></tr>
+<tr><td>Validé pour le lot</td><td>Proposition relue et confirmée, à sélectionner explicitement.</td></tr>
+<tr><td>Créé</td><td>Ouvrage déjà présent dans le projet, non recréable depuis cette identité PDF.</td></tr>
+<tr><td>Non pris en charge</td><td>La variante reste bloquée, sans remplacement par un rectangle.</td></tr>
+<tr><td>Ignoré</td><td>Réservation écartée volontairement ; elle peut être rétablie.</td></tr></table>
+<ol><li>Ouvrir <b>Préparer / modifier — preuves</b>, compléter et arbitrer les données.
+Les boutons Précédente, Suivante et Prochaine à compléter conservent les corrections de chaque fiche.</li>
+<li>Vérifier les réglages <b>CP et montage</b>, repris du formulaire ou du profil.
+La reprise des nouveaux réglages communs dans un brouillon existant est explicite.
+Aucune épaisseur de voile, hauteur, rayon ou particularité n'est recopiée vers une autre réservation.</li>
+<li>Choisir <b>Valider cette proposition pour le lot</b>, relire le récapitulatif,
+cocher la confirmation puis confirmer la validation. Aucun ouvrage n'est encore créé.
+Toute correction ultérieure invalide cette validation.</li>
+<li>Revenir au tableau, cocher les seules propositions validées voulues, puis
+<b>Créer les ouvrages validés</b>. Relire le récapitulatif global et confirmer le lot.
+Une réservation périmée, une identité déjà créée ou une collision de référence bloque tout le lot.</li>
+<li>Après réussite, le nombre réel d'ouvrages ajoutés est affiché. <b>Annuler le dernier lot créé</b>
+retire seulement ces ouvrages, si aucun n'a été modifié ou retiré. Les autres plans
+et les profils sont conservés. Cette annulation est disponible pendant la séance.</li></ol>
+<p>La création individuelle reste disponible. L'ancien import de boîtes depuis
+la nomenclature conserve ses usages, mais refuse aussi les contradictions et
+les détails non qualifiés : les traiter dans la préparation. Le DXF est inchangé.</p>
+<div class="warn"><b>Avant d'interrompre le travail</b>Utiliser <b>Exporter la préparation</b>.
+Le JSON local contient propositions, preuves, corrections, réglages et validations,
+sans incorporer le PDF ni ajouter d'ouvrage au projet. Pour reprendre, ouvrir le
+PDF original puis <b>Reprendre une préparation</b>. Son empreinte SHA-256 doit correspondre ;
+le nom seul ne suffit pas. Les validations sont recalculées et aucune ligne n'est
+sélectionnée d'office. Une ancienne analyse sans empreinte ne vaut pas préparation confirmée.</div>
+
+<h2>7.24 Dossier de fabrication des plans sélectionnés</h2>
+<p>Dans la carte <b>Plans</b>, ouvrir <b>Préparer un dossier de fabrication</b>.
+Les plans du chantier courant sont regroupés par ouvrage. Rechercher une référence,
+sélectionner un ouvrage entier ou utiliser Tout sélectionner / Tout désélectionner.
+Un plan reste une ligne ; sa quantité <b>nb</b> est conservée.</p>
+<p>Le récapitulatif indique ouvrages, plans, exemplaires, panneaux et surface CP,
+bois et alertes de fabrication pour la seule sélection. Un plan incohérent bloque
+la génération. L'aperçu comprend garde, sommaire paginé, plans, débit, découpe,
+montage, fiches atelier selon le réglage existant, feuilles particulières et bon
+de commande consolidé. Les plans non sélectionnés n'entrent pas dans les calculs.</p>
+<p>Choisir <b>Imprimer / Enregistrer au format PDF</b> dans le navigateur ; il ne
+s'agit pas d'un téléchargement PDF natif. Le retour au plan restitue le formulaire
+antérieur. La sélection et l'aperçu ne modifient pas les ouvrages enregistrés.</p>
+<div class="note"><b>Exemple entièrement fictif</b>R01 est complète ; compléter
+l'épaisseur de R02 et arbitrer les deux cotes de R03. Qualifier la feuillure R04,
+puis le chanfrein GA R05 avec ses coupes et son CP. R06 (autre orientation) et
+R07 (plusieurs sections) restent bloquées ; R08, déjà créée, n'est pas recréée.
+Valider R01 à R05, les sélectionner et confirmer leur création groupée. Depuis
+la liste des plans, choisir seulement R01, R04 et R05 : le dossier imprimable et
+la commande excluent R02, R03 et R08.</div>
+<div class="warn"><b>Contrôles restant à faire</b>Les cotes ambiguës restent à
+confirmer et les variantes hors périmètre restent bloquées. La validation du
+logiciel ne remplace pas les contrôles de fabrication, de fixation et de tenue
+mécanique sur chantier. Impression réelle, tablette réelle et navigateurs hors
+Chromium ne sont pas validés automatiquement.</div>
+
 <h1 class="chap">8. Raccourcis clavier</h1>
 <p>Sur Mac, <kbd>⌘</kbd> remplace <kbd>Ctrl</kbd>. Le bouton « ? » de la barre (ou la touche <kbd>?</kbd> hors saisie) affiche cette liste dans l'application.</p>
 <table><tr><th style="width:55mm">Raccourci</th><th>Action</th></tr>

@@ -966,3 +966,149 @@ Le banc 10B conserve l'étude `vers_vide`, la feuillure et ses assertions.
 Le générateur historique et les comparaisons avant/après restent inchangés.
 D13 n'est pas annoncé reproduit. Essais physiques, vrais AutoCAD, Firefox/Safari
 et impression réelle non vérifiés.
+
+## Phase 11 — préparation des réservations et dossier ciblé
+
+`preparation-ui.js` étend la fenêtre d'import et les propositions 9C–10C. Il ne
+relance pas l'OCR et n'ajoute aucun calcul de fabrication. L'inventaire utilise
+les lignes `NL`, les contours existants, les rapprochements et `dxcCles` : une
+ligne homonyme reste distincte, les contours rattachés avec preuve fiable ou
+choix explicite ne sont pas comptés une seconde fois. Les associations incertaines
+restent à examiner. Le repère affiché et la référence proposée gardent les zéros
+du texte source ; `dxcRep` reste la normalisation des rapprochements.
+
+### Tableau et fiches
+
+L'onglet **Préparation des réservations** présente les références, pages,
+tableaux/vues, formes, cotes connues et manquantes, supports, détails et preuves.
+Filtres : statut, page, tableau/vue, référence, forme, créées/restantes. Le bilan
+compte les identités, pas les observations graphiques.
+
+Les sept statuts sont : À examiner, À compléter, Prêt à confirmer, Validé pour
+le lot, Créé, Non pris en charge, Ignoré. Un résultat calculable n'est jamais une
+validation utilisateur. Les actions de navigation (précédente, suivante,
+prochaine à compléter, retour au tableau) gardent chaque brouillon.
+
+`dxcNouveau` initialise le dossier de preuves existant. `dxcProposition` et
+`dxcPreparer` acceptent aussi un brouillon et ses valeurs de formulaire sans
+changer le formulaire principal. La fiche individuelle et le lot appellent les
+mêmes `CPI.creation.proposer/preparer/modele`, `migr`, `canon`, `limErr`, `checks`,
+`voileGeo`, et les contrôles feuillure 10B / chanfrein 10C. La fonction
+`dxcControlePreuves` est commune : contradictions, qualifications des détails et
+preuves attribuées restent bloquantes tant qu'elles ne sont pas traitées.
+
+Le chantier et l'ouvrage sont ceux de la fenêtre. Les modèles de fabrication
+proviennent de `dxiModels`, du formulaire et des profils existants ; leur copie
+est conservée par proposition. CP et montage peuvent être corrigés dans la
+fiche. L'actualisation des réglages communs ne remplace pas silencieusement les
+réglages des brouillons : reprise explicite dans chaque fiche. Les modèles
+personnels se choisissent dans le formulaire avant l'import. Aucune épaisseur
+de voile, hauteur, rayon, échelle ou particularité géométrique n'est propagée.
+Les exemplaires reprennent la quantité de la ligne lorsqu'elle existe, sinon
+1 exemplaire à confirmer ; une quantité nulle/illisible est bloquante.
+
+**Valider cette proposition pour le lot** affiche le récapitulatif existant et
+requiert une case de confirmation puis une validation explicite. Aucun ajout à
+`P`. Le brouillon conserve cotes initiales/retenues, corrections, arbitrages,
+choix, réglages, preuves et une empreinte déterministe de l'état relu. Une
+modification des données, du contexte, des réglages ou des preuves invalide cet
+état. L'empreinte n'est pas une signature de sécurité d'un document externe.
+
+### Lot tout ou rien et coexistence des imports
+
+Aucune ligne n'est présélectionnée, même après reprise d'un fichier. Seules les
+propositions validées peuvent être cochées. **Créer les ouvrages validés**
+affiche références, dimensions, détails, modèle, CP, montage, exemplaires et
+alertes. Une seconde confirmation explicite précède l'ajout.
+
+`dxprLot` reconstitue l'inventaire et les preuves, recalcule chaque proposition,
+compare son empreinte à la validation et contrôle les identités PDF déjà créées
+ou répétées. `dxiRefs` travaille sur les copies préparées pour réserver les
+références automatiques et refuser les collisions avec le projet ou dans le lot.
+Si une ligne échoue ou a changé depuis le récapitulatif, aucun plan n'est ajouté.
+Les autres brouillons restent disponibles.
+
+Après réussite, les plans reçoivent leurs UID et `dxcOrigine` conserve preuves,
+corrections, confirmation et `creationCles`. L'ajout est effectué ensemble en
+mémoire ; `profFromPlans` et la sauvegarde existante enregistrent le projet et
+ses profils. Les erreurs de stockage restent signalées par les mécanismes
+IndexedDB existants ; l'ajout en mémoire ne garantit pas une écriture disque en
+cas de quota/conflit. Le double clic ne peut pas rejouer le lot consommé.
+
+**Annuler le dernier lot créé** compare les ouvrages par UID et par contenu.
+Si l'un a été modifié ou retiré, l'annulation est refusée. Sinon seuls ces UID
+sont retirés ; les autres plans sont préservés. Les profils créés sont conservés.
+L'annulation est disponible dans cette séance de préparation, pas après reprise
+d'un fichier de brouillon.
+
+L'ancien import PDF de boîtes conserve ses usages et sa confirmation historique.
+Avant toute création, il appelle désormais `dxcControlePreuves` : une
+contradiction ou un détail particulier ne peut pas passer par cette voie pour
+éviter la qualification 10A–10C. Le message oriente vers la préparation pour
+corriger/qualifier un mannequin traversant. La création individuelle reste
+accessible et utilise les mêmes propositions et origines que le lot. Le bouton
+historique appelle le récapitulatif du lot lorsque l'onglet Préparation est actif.
+Le parcours DXF est inchangé.
+
+### Export et reprise locaux
+
+**Exporter la préparation** produit `coffraplan-preparation-pdf`, version 1 :
+empreinte SHA-256 du PDF, nom, contexte, analyse normalisée, identités, preuves,
+corrections, arbitrages, réglages, statuts d'ignorance et empreintes de validation.
+Ni PDF complet, ni image de page, ni base64 du document n'y sont stockés. Aucun
+brouillon n'entre dans `P` ; le projet reste en enveloppe v10.
+
+Pour **Reprendre une préparation**, ouvrir d'abord le PDF original puis choisir
+le JSON. La correspondance est vérifiée sur le SHA-256 des octets, pas le nom.
+Les références de pages, contours et identités sont contrôlées ; les validations
+sont recalculées et celles devenues incohérentes sont invalidées. Les identités
+déjà présentes dans le projet passent à Créé. Le chargement ne crée aucun ouvrage
+et ne restaure aucune sélection de lot.
+
+L'export d'analyse historique reste disponible. Une ancienne analyse dépourvue
+d'empreinte vérifiable n'est pas acceptée comme préparation confirmée : son nom
+ne suffit pas à prouver qu'elle concerne le PDF ouvert. Reprendre ses données
+avec le PDF, puis exporter une préparation au nouveau format.
+
+### Dossier de fabrication sélectionné
+
+Depuis la liste des plans, **Préparer un dossier de fabrication** présente les
+plans du chantier courant par ouvrage, avec recherche de référence, tout
+sélectionner/désélectionner et sélection par ouvrage. Une sélection par plan
+(UID, ou identité temporaire de l'objet pour un ancien plan sans UID), sans
+modification des plans. Les quantités `nb` multiplient les débits et exemplaires,
+pas les lignes de plans.
+
+`doscChoisis` fournit la seule liste transmise à `chantierData` puis à
+`dossierHtml(list)`. `chantierPlans` et son repli historique ne sont pas employés
+pour élargir cette sélection. L'aperçu donne plans, ouvrages, exemplaires,
+panneaux/surface CP, bois et alertes. Les plans incohérents bloquent la génération.
+`acChantier` accepte également cette liste explicite pour les essais du
+récapitulatif existant.
+
+Le dossier réemploie garde, sommaire, `gen`, découpes, montage, fiches atelier
+selon `PRT.fa`, `chantierPages` et bon de commande consolidé. Découpes et montage
+sont inclus pour ce dossier ; les options générales d'impression sont rétablies
+ensuite. Les feuilles particulières 10B/10C restent présentes. Les repères et
+calculs de fabrication ne sont pas modifiés. `openDossier`, `dosNumber` et
+`printDossier` assurent aperçu, pagination et **Imprimer / Enregistrer au format
+PDF** via le navigateur ; aucun téléchargement PDF natif n'est annoncé.
+Le retour restitue le formulaire antérieur, et la génération ne modifie pas `P`.
+
+### Parcours fictif et limites
+
+Le banc `t_preparation_chantier` crée huit lignes dans un PDF fictif : R01 complète,
+R02 épaisseur manquante, R03 deux épaisseurs contradictoires, R04 feuillure,
+R05 chanfrein GA fabricable, R06 orientation non fabricable, R07 multi-sections,
+R08 déjà créée. Après correction/arbitrage et qualification, R01–R05 sont
+validées individuellement, sélectionnées et créées ensemble. R06/R07 restent
+bloquées et R08 n'est pas recréée. L'utilisateur sélectionne ensuite R01, R04 et
+R05 pour un dossier qui exclut effectivement R02, R03 et R08.
+
+Essais supplémentaires : homonymes, contours rattachés, filtres/navigation,
+modification du CP, empreintes périmées, collisions, refus atomique, double clic,
+annulation, export/reprise et identité du PDF, quantités et consolidation,
+pagination, feuilles particulières, impression appelée et retour au formulaire,
+thèmes et fenêtre Chromium 1024×768. Aucun nouveau calcul mécanique, aucun OCR,
+serveur ou stockage supplémentaire. Impression physique, tablette réelle,
+AutoCAD, navigateurs hors Chromium et tenue sur chantier non vérifiés.
