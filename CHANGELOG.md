@@ -3,6 +3,63 @@
 Détail complet de chaque version (demandes, écarts voulus, tests, non validé) : `docs/historique/HANDOFF_<version>.md`.
 Chaque version est un tag git (`git diff v2.4 v2.5 -- app/` pour voir les changements).
 
+## Phase 10C — fabrication du chanfrein 45° (v3.1 conservée)
+
+**Fait** : mannequin ouvert sur A et B, un seul coin vertical GA / DA / DB / GB,
+orientation `vers_beton`. Cinq panneaux CP monoblocs : dessus et dessous
+pentagonaux filants, deux joues et une diagonale entre eux. CP à l'intérieur de
+l'enveloppe du vide, contacts plans sans recouvrement. Jonction joue/diagonale
+à onglet 22,5° ; about diagonal au parement ouvert coupé à 45°, angles de scie
+mesurés depuis une coupe droite. L'autre orientation reste en étude.
+
+**Calcul commun** : `chanfrein45Fabrication` produit empreintes, faces physiques,
+contours de découpe, bruts, volumes nets, contacts et coupes. Le modèle d'étude
+10B reste disponible. L'adaptation à `para` échange les axes et inverse les faces
+affectées par la réflexion. Le débit, l'imbrication, les feuilles, la 3D et les
+exports réemploient ces données ; aucun panneau ferme les deux parements.
+
+Débit CP : aire du contour de découpe avant biseaux. Les pentagones conservent
+leur contour, sans remplacement rectangulaire ; MaxRects réserve leurs cadres
+englobants, sans économie polygonale supposée. Les volumes nets après biseaux
+sont distincts des bruts, y compris dans les quantités BIM. Les bruts diagonaux
+sont cotés au millième de mm dans les feuilles et les annotations DXF.
+Les croix 50×50 de `para` sont reprises et placées hors chanfrein ; aucun nouveau
+dimensionnement de résistance ou de fixation n'est ajouté.
+
+**Parcours** : preuves PDF conservées, variante et assemblage explicitement
+qualifiés, contrôle du CP, du coin, de l'orientation, des contacts, du format et
+de la place des traverses, récapitulatif puis confirmation. Les autres détails
+attribués restent bloquants, toute correction invalide le récapitulatif, une
+identité PDF ne crée qu'un ouvrage. L'ancien avertissement global sur les
+géométries particulières indique désormais les deux variantes disponibles.
+
+**Persistance** : champ métier facultatif `chanfrein45` (version d'assemblage,
+retrait, coin, orientation) ; épaisseur réelle dans le CP du plan. Provenance
+séparée dans `origineImport`. Formulaire, duplication, JSON v10 et IndexedDB
+préservent l'ouvrage. Ni migration forcée des anciens plans ni refonte du stockage.
+
+**Sorties** : section, élévations A/B, contours des cinq panneaux, détail agrandi
+des biseaux, débit CP/bois, imbrication, montage, 3D vectorielle/WebGL et éclatée,
+DXF, GLB et IFC. Les coupes droites sont définies par coordonnées et angles ;
+pas de faux gabarit cintré ni de tuilage. Bruts/volume net et identités sont
+vérifiés en relisant les exports.
+
+**Tests** : nouveau banc fictif `t_chanfrein_fabrication`, quatre coins et CP /
+retraits variables ; calculs indépendants Shapely, interfaces et volumes,
+absence d'interférence CP/bois en assemblé et éclaté, contours 2D/DXF, GLB et IFC
+relus, WebGL, confirmation, provenance, persistance et doublons. DXF : précision
+historique 0,001 mm ; GLB : Float32, comparaison des positions au micromètre et
+des volumes à 10 ppm. Le banc 10B conserve son essai d'étude avec `vers_vide` :
+`vers_beton` devient volontairement fabricable et est couvert par le nouveau
+banc. Aucune assertion historique retirée ; générateur `auditx.js` et banc
+`t_avap` inchangés. Résultats exacts des campagnes dans la PR.
+
+**Limites** : CP monobloc au format choisi, pas de raccord, plusieurs chanfreins,
+feuillure combinée, biais/pente, voile circulaire ou angle autre que 45°.
+La place des traverses existantes est obligatoire. Pas de validation physique,
+mécanique, d'impression réelle, de vrai AutoCAD ou de navigateurs hors Chromium.
+D13 n'est pas annoncé reproduit ; aucun PDF réel ni rendu privé dans Git.
+
 ## Phase 10B — géométries particulières V1 (v3.1 conservée)
 
 **Fait** : proposition PDF d'une feuillure périphérique rectangulaire, après
