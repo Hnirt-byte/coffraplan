@@ -492,7 +492,7 @@ code{font:9pt 'DejaVu Sans Mono',monospace;background:#f1f3f7;padding:0 1mm;bord
 <li>Comparer les flèches intérieure et extérieure à la tolérance de courbure. Celle-ci est initialement vide, réglable dans le profil chantier / ouvrage ou pour cette création. Elle est distincte de la flèche mécanique du CP. Sans tolérance, aucune nécessité de cintrage n'est décidée. Choisir la solution : mannequin simple, cintré ou fourreau selon le cas. La solution simple sur paroi circulaire exige des joues parallèles et deux flèches dans la tolérance.</li>
 <li>Cliquer <b>Vérifier le récapitulatif</b>, relire les dimensions, les origines, les joues, les réglages du modèle de fabrication (CP, montage, renforts) et les alertes. Cocher la confirmation finale puis <b>Confirmer et créer l’ouvrage</b>. Avant ce dernier clic, le projet est intact. Une validation répétée ou un réimport du même PDF ne recrée pas cette réservation.</li></ol>
 <p><b>Exemple entièrement fictif :</b> une ouverture 1200 × 1000 mm traverse un voile circulaire d'épaisseur 250 mm et de rayon intérieur 6000 mm, cotes relues ou saisies. Choisir des joues parallèles et confirmer que 1200 mm est la corde commune. Sans tolérance, le système laisse la solution à déterminer ; choisir explicitement le mannequin cintré permet de préparer le récapitulatif sans déclarer le cintrage automatiquement nécessaire. Le moteur existant fournit le débit, les plans et la visualisation après confirmation.</p>
-<div class="warn"><b>Proposition à vérifier</b>Un chanfrein, une feuillure, une traversée biaisée ou un détail particulier du plan n'est pas reproduit automatiquement. Compléter et valider l'étude de fabrication. Les anciens ouvrages sans identité d'import restent protégés par le contrôle des références ; ils ne disposent pas du nouveau contrôle d'identité PDF.</div>
+<div class="warn"><b>Proposition à vérifier</b>Seules la feuillure périphérique rectangulaire et la variante de chanfrein vertical 45° V1 peuvent être créées après qualification et confirmation. Les autres détails et traversées particulières restent à étudier. Les anciens ouvrages sans identité d'import restent protégés par le contrôle des références ; ils ne disposent pas du nouveau contrôle d'identité PDF.</div>
 
 <h3>Cotes retrouvées dans le PDF et détails particuliers</h3>
 <p>Dans <b>Proposer un coffrage</b>, la section <b>Cotes retrouvées dans le PDF</b>
@@ -555,13 +555,44 @@ départ 20 depuis A. Panneaux : 2 × 600 × 240 et 2 × 764 × 240.
 Tasseaux : 2 × 680 et 2 × 800, section 40 × 30, entre X=20 et X=50.
 Les anciens ouvrages restent inchangés. La saisie manuelle du mannequin droit
 permet également de retrouver et modifier ces paramètres.</p>
-<p><b>Chanfrein rectiligne 45°</b> : choisir le coin de la section horizontale L × e
-(gauche/droite, A/B), renseigner le retrait égal sur les deux côtés, H, l'épaisseur
-CP et l'orientation des faces ; confirmer la convention. L'aperçu représente le vide
-pentagonal, <b>pas une pièce de CP à découper</b>. Il reste en géométrie à étudier :
-les assemblages diagonaux et leurs déductions CP ne sont pas définis. Création,
-débit, gabarits et exports de fabrication indisponibles pour cette variante.
-Exporter le dossier <b>Analyse (JSON)</b> avant fermeture pour conserver cette étude.</p>
+<p><b>Chanfrein vertical 45° — fabrication V1</b> : sélectionner le coin dans la
+section horizontale L × e (GA, DA, DB ou GB ; A en y=0, B en y=e). Saisir L,
+l'épaisseur du voile e, H, le retrait égal sur les deux côtés et l'épaisseur CP.
+Choisir <b>Vers le béton</b>, confirmer les conventions, la traversée normale et
+l'assemblage. L'autre orientation reste en étude. Les détails attribués à la
+réservation sont conservés : une feuillure combinée ou un autre détail empêche
+la création de cette variante.</p>
+<p>L'aperçu représente désormais les panneaux réels. Le récapitulatif indique
+leurs bruts et leurs coupes ; seule la confirmation finale crée l'ouvrage.
+Les deux parements A et B restent <b>ouverts</b>. Dessus et dessous pentagonaux
+filants ; deux joues et une diagonale entre eux, à hauteur H moins deux épaisseurs CP.
+Les croix 50 × 50 existantes sont conservées et déplacées hors du chanfrein.
+Si les pièces ou les traverses ne tiennent pas, la configuration est refusée.</p>
+<div class="warn"><b>Coupes à distinguer</b>Les pentagones ont une diagonale à 45°
+dans le plan, lame non inclinée. La jonction joue–diagonale comporte deux onglets
+opposés à <b>22,5°</b> ; l'about de la diagonale au parement ouvert a un biseau
+<b>45°</b>. Ces angles de scie sont mesurés depuis une coupe droite. Marquer la
+face coffrante et A/B : les patrons XY sont vus du dessus, et la face coffrante
+du panneau inférieur est sous celui-ci. Le détail agrandi indique le départ du dos.</div>
+<p><b>Exemple fictif</b>, en mm : L=600, H=800, e=240, retrait 40, CP 18, coin GA.
+Deux pentagones de cadre 600 × 240 ; joue chanfreinée de brut 200 × 764, joue opposée
+240 × 764. Diagonale : face coffrante 56,5685, dos 67,1127 et brut
+<b>74,5685 × 764</b>. Le dos commence à 7,4558 depuis l'about coffrant côté jonction.
+Ne pas découper le brut à la seule longueur théorique de la face diagonale.</p>
+<p>Les feuilles obligatoires présentent section, vues A/B, coordonnées des cinq
+découpes, angles et sens de montage. Débit, imbrication, 3D vectorielle/WebGL,
+éclaté, DXF, GLB et IFC reprennent les mêmes pièces. L'imbrication réserve les
+cadres englobants, sans supposer une économie grâce aux coins coupés. Surface de
+débit avant biseaux ; volume physique net après biseaux. Les coupes droites sont
+cotées : pas de faux gabarit cintré ni de collage de pages.</p>
+<p>Le formulaire du mannequin droit permet également d'activer et modifier cette
+option. Sauvegarde, rechargement, duplication et fichier projet conservent la géométrie.
+Les anciens ouvrages et la feuillure 10B restent disponibles.</p>
+<div class="warn"><b>Limites</b>Un seul chanfrein vertical à 45°, en voile droit,
+CP monobloc tenant dans le format choisi. Pas de feuillure combinée, biais,
+pente, profil variable ou voile circulaire. La géométrie de l'assemblage est
+contrôlée ; sa tenue mécanique, ses fixations et son maintien sur chantier ne
+sont pas validés par ce calcul. D13 n'est pas annoncé reproduit à l'identique.</div>
 
 
 

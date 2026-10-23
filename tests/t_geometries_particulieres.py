@@ -132,7 +132,7 @@ def t(s):
         pg.select_option('#dxc_geometrie','chanfrein45')
         s.check('à corriger' in pg.inner_text('#dxcGeo') and pg.is_disabled('#dxcRecap'),'chanfrein sans dimensions : inconnues visibles, création bloquée')
         for k,v in dict(L=600,h=800,e=240,retrait=40,epChanfrein=18).items():pg.fill('#dxc_'+k,str(v))
-        pg.select_option('#dxc_angleChanfrein','GA');pg.select_option('#dxc_orientationChanfrein','vers_beton');pg.check('#dxc_confirmChanfrein')
+        pg.select_option('#dxc_angleChanfrein','GA');pg.select_option('#dxc_orientationChanfrein','vers_vide');pg.check('#dxc_confirmChanfrein')
         s.check(pg.locator('#dxcGeo svg polygon').count()==1 and pg.is_disabled('#dxcRecap') and 'débit' in pg.inner_text('#dxcGeo'), 'chanfrein complet : aperçu du pentagone, fabrication et exports explicitement indisponibles')
         J('dxcCreer()')
         s.check(J('P.length')==1 and J('Object.values(DXI.CP).some(x=>x.geometrieEtudiee&&x.geometrieEtudiee.sommets.length===5)'), 'étude conservée dans le dossier exportable, jamais ajoutée comme ouvrage')

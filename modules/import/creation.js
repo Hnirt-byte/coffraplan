@@ -5,7 +5,7 @@ const clone=x=>JSON.parse(JSON.stringify(x)),positif=x=>typeof x==='number'&&Num
 const toleranceValide=x=>typeof x==='number'&&Number.isFinite(x)&&x>=0;
 const CHAMPS={L:'ouverture.largeur_suivant_paroi_mm',h:'ouverture.hauteur_mm',D:'ouverture.diametre_mm',e:'support.epaisseur_mm',R:'support.rayon_interieur_mm',profondeur:'ouverture.traversee_mm',fL:'detail.largeur_feuillure_mm',fH:'detail.profondeur_feuillure_mm',fNiv:'detail.depart_feuillure_mm'};
 function proposer(analyse,saisie,ctx){
-  const a=analyse||{},s=saisie||{},o=ctx||{},valeurs={},origines={},manquants=[],alertes=[...(a.incertitudes||[]),'Proposition pour une traversée normale : chanfreins, feuillures et détails particuliers ne sont pas reproduits automatiquement ; étude de fabrication à compléter.'];
+  const a=analyse||{},s=saisie||{},o=ctx||{},valeurs={},origines={},manquants=[],alertes=[...(a.incertitudes||[]),'Proposition pour une traversée normale : seules la feuillure périphérique et la variante chanfrein 45° qualifiées sont prises en charge ; les autres détails restent à étudier.'];
   for(const [k,path] of Object.entries(CHAMPS)){
     const [g,n]=path.split('.'),v=a[g]&&a[g][n],p=(a.provenance||{})[path];
     const admissible=x=>k==='fNiv'?toleranceValide(x):positif(x);
@@ -60,14 +60,23 @@ function proposer(analyse,saisie,ctx){
     requis('fL','largeur de feuillure');requis('fH','profondeur de feuillure');
     if(!toleranceValide(valeurs.fNiv))manquants.push('départ de feuillure depuis le parement A');
     if(valeurs.fNiv!=null&&valeurs.fH!=null&&valeurs.e!=null&&valeurs.fNiv+valeurs.fH>valeurs.e)manquants.push('départ + profondeur de feuillure dépasse la traversée');
-  }else{for(const k of ['fL','fH','fNiv'])valeurs[k]=null;if(detail!=='aucun')manquants.push('géométrie à étudier : fabrication indisponible pour ce détail');}
-  return{detail,valeurs,origines,type,support,joues,largeurRef,tolerance,fleches,geometrie,geometrieSource:geometrie?'voileGeo':null,recommandation,solutions,solution,manquants:[...new Set(manquants)],alertes:[...new Set(alertes)],validation_utilisateur_requise:true};
+  }else{for(const k of ['fL','fH','fNiv'])valeurs[k]=null;if(!['aucun','chanfrein45'].includes(detail))manquants.push('géométrie à étudier : fabrication indisponible pour ce détail');}
+  let fabricationChanfrein=null;
+  if(detail==='chanfrein45'){
+    fabricationChanfrein=root.CPI.geometriesParticulieres.chanfrein45Fabrication({L:valeurs.L,H:valeurs.h,e:valeurs.e,retrait:s.retrait,ep:s.epChanfrein,angle:s.angleChanfrein,orientation:s.orientationChanfrein,version:1},
+      {L:origines.L,H:origines.h,e:origines.e,retrait:{origine:positif(s.retrait)?'saisie':'inconnue'},ep:{origine:positif(s.epChanfrein)?'saisie':'inconnue'},angle:{origine:s.angleChanfrein?'saisie':'inconnue'},orientation:{origine:s.orientationChanfrein?'saisie':'inconnue'}});
+    if(!['rect','carre'].includes(type)||support!=='voile_droit'||solution!=='simple')manquants.push('chanfrein : rectangle, voile droit et solution simple requis');
+    if(s.confirmChanfrein!==true)manquants.push('confirmation du coin, de l’orientation, des coupes et de l’assemblage');
+    manquants.push(...fabricationChanfrein.erreurs);
+  }
+  return{...(detail==='chanfrein45'?{fabricationChanfrein}:{}),detail,valeurs,origines,type,support,joues,largeurRef,tolerance,fleches,geometrie,geometrieSource:geometrie?'voileGeo':null,recommandation,solutions,solution,manquants:[...new Set(manquants)],alertes:[...new Set(alertes)],validation_utilisateur_requise:true};
 }
 function preparer(proposition,confirmation,ctx){
   const p=proposition,k=confirmation||{},o=ctx||{};
   if(k.confirme!==true)return{ok:false,messages:['Confirmation explicite requise']};
   if(!p||p.manquants.length)return{ok:false,messages:p?p.manquants:['Proposition absente']};
   if(p.type==='carre'&&p.valeurs.L!==p.valeurs.h)return{ok:false,messages:['Une ouverture carrée exige largeur = hauteur ; choisir rectangulaire sinon']};
+  if(p.detail==='chanfrein45'&&!p.fabricationChanfrein?.fabricable)return{ok:false,messages:['Assemblage chanfreiné non calculé ou indisponible']};
   const forme=p.solution==='fourreau'?'circ':p.solution==='cintre'?'voile':'para',mod=o.modele;
   if(!mod||mod.forme!==forme)return{ok:false,messages:['Modèle de fabrication absent']};
   const d=modele(p,mod,k.ref);
@@ -82,7 +91,7 @@ function modele(p,mod,ref){
   const forme=p.solution==='fourreau'?'circ':p.solution==='cintre'?'voile':'para';
   const v=p.valeurs,d=Object.assign(clone(mod),{forme,ref:String(ref||'').trim().toUpperCase(),nb:1});delete d.uid;delete d.origineImport;
   if(forme==='circ')Object.assign(d,{D:v.D,h:v.profondeur});
-  else if(forme==='para'){delete d.feuilTraversee;delete d.feuil;Object.assign(d,{ppB:v.L,ppH:v.h,ppE:v.e,ppA:0,ppBe:0,h:v.h});if(p.detail==='feuillure')Object.assign(d,{feuilTraversee:true,fL:v.fL,fH:v.fH,fNiv:v.fNiv});}
+  else if(forme==='para'){delete d.chanfrein45;delete d.feuilTraversee;delete d.feuil;Object.assign(d,{ppB:v.L,ppH:v.h,ppE:v.e,ppA:0,ppBe:0,h:v.h});if(p.detail==='feuillure')Object.assign(d,{feuilTraversee:true,fL:v.fL,fH:v.fH,fNiv:v.fNiv});if(p.detail==='chanfrein45'){const c=p.fabricationChanfrein.parametres;d.chanfrein45={version:1,retrait:c.retrait,angle:c.angle,orientation:c.orientation};d.cp.j.e=c.ep;d.ep=c.ep;d.ppTr=true;}}
   else Object.assign(d,{L:v.L,l:v.e,h:v.h,DcuveM:v.R*2/1000,dRef:'int',joues:p.joues,constr:'mannequin'});
   return d;
 }

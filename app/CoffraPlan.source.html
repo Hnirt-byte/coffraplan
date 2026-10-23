@@ -248,6 +248,7 @@ body.pm .inf{font-size:calc(9.5px + 2pt);line-height:1.25}body.pm .inf .nt{font-
 <div class="cd" id="zCP"><div class="ct">🪵 Contreplaqué</div><div id="zCProws"></div>
 <div class="hint" style="margin:6px 0 0">Épaisseurs et formats courants du commerce. Défaut : CP filmé phénolique bouleau 18 mm (EN 636-3, classe 3).</div></div>
 <div class="cd" id="zOptC" style="display:none"><div class="ct">⚙ Options</div><div id="zOpt"></div></div>
+<div class="cd" id="zChanC" style="display:none"><div class="ct">Chanfrein vertical 45°</div><div id="zChan"></div></div>
 </div>
 <div id="zChk"></div>
 <button class="bp" id="bAdd" onclick="addP(false)" style="margin-bottom:8px">➕ AJOUTER</button>
@@ -889,6 +890,7 @@ function canon(d0){
     if(d.mDint==='ext'&&d.Dint>0)d.Dint=Math.max(0,d0.Dint-2*ep);
   }
   if(d.forme==='special'&&d.base==='circ'&&d.mD==='int'&&d.D>0){d.D=d0.D+2*ep;d.L=d.l=d.D}
+  if(d.chanfrein45)d.h=d.ppH;
   if(typeof canonExt==='function')canonExt(d);
   return d;
 }
@@ -1022,6 +1024,13 @@ ${sel('oRenXs','Section',RXOPT)}
   el('zDim').innerHTML=dh;el('zHint').textContent=hint;
   updCP();
   el('zOptC').style.display=oh?'':'none';el('zOpt').innerHTML=oh;
+  el('zChanC').style.display=f==='para'?'':'none';
+  el('zChan').innerHTML=f==='para'?chk('ppChan','Activer un seul chanfrein 45° fabricable',false)
+    +num('ppRetrait','Retrait égal du chanfrein (mm)','')
+    +sel('ppAngle','Coin de la section (A : y=0, B : y=e)',[['','À sélectionner'],['GA','Gauche A'],['DA','Droite A'],['DB','Droite B'],['GB','Gauche B']])
+    +sel('ppOrientation','Faces coffrantes',[['','À confirmer'],['vers_beton','Vers le béton (V1)'],['vers_vide','Vers le vide (étude seulement)']])
+    +'<div class="hint">Dessus/dessous pentagonaux filants, joues et diagonale entre ; onglet 22,5°, about diagonal 45°. Traverses 50×50 existantes déplacées hors du chanfrein. Fixation et tenue mécanique à vérifier.</div>':'';
+
   if(f==='special')updSpecDims();
   if(!_loading){applyProf(true);if(el('iNb')&&EI<0&&_ready)el('iNb').value=1}
   syncVis();liveCalc();
@@ -1052,7 +1061,7 @@ function coll(){
     d.dlPt=C('dlPt');d.dlRv=C('dlRv');if(d.dlRv){d.dlEp=V('dlEp');d.dlRvE=V('dlRvE');d.dlRvD=V('dlRvD')}d.dlBm=dlBmRead();d.dlPdir=S('dlPdir','L');d.bmP=bmParRead();d.dlK=el('dlK')?Math.max(0,V('dlK')):4;d.h=0}
   else if(f==='poutre'){d.ptL=V('ptL');d.ptB=V('ptB');d.ptH=V('ptH');['L','R'].forEach(k=>{d['ptE'+k]=S('ptE'+k,'vd');d['ptD'+k]=V('ptD'+k)});d.ptDc=V('ptDc');d.ptO=V('ptO');
     d.ptPo=el('zPtPo')?poReadIn(el('zPtPo')):[];d.ptDal=C('ptDal');d.ptEpl=V('ptEpl');d.bmP=bmParRead();d.h=d.ptH}
-  else if(f==='para'){d.ppB=V('ppB');d.ppH=V('ppH');d.ppE=V('ppE');d.ppA=V('ppA');d.ppBe=V('ppBe');d.ppTr=C('ppTr');d.h=d.ppH;if(C('ppFeuil')){d.feuilTraversee=true;d.fL=V('ppFL');d.fH=V('ppFH');d.fNiv=el('ppFNiv')?fieldVal(el('ppFNiv')):null}}
+  else if(f==='para'){d.ppB=V('ppB');d.ppH=V('ppH');d.ppE=V('ppE');d.ppA=V('ppA');d.ppBe=V('ppBe');d.ppTr=C('ppTr');d.h=d.ppH;if(C('ppFeuil')){d.feuilTraversee=true;d.fL=V('ppFL');d.fH=V('ppFH');d.fNiv=el('ppFNiv')?fieldVal(el('ppFNiv')):null}if(C('ppChan'))d.chanfrein45={version:1,retrait:el('ppRetrait')?fieldVal(el('ppRetrait')):null,angle:S('ppAngle',''),orientation:S('ppOrientation','')}}
   else if(f==='goulotte'){d.gD=V('gD');d.gDref=S('gDref','beton');d.gB=V('gB');d.gEt=S('gEt','tour');d.gAng=V('gAng');d.gArc=V('gArc');
     d.gJE=C('gJE');d.gHE=V('gHE');d.gJI=C('gJI');d.gHI=V('gHI');d.gAb=C('gAb');d.gOpt=S('gOpt','coupes');d.gKerf=el('gKerf')?Math.max(0,V('gKerf')):4;d.h=Math.max(d.gJE?d.gHE:0,d.gJI?d.gHI:0)}
   else if(f==='circ_fond'||f==='circ_sf'){d.Dext=V('dDext');d.Dint=V('dDint');d.h=V('dh');d.mDext=S('mDext','ext');d.mDint=S('mDint','int')}
@@ -1084,7 +1093,7 @@ function setForm0(d){d=migr(d);
   if(d.forme==='dalle'){sv('dlF',d.dlF);sv('dlD',d.dlD);sv('dlL',d.dlL);sv('dlW',d.dlW);sv('dlE',d.dlE);sv('dlJ',d.dlJ);sv('dlO',d.dlO);sv('dlMin',d.dlMin!=null?d.dlMin:500);sv('dlG',d.dlG||'2');sc('dlRv',d.dlRv);if(d.dlRv){sv('dlEp',d.dlEp);sv('dlRvE',d.dlRvE);sv('dlRvD',d.dlRvD)}sc('dlPt',d.dlPt);dlBmSet(d.dlBm||[]);sv('dlPdir',d.dlPdir);bmParSet(d.bmP);sv('dlK',d.dlK)}
   if(d.forme==='poutre'){sv('ptL',d.ptL);sv('ptB',d.ptB);sv('ptH',d.ptH);['L','R'].forEach(k=>{sv('ptE'+k,d['ptE'+k]||'vd');sv('ptD'+k,d['ptD'+k])});sv('ptDc',d.ptDc);sv('ptO',d.ptO);
     if(el('zPtPo'))el('zPtPo').innerHTML=(d.ptPo||[]).map(poRow).join('');sc('ptDal',d.ptDal);sv('ptEpl',d.ptEpl);bmParSet(d.bmP)}
-  if(d.forme==='para'){sv('ppB',d.ppB);sv('ppH',d.ppH);sv('ppE',d.ppE);sv('ppA',d.ppA);sv('ppBe',d.ppBe);sc('ppTr',d.ppTr);sc('ppFeuil',d.feuilTraversee);sv('ppFL',d.fL==null?'':d.fL);sv('ppFH',d.fH==null?'':d.fH);sv('ppFNiv',d.fNiv==null?'':d.fNiv)}
+  if(d.forme==='para'){sv('ppB',d.ppB);sv('ppH',d.ppH);sv('ppE',d.ppE);sv('ppA',d.ppA);sv('ppBe',d.ppBe);sc('ppTr',d.ppTr);sc('ppChan',!!d.chanfrein45);sv('ppRetrait',d.chanfrein45?.retrait??'');sv('ppAngle',d.chanfrein45?.angle||'');sv('ppOrientation',d.chanfrein45?.orientation||'');sc('ppFeuil',d.feuilTraversee);sv('ppFL',d.fL==null?'':d.fL);sv('ppFH',d.fH==null?'':d.fH);sv('ppFNiv',d.fNiv==null?'':d.fNiv)}
   if(d.forme==='goulotte'){sv('gD',d.gD);sv('gDref',d.gDref||'beton');sv('gB',d.gB);sv('gEt',d.gEt||'tour');sv('gAng',d.gAng);sv('gArc',d.gArc);
     sc('gJE',d.gJE);sv('gHE',d.gHE);sc('gJI',d.gJI);sv('gHI',d.gHI);sc('gAb',d.gAb);sv('gOpt',d.gOpt||'coupes');sv('gKerf',d.gKerf)}
   sv('dL',d.L);sv('dl',d.l);sv('dh',d.h);sv('dD',d.D);sv('dDext',d.Dext);sv('dDint',d.Dint);sv('mDext',d.mDext||'ext');sv('mDint',d.mDint||'int');sv('mD',d.mD||'ext');
@@ -1106,6 +1115,7 @@ function checks(d,g){
   const W=[],e=m=>{if(!W.some(x=>x[1]===m))W.push(['err',m])},w=m=>{if(!W.some(x=>x[1]===m))W.push(['warn',m])},cr=m=>{if(!W.some(x=>x[1]===m))W.push(['crit',m])},ep=d.ep||0,eF=d.epF||ep,eS=d.epS||ep,f=d.forme;
   const pos=(v,n)=>{if(!(v>0))e(n+' doit être > 0')};
   const LE=limErr(d);if(LE.length){LE.forEach(x=>e(x.msg));return W}
+  if(d.chanfrein45)w('Chanfrein : assemblage géométrique contrôlé, tenue mécanique et fixations non vérifiées ; traverses 50×50 du modèle existant à valider sur chantier');
   if(d.feuilTraversee&&f!=='para')e('Feuillure traversante : modèle mannequin droit requis');
   if(f!=='circ')pos(ep,'Épaisseur panneaux');
   if(RECT.includes(f)){
@@ -1253,7 +1263,11 @@ function debit0(d,g){
   const ep=d.ep,eF=d.epF||ep,eS=d.epS||ep,R=[],f=d.forme;let K='j';
   // K : composant CP courant (j joues, fi fond inf., fs fond sup.)
   const add=(q,n,a,b,m2,txt,sh)=>R.push({q,n,a,b,txt,k:K,m2:m2!=null?m2:q*a*b/1e6,sh});
-  if(RECT.includes(f)&&f!=='massif'){
+  if(d.chanfrein45){const F=chanfreinGeo(d);if(F.fabricable){
+    F.pieces.forEach(p=>{add(1,p.nom,p.a,p.b,p.aireDecoupe/1e6,`brut ${nf(p.a,3)} × ${nf(p.b,3)} · CP ${nf(p.ep)} · `+p.coupes.map(c=>(c.extremite||c.nature)+' : '+nf(c.inclinaisonScie,1)+'°').join(' ; '),{t:'poly',poly:p.contourDecoupe,pieceId:p.id});
+      Object.assign(R[R.length-1],{volumeNet:p.volumeNet,volumeBrut:p.volumeBrut,note:'Face coffrante '+(p.longueurFace!=null?nf(p.longueurFace,4)+' mm · ':'')+'Couper les biseaux depuis la face repérée ; voir détail de coupe. Surface de débit avant biseaux.'});});
+    const tr=F.renforts.tr;R.bois=[{q:tr.n,n:'Traverses horiz. 50×50',L:tr.Lh},{q:2*tr.n,n:'Traverses vert. 50×50 (tronçons)',L:tr.Lv}];
+  }}else if(RECT.includes(f)&&f!=='massif'){
     const fond=FOND.includes(f);
     add(2,'Côtés filants',d.L,d.h);add(2,'Côtés entre',d.l-2*ep,d.h);
     if(fond){K='fi';add(1,'Fond (entre côtés)',d.L-2*ep,d.l-2*ep);K='j'}
@@ -2682,6 +2696,35 @@ function feuilTraverseFeuille(d){const v=feuilTraverseVues(d),t=SB(800,600);
     t.a(`<g transform="translate(${x} ${y}) scale(${k})">${svg.replace(/^<svg[^>]*>/,'').replace(/<\/svg>$/,'')}</g>`);
   });return t.out();
 }
+// Adaptation au mannequin historique : X moteur = y module, Y = x-L/2, Z = z-H/2.
+function chanfreinGeo(d){
+  const c=d.chanfrein45||{},F=CPI.geometriesParticulieres.chanfrein45Fabrication({...c,L:d.ppB,e:d.ppE,H:d.ppH,ep:d.ep});
+  const erreur=m=>F.erreurs.push(m);
+  if(d.forme!=='para'||d.ppA!==0||d.ppBe!==0)erreur('Chanfrein : mannequin droit sans biais ni pente requis');
+  if(c.version!==1)erreur('Version du chanfrein absente ou non prise en charge');
+  if(d.feuilTraversee||d.feuil||d.renX)erreur('Chanfrein : combinaison avec feuillure ou renfort en croix non prise en charge');
+  if(F.fabricable){
+    const [W,Q]=cpFmt(cpOf(d,'j'));
+    F.pieces.forEach(p=>{if(!((p.a<=W&&p.b<=Q)||(p.a<=Q&&p.b<=W)))erreur(p.nom+' : format CP insuffisant, raccord non pris en charge pour cette variante')});
+    const g=paraGeo(d),tr=g.tr,deb=c.retrait+(Math.SQRT2-1)*d.ep,span=d.ppE-deb;
+    if(!d.ppTr||!tr)erreur('Chanfrein : les traverses 50×50 du modèle existant doivent pouvoir être posées');
+    else if(span<50*tr.n)erreur('Zone hors chanfrein insuffisante pour les traverses 50×50 existantes');
+    else{const debut=['GB','DB'].includes(c.angle)?0:deb;
+      g.chanfrein=true;g.tr={...tr,s:Array.from({length:tr.n},(_,i)=>debut+span*(i+.5)/tr.n-d.ppE/2)};F.renforts=g;
+    }
+  }
+  F.fabricable=F.fabricable&&!F.erreurs.length;return F;
+}
+function chanfreinPoint(d,[x,y,z]){return[y,x-d.ppB/2,z-d.ppH/2]}
+// Les mêmes croix que para, aux positions données par sa géométrie.
+function paraTraverses3(s,g,R){if(!g.tr)return;
+  const C0=[g.e/2,0,0],add=(a,b,k)=>[a[0]+b[0]*k,a[1]+b[1]*k,a[2]+b[2]*k],bt=(R&&R.bois||[]).find(x=>/Traverses horiz/.test(x.n));
+  for(let i=0;i<g.tr.n;i++){const c=add(C0,g.u,g.chanfrein?g.tr.s[i]:-g.Lr/2+g.Lr*(i+1)/(g.tr.n+1));
+    s.g('in','traverse').bx3(c,g.w,g.v,g.u,g.tr.Lh/2,25,25,C3.bois,i===0&&bt?bt.tag:null);
+    [-1,1].forEach(sg=>s.bx3(add(c,g.v,sg*(25+g.tr.Lv/2)),g.v,g.w,g.u,g.tr.Lv/2,25,25,C3.bois));
+  }
+}
+
 function paraGeo(d){
   const ep=d.ep||0,e=d.ppE||0,al=(d.ppA||0)*Math.PI/180,be=(d.ppBe||0)*Math.PI/180,ca=Math.cos(al),cb=Math.cos(be);
   const b=(d.ppB||0)*ca,h=(d.ppH||0)*cb; // ouverture sur le parement → section droite ⟂ à l'axe
@@ -2710,6 +2753,58 @@ function paraGeo(d){
       if(g.tr){g.tr.s=g.tr.s.filter(x=>S.every(y=>Math.abs(x-y)>150));g.tr.n=g.tr.s.length;if(!g.tr.n)g.tr=null}}}
   return g;
 }
+function chanfreinTrace(t,P,X,Y,fill){t.Pa('M'+P.map(([x,y])=>X(x)+','+Y(y)).join(' L')+' Z',fill||WC,WS,.8)}
+function genChanfrein(d){
+  const F=chanfreinGeo(d);if(!F.fabricable)return{top:errSvg(800,340,F.erreurs.join(' ; ')),a:errSvg(320,220,'—'),b:errSvg(320,220,'—')};
+  const p=F.parametres,R=debit(d,null),tag=id=>R.find(r=>r.sh?.pieceId===id)?.tag||id;
+  const t=SB(800,340),k=fit(p.L,p.e,620,190),X=x=>80+x*k,Y=y=>265-y*k;
+  chanfreinTrace(t,F.sommets,X,Y,'#fff');
+  F.pieces.slice(2).forEach(q=>{chanfreinTrace(t,q.empreinte,X,Y);const pts=q.faceCoffrante.slice(0,3),a=pts[0],b=pts[2];t.TH((X(a[0])+X(b[0]))/2+12,(Y(a[1])+Y(b[1]))/2,tag(q.id),7,DC,'start',700)});
+  t.T(20,18,`CHANFREIN ${p.angle} — section du vide et CP réels (A/B ouverts)`,9,LC,'start',700);
+  t.T(20,35,`${tag('C1')} dessus / ${tag('C2')} dessous : pentagones filants ; ${tag('C3')}, ${tag('C4')}, ${tag('C5')} entre`,7,LC,'start');
+  t.D(X(0),Y(0),X(p.L),Y(0),'L '+nf(p.L,3)+' mm',24);t.D(X(p.L),Y(0),X(p.L),Y(p.e),'e '+nf(p.e,3)+' mm',24);
+  t.T(30,320,`Retraits égaux ${nf(p.retrait,3)} mm · diagonale coffrante ${nf(p.retrait*Math.SQRT2,4)} mm · CP ${nf(p.ep)} mm`,7,DC,'start');
+  t.T(X(p.L/2),Y(0)-6,'A : y=0 (ouvert)',7,LC);t.T(X(p.L/2),Y(p.e)-12,'B : y=e (ouvert)',7,LC);
+  const coupe=(P,y)=>{const xs=[];P.forEach((a,i)=>{const b=P[(i+1)%P.length];if(Math.abs(a[1]-y)<1e-7)xs.push(a[0]);if((a[1]<y&&b[1]>y)||(a[1]>y&&b[1]<y))xs.push(a[0]+(b[0]-a[0])*(y-a[1])/(b[1]-a[1]))});return xs.length?[Math.min(...xs),Math.max(...xs)]:null};
+  const face=(y,nom)=>{const v=SB(320,240),s=fit(p.L,p.H,220,155),xx=x=>45+x*s,zz=z=>195-z*s,lr=coupe(F.sommets,y);
+    v.T(12,14,nom+' — sans panneau de fermeture',8,LC,'start',700);
+    if(lr)v.R(xx(lr[0]),zz(p.H),(lr[1]-lr[0])*s,p.H*s,'#fff','#555',.6);
+    F.pieces.forEach(q=>{const b=coupe(q.empreinte,y);if(b&&b[1]-b[0]>1e-7){v.R(xx(b[0]),zz(q.z+q.hauteur),(b[1]-b[0])*s,q.hauteur*s,WC,WS,.5);v.TH(xx((b[0]+b[1])/2)+6,zz(q.z+q.hauteur/2),tag(q.id),5.5,DC,'start',700)}});
+    if(lr)v.D(xx(lr[0]),zz(0),xx(lr[1]),zz(0),nf(lr[1]-lr[0],3)+' mm (enveloppe)',14);
+    v.D(xx(p.L),zz(0),xx(p.L),zz(p.H),'H '+nf(p.H),18);return v.out();};
+  return{top:t.out(),a:face(0,'Parement A'),b:face(p.e,'Parement B')};
+}
+function chanfreinPlans(d,R){const F=chanfreinGeo(d),tag=id=>R.find(r=>r.sh?.pieceId===id)?.tag||id,t=SB(900,640);
+  F.pieces.forEach((p,i)=>{const col=i%3,row=Math.floor(i/3),ox=25+col*295,oy=70+row*300,k=fit(p.a,p.b,230,175),X=x=>ox+15+x*k,Y=y=>oy+190-y*k;
+    t.T(ox,oy-35,tag(p.id)+' — '+p.nom,8,LC,'start',700);
+    chanfreinTrace(t,p.contourDecoupe,X,Y);
+    t.D(X(0),Y(0),X(p.a),Y(0),nf(p.a,3)+' mm brut',15);
+    t.D(X(p.a),Y(0),X(p.a),Y(p.b),nf(p.b,3),12);
+    if(p.id==='C1'||p.id==='C2'){p.contourDecoupe.forEach(([x,y])=>t.TH(X(x)+5,Y(y)-6,nf(x,3)+' ; '+nf(y,3),5,DC,'start'));}
+    t.T(ox,oy+240,'CP '+nf(p.ep)+' mm · '+(p.id==='C2'?'face coffrante SOUS le panneau':'face coffrante repérée'),6,LC,'start');
+    t.T(ox,oy+255,p.coupes.map(c=>(c.extremite||c.nature)+' '+nf(c.inclinaisonScie,1)+'°').join(' / '),5.5,DC,'start');
+  });return t.out();
+}
+function chanfreinDetail(d,R){const F=chanfreinGeo(d),p=F.pieces[4],t=SB(850,550),tag=id=>R.find(r=>r.sh?.pieceId===id)?.tag||id;
+  const a=p.a,b=p.ep,k=Math.min(620/a,160/b),X=x=>100+x*k,Y=y=>230-y*k;
+  t.T(20,24,tag('C5')+' — coupe horizontale de la diagonale (épaisseur réelle)',10,LC,'start',700);
+  chanfreinTrace(t,p.coupeEpaisseur,X,Y);
+  t.D(X(0),Y(0),X(a),Y(0),'brut '+nf(a,4)+' mm',40);
+  t.D(X(0),Y(0),X(p.longueurFace),Y(0),'face coffrante '+nf(p.longueurFace,4)+' mm',14);
+  t.D(X(a),Y(0),X(a),Y(b),'CP '+nf(b)+' mm',20);
+  t.T(X(p.coupeEpaisseur[3][0]),Y(b)-15,'jonction joue : biseau 22,5°',7,DC,'start');
+  t.T(X(a),Y(b)-35,'parement ouvert : biseau 45°',7,DC,'end');
+  t.T(20,340,'Face repérée = face coffrante vers le béton. Angles de scie mesurés depuis la coupe droite (0°).',8,LC,'start');
+  t.T(20,365,`Dos de la diagonale : ${nf(p.longueurFace+p.ep-p.coupeEpaisseur[3][0],4)} mm ; départ du dos ${nf(p.coupeEpaisseur[3][0],4)} mm depuis l’about coffrant.`,7,LC,'start');
+  t.T(20,390,`Hauteur des joues et de la diagonale : H − 2 CP = ${nf(p.b,3)} mm. Dessus/dessous filants : CP ${nf(p.ep)} mm.`,8,LC,'start');
+  t.T(20,415,`Joue ${tag('C3')} : onglet 22,5° à la jonction ; longueur face ${nf(F.pieces[2].a,3)} mm, dos ${nf(F.pieces[2].a-p.coupeEpaisseur[3][0],4)} mm.`,7,LC,'start');
+  t.T(20,440,'Repère du détail : s le long de la face diagonale, w vers l’intérieur du mannequin. Épaisseur 0 ≤ w ≤ CP.',7,LC,'start');
+  t.T(20,465,'Tracer les deux arêtes depuis la face repérée ; onglets opposés jointifs, sans recouvrement de volume.',7,LC,'start');
+  t.T(20,490,'Conformité géométrique uniquement : fixation, renforts et maintien à vérifier sur chantier.',7,DC,'start');
+  t.T(20,515,'Tenue sous poussée non vérifiée ; vérifier le passage entre banches.',7,DC,'start');
+  return t.out();
+}
+
 function genPara(d,ep){
   const g=paraGeo(d);if(!g.ok)return{top:errSvg(800,340,'Géométrie impossible'),a:errSvg(320,220,'—'),b:errSvg(320,220,'—')};
   const t=SB(800,340),e=g.e,lb=mkLbl(t,[2,2,798,338]);
@@ -2852,11 +2947,12 @@ function gen(d0){
       else if(f==='special')V=genSpecial(d,ep);
       else if(f==='dalle'){V=genDalle(d);if(!V.G.ok)V={top:errSvg(800,340,'Calepinage impossible : vérifier dimensions / entraxe'),a:errSvg(320,220,'—'),b:errSvg(320,220,'—')}}
       else if(f==='poutre')V=genPoutre(d);
+      else if(f==='para'&&d.chanfrein45){V=genChanfrein(d);lt='Section pentagonale : vide et panneaux CP';la='Vue depuis le parement A — ouvert';lb='Vue depuis le parement B — ouvert'}
       else if(f==='para'){V=genPara(d,ep);lt='Vue en plan + tracé des panneaux (face extérieure)';la='Vue A — ouverture sur le parement intérieur';lb='Vue B — coupe verticale';if(d.feuilTraversee){lt+=' — corps CP (feuillure : feuille dédiée)';la+=' — corps CP';lb+=' — corps CP'}}
       else if(f==='goulotte'){V=genGoulotte(d,ep);lt='Vue de dessus — découpe du fond';la='Vue A — coupe radiale';lb='Vue B — calepinage panneau de fond'}
     }catch(e){V.top=errSvg(800,340,'Erreur de dessin : '+e.message)}
   }
-  const tl=esc(d.desc||TM[f]||'RESERVATION'),rl=d.ref?esc(d.ref)+' — '+tl:tl;
+  const tl=esc(d.desc||(d.chanfrein45?'MANNEQUIN CHANFREIN 45° — '+d.chanfrein45.angle:TM[f])||'RESERVATION'),rl=d.ref?esc(d.ref)+' — '+tl:tl;
   // --- Informations ---
   const kv=[],row=(k,v)=>kv.push(`<tr><td>${k}</td><td>${v}</td></tr>`);
   if(f!=='circ'){const cp=d.cp||{},parts=cpParts(f,d.constr);
@@ -2906,7 +3002,8 @@ function gen(d0){
       if(G.R)row('Cuve',`Ø intérieur ${nf(2*G.R/1000,2)} m · axe de la poutre à ${nf(G.o)} mm du centre · voile ${nf(G.P.ev)} mm`);
       if(d.ptDal)row('Dalle',`coulée sur la poutre · h = retombée sous dalle · platelage ${nf(G.ePl)} mm`);
       bmInfo(G.BG,row);}
-  } else if(f==='para'){
+  } else if(f==='para'&&d.chanfrein45){const F=chanfreinGeo(d);if(F.fabricable){row('Chanfrein 45°',d.chanfrein45.angle+' · retrait '+nf(d.chanfrein45.retrait)+' mm');row('Vide de référence',`${nf(d.ppB)} × ${nf(d.ppE)} × H ${nf(d.ppH)} mm`);row('Assemblage',F.assemblage);row('Volumes CP','Bruts de débit avant biseaux ; volumes nets de la géométrie réelle, voir détail');row('Traverses',F.renforts.tr.n+' croix 50×50 existantes, hors chanfrein')}}
+  else if(f==='para'){
     const g=paraGeo(d);
     if(g.ok){row('Ouverture parement',`L ${nf(g.Wf,0)} × H ${nf(g.Hf,0)} mm (parement intérieur et extérieur)`);row('Voile',nf(g.e)+' mm');
       row('Biais / pente',`α ${nf(d.ppA)}° en plan · β ${nf(d.ppBe)}°`);row('Arêtes',nf(g.Lr,0)+' mm (parement à parement)');row('Décalage de l\'axe',`${nf(g.dy,0)} mm en plan · ${nf(g.dz,0)} mm en hauteur`);
@@ -3247,6 +3344,7 @@ function limErr(d){
   if(d.forme==='poutre'){const po=d.ptPo||[];if(po.length>30)hit('zPtPo','30 poteaux intermédiaires maximum');
     po.forEach(p=>{if(!(p.D>=50&&p.D<=5000))hit('zPtPo','Poteau intermédiaire : Ø hors limites (50 → 5 000 mm)');if(!(Math.abs(p.s)<=100000))hit('zPtPo','Poteau intermédiaire : position hors limites')})}
   if(d.cp)['j','fi','fs'].forEach(k=>{const c=d.cp[k];if(c&&!(c.e>=3&&c.e<=60))hit('cp_'+k+'_e','Épaisseur de CP hors limites (3 → 60 mm)')});
+  if(d.chanfrein45)chanfreinGeo(d).erreurs.forEach(msg=>hit('ppChan',msg));
   return out;
 }
 // Champs illisibles du formulaire (saisie non numérique) : [{id, msg}]
@@ -3852,7 +3950,8 @@ function nestPieces(d,R){
         let by=0;cp.bands.forEach(B=>{let bx=0;cp.lens.forEach(L=>{const sfx=jp.split?letters[(off+k++)%26]:'',dr=DR?DR.filter(h=>drHit(h,bx,by,bx+L,by+B)).map(h=>({x:h.x-bx,y:h.y-by,D:h.D,i:h.i})):null;
           push({tag:r.tag+sfx,ftag:r.ftag+sfx,w:L,h:B,poly:[[0,0],[L,0],[L,B],[0,B]],lock,dims:nf(L,0)+' × '+nf(B,0),drill:dr&&dr.length?dr:null},i);bx+=L});by+=B})});
       return}
-    if(sh.t==='tri'&&r.a>0)base=[[0,0],[r.a,0],[0,r.a]];
+    if(sh.t==='poly'&&sh.poly)base=sh.poly.map(q=>q.slice());
+    else if(sh.t==='tri'&&r.a>0)base=[[0,0],[r.a,0],[0,r.a]];
     else if(sh.t==='disc'&&sh.D>0){base=circPoly(sh.D);if(sh.Din>0)hole=circPoly(sh.Din).map(([x,y])=>[x+(sh.D-sh.Din)/2,y+(sh.D-sh.Din)/2])}
     else if(sh.t==='para'&&sh.L>0)base=sh.poly?sh.poly.map(q=>q.slice()):[[0,0],[sh.L,0],[sh.L+sh.dl,sh.W],[sh.dl,sh.W]];
     else if(sh.t==='plate'&&sh.g&&sh.g.ok){base=platePolyRaw(sh.g,sh.inner,sh.faces);if(sh.hole>0)hole=platePolyRaw(sh.g,sh.inner,sh.faces,sh.hole)}
@@ -3869,7 +3968,7 @@ function nestPieces(d,R){
     const parts=[];cells.forEach(([a1,b1,a2,b2])=>{const p=cells.length>1?clipBox(base,a1,b1,a2,b2):base;if(!p)return;const hp=hole&&cells.length>1?clipBox(hole,a1,b1,a2,b2):hole;
       const [px0,py0,px1,py1]=bbox(p),dr=DRc?DRc.filter(q=>drHit(q,a1,b1,a2,b2)).map(q=>({x:q.x-px0,y:q.y-py0,D:q.D,i:q.i})):null;
       parts.push({w:px1-px0,h:py1-py0,poly:p.map(([x,y])=>[x-px0,y-py0]),hole:hp?hp.map(([x,y])=>[x-px0,y-py0]):null,drill:dr&&dr.length?dr:null})});
-    for(let i=0;i<r.q;i++)parts.forEach((pt,j)=>push(Object.assign({lock:false,dims:sh.t==='para'&&parts.length===1?nf(sh.L,0)+' × '+nf(sh.W,0)+' ⧸ '+nf(sh.dl,0):sh.t==='disc'?'Ø'+nf(sh.D,0)+(sh.Din>0?'/'+nf(sh.Din,0):'')+(parts.length>1?' ('+(j+1)+'/'+parts.length+')':''):nf(pt.w,0)+' × '+nf(pt.h,0)},pt,{tag:r.tag+(parts.length>1?'abcdefghijklmnopqrstuvwxyz'[j%26]:''),ftag:r.ftag+(parts.length>1?'abcdefghijklmnopqrstuvwxyz'[j%26]:'')}),i))});
+    for(let i=0;i<r.q;i++)parts.forEach((pt,j)=>push(Object.assign({lock:false,dims:sh.t==='poly'?nf(pt.w,3)+' × '+nf(pt.h,3)+' mm brut avant biseaux':sh.t==='para'&&parts.length===1?nf(sh.L,0)+' × '+nf(sh.W,0)+' ⧸ '+nf(sh.dl,0):sh.t==='disc'?'Ø'+nf(sh.D,0)+(sh.Din>0?'/'+nf(sh.Din,0):'')+(parts.length>1?' ('+(j+1)+'/'+parts.length+')':''):nf(pt.w,0)+' × '+nf(pt.h,0)},pt,{tag:r.tag+(parts.length>1?'abcdefghijklmnopqrstuvwxyz'[j%26]:''),ftag:r.ftag+(parts.length>1?'abcdefghijklmnopqrstuvwxyz'[j%26]:'')}),i))});
   return out;
 }
 // MaxRects (Best Short Side Fit), premier panneau qui convient
@@ -4388,6 +4487,11 @@ function montageInfo(d,R){
     if(d.dlPt)ctl.push(['Poches : profondeur et position en tête de voile','']);}
   else if(f==='poutre'){const G=ptGeo(d);bmSteps(G.ok?G.bm:null,steps,ctl,tg);
     if(G.ok)ctl.push([`Portée nu à nu ${nf(G.L,0)}`,''],[`Section b ${nf(d.ptB)} × h ${nf(d.ptH)}`,'intérieur coffrage'],['Fond de niveau, étaiement vérifié','']);}
+  else if(f==='para'&&d.chanfrein45){const F=chanfreinGeo(d);if(F.fabricable){steps.push('Repérer les faces coffrantes et les coins A/B. Découper les deux pentagones suivant les coordonnées et les retraits du plan.',
+    'Couper les joues et la diagonale à H − 2 CP. Préparer les onglets opposés à 22,5° ; couper à 45° l’about diagonal au parement ouvert, depuis la face repérée.',
+    'Monter les deux joues et la diagonale sur le dessous ; fermer avec le dessus pentagonal. Les deux parements A/B restent ouverts.',
+    'Poser les croix 50×50 existantes aux positions indiquées, hors chanfrein. Vérifier maintien, fixations et tenue sur chantier.');
+    ctl.push(['Contacts CP jointifs, aucun recouvrement, cinq familles de panneaux',''],['Faces A/B ouvertes, repères et sens des coupes respectés',''],['Tenue mécanique et fixations','non vérifiées par ce calcul']);}}
   else if(f==='para'){if(d.feuilTraversee)steps.push('Fixer les 4 tasseaux de feuillure autour du vide : les deux longs filants recouvrent les abouts des deux courts ; départ depuis le parement A, profondeur vers B. Vérifier le maintien et le passage entre banches.');steps.push('Couper les panneaux en parallélogramme (chants biais indiqués), assembler dessus / dessous sur les joues.');if(d.ppTr)steps.push('Poser les traverses en croix ⟂ à l\'axe.');
     const g=paraGeo(d);if(g.ok&&g.joint){steps.push(`Panneaux en ${g.joint.n} tronçons : assembler chaque joint sur son cadre de joint 50 × 50 (2 traverses + 2 montants, ⟂ à l'axe), tronçons bord à bord au milieu du cadre.`);ctl.push(['Joints des 4 panneaux dans la même section, sur cadre',''])}if(g.ok)ctl.push([`Ouverture parement L ${nf(g.Wf,0)} × H ${nf(g.Hf,0)}`,''],[`Arêtes ${nf(g.Lr,0)} (parement à parement)`,''],[`Biais α ${nf(d.ppA)}° · pente β ${nf(d.ppBe)}°`,'fausse équerre']);}
   ctl.push(['Faces coffrantes huilées, aucune vis / pointe dépassant','']);
@@ -4658,7 +4762,12 @@ function model3(d,R,opt){
     if(!r||!(r.split||r.cells||geom.lens))return;const c=jcnt.get(r)||0;jcnt.set(r,c+1);JWL.push({r,copy:c,geom,parent:s.solids[s.solids.length-1]})};
   s.reg=reg;
   const gsTri=(GS,x0,y0,x1,y1,z0)=>{const a=GS.a,gt=T('Goussets');GS.za.forEach((z,zi)=>[[x0,y0,1,1],[x1,y0,-1,1],[x0,y1,1,-1],[x1,y1,-1,-1]].forEach(([x,y,sx,sy],ci)=>s.g('in','gousset').prism([[x,y],[x+sx*a,y],[x,y+sy*a]],z0+z,ep,C3.gs,zi===0&&ci===3?gt:null)))};
-  if(RECT.includes(f)){const mas=f==='massif',Lx=mas?d.L+2*ep:d.L,lx=mas?d.l+2*ep:d.l,fond=FOND.includes(f)||mas&&d.fondMassif,z0=mas&&d.fondMassif?-eF:0,h=d.h+(mas&&d.fondMassif?eF:0);
+  if(d.chanfrein45){const F=chanfreinGeo(d);if(F.fabricable){F.pieces.forEach(p=>{
+    const row=R&&R.find(r=>r.sh?.pieceId===p.id);
+    s.g(p.id==='C1'?'top':p.id==='C2'?'base':'wall',p.nom).push({F:p.faces.map(f=>f.map(q=>chanfreinPoint(d,q)).reverse()),col:C3.j,tag:row?.tag,
+      decoupeDims:[p.a,p.b,p.ep],volumeBrut:p.volumeBrut,chanfreinPiece:p.id});
+  });paraTraverses3(s,F.renforts,R);}}
+  else if(RECT.includes(f)){const mas=f==='massif',Lx=mas?d.L+2*ep:d.L,lx=mas?d.l+2*ep:d.l,fond=FOND.includes(f)||mas&&d.fondMassif,z0=mas&&d.fondMassif?-eF:0,h=d.h+(mas&&d.fondMassif?eF:0);
     const opN=fond&&h>0.45*Math.min(Lx,lx)?0.35:null; // parois avant transparentes si boîte profonde (fond visible)
     const nF=mas?'Joues filantes':'Côtés filants',nE=mas?'Joues entre':'Côtés entre',m=mas?-1:1; // massif : renforts à l'extérieur ; réservation : à l'intérieur (vide)
     if(fond){s.g('base','fond').box(ep,ep,z0,Lx-2*ep,lx-2*ep,eF,C3.fi,tg('fi'));reg(mas?'Fond (entre joues)':'Fond (entre côtés)',{t:'flat',F0:[ep,ep,mas?z0:z0+eF],A:[1,0,0],B:[0,1,0],N:[0,0,m]})}
@@ -4767,10 +4876,7 @@ function model3(d,R,opt){
       beam3(s,bm,0,G.BG.eF,G.BG.eJ,T,tg('fs'),true);
       [[bm.sL,-1],[bm.sR,1]].forEach(([S0,sg])=>{if(S0.t!=='poteau'){const u=S0.at(0,0),ev=G.P.ev;s.g('ctx','voile').box(sg<0?u-ev:u,-Math.max(600,bm.b*2),-bm.h-1500,ev,2*Math.max(600,bm.b*2),1500+bm.h,C3.conc,null,0.45)}})}}
   else if(f==='para'){const g=paraGeo(d);if(g.ok){const kw=0.6*g.b+200;g.panels.forEach((p,i)=>{const c=p.pts,sw=i===2?1:-1;if(c.length===8)s.g(i===0?'top':i===1?'base':'wall',p.n.toLowerCase(),i>=2?[g.w[0]*sw*kw,g.w[1]*sw*kw,0]:null).hexa(c,C3.j,i===0?T('Dessus'):i===2?T('Joues'):null)});
-      if(g.tr){const C0=[g.e/2,0,0],add=(a,b,k)=>[a[0]+b[0]*k,a[1]+b[1]*k,a[2]+b[2]*k],bt=TB(/Traverses horiz/);
-        for(let i=0;i<g.tr.n;i++){const c=add(C0,g.u,-g.Lr/2+g.Lr*(i+1)/(g.tr.n+1));
-          s.g('in','traverse').bx3(c,g.w,g.v,g.u,g.tr.Lh/2,25,25,C3.bois,i===0?bt:null);
-          [-1,1].forEach(sg=>s.bx3(add(c,g.v,sg*(25+g.tr.Lv/2)),g.v,g.w,g.u,g.tr.Lv/2,25,25,C3.bois))}}
+      paraTraverses3(s,g,R);
       // v17 : cadres de joint (tronçons de panneaux) : 2 traverses sous le dessus / sur le dessous + 2 montants contre les joues
       if(g.joint){const C0=[g.e/2,0,0],add=(a,b,k)=>[a[0]+b[0]*k,a[1]+b[1]*k,a[2]+b[2]*k],bj=TB(/Cadres de joint 50×50 — traverses/);
         g.joint.s.forEach((s0,i)=>{const c=add(C0,g.u,s0),hv=g.h/2-g.ep-25,hw=g.b/2-g.ep-25;
@@ -4803,7 +4909,7 @@ function model3(d,R,opt){
   return s;
 }
 // cotes d'une plaque (6 faces, grande face à 4 sommets) : [longueur, largeur, épaisseur] triées, sinon null
-function plate3(o){if(o.pm&&o.pm.poly&&o.pm.h>0){const P=o.pm.poly;let best=null;  // prisme : rectangle d'aire mini du contour × épaisseur
+function plate3(o){if(o.decoupeDims)return o.decoupeDims.slice().sort((a,b)=>b-a);if(o.pm&&o.pm.poly&&o.pm.h>0){const P=o.pm.poly;let best=null;  // prisme : rectangle d'aire mini du contour × épaisseur
     for(let i=0;i<P.length;i++){const q=P[(i+1)%P.length],dx=q[0]-P[i][0],dy=q[1]-P[i][1],l=Math.hypot(dx,dy);if(l<1e-9)continue;const ux=dx/l,uy=dy/l;let a0=1e18,a1=-1e18,b0=1e18,b1=-1e18;
       P.forEach(([x,y])=>{const a=x*ux+y*uy,b=-x*uy+y*ux;a0=Math.min(a0,a);a1=Math.max(a1,a);b0=Math.min(b0,b);b1=Math.max(b1,b)});if(!best||(a1-a0)*(b1-b0)<best[0]*best[1])best=[a1-a0,b1-b0]}
     return best?[best[0],best[1],o.pm.h].sort((a,b)=>b-a):null}
@@ -4868,6 +4974,11 @@ function glPrint(){Promise.race([glSheets(el('pvA')),new Promise(r=>setTimeout(r
 
 // ---------- Pages complémentaires : montage + fiche atelier ----------
 function genExtra2(d,R,V,ctx,out){
+  if(d.chanfrein45&&chanfreinGeo(d).fabricable){
+    out.push(['CHANFREIN — DÉCOUPES','Contours de découpe avant biseaux · coordonnées en mm',chanfreinPlans(d,R),'<p>Contours en repère XY de pose, vus du dessus ; face coffrante du dessous sous le panneau. Marquer A/B avant de retourner une pièce. Dessus et dessous pentagonaux, coupes droites à 45° dans le plan. Rectangles des joues et de la diagonale = bruts avant biseaux. Repérer la face coffrante ; respecter les angles du détail. Imbrication par cadres englobants, aucune économie polygonale supposée.</p>']);
+    out.push(['CHANFREIN — COUPES','Détail des onglets et de la diagonale',chanfreinDetail(d,R),'<p>'+esc(chanfreinGeo(d).assemblage)+'</p>']);
+  }
+
   if(d.feuilTraversee&&!badDims(checks(d,null))){out.push(['FEUILLURE TRAVERSANTE','Parement A (X=0) → B (X=e)',feuilTraverseFeuille(d),
     `<p>Repère rectangulaire de référence : L = largeur ${nf(d.ppB)} ; l = hauteur ${nf(d.ppH)} ; h = traversée ${nf(d.ppE)} mm. Les coupes ci-dessus sont dans ce repère de fabrication. Haut du modèle = parement A ; départ ${nf(d.fNiv)}, profondeur ${nf(d.fH)}, largeur hors vide ${nf(d.fL)} mm. Corps ouvert sur A et B, 4 tasseaux périphériques en about carré ; fixation et maintien à vérifier. Voir le débit bois et la 3D pour la pose réelle.</p>`])}
 
@@ -5779,7 +5890,7 @@ function dxfPlan(D,d,R,ox,oy){
     let pts;if(o.pm&&!o.pm.inv)pts=o.pm.poly.map(([x,y])=>pr([x,y,0]));else pts=hull(o.F.flat().map(pr));
     if(!pts||pts.length<3)return;const k=key(L,pts);if(seen.has(k))return;seen.add(k);D.poly(L,pts.map(([x,y])=>[tx(x),ty(y)]),true);n++});
   if(D.th)D.th=Math.max(D.th,Math.min(250,(B[2]-B[0])/40)); // grandes dalles : titres à l'échelle du plan
-  const th=dxfTitle(D,ox,oy,B[2]-B[0],`VUE EN PLAN — ${(d.ref||'')}`,`${TM[d.forme]||d.forme} — cotes en mm, même orientation que la feuille du plan`);
+  const th=dxfTitle(D,ox,oy,B[2]-B[0],`VUE EN PLAN — ${(d.ref||'')}`,`${d.chanfrein45?'Mannequin chanfrein 45° '+d.chanfrein45.angle:TM[d.forme]||d.forme} — cotes en mm, même orientation que la feuille du plan`);
   return{n,w:B[2]-B[0],h:B[3]-B[1],th}}
 // panneaux à découper : [{name, W, H, sheets:[{items, pre}]}]
 function dxfPanels(D,groups,ox,oy){let y=oy,np=0,npc=0;const gap=300,perRow=4;
@@ -6038,14 +6149,14 @@ function bimModel(d0,ex){let d,g,R,s0;
     return{S,col:s.col,nm:s.nm,k:C3K[s.col]||'j',r,ftag:r?r.ftag:'',lbl:tag&&!r?tag:'',off:[a[0]-b[0],a[1]-b[1],a[2]-b[2]],geo:bimGeo(S)}});
   pcs=bimSplit(pcs,s0,R,rows);bimTags(pcs,rows,R);
   pcs.forEach(pc=>{const row=RW.get(pc.ftag);Object.assign(pc,{row,tag:row?pc.ftag:'',name:row?pc.ftag:(d.ref||'Ouvrage')+'-'+pc.nm,kind:BIM_K[pc.k]||'px',cp:BIM_K[pc.k]==='cp'&&pc.r&&pc.r.k?cpOf(d,pc.r.k):null})});
-  return{d,ref:d.ref||'Ouvrage',ch:d.ch||'',ouv:d.ouv||'',forme:fo?fo.text:d.forme,ex:!!ex,O:[(B[0]+B[2])/2,(B[1]+B[3])/2,0],pcs}}
+  return{d,ref:d.ref||'Ouvrage',ch:d.ch||'',ouv:d.ouv||'',forme:d.chanfrein45?'Mannequin chanfrein 45° '+d.chanfrein45.angle:fo?fo.text:d.forme,ex:!!ex,O:[(B[0]+B[2])/2,(B[1]+B[3])/2,0],pcs}}
 // géométrie d'une pièce (assemblée) : couronne / secteur extrudé (coque), prisme vertical (perçages compris), prisme vertical d'une
 // plaque posée de chant (vprism), sinon facettes. shortcut: perçages ignorés sur un secteur de coque partiel (aucun cas aujourd'hui).
 function bimGeo(S){if(S.length>1&&!S[0].rg)return{t:'multi',parts:S.map(o=>bimGeo([o]))};const o=S[0],H=(o.holes||[]).map(([x,y,r])=>[x,y,r]),pm=o.pm;
   if(o.rg&&pm)return{t:'ring',rg:o.rg,z0:pm.z0,h:pm.h,H:o.rg.full?H:[]};
   if(pm&&pm.vp)return{t:'vext',poly:pm.poly,vp:pm.vp,h:pm.h};
   if(pm&&!pm.inv&&pm.h>0&&S.length===1)return{t:'ext',poly:pm.poly,ci:o.ci&&o.ci.r>0?o.ci:null,z0:pm.z0,h:pm.h,H};
-  return{t:'brep',F:[].concat(...S.map(q=>q.F))}}
+  return{t:'brep',F:[].concat(...S.map(q=>q.F)),...(o.volumeBrut!=null?{volumeBrut:o.volumeBrut}:{})}}
 // tronçons : une paroi plus grande que le panneau est débitée en morceaux (r.split, repères J1a, J1b… ; goulotte : n morceaux égaux) →
 // la pièce exportée est découpée aux mêmes joints que les couvre-joints de la 3D (face enregistrée par model3, phase de jointGeo)
 function bimSplit(pcs,s0,R,rows){const lt='abcdefghijklmnopqrstuvwxyz',done=new Set(),out=[];
@@ -6094,7 +6205,7 @@ function bimTags(pcs,rows,R){const cap=new Map(rows.map(r=>[r.tag,+r.qt||0])),D=
       ||k==='cp'&&pcs.length&&R.find(x=>C3[x.k]===pc.col&&!(x.a>0&&x.b>0)&&cap.get(x.ftag)>0); // ligne sans cotes (planches découpées de la dalle, comptées par planche)
     const t=r2&&(r2.ftag||r2.tag);if(t){pc.ftag=t;cap.set(t,cap.get(t)-1)}})}
 // volume (mm³) de la géométrie exportée ; brut = sans les perçages (le débit compte le panneau entier)
-function bimVol(g,brut){if(g.t==='multi')return g.parts.reduce((s,p)=>s+bimVol(p,brut),0);const ah=brut?0:(g.H||[]).reduce((s,h)=>s+Math.PI*h[2]*h[2],0);
+function bimVol(g,brut){if(brut&&g.volumeBrut!=null)return g.volumeBrut;if(g.t==='multi')return g.parts.reduce((s,p)=>s+bimVol(p,brut),0);const ah=brut?0:(g.H||[]).reduce((s,h)=>s+Math.PI*h[2]*h[2],0);
   if(g.t==='ring'){const r=g.rg,a=r.full?Math.PI*(r.r2*r.r2-(r.r1>1?r.r1*r.r1:0)):Math.abs(polyArea2(bimArc(r)));return(a-ah)*g.h}
   if(g.t==='ext')return((g.ci?Math.PI*g.ci.r*g.ci.r:Math.abs(polyArea2(g.poly)))-ah)*g.h;
   if(g.t==='vext')return Math.abs(polyArea2(g.poly))*g.h;
@@ -6106,7 +6217,7 @@ function bimQty(pc){const g=pc.geo,V=bimVol(g),Vb=bimVol(g,true),p=g.t==='multi'
   return{V,Vb,e,len:D[0],D,A:V/(e||1)}}
 const BIM_MAT={bois:'Bois massif',carton:'Tube carton',pvc:'Tube PVC'};
 function bimInfo(M,pc){const q=bimQty(pc),r=pc.row;
-  return{repere:pc.tag,designation:r?r.des:pc.nm+(pc.lbl&&pc.lbl!==pc.nm?' ('+pc.lbl+')':''),dimensions:r&&r.L?nf(r.L)+(r.l?' × '+nf(r.l):'')+(pc.kind==='cp'?' × '+nf(q.e):''):q.D.map(v=>nf(v)).join(' × '),
+  return{repere:pc.tag,designation:r?r.des:pc.nm+(pc.lbl&&pc.lbl!==pc.nm?' ('+pc.lbl+')':''),dimensions:r&&r.L?nf(r.L,pc.S[0].chanfreinPiece?3:undefined)+(r.l?' × '+nf(r.l,pc.S[0].chanfreinPiece?3:undefined):'')+(pc.kind==='cp'?' × '+nf(q.e):''):q.D.map(v=>nf(v)).join(' × '),
     epaisseur:q.e,materiau:r&&r.mat?r.mat:BIM_MAT[pc.k]||(pc.kind==='cp'?cpName(cpOf(M.d,'j')):'—'),chantier:M.ch,plan:M.ref,q}}
 
 // ---------- glTF 2.0 binaire : un nœud par ouvrage, un nœud par pièce (maillage, matériau PBR de la palette) ; m, Y vers le haut ----------

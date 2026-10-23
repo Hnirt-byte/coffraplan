@@ -838,3 +838,131 @@ Banc `t_geometries_particulieres` : PDF fictif et dimensions calculables
 indépendamment, contrôles, confirmation/unicité, CP/bois, volumes et positions
 3D, imbrication, DXF, WebGL, IFC relu par ifcopenshell, GLB relu, JSON v10 et
 IndexedDB, quatre angles du chanfrein et blocage de toute fabrication.
+
+
+## Phase 10C — fabrication du mannequin chanfreiné 45°
+
+La V1 fabrique un seul chanfrein vertical GA / DA / DB / GB, sur une ouverture
+rectangulaire traversant normalement un voile droit, orientation `vers_beton`.
+`vers_vide` reste en étude. Le modèle pur `chanfrein45` de 10B reste inchangé ;
+`CPI.geometriesParticulieres.chanfrein45Fabrication(parametres, provenance)`
+calcule désormais les **pièces de CP**, pas seulement le volume théorique du vide.
+Aucun accès au DOM, au projet ou au stockage.
+
+### Assemblage et coupes
+
+Repère : X = largeur L, Y = traversée e, Z = hauteur H ; A à y=0, B à y=e.
+Le CP est **dans l'enveloppe du vide**. Aucun panneau ne ferme A ou B.
+Les cinq familles de pièces, toutes dans le CP choisi, sont :
+
+| Pièce logique / débit | Forme et position |
+|---|---|
+| C1 / J1 | Dessus pentagonal, Z = H−t à H |
+| C2 / J2 | Dessous pentagonal, Z = 0 à t |
+| C3 / J3 | Joue du côté chanfreiné, entre dessous et dessus |
+| C4 / J4 | Joue opposée, entre dessous et dessus |
+| C5 / J5 | Diagonale, entre dessous et dessus |
+
+`t` désigne l'épaisseur CP, `r` le retrait, `k = √2−1` et `h = H−2t`.
+Pour GA, la joue C3 et la diagonale se rencontrent sur le segment
+`(0,r) → (t,r+kt)` : onglets opposés **22,5°**. L'autre extrémité de la diagonale
+est coupée dans le plan du parement A, avec un biseau **45°**.
+Les angles de scie sont mesurés depuis une coupe droite (0°).
+Les autres positions sont les réflexions exactes du même assemblage.
+
+| Panneau vertical | Face coffrante | Dos / brut avant biseaux |
+|---|---|---|
+| Joue C3 | longueur e−r, hauteur h | dos e−r−kt ; brut (e−r) × h |
+| Joue C4 | longueur e, hauteur h | coupe droite ; brut e × h |
+| Diagonale C5 | longueur r√2, hauteur h | dos r√2+t−kt ; brut (r√2+t) × h |
+
+La face repérée est coffrante vers le béton. Sur le détail C5, l'abscisse s va
+de la jonction avec la joue vers le parement ouvert, et w vers le dos du CP.
+La coupe en épaisseur est `(0,0), (r√2,0), (r√2+t,t), (kt,t)`.
+Le départ du dos à la jonction est kt, et son extrémité au parement est décalée
+de t. Ces deux coupes ne doivent pas être remplacées par une longueur r√2
+appliquée aux deux faces du panneau.
+
+Les contours des dessus/dessous sont les pentagones complets du vide, avec une
+coupe **45° dans le plan**, lame non inclinée. Toutes les coordonnées XY des
+patrons sont vues du dessus de l'ouvrage assemblé ; la face coffrante du dessous
+est sous son panneau. Marquer A/B et la face coffrante avant retournement.
+
+### Calcul partagé et limites
+
+Le contrat pur retourne les empreintes, plages Z, faces orientées, contours de
+découpe, épaisseurs, contacts, angles, aire de découpe et volumes brut/net.
+`chanfreinGeo` adapte ce contrat au moteur `para` :
+`(x,y,z) module → (y, x−L/2, z−H/2) moteur`. Cette réflexion impose d'inverser
+l'ordre des faces. Le même calcul alimente le débit, la 2D, la 3D et les exports.
+
+Le modèle conserve les croix **50×50 existantes** de `para` et leur nombre,
+sans inventer une nouvelle section ni une résistance. Elles sont réparties dans
+la zone non affectée par le chanfrein : de `r+kt` à e (chanfrein en A), ou de 0
+à `e−r−kt` (chanfrein en B). Leur épaisseur 50 mm et leurs contacts sont contrôlés.
+Si elles ne peuvent pas être placées, la configuration est refusée.
+
+Outre les contrôles historiques du CP et des dimensions, sont bloqués :
+
+- H ≤ 2t, retrait nul/négatif, coin ou orientation inconnus ;
+- e−r−kt ≤ 0 ou L−r−(√2+1)t ≤ 0 : joue ou ouverture dégénérée / interférence ;
+- orientation différente de `vers_beton`, version inconnue, plusieurs chanfreins ;
+- feuillure, biais, pente, renforts en croix supplémentaires ou absence des
+  traverses 50×50 de cette V1 ;
+- pièce ne tenant pas entière dans le format CP choisi : raccord non pris en charge.
+
+La compatibilité géométrique ne valide ni la poussée, ni les fixations ou le
+maintien. Les avertissements de `para` restent visibles. Aucune reprise de la
+hauteur e comme hauteur de pression : H demeure la hauteur verticale.
+
+### Débit, découpe et sorties
+
+Le débit conserve les contours pentagonaux des deux horizontaux. Sa surface
+est celle des découpes **avant biseaux** ; le volume net physique après biseaux
+est distinct du brut, également dans les quantités IFC. Les joues et la diagonale
+sont tracées en bruts rectangulaires avec leurs chants biseautés explicitement
+cotés. `nestPieces` et `cpNest` utilisent les vrais contours, MaxRects réserve
+leurs cadres englobants. Les chutes des coins ne sont pas supposées réutilisées.
+
+Deux feuilles obligatoires donnent les cinq découpes et le détail agrandi des
+biseaux, même sans annexes activées. La feuille principale distingue vide et
+CP, ainsi que les élévations A/B ouvertes. Montage, débit bois, vectoriel,
+WebGL et éclaté utilisent le modèle partagé. Toutes les coupes étant droites,
+les coordonnées et angles permettent le traçage ; aucun faux gabarit cintré
+ni assemblage de pages n'est produit.
+
+DXF : contours réels de l'imbrication, diagonales, repères et vues cotées, en mm
+(arrondi historique à 0,001 mm). GLB et IFC : vrais panneaux polygonaux/BREP,
+positions, repères, dimensions et volumes conservés. Les dimensions brutes de
+la diagonale sont affichées au millième de mm ; la précision du GLB reste celle
+du Float32. Aucun export de fabrication pour les variantes restées en étude.
+
+### Exemple et parcours fictifs
+
+L=600, e=240, H=800, r=40, t=18, GA. Le vide a une aire de 143 200 mm² et un
+volume de 114 560 000 mm³. Hauteur des panneaux verticaux : 764 mm.
+Dessus/dessous : pentagones `(0,40), (40,0), (600,0), (600,240), (0,240)`.
+Joue chanfreinée : brut 200 × 764 ; joue opposée : 240 × 764.
+Diagonale : face 56,568542 mm, dos 67,112698 mm, brut 74,568542 × 764 mm.
+Départ du dos à l'onglet : 7,455844 mm. Ces valeurs ne sont pas interchangeables.
+
+Dans la proposition PDF, choisir rectangle / voile droit / solution simple /
+chanfrein 45°, compléter les valeurs et le coin, choisir `vers_beton`, confirmer
+les coupes et l'assemblage, arbitrer toute contradiction. L'aperçu présente les
+panneaux réels. Vérifier le récapitulatif, puis confirmer la création. Aucun
+ouvrage avant confirmation ; toute correction invalide le récapitulatif.
+Les preuves restent conservées et un autre détail attribué reste bloquant.
+
+Champ métier optionnel `chanfrein45:{version:1,retrait,angle,orientation}`,
+épaisseur dans le CP du plan ; aucune dépendance du moteur à `origineImport`.
+Formulaire manuel, duplication, IndexedDB et JSON v10 restituent les mêmes pièces.
+Aucun changement de stockage ni modification imposée aux anciens projets.
+
+Banc `t_chanfrein_fabrication` : géométries et PDF fictifs, quatre coins,
+épaisseurs/retraits variables, calculs indépendants Shapely, contacts et absence
+d'interférence, surfaces/volumes bruts et nets, contours 2D et DXF relus, volumes
+et positions GLB/IFC, WebGL, confirmation, contradictions, provenance et persistance.
+Le banc 10B conserve l'étude `vers_vide`, la feuillure et ses assertions.
+Le générateur historique et les comparaisons avant/après restent inchangés.
+D13 n'est pas annoncé reproduit. Essais physiques, vrais AutoCAD, Firefox/Safari
+et impression réelle non vérifiés.
