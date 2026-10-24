@@ -271,10 +271,23 @@ function dxnAssoc(){const D=DXI;if(!D.NL.length)return;
   D.NL.forEach(({L},k)=>{const r=D.NR[k],a=dxnAS(L);if(!r.cotesT)r.cotes=dxnPre(k);if(!r.geoT)r.geo=a.statut==='trouvee'&&!r.rej?String(a.principal!=null?a.principal:a.options[0].c):''});dxnLinks()}
 const DXN_AS0={statut:'absente',options:[],reperes:[],note:''};
 const dxnAS=L=>DXI.AS&&DXI.AS[L.id]||DXN_AS0;   // ligne saisie ou ajoutée après le rapprochement : aucune géométrie
+// Un texte fiable n'établit pas la propriété du contour voisin. Un choix explicite
+// unique prime ; sinon un contour revendiqué par plusieurs lignes reste ambigu.
+function dxnContoursLignes(){const D=DXI,NL=D.NL||[],C=D.C||[],liens=NL.map(()=>new Set()),partages=NL.map(()=>new Set()),conflits=new Set(),demandes=new Map();
+  NL.forEach(({L},i)=>{const r=D.NR?.[i]||{},ids=new Set();if(r.rej||r.geoT&&r.geo==='')return;
+    if(r.geoT){if(C[+r.geo])ids.add(C[+r.geo].id)}else{(dxnAS(L).occurrences||[]).filter(o=>o.fiable&&o.contour&&(!o.nature||o.nature==='repere')).forEach(o=>ids.add(o.contour));
+      if(r.geo!==''&&r.geo!=null&&C[+r.geo])ids.add(C[+r.geo].id);}
+    ids.forEach(id=>{if(!demandes.has(id))demandes.set(id,[]);demandes.get(id).push({i,explicite:!!r.geoT})});});
+  demandes.forEach((Q,id)=>{const E=Q.filter(q=>q.explicite),elu=E.length===1?E[0]:!E.length&&Q.length===1?Q[0]:null;
+    Q.forEach(q=>{if(q===elu)liens[q.i].add(id);else partages[q.i].add(id)});
+    if(E.length>1)E.forEach(q=>conflits.add(q.i));});
+  return{liens,partages,conflits};
+}
 // Contours rattachés : celui choisi pour chaque ligne et toutes les vues désignées par son repère (preuves d'une même entrée :
 // pas de doublon dans « hors nomenclature ») ; sauf ligne au rapprochement rejeté ou sans contour choisi par l'utilisateur
 function dxnLinks(){const D=DXI;D.lk=new Set(D.NR.filter(r=>r.geo!=='').map(r=>+r.geo));
-  if(D.fmt==='pdf')D.NL.forEach(({L},k)=>{const r=D.NR[k];if(r.rej||r.geoT&&r.geo==='')return;(dxnAS(L).preuves||[]).forEach(i=>D.lk.add(i))})}
+  if(D.fmt==='pdf')D.NL.forEach(({L},k)=>{const r=D.NR[k];if(r.rej||r.geoT&&r.geo==='')return;(dxnAS(L).preuves||[]).forEach(i=>D.lk.add(i))})
+  if(D.fmt==='pdf'&&D.PR){dxprInventaire();if(DXC?.D===D)dxcRefresh();}}
 function dxnPane(){const D=DXI,NA=D.NA,pdf=D.fmt==='pdf';
   const vide=pdf&&!D.NL.length?`<div class="hint" style="margin:8px 0;border-left-color:var(--acct)"><b>Aucune nomenclature de réservations exploitable n'a été reconnue automatiquement.</b>
     Rien n'est inventé : aucune ligne n'est proposée. ${D.doc.pages.map(p=>`Page ${p.n} : ${esc(CPI.pdf.LIB_NAT[p.nature]||p.nature)}`).join(' · ')}.
@@ -320,21 +333,28 @@ function dxnAll(on){const D=DXI;if(!D)return;D.NR.forEach(r=>r.conf=on);document
 function dxnRefs(tab){const D=DXI;if(!D)return;D.NR.forEach((r,k)=>r.ref=tab?String(D.NL[k].L.repere||'').toUpperCase():'');
   document.querySelectorAll('#dxnT tr[data-n]').forEach(t=>t.querySelector('[data-k=ref]').value=D.NR[+t.dataset.n].ref);dxiUpd()}
 // Lignes de nomenclature : cotes (mm) et forme saisies ou reprises du tableau → adaptateur (contrôles du moteur), comme les géométries
-function dxnEval(moteur,hc){const D=DXI;if(!D.NL||!D.NL.length)return;
+function dxnEval(moteur,hc){const D=DXI;if(!D.NL||!D.NL.length)return;const liens=D.fmt==='pdf'?dxnContoursLignes():null;
   D.NL.forEach(({N,L},k)=>{const r=D.NR[k],dm=dxnDims(r),fo=r.forme||dxnDef(dm);r.x=null;
     let h=hc;if(String(r.h).trim()!==''){try{h=parseCote(r.h,'mm')}catch(e){h=null}}
     const man=[];if(dm.etat!=='rect'&&dm.etat!=='circ')man.push(String(r.cotes).trim()?'cotes illisibles (ex. 650x800 ou Ø250)':L.dims&&!dxnU(N,L)?'unité des cotes du tableau':'cotes');
     const nb=/^\s*\d{1,4}\s*$/.test(r.nb==null?'1':String(r.nb))?parseInt(r.nb==null?'1':r.nb,10):0;
     if(!fo)man.push('forme');if(!(h>0))man.push(String(r.h).trim()?'hauteur illisible':'hauteur à coffrer');if(!(nb>=1))man.push('nombre (entier ≥ 1)');if(!String(D.ch||'').trim())man.push('chantier');
     if(man.length){r.st='ac';r.msg='à compléter : '+man.join(', ');return}
-    const g=r.geo!==''?D.C[+r.geo]:null,x=CPI.adaptateur.versPlan(CPI.nomenclatures.candidat(N,L,{dims:dm,geo:g}),{confirme:true,forme:fo,h,unite:'mm',ref:r.ref.trim(),nb},{moteur,modele:D.M[fo]});
+    const propose=r.geo!==''?D.C[+r.geo]:null,g=propose&&(!liens||liens.liens[k].has(propose.id))?propose:null,x=CPI.adaptateur.versPlan(CPI.nomenclatures.candidat(N,L,{dims:dm,geo:g}),{confirme:true,forme:fo,h,unite:'mm',ref:r.ref.trim(),nb},{moteur,modele:D.M[fo]});
     if(!x.ok){r.st='er';r.msg=x.message+(x.messages&&x.messages.length?' : '+x.messages.join(' · '):'');return}
     const p=x.plan;
     if(p.ref&&P.some(q=>chKey(q.ch)===chKey(p.ch)&&ouKey(q.ouv).toLowerCase()===ouKey(p.ouv).toLowerCase()&&String(q.ref||'').toUpperCase()===p.ref)){r.st='er';r.msg=`référence ${p.ref} déjà utilisée dans cet ouvrage`;return}
+    if(liens?.partages[k].size)x.alertes.push('Contour proposé à plusieurs lignes : ignoré, rattachement à clarifier');
     r.x=x;r.st=x.alertes.length?'wn':'ok';r.msg=x.alertes.join(' · ')})}
-function dxnProv(k){const D=DXI,{N,L}=D.NL[k],r=D.NR[k],a=dxnAS(L),g=r.geo!==''?D.C[+r.geo]:null,u=dxnU(N,L);
+function dxnProv(k){const D=DXI,{N,L}=D.NL[k],r=D.NR[k],a=dxnAS(L),liens=D.fmt==='pdf'?dxnContoursLignes():null,propose=r.geo!==''?D.C[+r.geo]:null,
+    g=propose&&(!liens||liens.liens[k].has(propose.id))?propose:null,u=dxnU(N,L);
   const p=CPI.nomenclatures.provenance(N,L,{forme:r.x.plan.forme,nb:r.x.plan.nb,cotes:r.cotes,dims:dxnDims(r),ref:r.ref.trim().toUpperCase(),uniteTableau:u||null,uniteDessin:D.fmt==='pdf'?'pt':D.u||null,
-    uniteChoisie:!!(u&&!(L.dims&&L.dims.unite)&&!N.unite),geo:g?{c:g,statut:!r.geoT&&a.statut==='trouvee'?'trouvee':'choisie'}:null,rapprochement:D.fmt==='pdf'&&D.ana?dxrRapProv(a,r,D.CS[L.id]):null});if(g&&g.reconstruction&&p.geometrie)p.geometrie.reconstruction=g.reconstruction;return p}
+    uniteChoisie:!!(u&&!(L.dims&&L.dims.unite)&&!N.unite),geo:g?{c:g,statut:!r.geoT&&a.statut==='trouvee'?'trouvee':'choisie'}:null,rapprochement:D.fmt==='pdf'&&D.ana?dxrRapProv(a,r,D.CS[L.id]):null});
+  if(liens&&p.rapprochement){
+    p.rapprochement.localisations.forEach(o=>{if(o.contour&&!liens.liens[k].has(o.contour)){o.contour=null;o.fiable=false;o.doutes.push('Contour non rattaché univoquement à cette ligne');}});
+    if(liens.partages[k].size)p.a_verifier.push('Contour proposé à plusieurs lignes : ignoré, rattachement à clarifier');
+  }
+  if(g&&g.reconstruction&&p.geometrie)p.geometrie.reconstruction=g.reconstruction;return p}
 // Statuts, formes possibles, géométries proposées, bilan (sans reconstruire la liste : garde la saisie en cours)
 function dxnUpd(){const D=DXI;if(!D||!el('dxnT'))return;const lb={ok:'✓ prêt',wn:'⚠ prêt — ',ac:'… ',er:'⛔ non créé — '};
   document.querySelectorAll('#dxnT tr[data-n]').forEach(t=>{const k=+t.dataset.n,r=D.NR[k],{L}=D.NL[k],a=dxnAS(L),dm=dxnDims(r),F=dxnFormes(dm);
@@ -635,7 +655,7 @@ function dxoValider(remplacer){const D=DXI,O=D&&D.OC;if(!O)return;const R=el('dx
       +`Annuler : rien n'est ajouté ni retiré (corriger la grille, ou garder le tableau existant).`,()=>dxoValider(true),{ok:'Remplacer le tableau'})}
   const vieux=new Set(D.NA.nomenclatures.filter(N=>(N.ocr||N.grilleTexte)&&dxoChevauche(N.zone,O.zone)||auto.has(N))),old=new Map();
   D.NL.forEach((x,k)=>{if(vieux.has(x.N)&&!auto.has(x.N)&&x.L.repere)old.set(cle(x.L.repere),D.NR[k])});
-  const N=CPI.ocr.versNomenclature(rows,{id:(O.pdfTexte?'Z':'O')+(++D.nz),fichier:D.doc.fichier,page:O.page,zone:O.zone,titre:O.titre,unite:O.unite,mesures:O.mesures,texte:O.pdfTexte});
+  const N=CPI.ocr.versNomenclature(rows,{id:(O.pdfTexte?'Z':'O')+(++D.nz),fichier:D.doc.fichier,page:O.page,zone:O.zone,titre:O.titre,unite:O.unite,mesures:O.mesures,texte:O.pdfTexte,entetesSource:O.src?.colonnes});
   const keep=D.NL.map((x,k)=>vieux.has(x.N)?-1:k).filter(k=>k>=0),NL2=N.lignes.map(L=>({N,L}));
   D.NL=keep.map(k=>D.NL[k]).concat(NL2);D.NR=keep.map(k=>D.NR[k]).concat(NL2.map(({L},i)=>{const o=L.repere&&old.get(cle(L.repere))||M.has(i)&&D.NR[M.get(i).k];return o?Object.assign(o,{x:null}):dxnNR(L)}));
   D.NA.nomenclatures=D.NA.nomenclatures.filter(N=>!vieux.has(N)).concat([N]);D.hl=-1;D.nsel=-1;
@@ -701,9 +721,9 @@ async function dxrGo(){const D=DXI;if(!D||!D.pdf||D.rJob||D.ocJob)return;const z
 // Observations : localisations fiables, avec contour, des lignes de nomenclature en concordance forte ou partielle (association
 // fiable seulement) ; échelle de la page (choisie) ou de la vue (écrite), les deux comparées ; page très chargée : relecture locale
 // autour des contours (7 fois leur taille : la fenêtre d'analyse en fait 6). → DXI.SP = {idLigne: résultat de CPI.support (vues consolidées)} ; nomenclature et contours inchangés.
-async function dxsAnalyser(){const D=DXI,SP={},P=new Map();D.SP={};D.SPerr=null;if(!D||!D.pdf||!window.CPI||!CPI.support)return D.SP;
-  D.NL.forEach(({N,L})=>{const a=dxnAS(L);if(!/^(forte|partielle)$/.test(a.concordance||''))return;
-    (a.occurrences||[]).forEach(o=>{if(!o.fiable)return;let c=o.contour?D.C.find(x=>x.id===o.contour):null,rep=null;
+async function dxsAnalyser(){const D=DXI,SP={},P=new Map(),liens=dxnContoursLignes();D.SP={};D.SPerr=null;if(!D||!D.pdf||!window.CPI||!CPI.support)return D.SP;
+  D.NL.forEach(({N,L},k)=>{const a=dxnAS(L);if(!/^(forte|partielle)$/.test(a.concordance||''))return;
+    (a.occurrences||[]).forEach(o=>{if(!o.fiable||o.contour&&!liens.liens[k].has(o.contour))return;let c=o.contour?D.C.find(x=>x.id===o.contour):null,rep=null;
       // repère sans contour proposé : contour écarté par le repérage (réservation dessinée dans l'épaisseur d'un voile, sommets raccordés aux
       // faces : « cellule d'un quadrillage ») le plus proche du repère, sans rival (même règle que le rapprochement) ; pas les lignes de
       // rappel : les faces du voile, voisines du repère, en sont prises pour des rappels
@@ -722,6 +742,24 @@ async function dxsAnalyser(){const D=DXI,SP={},P=new Map();D.SP={};D.SPerr=null;
       (SP[L.id]=SP[L.id]||[]).push(CPI.support.analyser({repere:L.repere,candidat:c,page:n,vue:v?{id:v.id,type:v.type,titre:v.titre}:null},env,
         {k:e?e.k:kv,echelle:ech,ligne:lg,cadres:cad,repris:rep,sag:typeof GEO!=='undefined'?GEO.sag:null}))})}
   D.SP=Object.fromEntries(Object.entries(SP).map(([id,R])=>[id,CPI.support.consolider(R,{sag:typeof GEO!=='undefined'?GEO.sag:null})]));return D.SP}
+// Une analyse reste liée à ses observations, pas seulement au repère de nomenclature.
+function dxsCourant(k){const D=DXI,a=D.SP?.[D.NL[k].L.id];if(!a||D.fmt!=='pdf')return a;
+  const r=D.NR[k],liens=dxnContoursLignes(),O=a.observations||(a.observation?[a.observation]:[]);
+  const valide=o=>!r.rej&&(o.contour?liens.liens[k].has(o.contour):!r.geoT&&!liens.liens[k].size&&!liens.partages[k].size);
+  if(O.length&&O.every(valide))return a;
+  const V=O.flatMap((o,i)=>!valide(o)?[]:a.observation?[a]:[{
+    repere:a.repere,observation:{page:o.page,contour:o.contour,forme_dessin:o.forme_dessin,vue:o.vue,...(o.reconstruction?{reconstruction:o.reconstruction}:{})},
+    support:o.support,ouverture:o.ouverture,provenance:o.provenance,correspondance_voile:o.correspondance_voile,
+    coffrage:{...o.coffrage,pistes:[],solution_proposee:'a_determiner',tolerance_mm:null},
+    preuves:(a.preuves||[]).filter(p=>p.vue===i+1).map(({vue,...p})=>p),incertitudes:o.incertitudes||[],validation_utilisateur_requise:true}]);
+  const courant=V.length?CPI.support.consolider(V,{sag:GEO.sag}):{ouverture:{},support:{type:'inconnu'},coffrage:{},provenance:{},preuves:[],incertitudes:[]};
+  const x=JSON.parse(JSON.stringify(courant));
+  // Les cotes orientées grâce au dessin dépendent aussi du contour ; les saisies et cotes indépendantes restent valables.
+  for(const [path,p] of Object.entries(a.provenance||{}))if(p.origine==='saisie'||p.source==='nomenclature'&&!/orientation par la mesure/.test(p.detail||'')){
+    const [g,n]=path.split('.');if(!['ouverture','support','coffrage'].includes(g))continue;if(a[g]?.[n]!=null){x[g]=x[g]||{};if(x[g][n]==null){x[g][n]=a[g][n];x.provenance[path]=JSON.parse(JSON.stringify(p));}}
+  }
+  x.incertitudes.push('Support à réexaminer : observations sans rattachement actuel univoque ignorées. Relire les preuves ou relancer l’analyse du dessin.');return x;
+}
 // Identité stable d'un contour (page, forme, emprise à 0,5 pt) : une nouvelle analyse garde les corrections du même contour
 // (cotes, hauteur, forme, référence, coche, rattachement à une ligne) ; un contour disparu ne les transmet à aucun autre
 const dxrCle=c=>[c.source.page,c.type].concat(c.bbox.map(v=>Math.round(v*2)/2)).join('|');
@@ -771,7 +809,7 @@ function dxrJSON(){const D=DXI,q=x=>Math.round(x*100)/100,bx=b=>b?b.map(q):null,
     graphicalObservations:[],physicalOccurrences:[],associations:[],evidence:[],uncertainties:[],
     // phase 9A : support (voile droit, voile circulaire…) de chaque réservation associée, valeurs et provenances (jamais appliqué)
     cotesPdf:D.CP||{},
-    supports:Object.entries(D.SP||{}).map(([ligne,r])=>Object.assign({ligne},r)),
+    supports:D.NL.flatMap(({L},k)=>{const r=dxsCourant(k);return r?[Object.assign({ligne:L.id},r)]:[]}),
     // état de l'analyse des supports : une liste vide après un échec ne se confond pas avec une analyse réussie sans résultat
     supportsAnalyse:D.SPerr?{etat:'echec',erreur:D.SPerr}:D.SP?{etat:'reussie',lignes:Object.keys(D.SP).length}:{etat:'non_lancee'}};
   D.C.forEach((c,i)=>{const cl=c.statut==='a_confirmer'&&!D.lk.has(i)?dxrCl(i):null;

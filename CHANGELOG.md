@@ -3,6 +3,78 @@
 Détail complet de chaque version (demandes, écarts voulus, tests, non validé) : `docs/historique/HANDOFF_<version>.md`.
 Chaque version est un tag git (`git diff v2.4 v2.5 -- app/` pour voir les changements).
 
+## Phase 12 — recette PDF réelle (v3.1 conservée)
+
+**Correctif reproduit** : la validation d'une grille OCR remplaçait les intitulés
+originaux du tableau par les colonnes normalisées et perdait leurs indications
+de rôle, d'unité ou d'ordre des dimensions. Les en-têtes sources sont désormais
+copiés dans une métadonnée facultative, visibles dans les preuves de la fiche,
+conservés à l'export/reprise et dans l'origine de l'ouvrage confirmé.
+Ils ne changent ni les cotes normalisées ni les règles d'attribution : une
+lecture ambiguë ne valide pas automatiquement une unité ou une orientation.
+Les anciens tableaux sans cette métadonnée restent compatibles.
+
+**Identités et contours** : un même contour pouvait être proposé près de plusieurs
+repères fiables, puis être utilisé comme identité commune d'ouvrages distincts.
+Les liens sont désormais résolus avant leur utilisation : seuls les liens
+univoques ou un choix explicite unique alimentent l'identité, les preuves de
+forme et le support. Les ambiguïtés restent visibles ; le contour isolé est
+bloqué jusqu'au choix de rattachement. Deux choix explicites du même contour
+bloquent la création. Un texte fiable seul ne valide pas le contour voisin.
+Les rattachements uniques et les protections contre les véritables doublons
+restent conservés. Aucun nouveau moteur de rapprochement ou de fabrication.
+
+**Relecture — ancien parcours PDF** : `dxnEval` et `dxnProv` vérifient à leur
+tour les liens univoques avant de transmettre un contour à l'adaptateur ou à la
+provenance. Les propositions partagées sont ignorées avec avertissement, sans
+modifier les cotes propres à chaque ligne. Les localisations de provenance ne
+présentent plus ces contours comme des liens fiables ; le choix manuel unique
+est respecté. Aucun changement du DXF. Le banc fictif utilise le véritable
+bouton historique pour créer deux ouvrages, avec puis sans ambiguïté de contour,
+et contrôle leurs dimensions, les entrées de l'adaptateur et les provenances.
+
+**Relecture — support et rattachement courant** : les observations de support
+sont vérifiées contre les liens PDF univoques avant réutilisation. Un contour
+retiré, rejeté, remplacé ou attribué à une autre ligne ne transmet plus son
+support, son épaisseur, son rayon ou ses preuves géométriques à la proposition.
+Les vues encore liées sont reconsolidées par le moteur existant. Les cotes
+indépendantes du tableau, les annotations encore attribuées et les saisies
+explicites restent disponibles ; une orientation déduite du dessin est aussi
+invalidée quand sa preuve disparaît. Le cache brut n'est pas détruit.
+
+Les brouillons sont actualisés à l'ouverture et avant calcul ; les changements
+de preuves invalident récapitulatifs, validation et sélection du lot concerné.
+La confirmation des mesures est à renouveler. Les autres lignes et leurs
+validations restent conservées. À sources inchangées, le dossier local reste
+intact, y compris ses preuves bloquant une qualification abusive de détail. Les exports d'analyse et de préparation ne
+réutilisent pas les observations périmées ; une ancienne préparation est
+revérifiée à la reprise, y compris les anciennes cotes retenues depuis une
+preuve d’analyse disparue. Les clés de provenance importées hors des groupes
+métier sont ignorées, sans modifier le prototype JavaScript partagé. Pas de changement du DXF, du format projet ou du moteur
+de fabrication. Les tests fictifs passent par les sélecteurs, la validation,
+l'export/reprise et la création réels, avec des supports calculés par les modules
+existants. **Limite de ce correctif : les cinq PDF privés ne sont pas rejoués** ;
+Chromium et les campagnes automatisées ne qualifient pas l'impression physique
+ni la tenue mécanique.
+
+**Dossier de fabrication** : la ligne d'hypothèses des voiles lisait l'ancien
+champ `Dcuve`, absent des données courantes, et pouvait afficher un diamètre
+nul alors que la géométrie utilisait le bon diamètre. Elle lit maintenant
+`DcuveM`, comme le formulaire et le moteur. Correction de restitution seulement,
+sans changement des cotes, du débit ou des algorithmes de fabrication.
+
+**Tests** : banc fictif `t_recette_pdf` : validation par la grille réelle,
+provenance indépendante des objets modifiables, affichage échappé, maintien du
+blocage des cotes manquantes, export/reprise, création explicite et valeurs de
+fabrication issues des saisies ; identités de lignes distinctes malgré un contour
+commun, conflits de rattachement, choix explicite et vrais doublons. Aucun test historique retiré ou affaibli.
+Aucun algorithme de reconnaissance ou de fabrication ni stockage refondu.
+
+**Recette** : cinq documents réels, référence de lecture indépendante et essais
+Chromium dans l'HTML autonome, sans accès réseau. Détails, cotes et rendus réels
+restent hors dépôt et hors artefacts CI. Synthèse anonymisée, portée et réserves :
+`docs/recette-pdf-phase12.md`. Aucun changement de version, tag ou Release.
+
 ## Phase 11 — préparation de chantier (v3.1 conservée)
 
 **Fait** : onglet Préparation des réservations PDF, inventaire par identité de

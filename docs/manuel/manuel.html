@@ -463,6 +463,19 @@ code{font:9pt 'DejaVu Sans Mono',monospace;background:#f1f3f7;padding:0 1mm;bord
 <li><b>Aperçu du plan</b> : pages (◀ ▶), zoom (− + Ajuster). Les tableaux reconnus sont encadrés en vert. Sous l'aperçu, la nature de chaque page : textes extractibles, textes et nombreux tracés, dessin vectoriel sans texte, image (numérisation).</li>
 <li><b>Zone du tableau</b> : <b>Sélectionner une zone</b>, puis cliquer-glisser autour du tableau et <b>Analyser la zone</b>. Utile quand la lecture automatique mélange deux tableaux ou n'en trouve pas. Si la zone ne contient aucun texte lisible, rien n'est ajouté.</li>
 <li><b>Saisie assistée</b> : quand le tableau est dessiné en traits (export de DAO qui vectorise les textes) ou numérisé et que la reconnaissance OCR (ci-dessous) ne suffit pas, recopier chaque ligne (repère, désignation, cotes, niveau, observations) en regardant la page. Les lignes saisies rejoignent l'onglet Nomenclature, non cochées ; ✕ en retire une.</li></ol>
+<p>Dans le parcours PDF historique, si le même contour est proposé pour plusieurs
+lignes, il est ignoré et un avertissement demande de clarifier son rattachement.
+Les ouvrages restent créables avec leurs cotes de tableau indépendantes ; leur
+origine conserve cette incertitude sans attribuer le contour ambigu. Choisir
+explicitement une seule ligne dans le sélecteur de contour de <b>Nomenclature</b>
+permet de rattacher ce contour à cet ouvrage seulement.</p>
+<p>Après retrait, rejet ou remplacement d'un contour, les données de support qui
+en dépendaient sont à réexaminer. Une ancienne épaisseur ou un ancien rayon ne
+reste pas proposé pour la nouvelle association. Les cotes du tableau et les
+valeurs saisies restent disponibles. Les propositions concernées demandent une
+nouvelle vérification des mesures et une nouvelle validation ; les autres
+réservations gardent leurs validations. La reprise d'une préparation vérifie
+également les liens actuels avant toute création.</p>
 <p class="small">Les contours dessinés sur un PDF ne donnent <b>aucune cote</b> : l'échelle de la page n'est pas connue. Seules les cotes écrites dans le tableau ou saisies sont utilisées. L'ouvrage créé garde son origine : fichier, page, tableau, ligne, repère, textes, cotes et unité sources, zone de la page, valeurs saisies ou corrigées, indice du plan source ; le PDF lui-même n'est pas enregistré.</p>
 <h3>Reconnaître le tableau (OCR)</h3>
 <p>Quand les textes du tableau sont dessinés en traits ou numérisés, CoffraPlan peut les <b>reconnaître</b> lui-même, sans connexion et sans rien envoyer : le moteur de reconnaissance est intégré au fichier de l'application.</p>
@@ -634,6 +647,20 @@ sans incorporer le PDF ni ajouter d'ouvrage au projet. Pour reprendre, ouvrir le
 PDF original puis <b>Reprendre une préparation</b>. Son empreinte SHA-256 doit correspondre ;
 le nom seul ne suffit pas. Les validations sont recalculées et aucune ligne n'est
 sélectionnée d'office. Une ancienne analyse sans empreinte ne vaut pas préparation confirmée.</div>
+
+<p>Après validation d'une grille OCR, les intitulés originaux des colonnes restent
+consultables dans <b>Données et preuves disponibles</b>. Ils sont conservés dans
+la préparation exportée et l'origine de l'ouvrage confirmé. Une indication
+ambiguë d'unité ou d'ordre des dimensions doit être relue sur le PDF ; elle
+n'est pas interprétée automatiquement. Corriger les repères dans la grille
+avant de valider la nomenclature lorsque leur lecture est erronée.</p>
+
+<p>Si un contour est proposé pour plusieurs lignes, la préparation signale
+l'ambiguïté et n'en déduit ni une identité commune ni un support de fabrication.
+Relire le dessin puis choisir le bon contour dans <b>Nomenclature</b>, ou compléter
+le support à partir de preuves indépendantes. Le contour seul reste bloqué tant
+que son rattachement est disputé. Deux lignes ne peuvent pas confirmer le même
+contour simultanément ; corriger ce conflit avant création.</p>
 
 <h2>7.24 Dossier de fabrication des plans sélectionnés</h2>
 <p>Dans la carte <b>Plans</b>, ouvrir <b>Préparer un dossier de fabrication</b>.

@@ -464,6 +464,7 @@ const colonnes=rows=>COLONNES.filter(([k])=>BASE.includes(k)||rows.some(r=>Strin
 // Grille vérifiée → nomenclature au contrat de nomenclatures.js (mêmes règles de cotes : CPI.nomenclatures.ligne).
 // m = {id, fichier, page, zone, titre, unite (unité des dimensions : choisie ou lue dans l'en-tête), mesures}
 function versNomenclature(rows,m){const C=colonnes(rows),cols=C.map(([k,t])=>({titre:t+(k==='ouverture'&&m.unite?` (${m.unite})`:''),cle:k,unite:k==='ouverture'?m.unite||null:null}));
+  const source=Array.isArray(m.entetesSource)?{entetesSource:JSON.parse(JSON.stringify(m.entetesSource))}:{};
   const lignes=rows.map((r,i)=>{const cells=C.map(([k])=>String(r.cells[k]||'').trim()),L=root.CPI.nomenclatures.ligne(cols,cells),inc=[],corr=[],brut={},cf={},cg={};
     C.forEach(([k,t])=>{if(r.brut&&r.brut[k])brut[t]=r.brut[k];if(r.conf&&r.conf[k]!=null)cf[t]=r.conf[k];(r.corr&&r.corr[k]||[]).forEach(c=>corr.push(`${t} : ${c}`));
       if(r.edite.includes(k))cg[t]=String(r.cells[k]||'');
@@ -472,10 +473,10 @@ function versNomenclature(rows,m){const C=colonnes(rows),cols=C.map(([k,t])=>({t
     return Object.assign({id:`${m.id}-L${String(i+1).padStart(2,'0')}`,rang:i+1,ids:[],calques:[]},L,{box:unionBox(Object.values(r.box||{}).filter(Boolean))},
       m.texte?{corrige:cg}:{ocr:{brut,confiance:cf,corrections:corr,corrige:cg,incertain:inc,ajoutee:!r.src,moteur:m.mesures&&m.mesures.moteur||VERSION,...(m.mesures&&m.mesures.methode?{methode:m.mesures.methode}:{})}})});
   const nI=lignes.reduce((s,L)=>s+(L.ocr?L.ocr.incertain.length:0),0);
-  if(m.texte)return{id:m.id,ocr:false,grilleTexte:true,fichier:m.fichier,format:'pdf',espace:'papier',presentation:'Page '+m.page,page:m.page,titre:m.titre||'',nature:'reservations',colonnes:cols,
+  if(m.texte)return{id:m.id,...source,ocr:false,grilleTexte:true,fichier:m.fichier,format:'pdf',espace:'papier',presentation:'Page '+m.page,page:m.page,titre:m.titre||'',nature:'reservations',colonnes:cols,
     cadre:m.zone?[m.zone.x0,m.zone.y0,m.zone.x1,m.zone.y1]:null,zone:m.zone,ids:[],calques:[],lignes,unite:m.unite||null,
     qualite:{niveau:'vérifiée',motifs:['textes du PDF rangés dans la grille de traits du tableau (en-tête non reconnu automatiquement), colonnes vérifiées par l\'utilisateur']}};
-  return{id:m.id,ocr:true,fichier:m.fichier,format:'pdf',espace:'papier',presentation:'Page '+m.page,page:m.page,titre:m.titre||'',nature:'reservations',colonnes:cols,
+  return{id:m.id,...source,ocr:true,fichier:m.fichier,format:'pdf',espace:'papier',presentation:'Page '+m.page,page:m.page,titre:m.titre||'',nature:'reservations',colonnes:cols,
     cadre:m.zone?[m.zone.x0,m.zone.y0,m.zone.x1,m.zone.y1]:null,zone:m.zone,ids:[],calques:[],lignes,unite:m.unite||null,mesures:m.mesures||null,
     qualite:{niveau:'OCR vérifiée',motifs:[`reconnaissance optique (${VERSION}), lignes vérifiées par l'utilisateur`,nI?`${nI} cellule(s) incertaine(s) non corrigée(s)`:'aucune cellule incertaine laissée']}}}
 

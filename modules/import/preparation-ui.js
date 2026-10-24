@@ -8,22 +8,36 @@ function dxprBase(){const D=DXI;if(!D||D.fmt!=='pdf')return null;if(!D.M)dxiMode
 function dxprLecture(X){return{case:id=>X.controles?.[id]?.checked===true,val:(id,def='')=>X.controles?.[id]?.value??(id==='dxc_ref'?X.ref:id==='dxc_nb'?String(X.nombre||1):def)}}
 function dxprCalcul(X){try{return dxcPreparer(X,dxprLecture(X))}catch(e){return{p:{valeurs:{},manquants:[e.message]},r:{ok:false,messages:['Proposition à réexaminer : '+e.message]},note:''}}}
 function dxprEmpreinte(X,x){return JSON.stringify({cles:X.cles,controles:X.controles||{},modeles:X.modeles,contexte:[X.D.ch,X.D.ouv,X.D.ind],x})}
-function dxprInvalider(X,m){if(X.validation){X.invalidation=m;X.validation=null;}const B=X.D.PR;if(B){B.selection=B.selection.filter(k=>k!==X.cles[0]);B.revision=null;}}
+function dxprInvalider(X,m){X.revision=null;if(X===DXC&&el('dxprValidation'))el('dxprValidation').textContent='À revalider : '+m;if(X.validation){X.invalidation=m;X.validation=null;}const B=X.D.PR;if(B){B.selection=B.selection.filter(k=>k!==X.cles[0]);B.revision=null;}}
 function dxprSauver(){const X=DXC;if(!X||X.D!==DXI||!el('dxcZ'))return;
   X.controles=Object.fromEntries([...el('dxcZ').querySelectorAll('input[id^="dxc_"],select[id^="dxc_"]')].map(e=>[e.id,{value:e.value,checked:e.type==='checkbox'&&e.checked}]));
   const B=dxprBase();B.rows[X.cles[0]]=X;
   if(X.validation&&X.validation!==dxprEmpreinte(X,dxprCalcul(X)))dxprInvalider(X,'Données ou réglages modifiés depuis la validation');
 }
+function dxprActualiser(X,neuf=dxcNouveau(X.kind,X.i)){
+  const source=JSON.stringify({analyse:neuf.analyse,dossier:neuf.dossier,cles:neuf.cles}),change=X.source!==source;
+  if(change){dxprInvalider(X,'Analyse ou preuves sources modifiées');
+    if(X.controles?.dxc_mesures)X.controles.dxc_mesures.checked=false;
+    if(X===DXC&&el('dxc_mesures'))el('dxc_mesures').checked=false;
+  }
+  for(const [k,r] of Object.entries(X.retenues))if(r.candidate?.origine==='analyse'&&!neuf.dossier.candidats.some(c=>JSON.stringify(c)===JSON.stringify(r.candidate))){
+    delete X.retenues[k];delete X.arbitrages[k];if(!Object.hasOwn(X.saisiesBrutes,k)&&r.origine!=='saisie')delete X.saisie[k];
+    dxprInvalider(X,'Cote retenue issue d’une analyse périmée : à réexaminer');
+  }
+  Object.assign(X,{D:DXI,kind:neuf.kind,i:neuf.i});
+  if(change)Object.assign(X,{analyse:neuf.analyse,dossier:neuf.dossier,cles:neuf.cles,source});
+  if(change&&X===DXC&&el('dxcCotes')){const detail=C('dxc_detail'),note=S('dxc_detailNote','');
+    el('dxcCotes').innerHTML=dxcCotesHTML();el('dxc_detail').checked=detail;el('dxc_detailNote').value=note;
+  }return X;
+}
 function dxprInventaire(){const D=DXI,B=dxprBase();if(!B)return[];const lignes=D.NL.map((_,i)=>['n',i]),rattaches=new Set();
-  D.NL.forEach(({L},i)=>{(dxnAS(L).occurrences||[]).forEach(o=>{if(o.fiable&&o.contour)rattaches.add(o.contour)});const g=D.NR[i]?.geo;if(g!==''&&g!=null&&D.C[+g])rattaches.add(D.C[+g].id)});
+  dxnContoursLignes().liens.forEach(ids=>ids.forEach(id=>rattaches.add(id)));
   D.C.forEach((c,i)=>{if(!rattaches.has(c.id)&&c.statut==='a_confirmer')lignes.push(['g',i])});
   B.ordre=lignes.map(([kind,i])=>{const neuf=dxcNouveau(kind,i),key=neuf.cles[0],ex=B.rows[key];
-    const source=JSON.stringify({analyse:neuf.analyse,dossier:neuf.dossier,cles:neuf.cles});
-    if(ex){if(ex.source!==source)dxprInvalider(ex,'Analyse ou preuves sources modifiées');Object.assign(ex,{D,kind,i,analyse:neuf.analyse,dossier:neuf.dossier,cles:neuf.cles,source});}
-    else{neuf.source=source;B.rows[key]=neuf;}return key;
+    B.rows[key]=dxprActualiser(ex||neuf,neuf);return key;
   });return B.ordre.map(k=>B.rows[k]);
 }
-function dxprCharger(kind,i){const B=dxprBase(),key=dxcCles(kind,i)[0];if(!B.ordre.length)dxprInventaire();if(!B.rows[key]){const X=dxcNouveau(kind,i);X.source=JSON.stringify({analyse:X.analyse,dossier:X.dossier,cles:X.cles});B.rows[key]=X;}return B.rows[key]}
+function dxprCharger(kind,i){const B=dxprBase(),key=dxcCles(kind,i)[0];dxprInventaire();if(!B.rows[key]){const X=dxcNouveau(kind,i);X.source=JSON.stringify({analyse:X.analyse,dossier:X.dossier,cles:X.cles});B.rows[key]=X;}return B.rows[key]}
 function dxprRestaurer(){const X=DXC;if(!X?.controles)return;for(const [id,v] of Object.entries(X.controles)){const e=el(id);if(e){e.value=v.value;if(e.type==='checkbox')e.checked=v.checked}}}
 function dxprEtat(X,x=dxprCalcul(X)){
   if(dxcDeja(X.cles))return'Créé';if(X.ignore)return'Ignoré';
@@ -104,6 +118,7 @@ function dxprAnnuler(){const B=dxprBase(),a=B.annulation;if(!a)return;
 }
 function dxprPreparation(){dxprSauver();dxprInventaire();const D=DXI,B=dxprBase(),source={};
   for(const k of ['NA','NR','C','R','NU','AS','HR','cal','GP','GI','OT','OM','VU','CS','SP','ana','no','nz','ns','rn'])if(D[k]!=null)source[k]=dxprCopie(D[k]);
+  source.SP=Object.fromEntries(D.NL.flatMap(({L},k)=>{const r=dxsCourant(k);return r?[[L.id,dxprCopie(r)]]:[]}));
   return{format:'coffraplan-preparation-pdf',v:1,pdf:{nom:D.nom,empreinte:D.empreinte},contexte:{ch:D.ch,ouv:D.ouv,ind:D.ind},source,modeles:dxprCopie(D.M),
     lignes:B.ordre.map(k=>{const X=B.rows[k];return{cle:k,cles:X.cles,kind:X.kind,i:X.i,retenues:X.retenues,arbitrages:X.arbitrages,saisie:X.saisie,saisiesBrutes:X.saisiesBrutes,controles:X.controles||{},modeles:X.modeles,validation:X.validation||null,invalidation:X.invalidation||null,ignore:!!X.ignore,preuves:X.dossier}})};
 }
