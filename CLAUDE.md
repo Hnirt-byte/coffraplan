@@ -27,7 +27,7 @@ développement : il progresse vite mais n'est pas développeur senior.
 ## Architecture
 - **Source : `app/CoffraPlan.source.html`** (HTML, CSS, JS vanilla : le seul fichier de l'appli à éditer à la main) ; **livrable :
   `app/CoffraPlan.html`**, construit (phase 8) par `python modules/import/assembler.py` (déterministe, environ 2 s ; `--check` vérifie),
-  **non versionné** (.gitignore) ; environ 36 Mo (PDF.js ≈ 1,8 Mo, Tesseract ≈ 2,65 Mo, PP-OCR ≈ 30 Mo). Chaque marqueur
+  **non versionné** (.gitignore) ; environ 37,2 Mo (PDF.js ≈ 1,8 Mo, Tesseract ≈ 2,65 Mo, PP-OCR ≈ 30 Mo). Chaque marqueur
   `<!--@bloc ID-->` de la source est remplacé par son bloc généré (`fonts-src`, `cpi-src`, `three-src`, `pdfjs-*`, `tess-*`, `ppocr-*`).
   Polices (Barlow, Barlow Condensed, JetBrains Mono, OFL) embarquées depuis `app/vendor/fonts` : aucune requête réseau (plus de Google Fonts).
   Ne jamais modifier `app/CoffraPlan.html` à la main (réécrit à chaque construction) ni chercher le code de l'appli dedans pour l'éditer.
@@ -141,7 +141,7 @@ développement : il progresse vite mais n'est pas développeur senior.
   `CPI.pdf.chemins` → `courbes` (Bézier) et `{zones}` (relecture locale) ; `dxf.js` → `arcs`, `traitsArcs` à part (entités et traits
   inchangés). Fenêtre : `dxsAnalyser` en fin d'analyse du dessin → `DXI.SP`, clé `supports` de l'export JSON ; rien n'est appliqué.
   Banc `t_support.py` (`tests/support_fictifs.py`, `tests/support_cas.js`).
-- Version affichée : élément `#appVer` (« v3.1 »). t_ux vérifie ce numéro exact ; t_v30 vérifie « v3.x ».
+- Version affichée : élément `#appVer` (« v3.2 »). t_ux vérifie ce numéro exact ; t_v30 vérifie « v3.x ».
 
 ## Décisions actées (ne pas changer sans l'accord de Kévin)
 - Palette : joues CP `#EBD9B4`, fond inférieur `#B4532A`, fond supérieur `#E8A92E`, goussets `#F26B1D`, cloisons et
