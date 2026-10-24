@@ -3,6 +3,73 @@
 Détail complet de chaque version (demandes, écarts voulus, tests, non validé) : `docs/historique/HANDOFF_<version>.md`.
 Chaque version est un tag git (`git diff v2.4 v2.5 -- app/` pour voir les changements).
 
+## v3.2
+
+Évolutions vérifiées depuis le tag **v3.1** jusqu’au main validé
+`90e3bc4721182e9e244a0df7bf9800bf76e85c16`, regroupées pour cette version.
+**L’import DXF/PDF, l’OCR Tesseract et le rapprochement nomenclature/dessin existaient déjà dans v3.1.**
+Ils sont améliorés ; ils ne sont pas introduits par v3.2. Les sections de phases ci-dessous conservent le détail historique.
+
+### Lecture et compréhension des plans améliorées
+
+- Tableaux : en-têtes à plusieurs niveaux, unités contre les cotes, tableaux tournés et juxtaposés,
+  colonnes séparées et quantités mieux traités ; tableaux d’aciers ou de trappes écartés, DN conservés sans diamètre inventé.
+- Vues techniques et occurrences : rapprochements limités à la vue concernée, représentations distinguées
+  des occurrences physiques et observations ambiguës ; pas de multiplication de la quantité par le nombre de vues.
+- **PP-OCRv6 local embarqué**, via ONNX Runtime Web, proposé par défaut pour les grilles et repères dessinés ;
+  Tesseract reste disponible, notamment pour les zones sans grille. Lecture des textes verticaux, corrections et preuves conservées.
+- Analyse du support droit ou circulaire et reconstruction contextuelle de certains contours raccordés aux parements,
+  avec limites inférées signalées. Une géométrie reconnue ne fournit pas automatiquement des cotes de fabrication.
+
+### Proposition, confirmation et préparation de chantier
+
+- Parcours de proposition de coffrage : données et origines visibles, compléments manuels, choix de solution,
+  récapitulatif puis confirmation explicite. Épaisseur, rayon et dimensions absents ne sont pas supposés ; mesures
+  graphiques utilisables seulement après confirmation des échelles. Joues parallèles/radiales et sens de la corde explicités ;
+  tolérance de courbure configurable par chantier/ouvrage, sans seuil universel ni décision automatique si elle manque.
+- Dossier de cotes écrites : repère, rôle, unité, lecture brute, preuves et contradictions conservés ;
+  affectation ou arbitrage explicite des valeurs ambiguës. Détails particuliers signalés avant création.
+- **Feuillure périphérique rectangulaire traversante** dans son périmètre qualifié : dimensions complètes,
+  corps sans biais/pente et départ mesuré depuis le parement A ; feuille, débit, 3D et exports réutilisent le modèle existant.
+- **Chanfrein vertical 45° V1** : un seul coin, section constante, orientation vers le béton, cinq panneaux CP monoblocs,
+  biseaux et traverses existantes contrôlés ; débit, imbrication, feuilles, 3D, DXF et BIM cohérents. L’autre orientation,
+  les détails combinés, plusieurs coins et les autres angles restent hors fabrication automatique.
+- Préparation en lot : inventaire, filtres, brouillons par réservation, validations invalidées après changement de preuves,
+  sélection et confirmation du lot, contrôles avant ajout tout ou rien, refus des doublons et annulation contrôlée.
+  Export/reprise local lié à l’empreinte SHA-256 du PDF, sans incorporer le document au projet.
+- Dossiers de fabrication ciblés : seuls les ouvrages sélectionnés sont consolidés. Toutes les feuilles CP du dossier ciblé
+  sont générées ou le dossier est refusé explicitement ; pièces non placées et quantités seulement estimées ne deviennent pas
+  un plan de découpe annoncé complet. Les dossiers dépassant la limite d’imbrication demandent une répartition.
+
+### Fiabilité et fonctionnement local
+
+- Stockage principal **IndexedDB** : migration non destructive de l’ancien stockage, écritures et sauvegardes relues,
+  conflits entre onglets signalés, copies de secours et erreurs explicites. L’export du projet en fichier JSON reste nécessaire.
+- En-têtes OCR sources conservés ; identités de lignes distinctes malgré un contour partagé. Un retrait, rejet ou changement
+  de rattachement invalide les supports et preuves géométriques périmés, les brouillons et leurs validations, y compris à la reprise.
+  Cotes indépendantes et saisies explicites sont préservées. Hypothèse de diamètre de cuve corrigée à l’affichage.
+- HTML autonome construit depuis les sources par la CI, dépendances contrôlées par empreinte, **polices embarquées** :
+  aucune requête réseau à l’exécution. Fichier d’environ **37,2 Mo**, modèles OCR compris ; aucun serveur ni API payante requis.
+- Fichier projet **v10 conservé**. Cette PR de préparation ne modifie aucun moteur de fabrication du main validé ;
+  elle actualise la version, les notes, les contrôles de publication et le manuel.
+
+### Validation et limites connues
+
+Préparation assistée : **relecture et validation humaines obligatoires**. Aucune reconnaissance parfaite ni qualification
+mécanique n’est annoncée. Les cotes incertaines restent à compléter, les détails non pris en charge restent bloquants.
+Les ouvrages historiques, les projets existants et les contrôles de fabrication restent couverts par les campagnes automatisées ;
+la comparaison avant/après de cette préparation utilise explicitement le main de départ `90e3bc4`.
+
+La recette historique de cinq PDF privés a retrouvé **116 lignes de tableau**, dont **100 aux cotes numériques brutes conformes**,
+avec **93 unités écrites justifiées** ; **6 repères OCR ont été corrigés humainement**. Ces nombres ne mesurent pas la reconnaissance
+exhaustive des réservations physiques. Les correctifs ultérieurs ont été éprouvés sur cas fictifs ; **les cinq PDF ne sont pas rejoués
+pour cette préparation v3.2**. Documents, rendus et rapports détaillés restent hors Git et des artefacts publics.
+
+**Non validés** : scans réels de chantier, toutes les géométries et vues de plans réels, impression physique/traceur, tenue mécanique,
+Firefox/Safari/Edge et tablettes réelles, ouverture des exports dans un vrai AutoCAD ou Excel. Les essais automatiques utilisent Chromium,
+ezdxf et LibreOffice pour les contrôles concernés. Une imbrication rectangulaire réserve les cadres des pièces polygonales : aucune
+économie de découpe polygonale ni raccord de panneau n’est supposé. Les performances sur machines lentes ne sont pas qualifiées.
+
 ## Phase 12 — recette PDF réelle (v3.1 conservée)
 
 **Correctif reproduit** : la validation d'une grille OCR remplaçait les intitulés

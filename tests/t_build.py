@@ -19,7 +19,7 @@ def t(s):
     src = open(os.path.join(ROOT, 'app', 'CoffraPlan.source.html'), encoding='utf-8').read()
     s.check(all(src.count(f'<!--@bloc {b}-->') == 1 for b in BLOCS) and 'id="ppocr-rec"' not in src and len(src.encode()) < 2_000_000,
             'source : un marqueur par bloc généré, aucune dépendance recopiée (source < 2 Mo)', f'{len(src.encode())} octets')
-    s.check('id="appVer">v3.1<' in src, 'source : version affichée v3.1')
+    s.check('id="appVer">v3.2<' in src, 'source : version affichée v3.2')
     # reproductible et à jour
     h1 = hashlib.sha256(open(APP, 'rb').read()).hexdigest()
     r = subprocess.run([sys.executable, ASM], capture_output=True, text=True)
@@ -84,7 +84,7 @@ def t(s):
                 'polices Barlow, Barlow Condensed, JetBrains Mono chargées depuis le livrable (aucune police distante)',
                 J('[...document.fonts].map(f=>f.family+" "+f.weight+" "+f.status).join(" | ")'))
         pg.add_script_tag(path=os.path.join(HERE, 'helpers.js'))
-        s.check(J('location.protocol') == 'file:' and J('[STO.mode,el("appVer").textContent]') == ['idb', 'v3.1'], 'file:// : application ouverte, projets IndexedDB, v3.1')
+        s.check(J('location.protocol') == 'file:' and J('[STO.mode,el("appVer").textContent]') == ['idb', 'v3.2'], 'file:// : application ouverte, projets IndexedDB, v3.2')
         J("()=>{T.mk('rect',{dL:1200,dl:800,dh:300});el('iRef').value='B1';addP(false);if(dlgOpen())dlgEnd(true)}")
         pg.reload(); pg.wait_for_function('typeof gen==="function" && _ready')
         s.check(J('P.length') == 1, 'file:// : projet retrouvé après rechargement')

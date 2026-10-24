@@ -130,7 +130,7 @@ code{font:9pt 'DejaVu Sans Mono',monospace;background:#f1f3f7;padding:0 1mm;bord
 <div class="c">4. Lire les feuilles</div><div>Plan · Débit · traçage · contrôles · Informations · CP à découper · Montage 3D · Fiche atelier · Repères</div>
 <div class="c">5. Gérer les plans</div><div>Liste · Modifier · Dupliquer · Supprimer · Annuler / rétablir</div>
 <div class="c">6. Sauvegarder et charger</div><div>Fichier .json · Rappel · Brouillon</div>
-<div class="c">7. Fonctions avancées</div><div>Profil chantier · Bibliothèque · Série depuis un tableau · Comparer deux indices · Auto-contrôle et corrections · Vue 3D · Gabarits 1:1 · Déplacement à la souris · Récapitulatif chantier · Dossier PDF · Exports DXF / CSV / XLSX · Mode chantier · Impression · Aperçu en attente · Cartes repliables · Flèche du CP · Note d'hypothèses · Cartouche entreprise · Exports 3D / BIM (glTF, IFC4) · Cotes d'implantation · Import d'un plan DXF</div>
+<div class="c">7. Fonctions avancées</div><div>Profil chantier · Bibliothèque · Série depuis un tableau · Comparer deux indices · Auto-contrôle et corrections · Vue 3D · Gabarits 1:1 · Déplacement à la souris · Récapitulatif chantier · Dossier PDF · Exports DXF / CSV / XLSX · Mode chantier · Impression · Aperçu en attente · Cartes repliables · Flèche du CP · Note d'hypothèses · Cartouche entreprise · Exports 3D / BIM (glTF, IFC4) · Cotes d'implantation · Import DXF/PDF et OCR · Proposition confirmée · Préparation en lot · Dossier ciblé</div>
 <div class="c">8. Raccourcis clavier</div>
 <div class="c">9. Bonnes pratiques et dépannage</div>
 <div class="c">Annexe — calques DXF</div>
@@ -144,9 +144,14 @@ code{font:9pt 'DejaVu Sans Mono',monospace;background:#f1f3f7;padding:0 1mm;bord
 <!-- ======================= 1 ======================= -->
 <h1 class="chap">1. Prise en main</h1>
 <h2>Ouvrir l'application</h2>
-<p>CoffraPlan est un <b>fichier unique</b> (<code>CoffraPlan_v{{VERSION}}.html</code>). Double-cliquer dessus : il s'ouvre dans le navigateur. Aucune installation, aucun compte, aucun serveur ; il fonctionne <b>hors connexion</b> (sans internet, seules les polices de caractères sont remplacées par celles du système).</p>
-<p>Navigateur conseillé : <b>Google Chrome</b> ou <b>Microsoft Edge</b> (l'application est testée sous Chromium). Firefox et Safari ne sont pas validés.</p>
-<div class="tip"><b>Conseil</b>Garder toujours le même fichier au même endroit et l'ouvrir avec le même navigateur : les plans enregistrés dans le navigateur sont liés à ce couple fichier / navigateur.</div>
+<p>CoffraPlan est un <b>fichier unique</b> (<code>CoffraPlan_v{{VERSION}}.html</code>). Double-cliquer dessus : il s'ouvre dans le navigateur. Le fichier pèse environ <b>37,2 Mo</b>, modèles OCR et polices de l’application compris. Aucune installation, aucun compte, aucun serveur ; il fonctionne <b>hors connexion</b>, sans téléchargement de polices ni de modèles à l’exécution.</p>
+<p>Navigateur conseillé : <b>Google Chrome</b> ou <b>Microsoft Edge</b>. Les essais automatiques portent sur <b>Chromium</b> ; Firefox, Safari, Edge et les tablettes réelles ne sont pas qualifiés.</p>
+<div class="tip"><b>Conseil</b>Utiliser le même profil de navigateur pour retrouver l’enregistrement local. Dans les essais Chromium, renommer ou déplacer le HTML conserve les projets ; plusieurs copies partagent cet enregistrement. Avant de changer de navigateur ou de poste, sauvegarder le fichier JSON.</div>
+
+<div class="note"><b>Ce qui évolue depuis v3.1</b>L’import PDF/DXF, l’OCR Tesseract et le rapprochement existaient déjà.
+La lecture des tableaux, unités, vues et repères est fiabilisée, avec PP-OCRv6 local au choix de Tesseract.
+Les propositions de coffrage, cotes et preuves, détails qualifiés, validations par réservation puis par lot et dossiers ciblés
+complètent ce parcours. Rien n’est créé sans confirmation humaine. Le format des fichiers projet reste v10.</div>
 
 <h2>L'écran</h2>
 <div class="fig"><img src="img/02_interface.png"><div class="cap">Écran principal (thème clair)</div></div>
@@ -266,9 +271,9 @@ code{font:9pt 'DejaVu Sans Mono',monospace;background:#f1f3f7;padding:0 1mm;bord
 <!-- ======================= 6 ======================= -->
 <h1 class="chap">6. Sauvegarder et charger</h1>
 <h3>Deux niveaux de protection</h3>
-<ul><li><b>Enregistrement dans le navigateur (automatique)</b> : chaque modification est enregistrée dans le navigateur, sur cet ordinateur. L'indicateur à côté de 💾 affiche <b>✓ Enregistré ici</b>, <b>⏳ Enregistrement…</b> ou <b>⚠ Non enregistré</b> (avec un bandeau rouge qui explique quoi faire). Fermer puis rouvrir CoffraPlan dans le même navigateur retrouve le travail, même si le fichier HTML a été renommé ou déplacé (essayé dans Chrome).</li>
+<ul><li><b>Enregistrement dans le navigateur (automatique)</b> : chaque modification est enregistrée dans le navigateur, sur cet ordinateur. L'indicateur à côté de 💾 affiche <b>✓ Enregistré ici</b>, <b>⏳ Enregistrement…</b> ou <b>⚠ Non enregistré</b> (avec un bandeau rouge qui explique quoi faire). Fermer puis rouvrir CoffraPlan dans le même navigateur retrouve le travail, même si le fichier HTML a été renommé ou déplacé (vérifié dans les essais Chromium).</li>
 <li><b>Sauvegarde en fichier .json (vous)</b> : c'est la seule protection contre un navigateur nettoyé, un autre navigateur, un autre poste, une panne. La pastille orange et le bandeau « Modifications non sauvegardées » parlent de ce fichier, pas du navigateur.</li></ul>
-<div class="note"><b>Première ouverture de cette version</b>Les plans des versions précédentes (ancien stockage du navigateur) sont transférés automatiquement : copiés, relus, comparés ; un message le confirme. L'ancien stockage n'est ni modifié ni effacé. Si le transfert échoue, un bandeau le dit, propose d'exporter le projet et de réessayer ; rien n'est perdu.</div>
+<div class="note"><b>Première ouverture de cette version</b>Les plans des versions précédentes (ancien stockage du navigateur) sont transférés automatiquement : copiés, relus, comparés ; un message le confirme. L'ancien stockage n'est ni modifié ni effacé. Si le transfert échoue, un bandeau propose d’exporter et de réessayer ; l’ancien stockage reste conservé. Un stockage plein, illisible ou indisponible peut empêcher l’enregistrement : conserver aussi le fichier JSON.</div>
 <div class="warn"><b>Deux versions trouvées</b>Si l'ancien stockage a été modifié depuis (par une ancienne version de CoffraPlan ouverte dans le même navigateur), CoffraPlan ne choisit pas à votre place : il propose d'exporter les deux, puis de garder le projet enregistré ou de reprendre l'ancien stockage.</div>
 <div class="warn"><b>Deux onglets ou deux fichiers CoffraPlan ouverts</b>Ils partagent les mêmes projets. Si l'un enregistre, l'autre l'indique (« Modifié ailleurs ») et refuse d'écraser : recharger le projet enregistré, exporter la version de l'onglet, ou la garder en connaissance de cause.</div>
 <h3>Sauvegarder (fichier .json)</h3>
@@ -479,7 +484,7 @@ réservations gardent leurs validations. La reprise d'une préparation vérifie
 <p class="small">Les contours dessinés sur un PDF ne donnent <b>aucune cote</b> : l'échelle de la page n'est pas connue. Seules les cotes écrites dans le tableau ou saisies sont utilisées. L'ouvrage créé garde son origine : fichier, page, tableau, ligne, repère, textes, cotes et unité sources, zone de la page, valeurs saisies ou corrigées, indice du plan source ; le PDF lui-même n'est pas enregistré.</p>
 <h3>Reconnaître le tableau (OCR)</h3>
 <p>Quand les textes du tableau sont dessinés en traits ou numérisés, CoffraPlan peut les <b>reconnaître</b> lui-même, sans connexion et sans rien envoyer : le moteur de reconnaissance est intégré au fichier de l'application.</p>
-<p><b>Moteur OCR</b> (choix dans « Réservations dessinées ») : <b>PP-OCRv6</b>, recommandé et proposé d'office, lit mieux les repères, les cotes, les niveaux et les textes écrits à la verticale ; <b>Tesseract</b>, l'ancien moteur, plus rapide, reste disponible. Le choix est gardé dans le navigateur. Une zone sans grille de tableau est toujours lue par Tesseract.</p>
+<p><b>Moteur OCR</b> (choix dans « Réservations dessinées ») : <b>PP-OCRv6</b>, proposé d’office pour les grilles et repères dessinés, complète l’OCR déjà disponible en v3.1, notamment pour les textes verticaux ; <b>Tesseract</b> reste disponible. La qualité et le temps de lecture dépendent du document. Le choix est gardé dans le navigateur. Une zone sans grille de tableau est toujours lue par Tesseract.</p>
 <ol><li>Dans <b>Aperçu du plan</b>, sélectionner la zone du tableau, puis <b>Reconnaître le tableau (OCR)</b>. « Analyser la zone » reste le premier choix si le PDF contient du texte : il est exact et immédiat. La progression s'affiche ; <b>Annuler</b> arrête la reconnaissance sans rien modifier.</li>
 <li>Une <b>grille de vérification</b> s'ouvre sous l'aperçu : Repère, Désignation, Type ou nature, Dimensions d'ouverture, Réseau, Niveau ou altitude, Observations, État. Les <b>cellules douteuses sont en orange</b> (texte lu brut et confiance au survol) ; cliquer dans une cellule montre son emplacement sur la page.</li>
 <li>Corriger les cellules, <b>insérer</b> une ligne oubliée, <b>fusionner</b> une ligne coupée en deux, <b>retirer</b> une ligne en trop (rétablissable). Relancer l'OCR garde les corrections déjà faites. Si une nouvelle zone ne donne aucun tableau, la grille précédente reste affichée avec la mention « reconnaissance précédente ».</li>
@@ -732,7 +737,7 @@ Chromium ne sont pas validés automatiquement.</div>
 <tr><td>L'aperçu est grisé « en attente »</td><td>Forme lourde : appuyer sur Entrée ou Tab, ou cliquer sur le bandeau.</td></tr>
 <tr><td>Textes trop petits à l'impression</td><td>Passer en A3, ou « Textes des plans » plus grands dans la carte Chantier ; décocher les feuilles inutiles.</td></tr>
 <tr><td>Je veux une copie papier en noir et blanc</td><td>Cocher « Noir et blanc » : les couleurs deviennent des motifs.</td></tr></table>
-<div class="note"><b>Limites connues</b>Testé sous Chrome / Edge (Chromium) ; Firefox et Safari non validés. DXF vérifié avec un lecteur DXF (ezdxf) ; ouverture dans AutoCAD à confirmer sur vos fichiers. Les valeurs d'efforts (flambement des renforts) sont des aides à la décision, pas une note de calcul : faire vérifier en cas de doute.</div>
+<div class="note"><b>Limites connues</b>Préparation assistée, avec relecture humaine obligatoire. Les essais automatiques utilisent Chromium ; Firefox, Safari, Edge et les tablettes réelles ne sont pas validés. La recette de cinq PDF privés ne prouve pas une reconnaissance géométrique exhaustive ; ces cinq documents ne sont pas rejoués pour la préparation v{{VERSION}}. Scans réels de chantier, impression physique/traceur et tenue mécanique ne sont pas qualifiés. DXF et classeurs sont relus avec ezdxf et LibreOffice ; les essais dans un vrai AutoCAD ou Excel restent à effectuer. Les valeurs d’efforts sont des aides à la décision, pas une qualification mécanique de fabrication.</div>
 
 <h1 style="margin-top:8mm">Annexe — calques DXF</h1>
 <table><tr><th style="width:55mm">Calque</th><th>Contenu</th></tr>

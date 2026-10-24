@@ -45,8 +45,10 @@ lance les tests et pousse une branche ou un commit.
    Le test d'export XLSX ouvre le classeur avec LibreOffice (`soffice`). Sans LibreOffice, ce seul contrôle échoue.
 
 ### Publier une version
-Mettre à jour le numéro (voir CLAUDE.md), commit, puis `git tag v2.6 && git push --tags`. GitHub Actions lance les
-tests, génère le mode d'emploi et crée la Release (HTML + PDF).
+Préparer le numéro, les notes et le manuel dans une PR dédiée (voir CLAUDE.md), puis exécuter les validations.
+Après fusion, CI post-fusion verte et **autorisation explicite de publication**, le tag correspondant à la version affichée
+(`vX.Y`) déclenche GitHub Actions : tests complets, génération du manuel et Release avec `CoffraPlan_vX.Y.html` et
+`CoffraPlan_vX.Y_Mode_emploi.pdf`. La préparation v3.2 ne crée ni tag ni Release.
 
 ## Dossiers
 | Dossier | Contenu |
